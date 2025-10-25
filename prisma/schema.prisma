@@ -7,3 +7,425 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// --- ROLES MODEL ---
+enum RoleStatus {
+  Active
+  Inactive
+}
+
+model Role {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique @db.VarChar(50)
+  description String     @db.VarChar(200)
+  status      RoleStatus @default(Active)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relation: One Role -> Many Users
+  users User[]
+
+  @@map("roles")
+}
+
+// --- USERS MODEL ---
+enum UserStatus {
+  Active
+  Inactive
+}
+
+model User {
+  id             Int        @id @default(autoincrement())
+  firstName      String
+  lastName       String
+  documentType   String
+  identification String     @unique
+  email          String     @unique
+  phone          String?
+  status         UserStatus @default(Active)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relation: Many Users -> One Role
+  roleId Int
+  role   Role @relation(fields: [roleId], references: [id])
+
+  // Relation: One User -> One Employee (optional)
+  employee Employee?
+
+  @@map("users")
+}
+
+// --- EMPLOYEE TYPES MODEL ---
+model EmployeeType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relation: One EmployeeType -> Many Employees
+  employees Employee[]
+
+  @@map("employee_types")
+}
+
+// --- EMPLOYEES MODEL ---
+enum EmployeeStatus {
+  Active // Activo
+  Disabled // Incapacitado
+  OnVacation // Vacaciones
+  Retired // Retirado
+  Deceased // Fallecido
+}
+
+model Employee {
+  id               Int            @id @default(autoincrement())
+  documentType     String
+  identification   String         @unique
+  firstName        String
+  lastName         String
+  email            String         @unique
+  phone            String?
+  birthDate        DateTime
+  age              Int
+  status           EmployeeStatus @default(Active)
+  statusAssignedAt DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relation: Many Employees -> One EmployeeType
+  employeeTypeId Int
+  employeeType   EmployeeType @relation(fields: [employeeTypeId], references: [id])
+
+  // Relation: One Employee -> One User (optional)
+  userId Int?  @unique
+  user   User? @relation(fields: [userId], references: [id])
+
+  // Many-to-many: Employee <-> Permission (modules)
+  employeePermissions EmployeePermission[]
+
+  // Relations: Employee can be team member
+  teamMembers TeamMember[]
+
+  @@map("employees")
+}
+
+// --- PERMISSIONS MODEL (Modules) ---
+model Permission {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // e.g., "Usuarios", "Roles", "Material deportivo"
+  description String?
+  icon        String? // Icon for the module
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relation: One Permission -> Many Privileges (actions)
+  privileges Privilege[]
+
+  // Many-to-many: Permission <-> Employee
+  employeePermissions EmployeePermission[]
+
+  @@map("permissions")
+}
+
+// --- PRIVILEGES MODEL (Actions) ---
+model Privilege {
+  id          Int      @id @default(autoincrement())
+  name        String // e.g., "Crear", "Editar", "Eliminar", "Ver"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relation: Many Privileges -> One Permission (module)
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([name, permissionId]) // Each module can only have one of each action
+  @@map("privileges")
+}
+
+// --- EMPLOYEE PERMISSIONS BRIDGE TABLE ---
+model EmployeePermission {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  permissionId Int
+  createdAt    DateTime @default(now())
+
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, permissionId]) // Avoid duplicates
+  @@map("employee_permissions")
+}
+
+// --- Service ENUMS ---
+enum EventStatus {
+  Programado
+  Finalizado
+  Cancelado
+  En_pausa
+}
+
+model Service {
+  id           Int         @id @default(autoincrement())
+  name         String
+  description  String?
+  startDate    DateTime
+  endDate      DateTime
+  startTime    String
+  endTime      String
+  location     String
+  phone        String
+  status       EventStatus @default(Programado)
+  imageUrl     String? // Event image path or URL
+  scheduleFile String? // Schedule file path or URL
+  publish      Boolean     @default(false)
+
+  // Foreign key: Event category (from another module)
+  categoryId Int
+  category   EventCategory @relation(fields: [categoryId], references: [id])
+
+  // Foreign key: Event type
+  typeId Int
+  type   ServiceType @relation(fields: [typeId], references: [id])
+
+  // Relations
+  participants Participant[]
+  sponsors     ServiceSponsor[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceType {
+  id        Int       @id @default(autoincrement())
+  name      String
+  services  Service[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// MODEL: Many-to-Many (Service <-> Sponsor)
+model ServiceSponsor {
+  id        Int @id @default(autoincrement())
+  serviceId Int
+  sponsorId Int
+
+  service Service @relation(fields: [serviceId], references: [id])
+  sponsor Sponsor @relation(fields: [sponsorId], references: [id])
+
+  @@unique([serviceId, sponsorId]) // avoid duplicates
+}
+
+model Sponsor {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  description  String?
+  contactEmail String? // Optional: contact email
+  phone        String? // Optional: phone number
+  status       SponsorStatus @default(Active)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relation: Many-to-Many with Service (through ServiceSponsor)
+  services ServiceSponsor[]
+}
+
+enum SponsorStatus {
+  Active
+  Inactive
+}
+
+// --- SPORTS CATEGORY MODEL ---
+enum SportsCategoryStatus {
+  Activo
+  Inactivo
+}
+
+model SportsCategory {
+  id          Int                  @id @default(autoincrement())
+  nombre      String               @db.VarChar(50)
+  edadMinima  Int
+  edadMaxima  Int
+  descripcion String?              @db.VarChar(500)
+  archivo     String? // URL o path del archivo subido
+  estado      SportsCategoryStatus @default(Activo)
+  publicar    Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  // Relations
+  participants Participant[]
+
+  @@map("sports_categories")
+}
+
+// --- EVENT CATEGORY MODEL (referenced in Service) ---
+model EventCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  services Service[]
+
+  @@map("event_categories")
+}
+
+// --- ATHLETES MODEL ---
+enum AthleteStatus {
+  Active
+  Inactive
+  Suspended
+}
+
+model Athlete {
+  id               Int           @id @default(autoincrement())
+  firstName        String
+  lastName         String
+  documentType     String
+  identification   String        @unique
+  email            String        @unique
+  phone            String?
+  birthDate        DateTime
+  age              Int
+  address          String?
+  emergencyContact String?
+  emergencyPhone   String?
+  status           AthleteStatus @default(Active)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  // Relations
+  participants Participant[]
+  teamMembers  TeamMember[]
+
+  @@map("athletes")
+}
+
+// --- TEMPORARY PERSONS MODEL (for external teams) ---
+enum TemporaryPersonStatus {
+  Active
+  Inactive
+}
+
+model TemporaryPerson {
+  id             Int                   @id @default(autoincrement())
+  firstName      String
+  lastName       String
+  documentType   String?
+  identification String?
+  email          String?
+  phone          String?
+  birthDate      DateTime?
+  age            Int?
+  address        String?
+  organization   String? // External organization/club name
+  status         TemporaryPersonStatus @default(Active)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  // Relations
+  teamMembers TeamMember[]
+
+  @@map("temporary_persons")
+}
+
+// --- EQUIPOS MODEL ---
+enum TeamStatus {
+  Active
+  Inactive
+  Disbanded
+}
+
+model Team {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  description String?
+  coach       String? // Coach name
+  category    String? // Team category
+  status      TeamStatus @default(Active)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  participants Participant[]
+  members      TeamMember[]
+
+  @@map("teams")
+}
+
+// --- TEAM MEMBERS BRIDGE TABLE ---
+enum MemberType {
+  Athlete // Internal: Deportista
+  Employee // Internal: Empleado
+  TemporaryPerson // External: Persona temporal
+}
+
+model TeamMember {
+  id           Int        @id @default(autoincrement())
+  teamId       Int
+  memberType   MemberType
+  position     String? // Player position
+  jerseyNumber Int? // Jersey number
+  isActive     Boolean    @default(true)
+  joinedAt     DateTime   @default(now())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Optional foreign keys - only one should be filled based on memberType
+  athleteId Int?
+  athlete   Athlete? @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  employeeId Int?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  temporaryPersonId Int?
+  temporaryPerson   TemporaryPerson? @relation(fields: [temporaryPersonId], references: [id], onDelete: Cascade)
+
+  // Note: Validation at application level - ensure only one member type is set:
+  // Athlete: athleteId NOT NULL, employeeId NULL, temporaryPersonId NULL
+  // Employee: employeeId NOT NULL, athleteId NULL, temporaryPersonId NULL  
+  // TemporaryPerson: temporaryPersonId NOT NULL, athleteId NULL, employeeId NULL
+
+  @@unique([teamId, jerseyNumber]) // Jersey numbers must be unique within a team
+  @@map("team_members")
+}
+
+// --- PARTICIPANTS BRIDGE TABLE ---
+enum ParticipantType {
+  Individual // For athletes
+  Team // For teams
+}
+
+model Participant {
+  id               Int             @id @default(autoincrement())
+  type             ParticipantType
+  registrationDate DateTime        @default(now())
+  status           String          @default("Registered") // Registered, Confirmed, Cancelled
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Foreign keys
+  serviceId Int
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  sportsCategoryId Int?
+  sportsCategory   SportsCategory? @relation(fields: [sportsCategoryId], references: [id])
+
+  // Optional foreign keys - only one should be filled based on type
+  athleteId Int?
+  athlete   Athlete? @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  teamId Int?
+  team   Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("participants")
+}
