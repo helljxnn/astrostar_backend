@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -12,4 +6,656 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// --- ROLES MODEL ---
+enum RoleStatus {
+  Active
+  Inactive
+}
+
+// --- DOCUMENT TYPES MODEL ---
+model DocumentType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique  // "Cédula", "Pasaporte", "Tarjeta de Identidad"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  users    User[]
+  guardians         Guardian[]   
+  providers         Provider[]        // Proveedores (persona natural) usan tipos de documento
+  temporaryPersons TemporaryPerson[]
+
+  @@map("document_types")
+}
+
+model Role {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique @db.VarChar(50)
+  description String     @db.VarChar(200)
+  status      RoleStatus @default(Active)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relation: One Role -> Many Users
+  users User[]
+
+  @@map("roles")
+}
+
+// --- ENUM FOR USER STATUS ---
+enum UserStatus {
+  Active
+  Inactive
+  Suspended
+}
+
+// --- USERS MODEL (PARENT TABLE) ---
+model User {
+  id                Int           @id @default(autoincrement())
+  firstName         String
+  middleName        String?        // Optional
+  lastName          String
+  secondLastName    String?        // Optional
+  email             String         @unique               // For authentication
+  passwordHash      String                               // Hashed password
+  phoneNumber       String?
+  address           String?   
+  birthDate         DateTime
+  identification    String         @unique
+  status            UserStatus     @default(Active)      // Login access status
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  // --- RELATION: Document Type ---
+  documentTypeId    Int
+  documentType      DocumentType   @relation(fields: [documentTypeId], references: [id])
+
+  // --- RELATION: Role (general permission) ---
+  roleId            Int
+  role              Role           @relation(fields: [roleId], references: [id])
+
+  // --- RELATIONS: Functional inheritance ---
+  employee          Employee?
+  athlete           Athlete?
+
+  @@map("users")
+}
+
+// --- EMPLOYEE TYPES MODEL ---
+model EmployeeType {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relation: One EmployeeType -> Many Employees
+  employees Employee[]
+
+  @@map("employee_types")
+}
+
+// --- EMPLOYEES MODEL ---
+enum EmployeeStatus {
+  Active // Activo
+  Disabled // Incapacitado
+  OnVacation // Vacaciones
+  Retired // Retirado
+  Deceased // Fallecido
+}
+
+model Employee {
+  id               Int            @id @default(autoincrement())
+  status           EmployeeStatus @default(Active)
+  statusAssignedAt DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relation: Many Employees -> One EmployeeType
+  employeeTypeId Int
+  employeeType   EmployeeType @relation(fields: [employeeTypeId], references: [id])
+
+  // Relation: User (MANDATORY)
+  userId           Int            @unique
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Many-to-many: Employee <-> Permission (modules)
+  employeePermissions EmployeePermission[]
+
+  // Relations: Employee can be team member
+  teamMembers TeamMember[]
+
+  @@map("employees")
+
+}
+// --- PERMISSIONS MODEL (Modules) ---
+model Permission {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique // e.g., "Usuarios", "Roles", "Material deportivo"
+  description String?
+  icon        String? // Icon for the module
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relation: One Permission -> Many Privileges (actions)
+  privileges Privilege[]
+
+  // Many-to-many: Permission <-> Employee
+  employeePermissions EmployeePermission[]
+
+  @@map("permissions")
+}
+
+// --- PRIVILEGES MODEL (Actions) ---
+model Privilege {
+  id          Int      @id @default(autoincrement())
+  name        String // e.g., "Crear", "Editar", "Eliminar", "Ver"
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relation: Many Privileges -> One Permission (module)
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([name, permissionId]) // Each module can only have one of each action
+  @@map("privileges")
+}
+
+// --- EMPLOYEE PERMISSIONS BRIDGE TABLE ---
+model EmployeePermission {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  permissionId Int
+  createdAt    DateTime @default(now())
+
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, permissionId]) // Avoid duplicates
+  @@map("employee_permissions")
+}
+
+// --- Service ENUMS ---
+enum EventStatus {
+  Programado
+  Finalizado
+  Cancelado
+  En_pausa
+}
+
+model Service {
+  id           Int         @id @default(autoincrement())
+  name         String
+  description  String?
+  startDate    DateTime
+  endDate      DateTime
+  startTime    String
+  endTime      String
+  location     String
+  phone        String
+  status       EventStatus @default(Programado)
+  imageUrl     String? // Event image path or URL
+  scheduleFile String? // Schedule file path or URL
+  publish      Boolean     @default(false)
+
+  // Foreign key: Event category (from another module)
+  categoryId Int
+  category   EventCategory @relation(fields: [categoryId], references: [id])
+
+  // Foreign key: Event type
+  typeId Int
+  type   ServiceType @relation(fields: [typeId], references: [id])
+
+  // Relations
+  participants Participant[]
+  sponsors     ServiceSponsor[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceType {
+  id        Int       @id @default(autoincrement())
+  name      String
+  services  Service[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// MODEL: Many-to-Many (Service <-> Sponsor)
+model ServiceSponsor {
+  id        Int @id @default(autoincrement())
+  serviceId Int
+  sponsorId Int
+
+  service Service @relation(fields: [serviceId], references: [id])
+  sponsor Sponsor @relation(fields: [sponsorId], references: [id])
+
+  @@unique([serviceId, sponsorId]) // avoid duplicates
+}
+
+model Sponsor {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  description  String?
+  contactEmail String? // Optional: contact email
+  phone        String? // Optional: phone number
+  status       SponsorStatus @default(Active)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relation: Many-to-Many with Service (through ServiceSponsor)
+  services ServiceSponsor[]
+}
+
+enum SponsorStatus {
+  Active
+  Inactive
+}
+
+// --- SPORTS CATEGORY MODEL ---
+enum SportsCategoryStatus {
+  Activo
+  Inactivo
+}
+
+model SportsCategory {
+  id          Int                  @id @default(autoincrement())
+  nombre      String               @db.VarChar(50)
+  edadMinima  Int
+  edadMaxima  Int
+  descripcion String?              @db.VarChar(500)
+  archivo     String? // URL o path del archivo subido
+  estado      SportsCategoryStatus @default(Activo)
+  publicar    Boolean              @default(false)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  // Relations
+  inscriptions  Inscription[]      // Athletes Inscriptions
+  participants Participant[]
+
+  @@map("sports_categories")
+}
+
+// --- EVENT CATEGORY MODEL (referenced in Service) ---
+model EventCategory {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  services Service[]
+
+  @@map("event_categories")
+}
+
+// MODELS: ATHLETES & INSCRIPTIONS
+
+
+enum AthleteStatus {
+  Active  
+  Inactive  
+}
+
+enum InscriptionStatus {
+  Active     // Inscripción activa y válida
+  Suspended  // Temporalmente pausada (por deportista inactivo u otra razón)
+  Expired    // Más de un año desde la inscripción
+}
+
+enum InscriptionRecordType {
+  initial_inscription  // Primera inscripción del deportista
+  renewal              // Renovación anual
+  status_change        // Cambio de estado (Active ↔ Suspended)
+}
+
+enum GuardianRelationship {
+  Mother
+  Father
+  Grandparent
+  Uncle_Aunt
+  Sibling
+  Cousin
+  Legal_Guardian
+  Neighbor
+  Family_Friend
+  Other
+}
+
+// --- GUARDIANS MODEL ---
+
+model Guardian {
+  id                Int      @id @default(autoincrement())
+  firstName         String   @db.VarChar(100)
+  lastName          String   @db.VarChar(100)
+  identification    String   @unique @db.VarChar(50)
+  email             String   @unique @db.VarChar(150)
+  phone             String   @db.VarChar(20)
+  address           String?  @db.VarChar(200)
+  occupation        String?  @db.VarChar(100)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relation: Document Type
+  documentTypeId    Int
+  documentType      DocumentType @relation(fields: [documentTypeId], references: [id])
+
+  // Relations: One Guardian -> Many Athletes
+  athletes          Athlete[]
+
+  @@map("guardians")
+}
+
+// --- ATHLETES MODEL ---
+
+model Athlete {
+  id                 Int            @id @default(autoincrement())
+  
+  // User relation 
+  userId             Int            @unique
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status             AthleteStatus  @default(Active)
+  
+  // Relationship with guardian (mandatory for minors under 18 years of age)
+  guardianId         Int?
+  guardian           Guardian?      @relation(fields: [guardianId], references: [id])
+  relationship       GuardianRelationship? // Tipo de parentesco
+  otherRelationship  String?        @db.VarChar(100) // Si relationship = "Other"
+  
+  // Current enrollment status
+  currentInscriptionStatus InscriptionStatus?
+  
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  // Relations
+  inscriptions       Inscription[]  // Historial completo de inscripciones
+  participants       Participant[]  // Participación en eventos
+  teamMembers        TeamMember[]   // Miembros en equipos
+
+  // Index
+  @@index([status])
+  @@index([guardianId])
+  @@index([currentInscriptionStatus])
+  @@map("athletes")
+}
+
+// --- INSCRIPTIONS MODEL ---
+
+model Inscription {
+  id                  Int                    @id @default(autoincrement())
+  // Relations
+  athleteId           Int
+  athlete             Athlete                @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  
+  sportsCategoryId    Int
+  sportsCategory      SportsCategory         @relation(fields: [sportsCategoryId], references: [id])
+  
+  // Inscription Dates
+  type                InscriptionRecordType  @default(initial_inscription)
+  status              InscriptionStatus      @default(Active)
+  previousStatus      InscriptionStatus?    
+  
+  // Dates
+  inscriptionDate     DateTime               @default(now()) // registration date
+  conceptDate         DateTime               @default(now()) // date of concept/change
+  expirationDate      DateTime               // expiration date (inscriptionDate + 1 year)
+  
+  // Información adicional
+  concept             String                 @db.VarChar(500) // Reason/description
+  notes               String?                @db.Text         
+  
+  // COMPROBANTE DE PAGO (obligatorio para renovaciones)
+  paymentProofUrl     String?                @db.VarChar(500) // URL del comprobante
+  paymentProofName    String?                @db.VarChar(255) // file name
+  paymentProofType    String?                @db.VarChar(50)  // Type MIME (image/jpeg, etc)    
+  paymentProofUploadedAt DateTime?           // Fecha de subida
+  
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  // Index
+  @@index([athleteId])
+  @@index([sportsCategoryId])
+  @@index([status])
+  @@index([inscriptionDate])
+  @@index([expirationDate])
+  @@map("inscriptions")
+}
+
+
+// --- TEMPORARY PERSONS MODEL (for external teams) ---
+enum TemporaryPersonStatus {
+  Active
+  Inactive
+}
+
+model TemporaryPerson {
+  id             Int                   @id @default(autoincrement())
+  firstName      String
+  lastName       String
+  documentType   String?
+  identification String?
+  email          String?
+  phone          String?
+  birthDate      DateTime?
+  age            Int?
+  address        String?
+  organization   String? // External organization/club name
+  status         TemporaryPersonStatus @default(Active)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  // Relations
+  teamMembers TeamMember[]
+
+  @@map("temporary_persons")
+}
+
+// --- TEAMS MODEL ---
+enum TeamStatus {
+  Active
+  Inactive
+  Disbanded
+}
+
+model Team {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  description String?
+  coach       String? // Coach name
+  category    String? // Team category
+  status      TeamStatus @default(Active)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  participants Participant[]
+  members      TeamMember[]
+
+  @@map("teams")
+}
+
+// --- TEAM MEMBERS BRIDGE TABLE ---
+enum MemberType {
+  Athlete // Internal: Deportista
+  Employee // Internal: Empleado
+  TemporaryPerson // External: Persona temporal
+}
+
+model TeamMember {
+  id           Int        @id @default(autoincrement())
+  teamId       Int
+  memberType   MemberType
+  position     String? // Player position
+  jerseyNumber Int? // Jersey number
+  isActive     Boolean    @default(true)
+  joinedAt     DateTime   @default(now())
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  // Relations
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  // Optional foreign keys - only one should be filled based on memberType
+  athleteId Int?
+  athlete   Athlete? @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  employeeId Int?
+  employee   Employee? @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  temporaryPersonId Int?
+  temporaryPerson   TemporaryPerson? @relation(fields: [temporaryPersonId], references: [id], onDelete: Cascade)
+
+  // Note: Validation at application level - ensure only one member type is set:
+  // Athlete: athleteId NOT NULL, employeeId NULL, temporaryPersonId NULL
+  // Employee: employeeId NOT NULL, athleteId NULL, temporaryPersonId NULL  
+  // TemporaryPerson: temporaryPersonId NOT NULL, athleteId NULL, employeeId NULL
+
+  @@unique([teamId, jerseyNumber]) // Jersey numbers must be unique within a team
+  @@map("team_members")
+}
+
+// --- PARTICIPANTS BRIDGE TABLE ---
+enum ParticipantType {
+  Individual // For athletes
+  Team // For teams
+}
+
+model Participant {
+  id               Int             @id @default(autoincrement())
+  type             ParticipantType
+  registrationDate DateTime        @default(now())
+  status           String          @default("Registered") // Registered, Confirmed, Cancelled
+  notes            String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  // Foreign keys
+  serviceId Int
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  sportsCategoryId Int?
+  sportsCategory   SportsCategory? @relation(fields: [sportsCategoryId], references: [id])
+
+  // Optional foreign keys - only one should be filled based on type
+  athleteId Int?
+  athlete   Athlete? @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  teamId Int?
+  team   Team? @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("participants")
+}
+
+// --- PROVIDERS MODEL ---
+// NO hereda de User porque no tienen acceso al sistema
+
+enum ProviderEntityType {
+  legal     // Persona Jurídica (empresa)
+  natural   // Persona Natural (individuo)
+}
+
+enum ProviderStatus {
+  Active
+  Inactive
+}
+
+model Provider {
+  id                  Int                 @id @default(autoincrement())
+  entityType          ProviderEntityType  @default(legal)    // Tipo de entidad
+  businessName        String              @db.VarChar(200)   // Razón Social o Nombre Completo
+  nit                 String              @unique @db.VarChar(50) // NIT o Identificación
+  mainContact         String              @db.VarChar(150)   // Contacto Principal
+  email               String              @unique @db.VarChar(150)
+  phone               String              @db.VarChar(20)
+  address             String              @db.VarChar(200)
+  city                String              @db.VarChar(100)
+  description         String?             @db.Text           // Descripción detallada
+  status              ProviderStatus      @default(Active)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  // Relation: Document Type (solo para Persona Natural)
+  documentTypeId      Int?
+  documentType        DocumentType?       @relation(fields: [documentTypeId], references: [id])
+
+  // Relations: One Provider -> Many Purchases
+  purchases           Purchase[]
+
+  // Índices para optimizar búsquedas frecuentes
+  @@index([status])
+  @@index([entityType])
+  @@index([businessName])
+  @@map("providers")
+}
+
+// --- PURCHASES MODEL ---
+// Compras realizadas a proveedores
+
+enum PurchaseStatus {
+  Pending    // Pendiente de entrega
+  Received   // Recibida completa
+  Partial    // Recibida parcialmente
+  Cancelled  // Cancelada
+}
+
+model Purchase {
+  id                Int            @id @default(autoincrement())
+  purchaseNumber    String         @unique @db.VarChar(50) // Número de compra/orden
+  purchaseDate      DateTime       @default(now())         // Fecha de compra
+  deliveryDate      DateTime?                              // Fecha de entrega
+  totalAmount       Decimal        @db.Decimal(12, 2)      // Monto total
+  status            PurchaseStatus @default(Pending)
+  notes             String?        @db.Text                // Notas adicionales
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  // Relation: Provider (Many-to-One)
+  providerId        Int
+  provider          Provider       @relation(fields: [providerId], references: [id])
+
+  // Relation: Employee who made the purchase (Many-to-One)
+  employeeId        Int?
+  employee          Employee?      @relation(fields: [employeeId], references: [id])
+
+  // Relations: One Purchase -> Many PurchaseItems
+  items             PurchaseItem[]
+
+  // Índices para optimizar búsquedas frecuentes
+  @@index([providerId])
+  @@index([employeeId])
+  @@index([status])
+  @@index([purchaseDate])
+  @@map("purchases")
+}
+
+// --- PURCHASE ITEMS MODEL ---
+// Ítems/productos dentro de cada compra
+
+model PurchaseItem {
+  id                Int      @id @default(autoincrement())
+  productName       String   @db.VarChar(200)       // Nombre del producto
+  description       String?  @db.Text               // Descripción del producto
+  quantity          Int                             // Cantidad
+  unitPrice         Decimal  @db.Decimal(10, 2)     // Precio unitario
+  subtotal          Decimal  @db.Decimal(12, 2)     // Subtotal (quantity * unitPrice)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relation: Purchase (Many-to-One)
+  purchaseId        Int
+  purchase          Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  // Índices para optimizar búsquedas
+  @@index([purchaseId])
+  @@map("purchase_items")
 }
