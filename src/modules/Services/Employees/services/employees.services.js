@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { EmployeeRepository } from '../repository/employees.repository.js';
+import emailService from '../../../../services/emailService.js';
 
 export class EmployeeService {
   constructor() {
@@ -74,38 +75,39 @@ export class EmployeeService {
 
       // 4. Preparar datos del usuario
       const userData = {
-        firstName: employeeData.firstName.trim(),
+        firstName: employeeData.firstName?.trim() || '',
         middleName: employeeData.middleName?.trim() || null,
-        lastName: employeeData.lastName.trim(),
+        lastName: employeeData.lastName?.trim() || '',
         secondLastName: employeeData.secondLastName?.trim() || null,
-        email: employeeData.email.toLowerCase().trim(),
+        email: employeeData.email?.trim().toLowerCase() || '',
         passwordHash,
         phoneNumber: employeeData.phoneNumber?.trim() || null,
         address: employeeData.address?.trim() || null,
-        birthDate: new Date(employeeData.birthDate),
-        identification: employeeData.identification.trim(),
+        birthDate: employeeData.birthDate ? new Date(employeeData.birthDate) : new Date(),
+        identification: employeeData.identification?.trim() || '',
         status: 'Active',
-        documentTypeId: parseInt(employeeData.documentTypeId),
-        roleId: parseInt(employeeData.roleId)
+        documentTypeId: employeeData.documentTypeId ? parseInt(employeeData.documentTypeId) : null,
+        roleId: employeeData.roleId ? parseInt(employeeData.roleId) : null
       };
 
       // 5. Preparar datos del empleado
       const employeeDataForDB = {
         status: employeeData.status || 'Active',
-        employeeTypeId: parseInt(employeeData.employeeTypeId)
+        employeeTypeId: employeeData.employeeTypeId ? parseInt(employeeData.employeeTypeId) : null
       };
 
       // 6. Crear empleado y usuario en transacción
       const newEmployee = await this.employeeRepository.create(employeeDataForDB, userData);
 
-      // 7. REGLA DE NEGOCIO: Enviar credenciales por email (simulado)
-      await this.sendWelcomeEmail(newEmployee.user.email, temporaryPassword);
+      // 7. REGLA DE NEGOCIO: Enviar credenciales por email
+      const emailResult = await this.sendWelcomeEmail(newEmployee, temporaryPassword);
 
       return {
         success: true,
         data: newEmployee,
-        temporaryPassword, // Para mostrar en la respuesta (solo en desarrollo)
-        message: `Empleado "${newEmployee.user.firstName} ${newEmployee.user.lastName}" creado exitosamente.`
+        temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined,
+        emailSent: emailResult.success,
+        message: `Empleado "${newEmployee.user.firstName} ${newEmployee.user.lastName}" creado exitosamente. ${emailResult.success ? 'Credenciales enviadas por email.' : 'Error enviando credenciales por email.'}`
       };
     } catch (error) {
       console.error('Service error - createEmployee:', error);
@@ -149,21 +151,21 @@ export class EmployeeService {
       const employeeData = { userId: existingEmployee.userId };
 
       // Campos de usuario
-      if (updateData.firstName) userData.firstName = updateData.firstName.trim();
+      if (updateData.firstName !== undefined) userData.firstName = updateData.firstName?.trim() || '';
       if (updateData.middleName !== undefined) userData.middleName = updateData.middleName?.trim() || null;
-      if (updateData.lastName) userData.lastName = updateData.lastName.trim();
+      if (updateData.lastName !== undefined) userData.lastName = updateData.lastName?.trim() || '';
       if (updateData.secondLastName !== undefined) userData.secondLastName = updateData.secondLastName?.trim() || null;
-      if (updateData.email) userData.email = updateData.email.toLowerCase().trim();
+      if (updateData.email !== undefined) userData.email = updateData.email?.trim().toLowerCase() || '';
       if (updateData.phoneNumber !== undefined) userData.phoneNumber = updateData.phoneNumber?.trim() || null;
       if (updateData.address !== undefined) userData.address = updateData.address?.trim() || null;
-      if (updateData.birthDate) userData.birthDate = new Date(updateData.birthDate);
-      if (updateData.identification) userData.identification = updateData.identification.trim();
-      if (updateData.documentTypeId) userData.documentTypeId = parseInt(updateData.documentTypeId);
-      if (updateData.roleId) userData.roleId = parseInt(updateData.roleId);
+      if (updateData.birthDate !== undefined) userData.birthDate = updateData.birthDate ? new Date(updateData.birthDate) : null;
+      if (updateData.identification !== undefined) userData.identification = updateData.identification?.trim() || '';
+      if (updateData.documentTypeId !== undefined) userData.documentTypeId = updateData.documentTypeId ? parseInt(updateData.documentTypeId) : null;
+      if (updateData.roleId !== undefined) userData.roleId = updateData.roleId ? parseInt(updateData.roleId) : null;
 
       // Campos de empleado
-      if (updateData.status) employeeData.status = updateData.status;
-      if (updateData.employeeTypeId) employeeData.employeeTypeId = parseInt(updateData.employeeTypeId);
+      if (updateData.status !== undefined) employeeData.status = updateData.status || 'Active';
+      if (updateData.employeeTypeId !== undefined) employeeData.employeeTypeId = updateData.employeeTypeId ? parseInt(updateData.employeeTypeId) : null;
 
       // 5. Actualizar empleado
       const updatedEmployee = await this.employeeRepository.update(id, employeeData, userData);
@@ -180,7 +182,7 @@ export class EmployeeService {
   }
 
   /**
-   * Eliminar empleado (soft delete)
+   * Eliminar empleado (hard delete)
    */
   async deleteEmployee(id) {
     try {
@@ -194,21 +196,19 @@ export class EmployeeService {
         };
       }
 
-      // 2. REGLA DE NEGOCIO: No eliminar empleados que ya están deshabilitados
-      if (employeeToDelete.status === 'Disabled') {
-        throw new Error(`El empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" ya está deshabilitado.`);
+      // 2. REGLA DE NEGOCIO: Verificar si tiene compras asociadas
+      // Si tiene compras, no permitir eliminación
+      if (employeeToDelete.purchases && employeeToDelete.purchases.length > 0) {
+        throw new Error(`No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque tiene compras asociadas.`);
       }
 
-      // 3. REGLA DE NEGOCIO: Verificar si tiene compras asociadas (opcional)
-      // Aquí podrías agregar validaciones adicionales según las reglas de negocio
-
-      // 4. Proceder con la eliminación (soft delete)
+      // 3. Proceder con la eliminación (hard delete)
       const deleted = await this.employeeRepository.delete(id);
 
       if (deleted) {
         return {
           success: true,
-          message: `El empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" ha sido deshabilitado exitosamente.`
+          message: `El empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" ha sido eliminado exitosamente.`
         };
       }
     } catch (error) {
@@ -309,27 +309,61 @@ export class EmployeeService {
   }
 
   /**
-   * Generar contraseña temporal
+   * Generar contraseña temporal segura
    */
   generateTemporaryPassword() {
-    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+    // Caracteres seguros (sin caracteres ambiguos como 0, O, l, I)
+    const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijkmnpqrstuvwxyz';
+    const numbers = '23456789';
+    const symbols = '!@#$%&*';
+    
     let password = '';
-    for (let i = 0; i < 8; i++) {
-      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    
+    // Asegurar al menos un carácter de cada tipo
+    password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+    password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+    password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+    
+    // Completar con caracteres aleatorios
+    const allChars = uppercase + lowercase + numbers + symbols;
+    for (let i = 4; i < 12; i++) {
+      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
     }
-    return password;
+    
+    // Mezclar la contraseña
+    return password.split('').sort(() => Math.random() - 0.5).join('');
   }
 
   /**
-   * Enviar email de bienvenida (simulado)
+   * Enviar email de bienvenida con credenciales
    */
-  async sendWelcomeEmail(email, temporaryPassword) {
-    // TODO: Implementar envío real de email
-    console.log(`📧 [SIMULADO] Enviando credenciales a ${email}:`);
-    console.log(`   Usuario: ${email}`);
-    console.log(`   Contraseña temporal: ${temporaryPassword}`);
-    console.log(`   Debe cambiar la contraseña en el primer login.`);
-    
-    return true;
+  async sendWelcomeEmail(employeeData, temporaryPassword) {
+    try {
+      const employeeInfo = {
+        email: employeeData.user.email,
+        firstName: employeeData.user.firstName,
+        lastName: employeeData.user.lastName
+      };
+
+      const credentials = {
+        email: employeeData.user.email,
+        temporaryPassword
+      };
+
+      const result = await emailService.sendWelcomeEmail(employeeInfo, credentials);
+      
+      if (result.success) {
+        console.log(`✅ Email de bienvenida enviado exitosamente a ${employeeInfo.email}`);
+      } else {
+        console.error(`❌ Error enviando email de bienvenida a ${employeeInfo.email}:`, result.error);
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Error en sendWelcomeEmail:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
