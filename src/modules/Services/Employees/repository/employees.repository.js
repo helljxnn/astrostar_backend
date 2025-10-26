@@ -1,0 +1,265 @@
+import { PrismaClient } from '../../../../../generated/prisma/index.js';
+
+const prisma = new PrismaClient();
+
+export class EmployeeRepository {
+  
+  /**
+   * Obtener todos los empleados con paginación y búsqueda
+   */
+  async findAll({ page, limit, search, status, employeeTypeId }) {
+    const skip = (page - 1) * limit;
+
+    // Construir condiciones de búsqueda
+    const where = {
+      ...(status && { status }),
+      ...(employeeTypeId && { employeeTypeId: parseInt(employeeTypeId) }),
+      ...(search && {
+        OR: [
+          { user: { firstName: { contains: search, mode: 'insensitive' } } },
+          { user: { lastName: { contains: search, mode: 'insensitive' } } },
+          { user: { email: { contains: search, mode: 'insensitive' } } },
+          { user: { identification: { contains: search, mode: 'insensitive' } } }
+        ]
+      })
+    };
+
+    // Ejecutar consultas en paralelo para optimizar performance
+    const [employees, total] = await Promise.all([
+      prisma.employee.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: {
+            include: {
+              role: true,
+              documentType: true
+            }
+          },
+          employeeType: true
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.employee.count({ where })
+    ]);
+
+    return {
+      employees,
+      total,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    };
+  }
+
+  /**
+   * Buscar empleado por ID
+   */
+  async findById(id) {
+    return await prisma.employee.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        user: {
+          include: {
+            role: true,
+            documentType: true
+          }
+        },
+        employeeType: true,
+        employeePermissions: {
+          include: {
+            permission: true
+          }
+        }
+      }
+    });
+  }
+
+  /**
+   * Buscar empleado por userId
+   */
+  async findByUserId(userId) {
+    return await prisma.employee.findUnique({
+      where: { userId: parseInt(userId) },
+      include: {
+        user: {
+          include: {
+            role: true,
+            documentType: true
+          }
+        },
+        employeeType: true
+      }
+    });
+  }
+
+  /**
+   * Crear empleado con usuario en transacción
+   */
+  async create(employeeData, userData) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Crear el usuario primero
+      const newUser = await tx.user.create({
+        data: userData,
+        include: {
+          role: true,
+          documentType: true
+        }
+      });
+
+      // 2. Crear el empleado vinculado al usuario
+      const newEmployee = await tx.employee.create({
+        data: {
+          ...employeeData,
+          userId: newUser.id
+        },
+        include: {
+          user: {
+            include: {
+              role: true,
+              documentType: true
+            }
+          },
+          employeeType: true
+        }
+      });
+
+      return newEmployee;
+    });
+  }
+
+  /**
+   * Actualizar empleado
+   */
+  async update(id, employeeData, userData) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Actualizar datos del usuario si se proporcionan
+      if (userData && Object.keys(userData).length > 0) {
+        await tx.user.update({
+          where: { id: employeeData.userId },
+          data: userData
+        });
+      }
+
+      // 2. Actualizar datos del empleado
+      const updatedEmployee = await tx.employee.update({
+        where: { id: parseInt(id) },
+        data: employeeData,
+        include: {
+          user: {
+            include: {
+              role: true,
+              documentType: true
+            }
+          },
+          employeeType: true
+        }
+      });
+
+      return updatedEmployee;
+    });
+  }
+
+  /**
+   * Eliminar empleado (soft delete cambiando status)
+   */
+  async delete(id) {
+    try {
+      const employee = await prisma.employee.findUnique({
+        where: { id: parseInt(id) },
+        include: { user: true }
+      });
+
+      if (!employee) {
+        return false;
+      }
+
+      // Soft delete: cambiar status a Disabled
+      await prisma.$transaction(async (tx) => {
+        await tx.employee.update({
+          where: { id: parseInt(id) },
+          data: { status: 'Disabled' }
+        });
+
+        await tx.user.update({
+          where: { id: employee.userId },
+          data: { status: 'Inactive' }
+        });
+      });
+
+      return true;
+    } catch (error) {
+      if (error.code === 'P2025') {
+        return false; // Empleado no encontrado
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar si el email ya existe
+   */
+  async findByEmail(email) {
+    return await prisma.user.findUnique({
+      where: { email },
+      include: { employee: true }
+    });
+  }
+
+  /**
+   * Verificar si la identificación ya existe
+   */
+  async findByIdentification(identification) {
+    return await prisma.user.findUnique({
+      where: { identification },
+      include: { employee: true }
+    });
+  }
+
+  /**
+   * Obtener estadísticas de empleados
+   */
+  async getStats() {
+    const [total, active, disabled, onVacation, retired] = await Promise.all([
+      prisma.employee.count(),
+      prisma.employee.count({ where: { status: 'Active' } }),
+      prisma.employee.count({ where: { status: 'Disabled' } }),
+      prisma.employee.count({ where: { status: 'OnVacation' } }),
+      prisma.employee.count({ where: { status: 'Retired' } })
+    ]);
+
+    return { total, active, disabled, onVacation, retired };
+  }
+
+  /**
+   * Obtener tipos de empleado
+   */
+  async getEmployeeTypes() {
+    return await prisma.employeeType.findMany({
+      orderBy: { name: 'asc' }
+    });
+  }
+
+  /**
+   * Obtener roles disponibles para empleados
+   */
+  async getAvailableRoles() {
+    return await prisma.role.findMany({
+      where: { status: 'Active' },
+      orderBy: { name: 'asc' }
+    });
+  }
+
+  /**
+   * Obtener tipos de documento
+   */
+  async getDocumentTypes() {
+    return await prisma.documentType.findMany({
+      orderBy: { name: 'asc' }
+    });
+  }
+}

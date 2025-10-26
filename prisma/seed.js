@@ -18,6 +18,20 @@ async function main() {
     skipDuplicates: true,
   });
 
+  // Seed employee types
+  await prisma.employeeType.createMany({
+    data: [
+      { name: 'Administrador', description: 'Personal administrativo y de gestión' },
+      { name: 'Entrenador', description: 'Entrenadores deportivos y técnicos' },
+      { name: 'Instructor', description: 'Instructores de actividades específicas' },
+      { name: 'Coordinador', description: 'Coordinadores de programas y eventos' },
+      { name: 'Auxiliar', description: 'Personal auxiliar y de apoyo' },
+      { name: 'Mantenimiento', description: 'Personal de mantenimiento y servicios generales' },
+      { name: 'Seguridad', description: 'Personal de seguridad y vigilancia' }
+    ],
+    skipDuplicates: true,
+  });
+
   // Solo crear rol de Administrador (crítico para el sistema)
   await prisma.role.upsert({
     where: { name: 'Administrador' },
@@ -50,6 +64,7 @@ async function main() {
   });
 
   console.log('✅ Document types seeded successfully!');
+  console.log('✅ Employee types seeded successfully!');
   console.log('✅ Administrator role ensured!');
 }
 

@@ -172,7 +172,10 @@ const options = {
       },
     },
   },
-  apis: ["./src/modules/*/routes/*.routes.js"], // paths to files containing OpenAPI definitions
+  apis: [
+    "./src/modules/*/routes/*.routes.js",           // Módulos directos como Roles
+    "./src/modules/Services/*/routes/*.routes.js"   // Módulos dentro de Services como Employees
+  ], // paths to files containing OpenAPI definitions
 };
 
 const specs = swaggerJsdoc(options);
