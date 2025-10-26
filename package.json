@@ -1,24 +1,41 @@
 {
+  "type": "module",
   "scripts": {
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
-    "prisma:migrate": "npx prisma migrate dev --name init",
+    "test:system": "node src/utils/systemTest.js",
+    "test:db": "node src/utils/testConnection.js",
+    "test:roles": "node src/modules/Roles/tests/roles.test.js",
+    "prisma:migrate": "npx prisma migrate dev",
     "prisma:generate": "npx prisma generate",
-    "prisma:seed": "npx prisma db seed"  
+    "prisma:seed": "npx prisma db seed",
+    "prisma:studio": "npx prisma studio",
+    "prisma:push": "npx prisma db push",
+    "prisma:pull": "npx prisma db pull",
+    "prisma:reset": "npx prisma migrate reset",
+    "prisma:deploy": "npx prisma migrate deploy",
+    "prisma:status": "npx prisma migrate status",
+    "db:test": "node src/utils/testConnection.js"
   },
   "prisma": {
-    "seed": "node prisma/seed.js"        
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@prisma/client": "^6.17.1",
+    "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-validator": "^7.3.0",
     "jsonwebtoken": "^9.0.2",
-    "prisma": "^6.17.1"
+    "node-fetch": "^3.3.2",
+    "prisma": "^6.17.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "nodemon": "^3.1.10"
   }
 }

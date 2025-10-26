@@ -3,3 +3,7 @@ node_modules
 /prisma/migrations
 
 .env
+
+SETUP_ROLES.md
+ROLES_DETAILS.md
+BACKEND_ARCHITECTURE.md
