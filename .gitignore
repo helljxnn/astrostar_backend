@@ -2,3 +2,6 @@ node_modules
 /generated/prisma
 
 .env
+
+SETUP_ROLES.md
+ROLES_DETAILS.md
