@@ -1,4 +1,4 @@
-import prisma from '../../../config/database.js';
+import prisma from "../../../config/database.js";
 
 export class RoleRepository {
   // Get all roles with pagination and search
@@ -8,9 +8,9 @@ export class RoleRepository {
     const where = search
       ? {
           OR: [
-            { name: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } }
-          ]
+            { name: { contains: search, mode: "insensitive" } },
+            { description: { contains: search, mode: "insensitive" } },
+          ],
         }
       : {};
 
@@ -25,13 +25,13 @@ export class RoleRepository {
               id: true,
               firstName: true,
               lastName: true,
-              email: true
-            }
-          }
+              email: true,
+            },
+          },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       }),
-      prisma.role.count({ where })
+      prisma.role.count({ where }),
     ]);
 
     return {
@@ -41,8 +41,8 @@ export class RoleRepository {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -56,10 +56,10 @@ export class RoleRepository {
             id: true,
             firstName: true,
             lastName: true,
-            email: true
-          }
-        }
-      }
+            email: true,
+          },
+        },
+      },
     });
   }
 
@@ -73,29 +73,29 @@ export class RoleRepository {
             id: true,
             firstName: true,
             lastName: true,
-            email: true
-          }
-        }
-      }
+            email: true,
+          },
+        },
+      },
     });
   }
 
   // Find role by name
   async findByName(name) {
     return await prisma.role.findUnique({
-      where: { name }
+      where: { name },
     });
   }
 
   // Find role by name (case-insensitive)
   async findByNameCaseInsensitive(name) {
     return await prisma.role.findFirst({
-      where: { 
-        name: { 
+      where: {
+        name: {
           equals: name,
-          mode: 'insensitive'
-        }
-      }
+          mode: "insensitive",
+        },
+      },
     });
   }
 
@@ -111,13 +111,13 @@ export class RoleRepository {
               id: true,
               firstName: true,
               lastName: true,
-              email: true
-            }
-          }
-        }
+              email: true,
+            },
+          },
+        },
       });
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (error.code === "P2025") {
         return null; // Role not found
       }
       throw error;
@@ -130,7 +130,7 @@ export class RoleRepository {
       // Verificar si es el rol de administrador (no se puede eliminar)
       const role = await prisma.role.findUnique({
         where: { id },
-        select: { name: true, status: true }
+        select: { name: true, status: true },
       });
 
       if (!role) {
@@ -138,21 +138,25 @@ export class RoleRepository {
       }
 
       // Proteger rol de administrador
-      if (role.name === 'Administrador') {
-        throw new Error(`El rol "${role.name}" es un rol del sistema y no puede ser eliminado por razones de seguridad.`);
+      if (role.name === "Administrador") {
+        throw new Error(
+          `El rol "${role.name}" es un rol del sistema y no puede ser eliminado por razones de seguridad.`
+        );
       }
 
       // Proteger roles activos
-      if (role.status === 'Active') {
-        throw new Error(`No se puede eliminar el rol "${role.name}" porque tiene estado "Activo". Primero cambie el estado a "Inactivo" y luego inténtelo de nuevo.`);
+      if (role.status === "Active") {
+        throw new Error(
+          `No se puede eliminar el rol "${role.name}" porque tiene estado "Activo". Primero cambie el estado a "Inactivo" y luego inténtelo de nuevo.`
+        );
       }
 
       await prisma.role.delete({
-        where: { id }
+        where: { id },
       });
       return true;
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (error.code === "P2025") {
         return false; // Role not found
       }
       throw error;
@@ -163,7 +167,7 @@ export class RoleRepository {
   async exists(id) {
     const role = await prisma.role.findUnique({
       where: { id },
-      select: { id: true }
+      select: { id: true },
     });
     return !!role;
   }
@@ -172,14 +176,14 @@ export class RoleRepository {
   async getStats() {
     const [total, active, inactive] = await Promise.all([
       prisma.role.count(),
-      prisma.role.count({ where: { status: 'Active' } }),
-      prisma.role.count({ where: { status: 'Inactive' } })
+      prisma.role.count({ where: { status: "Active" } }),
+      prisma.role.count({ where: { status: "Inactive" } }),
     ]);
 
     return {
       total,
       active,
-      inactive
+      inactive,
     };
   }
 }
