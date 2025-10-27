@@ -1,9 +1,7 @@
+// UsersController.js
 import usersService from '../services/users.service.js';
 
 export class UsersController {
-  /**
-   * Obtener todos los usuarios
-   */
   async getUsers(req, res) {
     try {
       const { 
@@ -34,9 +32,6 @@ export class UsersController {
     }
   }
 
-  /**
-   * Obtener usuario por ID
-   */
   async getUserById(req, res) {
     try {
       const id = parseInt(req.params.id);
@@ -64,9 +59,6 @@ export class UsersController {
     }
   }
 
-  /**
-   * Obtener estadísticas de usuarios
-   */
   async getUserStats(req, res) {
     try {
       const result = await usersService.getUserStats();

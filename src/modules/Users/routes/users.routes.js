@@ -1,6 +1,6 @@
 import express from 'express';
 import usersController from '../controllers/users.controller.js';
-import { checkPermission } from '../../../middleware/authMiddleware.js';
+//import { checkPermission } from '../../../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -81,7 +81,8 @@ const router = express.Router();
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/', checkPermission('Users', 'Read'), usersController.getUsers);
+//router.get('/', checkPermission('Users', 'Read'), usersController.getUsers);
+router.get('/', usersController.getUsers);  // Sin checkPermission por ahora
 
 /**
  * @swagger
@@ -115,8 +116,8 @@ router.get('/', checkPermission('Users', 'Read'), usersController.getUsers);
  *                     recentUsers:
  *                       type: integer
  */
-router.get('/stats', checkPermission('Users', 'Read'), usersController.getUserStats);
-
+//router.get('/stats', checkPermission('Users', 'Read'), usersController.getUserStats);
+router.get('/stats', usersController.getUserStats);
 /**
  * @swagger
  * /api/users/{id}:
@@ -149,6 +150,7 @@ router.get('/stats', checkPermission('Users', 'Read'), usersController.getUserSt
  *       500:
  *         description: Error interno del servidor
  */
-router.get('/:id', checkPermission('Users', 'Read'), usersController.getUserById);
+//router.get('/:id', checkPermission('Users', 'Read'), usersController.getUserById);
+router.get('/:id', usersController.getUserById);
 
 export default router;

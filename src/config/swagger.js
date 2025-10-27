@@ -169,6 +169,67 @@ const options = {
             }
           }
         },
+         Provider: {
+      type: "object",
+      properties: {
+        id: {
+          type: "integer",
+          description: "ID del proveedor"
+        },
+        tipoEntidad: {
+          type: "string",
+          enum: ["juridica", "natural"],
+          description: "Tipo de entidad"
+        },
+        razonSocial: {
+          type: "string",
+          description: "Razón social o nombre completo"
+        },
+        nit: {
+          type: "string",
+          description: "NIT o identificación"
+        },
+        tipoDocumento: {
+          type: "string",
+          enum: ["CC", "TI", "CE", "PAS"],
+          description: "Tipo de documento (solo para persona natural)"
+        },
+        contactoPrincipal: {
+          type: "string",
+          description: "Nombre del contacto principal"
+        },
+        correo: {
+          type: "string",
+          description: "Correo electrónico"
+        },
+        telefono: {
+          type: "string",
+          description: "Número telefónico"
+        },
+        direccion: {
+          type: "string",
+          description: "Dirección completa"
+        },
+        ciudad: {
+          type: "string",
+          description: "Ciudad"
+        },
+        descripcion: {
+          type: "string",
+          description: "Descripción del proveedor"
+        },
+        estado: {
+          type: "string",
+          enum: ["Activo", "Inactivo"],
+          description: "Estado del proveedor"
+        },
+        fechaRegistro: {
+          type: "string",
+          format: "date-time",
+          description: "Fecha de registro"
+        }
+      }
+    },
       },
     },
   },
