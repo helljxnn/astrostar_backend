@@ -30,6 +30,7 @@
     "express-validator": "^7.3.0",
     "jsonwebtoken": "^9.0.2",
     "node-fetch": "^3.3.2",
+    "nodemailer": "^7.0.10",
     "prisma": "^6.17.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
