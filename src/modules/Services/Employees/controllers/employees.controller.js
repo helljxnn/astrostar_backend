@@ -206,6 +206,7 @@ export class EmployeeController {
         success: true,
         data: result.data,
         temporaryPassword: process.env.NODE_ENV === 'development' ? result.temporaryPassword : undefined,
+        emailSent: result.emailSent,
         message: result.message
       });
     } catch (error) {
@@ -319,7 +320,7 @@ export class EmployeeController {
    * @swagger
    * /api/employees/{id}:
    *   delete:
-   *     summary: Eliminar empleado (soft delete)
+   *     summary: Eliminar empleado
    *     tags: [Employees]
    *     parameters:
    *       - in: path
@@ -342,7 +343,7 @@ export class EmployeeController {
    *                   example: true
    *                 message:
    *                   type: string
-   *                   example: "El empleado 'Juan Pérez' ha sido deshabilitado exitosamente."
+   *                   example: "El empleado 'Juan Pérez' ha sido eliminado exitosamente."
    *       400:
    *         $ref: '#/components/responses/BadRequest'
    *       404:

@@ -1,9 +1,11 @@
 // Aqui es donde se cargan datos iniciales en esas tablas (por ejemplo, los tipos de documento por defecto).
-import { PrismaClient } from "../generated/prisma/index.js";
+import { PrismaClient } from '../generated/prisma/index.js';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Seed document types
+  console.log("🌱 Iniciando seed de datos maestros del sistema...\n");
+  // TIPOS DE DOCUMENTO VÁLIDOS EN COLOMBIA
+  console.log("📄 Configurando tipos de documento...");
   await prisma.documentType.createMany({
     data: [
       {
@@ -45,32 +47,20 @@ async function main() {
   // Seed employee types
   await prisma.employeeType.createMany({
     data: [
-      {
-        name: "Administrador",
-        description: "Personal administrativo y de gestión",
-      },
-      { name: "Entrenador", description: "Entrenadores deportivos y técnicos" },
-      {
-        name: "Instructor",
-        description: "Instructores de actividades específicas",
-      },
-      {
-        name: "Coordinador",
-        description: "Coordinadores de programas y eventos",
-      },
-      { name: "Auxiliar", description: "Personal auxiliar y de apoyo" },
-      {
-        name: "Mantenimiento",
-        description: "Personal de mantenimiento y servicios generales",
-      },
-      { name: "Seguridad", description: "Personal de seguridad y vigilancia" },
+      { name: 'Administrador', description: 'Personal administrativo y de gestión' },
+      { name: 'Entrenador', description: 'Entrenadores deportivos y técnicos' },
+      { name: 'Instructor', description: 'Instructores de actividades específicas' },
+      { name: 'Coordinador', description: 'Coordinadores de programas y eventos' },
+      { name: 'Auxiliar', description: 'Personal auxiliar y de apoyo' },
+      { name: 'Mantenimiento', description: 'Personal de mantenimiento y servicios generales' },
+      { name: 'Seguridad', description: 'Personal de seguridad y vigilancia' }
     ],
     skipDuplicates: true,
   });
 
   // Solo crear rol de Administrador (crítico para el sistema)
   await prisma.role.upsert({
-    where: { name: "Administrador" },
+    where: { name: 'Administrador' },
     update: {}, // No actualizar si ya existe
     create: {
       name: "Administrador",
@@ -160,9 +150,9 @@ async function main() {
     },
   });
 
-  console.log("✅ Document types seeded successfully!");
-  console.log("✅ Employee types seeded successfully!");
-  console.log("✅ Administrator role ensured!");
+  console.log('✅ Document types seeded successfully!');
+  console.log('✅ Employee types seeded successfully!');
+  console.log('✅ Administrator role ensured!');
 }
 
 main()
