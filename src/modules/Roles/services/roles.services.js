@@ -123,7 +123,9 @@ export class RoleService {
       // Si el error contiene información específica, la pasamos tal como está
       if (
         error.message.includes("Administrador") ||
-        error.message.includes("Activo")
+        error.message.includes("Activo") ||
+        error.message.includes("está asignado a") ||
+        error.message.includes("usuario")
       ) {
         throw error;
       }

@@ -50,13 +50,7 @@ export const employeeValidators = {
     query('status')
       .optional()
       .isIn(['Active', 'Disabled', 'OnVacation', 'Retired'])
-      .withMessage('El estado debe ser: Active, Disabled, OnVacation o Retired.'),
-    
-    query('employeeTypeId')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('El tipo de empleado debe ser un número entero válido.')
-      .toInt()
+      .withMessage('El estado debe ser: Active, Disabled, OnVacation o Retired.')
   ],
 
   /**
@@ -172,13 +166,6 @@ export const employeeValidators = {
       }),
 
     // Datos de empleado
-    body('employeeTypeId')
-      .notEmpty()
-      .withMessage('El tipo de empleado es obligatorio.')
-      .isInt({ min: 1 })
-      .withMessage('Debe seleccionar un tipo de empleado válido.')
-      .toInt(),
-
     body('roleId')
       .notEmpty()
       .withMessage('El rol es obligatorio.')
@@ -297,12 +284,6 @@ export const employeeValidators = {
         
         return true;
       }),
-
-    body('employeeTypeId')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Debe seleccionar un tipo de empleado válido.')
-      .toInt(),
 
     body('roleId')
       .optional()

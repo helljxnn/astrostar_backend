@@ -64,13 +64,6 @@ export class UsersRepository {
             select: {
               id: true,
               status: true,
-              employeeType: {
-                select: {
-                  id: true,
-                  name: true,
-                  description: true
-                }
-              },
               employeePermissions: {
                 include: {
                   permission: {
@@ -142,7 +135,6 @@ export class UsersRepository {
         },
         employee: {
           include: {
-            employeeType: true,
             employeePermissions: {
               include: {
                 permission: {

@@ -19,34 +19,27 @@ class EmailService {
       // Verificar si las credenciales están configuradas
       if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD || 
           process.env.EMAIL_PASSWORD === 'your-app-password-here') {
-        console.log('📧 Servicio de email en modo simulación (credenciales no configuradas)');
+
         this.transporter = null;
         return;
       }
 
-      // Configuración para desarrollo (usando Gmail)
-      if (process.env.NODE_ENV === 'development') {
-        this.transporter = nodemailer.createTransporter({
-          service: 'gmail',
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASSWORD
-          }
-        });
-      } else {
-        // Configuración para producción (SMTP personalizado)
-        this.transporter = nodemailer.createTransporter({
-          host: process.env.SMTP_HOST || 'smtp.gmail.com',
-          port: process.env.SMTP_PORT || 587,
-          secure: false, // true para 465, false para otros puertos
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASSWORD
-          }
-        });
-      }
+      // Configuración unificada para Gmail (desarrollo y producción)
+      this.transporter = nodemailer.createTransport({
+        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASSWORD
+        },
+        tls: {
+          rejectUnauthorized: false
+        }
+      });
 
-      console.log('📧 Servicio de email inicializado correctamente');
+
     } catch (error) {
       console.error('❌ Error inicializando servicio de email:', error);
       this.transporter = null;
@@ -64,10 +57,8 @@ class EmailService {
       }
 
       await this.transporter.verify();
-      console.log('✅ Conexión de email verificada');
       return true;
     } catch (error) {
-      console.error('❌ Error verificando conexión de email:', error);
       return false;
     }
   }
@@ -91,17 +82,12 @@ class EmailService {
         text: this.generateWelcomeEmailText(firstName, lastName, loginEmail, temporaryPassword)
       };
 
-      if (process.env.NODE_ENV === 'development') {
-        // En desarrollo, solo simular el envío
-        console.log('📧 [SIMULADO] Email de bienvenida enviado:');
-        console.log(`   Para: ${email}`);
-        console.log(`   Asunto: ${mailOptions.subject}`);
-        console.log(`   Credenciales: ${loginEmail} / ${temporaryPassword}`);
+      // Si no hay transporter configurado, simular envío
+      if (!this.transporter) {
         return { success: true, messageId: 'simulated-' + Date.now() };
       }
 
       const result = await this.transporter.sendMail(mailOptions);
-      console.log(`✅ Email de bienvenida enviado a ${email}:`, result.messageId);
       
       return { 
         success: true, 
@@ -109,7 +95,6 @@ class EmailService {
         message: 'Email enviado exitosamente'
       };
     } catch (error) {
-      console.error('❌ Error enviando email de bienvenida:', error);
       return { 
         success: false, 
         error: error.message,
@@ -260,15 +245,13 @@ Este es un email automático del sistema AstroStar.
         text: `Recuperación de contraseña para AstroStar\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n${process.env.FRONTEND_URL}/reset-password?token=${resetToken}\n\nEste enlace expira en 1 hora.`
       };
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('📧 [SIMULADO] Email de recuperación enviado a:', email);
+      if (!this.transporter) {
         return { success: true, messageId: 'simulated-reset-' + Date.now() };
       }
 
       const result = await this.transporter.sendMail(mailOptions);
       return { success: true, messageId: result.messageId };
     } catch (error) {
-      console.error('❌ Error enviando email de recuperación:', error);
       return { success: false, error: error.message };
     }
   }
