@@ -127,10 +127,16 @@ export class RoleRepository {
   // Delete role
   async delete(id) {
     try {
-      // Verificar si es el rol de administrador (no se puede eliminar)
+      // Verificar si el rol existe y obtener información completa
       const role = await prisma.role.findUnique({
         where: { id },
-        select: { name: true, status: true },
+        select: { 
+          name: true, 
+          status: true,
+          users: {
+            select: { id: true }
+          }
+        },
       });
 
       if (!role) {
@@ -141,6 +147,16 @@ export class RoleRepository {
       if (role.name === "Administrador") {
         throw new Error(
           `El rol "${role.name}" es un rol del sistema y no puede ser eliminado por razones de seguridad.`
+        );
+      }
+
+      // Verificar si el rol está siendo usado por usuarios
+      if (role.users && role.users.length > 0) {
+        const userCount = role.users.length;
+        const userWord = userCount === 1 ? 'usuario' : 'usuarios';
+        
+        throw new Error(
+          `No se puede eliminar el rol "${role.name}" porque está asignado a ${userCount} ${userWord}. Para eliminarlo, primero debe reasignar ${userCount === 1 ? 'este usuario' : 'estos usuarios'} a otro rol.`
         );
       }
 

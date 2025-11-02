@@ -3,7 +3,6 @@
  *
  * Este archivo carga los datos esenciales que el sistema necesita para funcionar:
  * - Tipos de documento (obligatorios para usuarios)
- * - Tipos de empleado (categorías fijas del sistema)
  * - Rol de Administrador (crítico para acceso inicial)
  *
  * Estos datos son considerados "maestros" y no deben ser modificados por usuarios finales.
@@ -55,55 +54,7 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // TIPOS DE EMPLEADO POR DEFECTO DEL SISTEMA
-  // Estos son los únicos tipos permitidos y son obligatorios
-  const defaultEmployeeTypes = [
-    {
-      name: "Fisioterapeuta",
-      description: "Profesional en fisioterapia y rehabilitación deportiva",
-    },
-    {
-      name: "Psicólogo",
-      description: "Profesional en psicología deportiva y clínica",
-    },
-    {
-      name: "Nutricionista",
-      description: "Profesional en nutrición y dietética deportiva",
-    },
-    {
-      name: "Entrenador",
-      description: "Entrenador deportivo y técnico especializado",
-    },
-    {
-      name: "Contador",
-      description: "Profesional en contabilidad y gestión financiera",
-    },
-    {
-      name: "Publicista",
-      description: "Profesional en marketing, comunicaciones y publicidad",
-    },
-    {
-      name: "Director Técnico",
-      description: "Director técnico y coordinador deportivo principal",
-    },
-  ];
 
-  console.log("🏷️ Configurando tipos de empleado por defecto...");
-
-  for (const type of defaultEmployeeTypes) {
-    const result = await prisma.employeeType.upsert({
-      where: { name: type.name },
-      update: {
-        description: type.description,
-        updatedAt: new Date(),
-      },
-      create: {
-        name: type.name,
-        description: type.description,
-      },
-    });
-    console.log(`   ✓ ${result.name}`);
-  }
 
   // ROL DE ADMINISTRADOR (CRÍTICO PARA EL SISTEMA)
   console.log("👑 Configurando rol de Administrador...");
@@ -203,7 +154,6 @@ async function main() {
   console.log("🎉 Seed completado exitosamente!");
   console.log("📊 Resumen:");
   console.log("   • Tipos de documento: Configurados");
-  console.log("   • Tipos de empleado: 7 tipos por defecto");
   console.log("   • Rol Administrador: Listo para usar");
   console.log(
     "\n💡 El sistema está listo para crear el primer usuario administrador."

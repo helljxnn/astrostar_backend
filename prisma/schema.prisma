@@ -46,6 +46,7 @@ model User {
   phoneNumber    String?
   address        String?
   birthDate      DateTime
+  age            Int?
   identification String       @unique
   status         UserStatus   @default(Active)
   createdAt      DateTime     @default(now())
@@ -60,27 +61,14 @@ model User {
   @@map("users")
 }
 
-model EmployeeType {
-  id          Int        @id @default(autoincrement())
-  name        String     @unique
-  description String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  employees   Employee[]
-
-  @@map("employee_types")
-}
-
 model Employee {
   id                  Int                  @id @default(autoincrement())
   status              EmployeeStatus       @default(Active)
   statusAssignedAt    DateTime             @default(now())
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  employeeTypeId      Int
   userId              Int                  @unique
   employeePermissions EmployeePermission[]
-  employeeType        EmployeeType         @relation(fields: [employeeTypeId], references: [id])
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]

@@ -8,16 +8,33 @@ export class EmployeeService {
   }
 
   /**
+   * Calcular edad basada en fecha de nacimiento
+   */
+  calculateAge(birthDate) {
+    if (!birthDate) return null;
+    
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    
+    return age >= 0 ? age : null;
+  }
+
+  /**
    * Obtener todos los empleados con filtros
    */
-  async getAllEmployees({ page = 1, limit = 10, search = '', status = '', employeeTypeId = '' }) {
+  async getAllEmployees({ page = 1, limit = 10, search = '', status = '' }) {
     try {
       const result = await this.employeeRepository.findAll({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
-        status,
-        employeeTypeId
+        status
       });
 
       return result;
@@ -74,6 +91,9 @@ export class EmployeeService {
       const passwordHash = await bcrypt.hash(temporaryPassword, 10);
 
       // 4. Preparar datos del usuario
+      const birthDate = employeeData.birthDate ? new Date(employeeData.birthDate) : new Date();
+      const age = this.calculateAge(birthDate);
+      
       const userData = {
         firstName: employeeData.firstName?.trim() || '',
         middleName: employeeData.middleName?.trim() || null,
@@ -83,7 +103,8 @@ export class EmployeeService {
         passwordHash,
         phoneNumber: employeeData.phoneNumber?.trim() || null,
         address: employeeData.address?.trim() || null,
-        birthDate: employeeData.birthDate ? new Date(employeeData.birthDate) : new Date(),
+        birthDate: birthDate,
+        age: age,
         identification: employeeData.identification?.trim() || '',
         status: 'Active',
         documentTypeId: employeeData.documentTypeId ? parseInt(employeeData.documentTypeId) : null,
@@ -92,8 +113,7 @@ export class EmployeeService {
 
       // 5. Preparar datos del empleado
       const employeeDataForDB = {
-        status: employeeData.status || 'Active',
-        employeeTypeId: employeeData.employeeTypeId ? parseInt(employeeData.employeeTypeId) : null
+        status: employeeData.status || 'Active'
       };
 
       // 6. Crear empleado y usuario en transacción
@@ -158,14 +178,16 @@ export class EmployeeService {
       if (updateData.email !== undefined) userData.email = updateData.email?.trim().toLowerCase() || '';
       if (updateData.phoneNumber !== undefined) userData.phoneNumber = updateData.phoneNumber?.trim() || null;
       if (updateData.address !== undefined) userData.address = updateData.address?.trim() || null;
-      if (updateData.birthDate !== undefined) userData.birthDate = updateData.birthDate ? new Date(updateData.birthDate) : null;
+      if (updateData.birthDate !== undefined) {
+        userData.birthDate = updateData.birthDate ? new Date(updateData.birthDate) : null;
+        userData.age = userData.birthDate ? this.calculateAge(userData.birthDate) : null;
+      }
       if (updateData.identification !== undefined) userData.identification = updateData.identification?.trim() || '';
       if (updateData.documentTypeId !== undefined) userData.documentTypeId = updateData.documentTypeId ? parseInt(updateData.documentTypeId) : null;
       if (updateData.roleId !== undefined) userData.roleId = updateData.roleId ? parseInt(updateData.roleId) : null;
 
       // Campos de empleado
       if (updateData.status !== undefined) employeeData.status = updateData.status || 'Active';
-      if (updateData.employeeTypeId !== undefined) employeeData.employeeTypeId = updateData.employeeTypeId ? parseInt(updateData.employeeTypeId) : null;
 
       // 5. Actualizar empleado
       const updatedEmployee = await this.employeeRepository.update(id, employeeData, userData);
@@ -238,8 +260,7 @@ export class EmployeeService {
    */
   async getReferenceData() {
     try {
-      const [employeeTypes, roles, documentTypes] = await Promise.all([
-        this.employeeRepository.getEmployeeTypes(),
+      const [roles, documentTypes] = await Promise.all([
         this.employeeRepository.getAvailableRoles(),
         this.employeeRepository.getDocumentTypes()
       ]);
@@ -247,7 +268,6 @@ export class EmployeeService {
       return {
         success: true,
         data: {
-          employeeTypes,
           roles,
           documentTypes
         }
@@ -354,15 +374,10 @@ export class EmployeeService {
 
       const result = await emailService.sendWelcomeEmail(employeeInfo, credentials);
       
-      if (result.success) {
-        console.log(`✅ Email de bienvenida enviado exitosamente a ${employeeInfo.email}`);
-      } else {
-        console.error(`❌ Error enviando email de bienvenida a ${employeeInfo.email}:`, result.error);
-      }
+
 
       return result;
     } catch (error) {
-      console.error('Error en sendWelcomeEmail:', error);
       return { success: false, error: error.message };
     }
   }

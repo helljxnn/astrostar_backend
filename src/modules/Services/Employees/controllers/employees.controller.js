@@ -39,12 +39,7 @@ export class EmployeeController {
    *           type: string
    *           enum: [Active, Disabled, OnVacation, Retired]
    *         description: Filtrar por estado del empleado
-   *       - in: query
-   *         name: employeeTypeId
-   *         schema:
-   *           type: integer
-   *           minimum: 1
-   *         description: Filtrar por tipo de empleado
+
    *     responses:
    *       200:
    *         description: Lista de empleados obtenida exitosamente
@@ -72,14 +67,13 @@ export class EmployeeController {
    */
   getAllEmployees = async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '', status = '', employeeTypeId = '' } = req.query;
+      const { page = 1, limit = 10, search = '', status = '' } = req.query;
 
       const result = await this.employeeService.getAllEmployees({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
-        status,
-        employeeTypeId
+        status
       });
 
       res.json({
@@ -377,6 +371,13 @@ export class EmployeeController {
         });
       }
 
+      if (error.message.includes('estado "Activo"')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al eliminar el empleado.',
@@ -465,10 +466,6 @@ export class EmployeeController {
    *                 data:
    *                   type: object
    *                   properties:
-   *                     employeeTypes:
-   *                       type: array
-   *                       items:
-   *                         $ref: '#/components/schemas/EmployeeType'
    *                     roles:
    *                       type: array
    *                       items:
