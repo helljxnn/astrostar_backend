@@ -5,16 +5,24 @@ import usersRoutes from '../modules/Users/routes/users.routes.js';
 import providerRoutes from '../modules/Providers/routes/providers.routes.js'
 import documentTypesRoutes from './documentTypes.routes.js';
 import testEmailRoutes from './testEmail.js';
+import authRoutes from '../modules/Auth/routes/auth.routes.js';
+import { authenticateToken } from '../middlewares/checkToken.js';
 
 const router = express.Router();
 
 // Module routes
-router.use('/roles', roleRoutes);
-router.use('/employees', employeeRoutes);
-router.use('/users', usersRoutes); 
-router.use('/providers', providerRoutes);
-router.use('/document-types', documentTypesRoutes);  
 
+
+// Public routes
+router.use('/auth', authRoutes);
+
+
+// Private routes
+router.use('/roles', authenticateToken, roleRoutes);
+router.use('/employees', authenticateToken, employeeRoutes);
+router.use('/users', authenticateToken, usersRoutes); 
+router.use('/providers', authenticateToken, providerRoutes);
+router.use('/document-types', authenticateToken, documentTypesRoutes);  
 
 
 // Test routes (only in development)

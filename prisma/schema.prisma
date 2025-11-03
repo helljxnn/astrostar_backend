@@ -43,6 +43,7 @@ model User {
   secondLastName String?
   email          String       @unique
   passwordHash   String
+  refreshToken   String?
   phoneNumber    String?
   address        String?
   birthDate      DateTime

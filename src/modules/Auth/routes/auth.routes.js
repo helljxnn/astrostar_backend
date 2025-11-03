@@ -1,8 +1,9 @@
 import express from "express";
-import { Login } from "../controllers/login.controller.js";
+import { Auth } from "../controllers/login.controller.js";
+import { authenticateToken } from "../../../middlewares/checkToken.js";
 
 const router = express.Router();
-const loginController = new Login();
+const AuthController = new Auth();
 
 /**
  * @swagger
@@ -107,5 +108,48 @@ const loginController = new Login();
  *       500:
  *         description: Error interno del servidor.
  */
-router.post("/login", loginController.Login);
+router.post("/login", AuthController.Login);
+
+/**
+ * @swagger
+ * /api/auth/profile:
+ *   get:
+ *     summary: Obtener el perfil del usuario autenticado
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Perfil del usuario.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LoginResponse'
+ *       401:
+ *         description: No autenticado o token inválido.
+ *       404:
+ *         description: Usuario no encontrado.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get("/profile", authenticateToken, AuthController.Profile);
+
+/**
+ * @swagger
+ * /api/auth/logout:
+ *   get:
+ *     summary: Cerrar la sesión del usuario
+ *     tags: [Auth]
+ *     description: Limpia las cookies de autenticación (accessToken, refreshToken) del navegador y el refreshToken de la base de datos.
+ *     responses:
+ *       200:
+ *         description: Sesión cerrada exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LogoutResponse'
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get("/logout", AuthController.Logout);
 export default router;
