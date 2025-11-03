@@ -150,7 +150,16 @@ export class EmployeeService {
         };
       }
 
-      // 2. REGLA DE NEGOCIO: Verificar email único (si se está actualizando)
+      // 2. REGLA DE NEGOCIO: No permitir editar el usuario por defecto del sistema
+      if (existingEmployee.user.email === 'astrostar.java@gmail.com') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede editar el usuario "${existingEmployee.user.firstName} ${existingEmployee.user.lastName}" porque es el usuario por defecto del sistema.`
+        };
+      }
+
+      // 3. REGLA DE NEGOCIO: Verificar email único (si se está actualizando)
       if (updateData.email && updateData.email !== existingEmployee.user.email) {
         const existingUserByEmail = await this.employeeRepository.findByEmail(updateData.email);
         if (existingUserByEmail && existingUserByEmail.id !== existingEmployee.userId) {
@@ -158,7 +167,7 @@ export class EmployeeService {
         }
       }
 
-      // 3. REGLA DE NEGOCIO: Verificar identificación única (si se está actualizando)
+      // 4. REGLA DE NEGOCIO: Verificar identificación única (si se está actualizando)
       if (updateData.identification && updateData.identification !== existingEmployee.user.identification) {
         const existingUserByIdentification = await this.employeeRepository.findByIdentification(updateData.identification);
         if (existingUserByIdentification && existingUserByIdentification.id !== existingEmployee.userId) {
@@ -166,7 +175,7 @@ export class EmployeeService {
         }
       }
 
-      // 4. Separar datos de usuario y empleado
+      // 5. Separar datos de usuario y empleado
       const userData = {};
       const employeeData = { userId: existingEmployee.userId };
 
@@ -189,7 +198,7 @@ export class EmployeeService {
       // Campos de empleado
       if (updateData.status !== undefined) employeeData.status = updateData.status || 'Active';
 
-      // 5. Actualizar empleado
+      // 6. Actualizar empleado
       const updatedEmployee = await this.employeeRepository.update(id, employeeData, userData);
 
       return {
@@ -218,13 +227,35 @@ export class EmployeeService {
         };
       }
 
-      // 2. REGLA DE NEGOCIO: Verificar si tiene compras asociadas
-      // Si tiene compras, no permitir eliminación
-      if (employeeToDelete.purchases && employeeToDelete.purchases.length > 0) {
-        throw new Error(`No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque tiene compras asociadas.`);
+      // 2. REGLA DE NEGOCIO: No permitir eliminar el usuario por defecto del sistema
+      if (employeeToDelete.user.email === 'astrostar.java@gmail.com') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el usuario "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque es el usuario por defecto del sistema.`
+        };
       }
 
-      // 3. Proceder con la eliminación (hard delete)
+      // 3. REGLA DE NEGOCIO: No permitir eliminar empleados activos
+      if (employeeToDelete.status === 'Activo') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque está en estado "Activo". Debe cambiar su estado antes de eliminarlo.`
+        };
+      }
+
+      // 4. REGLA DE NEGOCIO: Verificar si tiene compras asociadas
+      // Si tiene compras, no permitir eliminación
+      if (employeeToDelete.purchases && employeeToDelete.purchases.length > 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque tiene compras asociadas.`
+        };
+      }
+
+      // 5. Proceder con la eliminación (hard delete)
       const deleted = await this.employeeRepository.delete(id);
 
       if (deleted) {

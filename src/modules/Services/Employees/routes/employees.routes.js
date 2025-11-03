@@ -1,6 +1,7 @@
 import express from 'express';
 import { EmployeeController } from '../controllers/employees.controller.js';
 import { employeeValidators, handleValidationErrors } from '../validators/employee.validator.js';
+import { authenticateToken } from '../../../../middlewares/auth.js';
 
 const router = express.Router();
 const employeeController = new EmployeeController();
@@ -377,14 +378,25 @@ const employeeController = new EmployeeController();
  */
 
 // Rutas específicas PRIMERO (antes de rutas con parámetros)
-router.get('/stats', employeeController.getEmployeeStats);
-router.get('/reference-data', employeeController.getReferenceData);
+router.get('/stats', 
+  authenticateToken,
+  employeeController.getEmployeeStats
+);
+
+router.get('/reference-data', 
+  authenticateToken,
+  employeeController.getReferenceData
+);
+
 router.get('/check-email', 
+  authenticateToken,
   employeeValidators.checkEmail,
   handleValidationErrors,
   employeeController.checkEmailAvailability
 );
+
 router.get('/check-identification',
+  authenticateToken,
   employeeValidators.checkIdentification,
   handleValidationErrors,
   employeeController.checkIdentificationAvailability
@@ -392,12 +404,14 @@ router.get('/check-identification',
 
 // CRUD básico
 router.get('/',
+  authenticateToken,
   employeeValidators.getAll,
   handleValidationErrors,
   employeeController.getAllEmployees
 );
 
 router.post('/',
+  authenticateToken,
   employeeValidators.create,
   handleValidationErrors,
   employeeController.createEmployee
@@ -405,18 +419,21 @@ router.post('/',
 
 // Rutas con parámetros AL FINAL
 router.get('/:id',
+  authenticateToken,
   employeeValidators.getById,
   handleValidationErrors,
   employeeController.getEmployeeById
 );
 
 router.put('/:id',
+  authenticateToken,
   employeeValidators.update,
   handleValidationErrors,
   employeeController.updateEmployee
 );
 
 router.delete('/:id',
+  authenticateToken,
   employeeValidators.delete,
   handleValidationErrors,
   employeeController.deleteEmployee
