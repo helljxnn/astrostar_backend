@@ -27,9 +27,9 @@ model Role {
   name        String     @unique @db.VarChar(50)
   description String     @db.VarChar(200)
   status      RoleStatus @default(Active)
-  permissions Json?      @default("{}")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  permissions Json?      @default("{}")
   users       User[]
 
   @@map("roles")
@@ -43,8 +43,8 @@ model User {
   secondLastName String?
   email          String       @unique
   passwordHash   String
-  phoneNumber    String?
-  address        String?
+  phoneNumber    String
+  address        String
   birthDate      DateTime
   identification String       @unique
   status         UserStatus   @default(Active)
@@ -52,6 +52,7 @@ model User {
   updatedAt      DateTime     @updatedAt
   documentTypeId Int
   roleId         Int
+  age            Int?
   athlete        Athlete?
   employee       Employee?
   documentType   DocumentType @relation(fields: [documentTypeId], references: [id])
@@ -60,27 +61,14 @@ model User {
   @@map("users")
 }
 
-model EmployeeType {
-  id          Int        @id @default(autoincrement())
-  name        String     @unique
-  description String?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  employees   Employee[]
-
-  @@map("employee_types")
-}
-
 model Employee {
   id                  Int                  @id @default(autoincrement())
-  status              EmployeeStatus       @default(Active)
+  status              EmployeeStatus       @default(Activo)
   statusAssignedAt    DateTime             @default(now())
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  employeeTypeId      Int
   userId              Int                  @unique
   employeePermissions EmployeePermission[]
-  employeeType        EmployeeType         @relation(fields: [employeeTypeId], references: [id])
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
@@ -292,6 +280,7 @@ model TemporaryPerson {
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   documentTypeId Int?
+  personType     TemporaryPersonType   @default(Participante)
   teamMembers    TeamMember[]
   documentType   DocumentType?         @relation(fields: [documentTypeId], references: [id])
 
@@ -430,11 +419,10 @@ enum UserStatus {
 }
 
 enum EmployeeStatus {
-  Active
-  Disabled
-  OnVacation
-  Retired
-  Deceased
+  Activo
+  Licencia
+  Desvinculado
+  Fallecido
 }
 
 enum EventStatus {
@@ -487,6 +475,12 @@ enum GuardianRelationship {
 enum TemporaryPersonStatus {
   Active
   Inactive
+}
+
+enum TemporaryPersonType {
+  Deportista
+  Entrenador
+  Participante
 }
 
 enum TeamStatus {

@@ -213,7 +213,7 @@ export class RoleController {
     } catch (error) {
       console.error('Error deleting role:', error);
       
-      // Error de restricción de clave foránea (rol en uso)
+      // Error de restricción de clave foránea (rol en uso) - fallback por si no se detecta antes
       if (error.code === 'P2003') {
         return res.status(400).json({
           success: false,
@@ -222,20 +222,26 @@ export class RoleController {
       }
 
       // Manejar errores específicos de restricciones
-      if (error.message.includes('Administrador no puede ser eliminado')) {
+      if (error.message.includes('Administrador') && error.message.includes('sistema')) {
         return res.status(403).json({
           success: false,
-          message: 'El rol "Administrador" es un rol del sistema y no puede ser eliminado por razones de seguridad.'
+          message: error.message
         });
       }
 
-      if (error.message.includes('roles con estado Activo')) {
+      if (error.message.includes('está asignado a') || (error.message.includes('usuario') && !error.message.includes('interno'))) {
         return res.status(400).json({
           success: false,
-          message: 'No se pueden eliminar roles con estado "Activo". Primero cambie el estado del rol a "Inactivo" y luego inténtelo de nuevo.'
+          message: error.message
         });
       }
 
+      if (error.message.includes('estado "Activo"')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al eliminar el rol. Por favor, inténtelo de nuevo.',
