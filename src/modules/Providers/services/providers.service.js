@@ -44,13 +44,51 @@ export class ProvidersService {
    */
   async createProvider(providerData) {
     try {
-      // Verificar NIT único
+      // Verificar NIT único (para ambos tipos)
       const isNitAvailable = await providersRepository.isNitAvailable(providerData.nit);
       if (!isNitAvailable) {
         return {
           success: false,
-          message: 'El NIT ya está registrado'
+          message: providerData.tipoEntidad === 'juridica' 
+            ? 'El NIT ya está registrado' 
+            : 'El documento de identidad ya está registrado'
         };
+      }
+
+      // Verificar razón social única (solo para jurídica)
+      if (providerData.tipoEntidad === 'juridica') {
+        const businessNameExists = await providersRepository.findByBusinessName(
+          providerData.razonSocial
+        );
+        if (businessNameExists) {
+          return {
+            success: false,
+            message: `La razón social "${providerData.razonSocial}" ya está registrada`
+          };
+        }
+      }
+
+      // Verificar nombre único (solo para natural)
+      if (providerData.tipoEntidad === 'natural') {
+        const nameExists = await providersRepository.findByNameCaseInsensitive(
+          providerData.razonSocial // En natural, razonSocial es el nombre
+        );
+        if (nameExists) {
+          return {
+            success: false,
+            message: `El nombre "${providerData.razonSocial}" ya está registrado`
+          };
+        }
+      }
+
+      // Verificar que nombre y razón social no sean iguales (si aplica)
+      if (providerData.tipoEntidad === 'juridica' && providerData.contactoPrincipal) {
+        if (providerData.razonSocial.toLowerCase() === providerData.contactoPrincipal.toLowerCase()) {
+          return {
+            success: false,
+            message: 'La razón social y el contacto principal no pueden ser iguales'
+          };
+        }
       }
 
       // Verificar email único
@@ -60,6 +98,19 @@ export class ProvidersService {
           return {
             success: false,
             message: 'El email ya está registrado'
+          };
+        }
+      }
+
+      // Verificar contacto único
+      if (providerData.contactoPrincipal) {
+        const contactExists = await providersRepository.findByNameCaseInsensitive(
+          providerData.contactoPrincipal
+        );
+        if (contactExists) {
+          return {
+            success: false,
+            message: `El nombre de contacto "${providerData.contactoPrincipal}" ya está registrado`
           };
         }
       }
@@ -95,7 +146,47 @@ export class ProvidersService {
         if (!isNitAvailable) {
           return {
             success: false,
-            message: 'El NIT ya está registrado'
+            message: providerData.tipoEntidad === 'juridica' 
+              ? 'El NIT ya está registrado' 
+              : 'El documento de identidad ya está registrado'
+          };
+        }
+      }
+
+      // Verificar razón social única (excluyendo el actual, solo para jurídica)
+      if (providerData.razonSocial && providerData.razonSocial !== existingProvider.razonSocial) {
+        if (providerData.tipoEntidad === 'juridica') {
+          const businessNameExists = await providersRepository.findByBusinessName(
+            providerData.razonSocial,
+            id
+          );
+          if (businessNameExists) {
+            return {
+              success: false,
+              message: `La razón social "${providerData.razonSocial}" ya está registrada`
+            };
+          }
+        } else {
+          // Para persona natural, validar como nombre único
+          const nameExists = await providersRepository.findByNameCaseInsensitive(
+            providerData.razonSocial,
+            id
+          );
+          if (nameExists) {
+            return {
+              success: false,
+              message: `El nombre "${providerData.razonSocial}" ya está registrado`
+            };
+          }
+        }
+      }
+
+      // Verificar que nombre y razón social no sean iguales (si aplica)
+      if (providerData.tipoEntidad === 'juridica' && providerData.contactoPrincipal) {
+        if (providerData.razonSocial.toLowerCase() === providerData.contactoPrincipal.toLowerCase()) {
+          return {
+            success: false,
+            message: 'La razón social y el contacto principal no pueden ser iguales'
           };
         }
       }
@@ -107,6 +198,21 @@ export class ProvidersService {
           return {
             success: false,
             message: 'El email ya está registrado'
+          };
+        }
+      }
+
+      // Verificar contacto único (excluyendo el actual)
+      if (providerData.contactoPrincipal && 
+          providerData.contactoPrincipal !== existingProvider.contactoPrincipal) {
+        const contactExists = await providersRepository.findByNameCaseInsensitive(
+          providerData.contactoPrincipal,
+          id
+        );
+        if (contactExists) {
+          return {
+            success: false,
+            message: `El nombre de contacto "${providerData.contactoPrincipal}" ya está registrado`
           };
         }
       }
@@ -124,7 +230,7 @@ export class ProvidersService {
   }
 
   /**
-   * Eliminar proveedor (ACTUALIZADO con validaciones de HUs)
+   * Eliminar proveedor
    */
   async deleteProvider(id) {
     try {
@@ -136,7 +242,7 @@ export class ProvidersService {
         };
       }
 
-      // Estas validaciones ya se hacen en el validador, pero por seguridad:
+      // Validación HU04.1_04_04: No eliminar con compras activas
       const hasPurchases = await providersRepository.hasActivePurchases(id);
       if (hasPurchases) {
         return {
@@ -145,6 +251,7 @@ export class ProvidersService {
         };
       }
 
+      // Validación HU04.1_04_05: No eliminar si está activo
       if (existingProvider.estado === 'Activo') {
         return {
           success: false,
@@ -189,20 +296,84 @@ export class ProvidersService {
   }
 
   /**
-   * Verificar disponibilidad de NIT
+   * Verificar si el NIT existe
+   * Para validación en tiempo real
    */
-  async checkNitAvailability(nit, excludeId = null) {
+  async checkNitExists(nit, excludeId = null) {
     try {
-      const isAvailable = await providersRepository.isNitAvailable(nit, excludeId);
-      return {
-        success: true,
-        data: {
-          nit,
-          available: isAvailable
-        }
-      };
+      const provider = await providersRepository.findByNit(nit);
+      
+      if (provider && provider.id !== excludeId) {
+        return provider;
+      }
+      
+      return null;
     } catch (error) {
-      throw new Error(`Error verificando NIT: ${error.message}`);
+      console.error('Service error - checkNitExists:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar si la razón social existe
+   * Para validación en tiempo real
+   */
+  async checkBusinessNameExists(businessName, excludeId = null) {
+    try {
+      const provider = await providersRepository.findByBusinessName(
+        businessName,
+        excludeId
+      );
+      
+      if (provider && provider.id !== excludeId) {
+        return provider;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Service error - checkBusinessNameExists:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar si el email existe
+   * Para validación en tiempo real
+   */
+  async checkEmailExists(email, excludeId = null) {
+    try {
+      const provider = await providersRepository.findByEmail(email);
+      
+      if (provider && provider.id !== excludeId) {
+        return provider;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Service error - checkEmailExists:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar si el contacto existe
+   * Para validación en tiempo real
+   */
+  async checkContactExists(contact, excludeId = null) {
+    try {
+      const provider = await providersRepository.findByNameCaseInsensitive(
+        contact,
+        excludeId
+      );
+      
+      if (provider && provider.id !== excludeId) {
+        return provider;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Service error - checkContactExists:', error);
+      throw error;
     }
   }
 
