@@ -116,7 +116,7 @@ export const employeeValidators = {
       .withMessage('Debe proporcionar un email válido.')
       .isLength({ max: 150 })
       .withMessage('El email no puede exceder 150 caracteres.')
-      .normalizeEmail()
+      .trim()
       .toLowerCase(),
 
     body('phoneNumber')
@@ -248,7 +248,7 @@ export const employeeValidators = {
       .withMessage('Debe proporcionar un email válido.')
       .isLength({ max: 150 })
       .withMessage('El email no puede exceder 150 caracteres.')
-      .normalizeEmail()
+      .trim()
       .toLowerCase(),
 
     body('phoneNumber')
@@ -335,7 +335,7 @@ export const employeeValidators = {
       .withMessage('El email es obligatorio.')
       .isEmail()
       .withMessage('Debe proporcionar un email válido.')
-      .normalizeEmail()
+      .trim()
       .toLowerCase(),
     
     query('excludeUserId')

@@ -4,6 +4,7 @@ import employeeRoutes from '../modules/Services/Employees/routes/employees.route
 import usersRoutes from '../modules/Users/routes/users.routes.js';
 import providerRoutes from '../modules/Providers/routes/providers.routes.js'
 import documentTypesRoutes from './documentTypes.routes.js';
+import testEmailRoutes from './testEmail.js';
 
 const router = express.Router();
 
@@ -15,6 +16,11 @@ router.use('/providers', providerRoutes);
 router.use('/document-types', documentTypesRoutes);  
 
 
+
+// Test routes (only in development)
+if (process.env.NODE_ENV === 'development') {
+  router.use('/test', testEmailRoutes);
+}
 
 // Health check for API
 router.get('/health', (req, res) => {

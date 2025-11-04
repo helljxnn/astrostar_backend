@@ -74,7 +74,8 @@ export class EmployeeRepository {
           include: {
             permission: true
           }
-        }
+        },
+        purchases: true
       }
     });
   }
@@ -165,7 +166,7 @@ export class EmployeeRepository {
   }
 
   /**
-   * Eliminar empleado (soft delete cambiando status)
+   * Eliminar empleado (hard delete)
    */
   async delete(id) {
     try {
@@ -178,16 +179,17 @@ export class EmployeeRepository {
         return false;
       }
 
-      // Soft delete: cambiar status a Disabled
+      // Hard delete: eliminar empleado y usuario completamente
       await prisma.$transaction(async (tx) => {
-        await tx.employee.update({
-          where: { id: parseInt(id) },
-          data: { status: 'Disabled' }
+        // Primero eliminar el empleado
+        await tx.employee.delete({
+          where: { id: parseInt(id) }
         });
 
-        await tx.user.update({
-          where: { id: employee.userId },
-          data: { status: 'Inactive' }
+        // Luego eliminar el usuario (esto se hace automáticamente por onDelete: Cascade)
+        // Pero lo hacemos explícito para mayor claridad
+        await tx.user.delete({
+          where: { id: employee.userId }
         });
       });
 
