@@ -1,6 +1,7 @@
 import express from 'express';
 import { EmployeeController } from '../controllers/employees.controller.js';
 import { employeeValidators, handleValidationErrors } from '../validators/employee.validator.js';
+import { authenticateToken } from '../../../../middlewares/auth.js';
 
 const router = express.Router();
 const employeeController = new EmployeeController();
@@ -43,18 +44,12 @@ const employeeController = new EmployeeController();
  *           format: date-time
  *           description: Fecha de última actualización
  *           example: "2024-01-15T10:30:00Z"
- *         employeeTypeId:
- *           type: integer
- *           description: ID del tipo de empleado
- *           example: 1
  *         userId:
  *           type: integer
  *           description: ID del usuario asociado
  *           example: 1
  *         user:
  *           $ref: '#/components/schemas/User'
- *         employeeType:
- *           $ref: '#/components/schemas/EmployeeType'
  *     
  *     User:
  *       type: object
@@ -112,28 +107,7 @@ const employeeController = new EmployeeController();
  *         role:
  *           $ref: '#/components/schemas/Role'
  *     
- *     EmployeeType:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *           example: 1
- *         name:
- *           type: string
- *           example: "Administrador"
- *         description:
- *           type: string
- *           nullable: true
- *           example: "Personal administrativo"
- *         createdAt:
- *           type: string
- *           format: date-time
- *           example: "2024-01-15T10:30:00Z"
- *         updatedAt:
- *           type: string
- *           format: date-time
- *           example: "2024-01-15T10:30:00Z"
- *     
+
  *     DocumentType:
  *       type: object
  *       properties:
@@ -193,7 +167,6 @@ const employeeController = new EmployeeController();
  *         - identification
  *         - documentTypeId
  *         - birthDate
- *         - employeeTypeId
  *         - roleId
  *       properties:
  *         firstName:
@@ -255,11 +228,6 @@ const employeeController = new EmployeeController();
  *           format: date
  *           example: "1990-05-15"
  *           description: "Fecha de nacimiento (YYYY-MM-DD)"
- *         employeeTypeId:
- *           type: integer
- *           minimum: 1
- *           example: 1
- *           description: "ID del tipo de empleado"
  *         roleId:
  *           type: integer
  *           minimum: 1
@@ -330,10 +298,6 @@ const employeeController = new EmployeeController();
  *           type: string
  *           format: date
  *           example: "1990-05-15"
- *         employeeTypeId:
- *           type: integer
- *           minimum: 1
- *           example: 1
  *         roleId:
  *           type: integer
  *           minimum: 1
@@ -414,14 +378,25 @@ const employeeController = new EmployeeController();
  */
 
 // Rutas específicas PRIMERO (antes de rutas con parámetros)
-router.get('/stats', employeeController.getEmployeeStats);
-router.get('/reference-data', employeeController.getReferenceData);
+router.get('/stats', 
+  authenticateToken,
+  employeeController.getEmployeeStats
+);
+
+router.get('/reference-data', 
+  authenticateToken,
+  employeeController.getReferenceData
+);
+
 router.get('/check-email', 
+  authenticateToken,
   employeeValidators.checkEmail,
   handleValidationErrors,
   employeeController.checkEmailAvailability
 );
+
 router.get('/check-identification',
+  authenticateToken,
   employeeValidators.checkIdentification,
   handleValidationErrors,
   employeeController.checkIdentificationAvailability
@@ -429,12 +404,14 @@ router.get('/check-identification',
 
 // CRUD básico
 router.get('/',
+  authenticateToken,
   employeeValidators.getAll,
   handleValidationErrors,
   employeeController.getAllEmployees
 );
 
 router.post('/',
+  authenticateToken,
   employeeValidators.create,
   handleValidationErrors,
   employeeController.createEmployee
@@ -442,18 +419,21 @@ router.post('/',
 
 // Rutas con parámetros AL FINAL
 router.get('/:id',
+  authenticateToken,
   employeeValidators.getById,
   handleValidationErrors,
   employeeController.getEmployeeById
 );
 
 router.put('/:id',
+  authenticateToken,
   employeeValidators.update,
   handleValidationErrors,
   employeeController.updateEmployee
 );
 
 router.delete('/:id',
+  authenticateToken,
   employeeValidators.delete,
   handleValidationErrors,
   employeeController.deleteEmployee

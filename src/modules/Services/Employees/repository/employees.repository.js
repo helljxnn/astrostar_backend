@@ -2,18 +2,19 @@ import { PrismaClient } from '../../../../../generated/prisma/index.js';
 
 const prisma = new PrismaClient();
 
+
+
 export class EmployeeRepository {
   
   /**
    * Obtener todos los empleados con paginación y búsqueda
    */
-  async findAll({ page, limit, search, status, employeeTypeId }) {
+  async findAll({ page, limit, search, status }) {
     const skip = (page - 1) * limit;
 
     // Construir condiciones de búsqueda
     const where = {
       ...(status && { status }),
-      ...(employeeTypeId && { employeeTypeId: parseInt(employeeTypeId) }),
       ...(search && {
         OR: [
           { user: { firstName: { contains: search, mode: 'insensitive' } } },
@@ -36,8 +37,7 @@ export class EmployeeRepository {
               role: true,
               documentType: true
             }
-          },
-          employeeType: true
+          }
         },
         orderBy: { createdAt: 'desc' }
       }),
@@ -69,7 +69,6 @@ export class EmployeeRepository {
             documentType: true
           }
         },
-        employeeType: true,
         employeePermissions: {
           include: {
             permission: true
@@ -92,8 +91,7 @@ export class EmployeeRepository {
             role: true,
             documentType: true
           }
-        },
-        employeeType: true
+        }
       }
     });
   }
@@ -124,8 +122,7 @@ export class EmployeeRepository {
               role: true,
               documentType: true
             }
-          },
-          employeeType: true
+          }
         }
       });
 
@@ -156,8 +153,7 @@ export class EmployeeRepository {
               role: true,
               documentType: true
             }
-          },
-          employeeType: true
+          }
         }
       });
 
@@ -177,6 +173,13 @@ export class EmployeeRepository {
 
       if (!employee) {
         return false;
+      }
+
+      // Verificar si el empleado tiene estado "Active"
+      if (employee.status === 'Active') {
+        throw new Error(
+          `No se puede eliminar el empleado "${employee.user.firstName} ${employee.user.lastName}" porque tiene estado "Activo". Primero cambie el estado a "Deshabilitado" y luego inténtelo de nuevo.`
+        );
       }
 
       // Hard delete: eliminar empleado y usuario completamente
@@ -237,14 +240,7 @@ export class EmployeeRepository {
     return { total, active, disabled, onVacation, retired };
   }
 
-  /**
-   * Obtener tipos de empleado
-   */
-  async getEmployeeTypes() {
-    return await prisma.employeeType.findMany({
-      orderBy: { name: 'asc' }
-    });
-  }
+
 
   /**
    * Obtener roles disponibles para empleados

@@ -49,14 +49,8 @@ export const employeeValidators = {
     
     query('status')
       .optional()
-      .isIn(['Active', 'Disabled', 'OnVacation', 'Retired'])
-      .withMessage('El estado debe ser: Active, Disabled, OnVacation o Retired.'),
-    
-    query('employeeTypeId')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('El tipo de empleado debe ser un número entero válido.')
-      .toInt()
+      .isIn(['Activo', 'Licencia', 'Desvinculado', 'Fallecido'])
+      .withMessage('El estado debe ser: Activo, Licencia, Desvinculado o Fallecido.')
   ],
 
   /**
@@ -120,16 +114,18 @@ export const employeeValidators = {
       .toLowerCase(),
 
     body('phoneNumber')
-      .optional({ nullable: true })
-      .isMobilePhone('es-CO')
-      .withMessage('Debe proporcionar un número de teléfono colombiano válido.')
-      .isLength({ min: 10, max: 20 })
-      .withMessage('El teléfono debe tener entre 10 y 20 caracteres.'),
+      .notEmpty()
+      .withMessage('El número telefónico es obligatorio.')
+      .isLength({ min: 7, max: 20 })
+      .withMessage('El teléfono debe tener entre 7 y 20 caracteres.')
+      .matches(/^\+?[\d\s\-()]+$/)
+      .withMessage('El formato del teléfono no es válido.'),
 
     body('address')
-      .optional({ nullable: true })
-      .isLength({ max: 200 })
-      .withMessage('La dirección no puede exceder 200 caracteres.')
+      .notEmpty()
+      .withMessage('La dirección es obligatoria.')
+      .isLength({ min: 10, max: 200 })
+      .withMessage('La dirección debe tener entre 10 y 200 caracteres.')
       .trim(),
 
     // Identificación
@@ -172,13 +168,6 @@ export const employeeValidators = {
       }),
 
     // Datos de empleado
-    body('employeeTypeId')
-      .notEmpty()
-      .withMessage('El tipo de empleado es obligatorio.')
-      .isInt({ min: 1 })
-      .withMessage('Debe seleccionar un tipo de empleado válido.')
-      .toInt(),
-
     body('roleId')
       .notEmpty()
       .withMessage('El rol es obligatorio.')
@@ -188,8 +177,8 @@ export const employeeValidators = {
 
     body('status')
       .optional()
-      .isIn(['Active', 'Disabled', 'OnVacation', 'Retired'])
-      .withMessage('El estado debe ser: Active, Disabled, OnVacation o Retired.'),
+      .isIn(['Activo', 'Licencia', 'Desvinculado', 'Fallecido'])
+      .withMessage('El estado debe ser: Activo, Licencia, Desvinculado o Fallecido.'),
 
     // Contraseña temporal (opcional)
     body('temporaryPassword')
@@ -252,16 +241,16 @@ export const employeeValidators = {
       .toLowerCase(),
 
     body('phoneNumber')
-      .optional({ nullable: true })
-      .isMobilePhone('es-CO')
-      .withMessage('Debe proporcionar un número de teléfono colombiano válido.')
-      .isLength({ min: 10, max: 20 })
-      .withMessage('El teléfono debe tener entre 10 y 20 caracteres.'),
+      .optional()
+      .isLength({ min: 7, max: 20 })
+      .withMessage('El teléfono debe tener entre 7 y 20 caracteres.')
+      .matches(/^\+?[\d\s\-()]+$/)
+      .withMessage('El formato del teléfono no es válido.'),
 
     body('address')
-      .optional({ nullable: true })
-      .isLength({ max: 200 })
-      .withMessage('La dirección no puede exceder 200 caracteres.')
+      .optional()
+      .isLength({ min: 10, max: 200 })
+      .withMessage('La dirección debe tener entre 10 y 200 caracteres.')
       .trim(),
 
     body('identification')
@@ -298,12 +287,6 @@ export const employeeValidators = {
         return true;
       }),
 
-    body('employeeTypeId')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Debe seleccionar un tipo de empleado válido.')
-      .toInt(),
-
     body('roleId')
       .optional()
       .isInt({ min: 1 })
@@ -312,8 +295,8 @@ export const employeeValidators = {
 
     body('status')
       .optional()
-      .isIn(['Active', 'Disabled', 'OnVacation', 'Retired'])
-      .withMessage('El estado debe ser: Active, Disabled, OnVacation o Retired.')
+      .isIn(['Activo', 'Licencia', 'Desvinculado', 'Fallecido'])
+      .withMessage('El estado debe ser: Activo, Licencia, Desvinculado o Fallecido.')
   ],
 
   /**

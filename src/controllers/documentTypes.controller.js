@@ -4,8 +4,6 @@ import prisma from '../config/database.js';
 class DocumentTypesController {
   async getDocumentTypes(req, res) {
     try {
-      console.log('📋 Obteniendo tipos de documento...');
-      
       const documentTypes = await prisma.documentType.findMany({
         select: {
           id: true,
@@ -14,8 +12,6 @@ class DocumentTypesController {
         },
         orderBy: { name: 'asc' }
       });
-
-      console.log('✅ Tipos encontrados:', documentTypes.length);
 
       // Mapear para el frontend
       const mappedTypes = documentTypes.map(docType => {
