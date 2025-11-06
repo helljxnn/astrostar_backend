@@ -268,22 +268,24 @@ model Inscription {
 model TemporaryPerson {
   id             Int                   @id @default(autoincrement())
   firstName      String
+  middleName     String?
   lastName       String
-  identification String?
-  email          String?
-  phone          String?
-  birthDate      DateTime?
+  secondLastName String?
+  identification String
+  email          String
+  phone          String
+  birthDate      DateTime
   age            Int?
-  address        String?
+  address        String
   team           String?
   category       String?
   status         TemporaryPersonStatus @default(Active)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
-  documentTypeId Int?
+  documentTypeId Int
   personType     TemporaryPersonType   @default(Participante)
   teamMembers    TeamMember[]
-  documentType   DocumentType?         @relation(fields: [documentTypeId], references: [id])
+  documentType   DocumentType          @relation(fields: [documentTypeId], references: [id])
 
   @@map("temporary_persons")
 }

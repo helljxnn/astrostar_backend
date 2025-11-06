@@ -1,4 +1,15 @@
 import { TemporaryWorkersService } from './temporaryworkers.service.js';
+import {
+  validateCreateTemporaryPerson,
+  validateUpdateTemporaryPerson,
+  validateGetTemporaryPersonById,
+  validateDeleteTemporaryPerson,
+  validateQueryParams,
+  validateCheckIdentification,
+  validateCheckEmail,
+  validateRequiredFields,
+  validateBusinessLogic
+} from '../../../middlewares/temporaryPersonValidation.js';
 
 /**
  * @swagger
@@ -203,12 +214,15 @@ export class TemporaryWorkersController {
   createTemporaryWorker = async (req, res) => {
     try {
       const workerData = req.body;
+      const warnings = req.validationWarnings || [];
+      
       const result = await this.temporaryWorkersService.createTemporaryWorker(workerData);
 
       res.status(201).json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
+        warnings: warnings.length > 0 ? warnings : undefined
       });
     } catch (error) {
       console.error('Error creating temporary worker:', error);
@@ -283,6 +297,7 @@ export class TemporaryWorkersController {
     try {
       const { id } = req.params;
       const updateData = req.body;
+      const warnings = req.validationWarnings || [];
       
       const result = await this.temporaryWorkersService.updateTemporaryWorker(id, updateData);
 
@@ -296,7 +311,8 @@ export class TemporaryWorkersController {
       res.json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
+        warnings: warnings.length > 0 ? warnings : undefined
       });
     } catch (error) {
       console.error('Error updating temporary worker:', error);

@@ -7,20 +7,28 @@ import {
   deleteValidation,
   queryValidation,
   checkAvailabilityValidation,
+  checkIdentificationValidation,
+  checkEmailValidation,
   handleValidationErrors
 } from './validators/temporaryworkers.validators.js';
+import {
+  validateTemporaryPersonBusinessLogic,
+  validateTemporaryPersonDeletion,
+  validateCriticalUpdates,
+  sanitizeTemporaryPersonData
+} from '../../../middlewares/businessValidation.js';
 
 const router = express.Router();
 const temporaryWorkersController = new TemporaryWorkersController();
 
 // Rutas de verificación (deben ir antes de las rutas con parámetros)
 router.get('/check-identification', 
-  checkAvailabilityValidation, 
+  checkIdentificationValidation, 
   handleValidationErrors, 
   temporaryWorkersController.checkIdentificationAvailability
 );
 router.get('/check-email', 
-  checkAvailabilityValidation, 
+  checkEmailValidation, 
   handleValidationErrors, 
   temporaryWorkersController.checkEmailAvailability
 );
@@ -41,18 +49,24 @@ router.get('/:id',
   temporaryWorkersController.getTemporaryWorkerById
 );
 router.post('/', 
+  sanitizeTemporaryPersonData,
   createTemporaryWorkerValidation, 
-  handleValidationErrors, 
+  handleValidationErrors,
+  validateTemporaryPersonBusinessLogic,
   temporaryWorkersController.createTemporaryWorker
 );
 router.put('/:id', 
+  sanitizeTemporaryPersonData,
   updateTemporaryWorkerValidation, 
-  handleValidationErrors, 
+  handleValidationErrors,
+  validateCriticalUpdates,
+  validateTemporaryPersonBusinessLogic,
   temporaryWorkersController.updateTemporaryWorker
 );
 router.delete('/:id', 
   deleteValidation, 
-  handleValidationErrors, 
+  handleValidationErrors,
+  validateTemporaryPersonDeletion,
   temporaryWorkersController.deleteTemporaryWorker
 );
 

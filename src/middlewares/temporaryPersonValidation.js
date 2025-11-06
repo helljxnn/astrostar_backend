@@ -1,7 +1,35 @@
+/**
+ * Middleware de validación para Personas Temporales
+ * Valida todos los campos de entrada para operaciones CRUD
+ */
+
 import { body, param, query, validationResult } from 'express-validator';
 
-// Validaciones para crear persona temporal
-export const createTemporaryWorkerValidation = [
+/**
+ * Middleware para manejar errores de validación
+ */
+export const handleValidationErrors = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const errorMessages = errors.array().map(error => ({
+      field: error.path,
+      message: error.msg,
+      value: error.value
+    }));
+
+    return res.status(400).json({
+      success: false,
+      message: 'Errores de validación en los datos enviados.',
+      errors: errorMessages
+    });
+  }
+  next();
+};
+
+/**
+ * Validaciones para crear persona temporal
+ */
+export const validateCreateTemporaryPerson = [
   // Nombre - Requerido
   body('firstName')
     .notEmpty()
@@ -114,10 +142,14 @@ export const createTemporaryWorkerValidation = [
     .optional()
     .isIn(['Active', 'Inactive'])
     .withMessage('El estado debe ser Active o Inactive'),
+
+  handleValidationErrors
 ];
 
-// Validaciones para actualizar persona temporal
-export const updateTemporaryWorkerValidation = [
+/**
+ * Validaciones para actualizar persona temporal
+ */
+export const validateUpdateTemporaryPerson = [
   // ID en parámetros
   param('id')
     .isInt({ min: 1 })
@@ -220,24 +252,36 @@ export const updateTemporaryWorkerValidation = [
     .optional()
     .isIn(['Active', 'Inactive'])
     .withMessage('El estado debe ser Active o Inactive'),
+
+  handleValidationErrors
 ];
 
-// Validaciones para obtener por ID
-export const getByIdValidation = [
+/**
+ * Validaciones para obtener persona temporal por ID
+ */
+export const validateGetTemporaryPersonById = [
   param('id')
     .isInt({ min: 1 })
     .withMessage('El ID debe ser un número entero positivo'),
+
+  handleValidationErrors
 ];
 
-// Validaciones para eliminar
-export const deleteValidation = [
+/**
+ * Validaciones para eliminar persona temporal
+ */
+export const validateDeleteTemporaryPerson = [
   param('id')
     .isInt({ min: 1 })
     .withMessage('El ID debe ser un número entero positivo'),
+
+  handleValidationErrors
 ];
 
-// Validaciones para consultas
-export const queryValidation = [
+/**
+ * Validaciones para parámetros de consulta (filtros y paginación)
+ */
+export const validateQueryParams = [
   query('page')
     .optional()
     .isInt({ min: 1 })
@@ -251,7 +295,8 @@ export const queryValidation = [
   query('search')
     .optional()
     .isLength({ max: 100 })
-    .withMessage('La búsqueda no puede exceder 100 caracteres'),
+    .withMessage('El término de búsqueda no puede exceder 100 caracteres')
+    .trim(),
 
   query('status')
     .optional()
@@ -261,11 +306,15 @@ export const queryValidation = [
   query('personType')
     .optional()
     .isIn(['Deportista', 'Entrenador', 'Participante'])
-    .withMessage('El tipo de persona debe ser Deportista, Entrenador o Participante'),
+    .withMessage('El tipo de persona debe ser: Deportista, Entrenador o Participante'),
+
+  handleValidationErrors
 ];
 
-// Validaciones para verificar disponibilidad de identificación
-export const checkIdentificationValidation = [
+/**
+ * Validaciones para verificar disponibilidad de identificación
+ */
+export const validateCheckIdentification = [
   query('identification')
     .notEmpty()
     .withMessage('La identificación es requerida')
@@ -279,10 +328,14 @@ export const checkIdentificationValidation = [
     .optional()
     .isInt({ min: 1 })
     .withMessage('El ID a excluir debe ser un número entero positivo'),
+
+  handleValidationErrors
 ];
 
-// Validaciones para verificar disponibilidad de email
-export const checkEmailValidation = [
+/**
+ * Validaciones para verificar disponibilidad de email
+ */
+export const validateCheckEmail = [
   query('email')
     .notEmpty()
     .withMessage('El email es requerido')
@@ -296,45 +349,82 @@ export const checkEmailValidation = [
     .optional()
     .isInt({ min: 1 })
     .withMessage('El ID a excluir debe ser un número entero positivo'),
+
+  handleValidationErrors
 ];
 
-// Validaciones generales para verificar disponibilidad (compatibilidad)
-export const checkAvailabilityValidation = [
-  query('identification')
-    .optional()
-    .isLength({ min: 6, max: 50 })
-    .withMessage('La identificación debe tener entre 6 y 50 caracteres')
-    .matches(/^[a-zA-Z0-9\-]+$/)
-    .withMessage('La identificación solo puede contener letras, números y guiones')
-    .trim(),
+/**
+ * Validación personalizada para verificar que los campos requeridos estén presentes
+ */
+export const validateRequiredFields = (req, res, next) => {
+  const { firstName, lastName, personType } = req.body;
 
-  query('email')
-    .optional()
-    .isEmail()
-    .withMessage('El email debe tener un formato válido')
-    .isLength({ max: 150 })
-    .withMessage('El email no puede exceder 150 caracteres')
-    .normalizeEmail(),
+  const missingFields = [];
+  if (!firstName || !firstName.trim()) missingFields.push('firstName (nombre)');
+  if (!lastName || !lastName.trim()) missingFields.push('lastName (apellido)');
+  if (!personType) missingFields.push('personType (tipo de persona)');
 
-  query('excludeId')
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage('El ID a excluir debe ser un número entero positivo'),
-];
-
-// Middleware para manejar errores de validación
-export const handleValidationErrors = (req, res, next) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
+  if (missingFields.length > 0) {
     return res.status(400).json({
       success: false,
-      message: 'Errores de validación',
-      errors: errors.array().map(error => ({
-        field: error.path,
-        message: error.msg,
-        value: error.value
-      }))
+      message: `Los siguientes campos son requeridos: ${missingFields.join(', ')}`,
+      missingFields
     });
   }
+
   next();
 };
+
+/**
+ * Validación de lógica de negocio específica
+ */
+export const validateBusinessLogic = (req, res, next) => {
+  const { personType, team, category, birthDate, age } = req.body;
+
+  // Validar que deportistas y entrenadores tengan equipo y categoría si se proporcionan
+  if (personType === 'Deportista' || personType === 'Entrenador') {
+    // No es obligatorio, pero si se proporciona debe ser válido
+    if (team && team.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Si se especifica un equipo, no puede estar vacío'
+      });
+    }
+    
+    if (category && category.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Si se especifica una categoría, no puede estar vacía'
+      });
+    }
+  }
+
+  // Validar coherencia entre fecha de nacimiento y edad
+  if (birthDate && age) {
+    const calculatedAge = calculateAge(birthDate);
+    if (Math.abs(calculatedAge - parseInt(age)) > 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'La edad proporcionada no coincide con la fecha de nacimiento'
+      });
+    }
+  }
+
+  next();
+};
+
+/**
+ * Función auxiliar para calcular edad
+ */
+function calculateAge(birthDate) {
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+
+  return age >= 0 ? age : 0;
+}

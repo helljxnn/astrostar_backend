@@ -48,8 +48,17 @@ export class TemporaryWorkersService {
    */
   async createTemporaryWorker(data) {
     try {
+      // Validar campos requeridos
+      this.validateRequiredFields(data);
+
+      // Validar formato de datos
+      this.validateDataFormats(data);
+
       // Validar datos únicos
       await this.validateUniqueFields(data);
+
+      // Validar lógica de negocio
+      this.validateBusinessRules(data);
 
       // Calcular edad si se proporciona fecha de nacimiento
       if (data.birthDate) {
@@ -87,8 +96,14 @@ export class TemporaryWorkersService {
         };
       }
 
+      // Validar formato de datos (solo los campos que se están actualizando)
+      this.validateDataFormats(data, false);
+
       // Validar datos únicos (excluyendo el registro actual)
       await this.validateUniqueFields(data, id);
+
+      // Validar lógica de negocio
+      this.validateBusinessRules(data, existing);
 
       // Calcular edad si se proporciona fecha de nacimiento
       if (data.birthDate) {
@@ -256,22 +271,228 @@ export class TemporaryWorkersService {
   }
 
   /**
+   * Validar campos requeridos
+   */
+  validateRequiredFields(data) {
+    const errors = [];
+
+    if (!data.firstName || !data.firstName.trim()) {
+      errors.push('El nombre es requerido');
+    }
+
+    if (!data.lastName || !data.lastName.trim()) {
+      errors.push('El apellido es requerido');
+    }
+
+    if (!data.personType) {
+      errors.push('El tipo de persona es requerido');
+    }
+
+    if (errors.length > 0) {
+      throw new Error(errors.join('. '));
+    }
+  }
+
+  /**
+   * Validar formato de datos
+   */
+  validateDataFormats(data, isCreate = true) {
+    const errors = [];
+
+    // Validar nombre
+    if (data.firstName !== undefined) {
+      if (typeof data.firstName !== 'string' || data.firstName.length < 2 || data.firstName.length > 100) {
+        errors.push('El nombre debe tener entre 2 y 100 caracteres');
+      }
+      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(data.firstName)) {
+        errors.push('El nombre solo puede contener letras y espacios');
+      }
+    }
+
+    // Validar apellido
+    if (data.lastName !== undefined) {
+      if (typeof data.lastName !== 'string' || data.lastName.length < 2 || data.lastName.length > 100) {
+        errors.push('El apellido debe tener entre 2 y 100 caracteres');
+      }
+      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(data.lastName)) {
+        errors.push('El apellido solo puede contener letras y espacios');
+      }
+    }
+
+    // Validar tipo de persona
+    if (data.personType !== undefined) {
+      const validTypes = ['Deportista', 'Entrenador', 'Participante'];
+      if (!validTypes.includes(data.personType)) {
+        errors.push('El tipo de persona debe ser: Deportista, Entrenador o Participante');
+      }
+    }
+
+    // Validar identificación
+    if (data.identification !== undefined && data.identification !== null && data.identification !== '') {
+      if (typeof data.identification !== 'string' || data.identification.length < 6 || data.identification.length > 50) {
+        errors.push('La identificación debe tener entre 6 y 50 caracteres');
+      }
+      if (!/^[a-zA-Z0-9\-]+$/.test(data.identification)) {
+        errors.push('La identificación solo puede contener letras, números y guiones');
+      }
+    }
+
+    // Validar email
+    if (data.email !== undefined && data.email !== null && data.email !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(data.email)) {
+        errors.push('El formato del email no es válido');
+      }
+      if (data.email.length > 150) {
+        errors.push('El email no puede exceder 150 caracteres');
+      }
+    }
+
+    // Validar teléfono
+    if (data.phone !== undefined && data.phone !== null && data.phone !== '') {
+      if (!/^[0-9\s\-\+\(\)]+$/.test(data.phone)) {
+        errors.push('El teléfono solo puede contener números, espacios, guiones, paréntesis y el signo +');
+      }
+      if (data.phone.length < 7 || data.phone.length > 20) {
+        errors.push('El teléfono debe tener entre 7 y 20 caracteres');
+      }
+    }
+
+    // Validar fecha de nacimiento
+    if (data.birthDate !== undefined && data.birthDate !== null && data.birthDate !== '') {
+      const birthDate = new Date(data.birthDate);
+      if (isNaN(birthDate.getTime())) {
+        errors.push('La fecha de nacimiento debe tener un formato válido');
+      } else {
+        const today = new Date();
+        const minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate());
+        const maxDate = new Date(today.getFullYear() - 5, today.getMonth(), today.getDate());
+
+        if (birthDate < minDate) {
+          errors.push('La fecha de nacimiento no puede ser anterior a 120 años');
+        }
+        if (birthDate > maxDate) {
+          errors.push('La persona debe tener al menos 5 años de edad');
+        }
+      }
+    }
+
+    // Validar edad
+    if (data.age !== undefined && data.age !== null) {
+      const age = parseInt(data.age);
+      if (isNaN(age) || age < 5 || age > 120) {
+        errors.push('La edad debe estar entre 5 y 120 años');
+      }
+    }
+
+    // Validar dirección
+    if (data.address !== undefined && data.address !== null && data.address !== '') {
+      if (data.address.length > 200) {
+        errors.push('La dirección no puede exceder 200 caracteres');
+      }
+    }
+
+    // Validar equipo
+    if (data.team !== undefined && data.team !== null && data.team !== '') {
+      if (data.team.length > 100) {
+        errors.push('El nombre del equipo no puede exceder 100 caracteres');
+      }
+    }
+
+    // Validar categoría
+    if (data.category !== undefined && data.category !== null && data.category !== '') {
+      if (data.category.length > 100) {
+        errors.push('La categoría no puede exceder 100 caracteres');
+      }
+    }
+
+    // Validar estado
+    if (data.status !== undefined) {
+      const validStatuses = ['Active', 'Inactive'];
+      if (!validStatuses.includes(data.status)) {
+        errors.push('El estado debe ser Active o Inactive');
+      }
+    }
+
+    // Validar tipo de documento
+    if (data.documentTypeId !== undefined && data.documentTypeId !== null) {
+      const docTypeId = parseInt(data.documentTypeId);
+      if (isNaN(docTypeId) || docTypeId < 1) {
+        errors.push('El tipo de documento debe ser un número válido');
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(errors.join('. '));
+    }
+  }
+
+  /**
+   * Validar reglas de negocio
+   */
+  validateBusinessRules(data, existingData = null) {
+    const errors = [];
+
+    // Obtener datos actuales (para actualizaciones)
+    const currentPersonType = data.personType || (existingData ? existingData.personType : null);
+    const currentTeam = data.team !== undefined ? data.team : (existingData ? existingData.team : null);
+    const currentCategory = data.category !== undefined ? data.category : (existingData ? existingData.category : null);
+
+    // Validar coherencia entre fecha de nacimiento y edad
+    if (data.birthDate && data.age) {
+      const calculatedAge = this.calculateAge(data.birthDate);
+      if (Math.abs(calculatedAge - parseInt(data.age)) > 1) {
+        errors.push('La edad proporcionada no coincide con la fecha de nacimiento');
+      }
+    }
+
+    // Validar que si se especifica equipo o categoría, no estén vacíos
+    if (currentTeam !== null && currentTeam !== undefined && currentTeam.trim() === '') {
+      errors.push('Si se especifica un equipo, no puede estar vacío');
+    }
+
+    if (currentCategory !== null && currentCategory !== undefined && currentCategory.trim() === '') {
+      errors.push('Si se especifica una categoría, no puede estar vacía');
+    }
+
+    // Validar que deportistas y entrenadores menores de edad tengan información adicional
+    if ((currentPersonType === 'Deportista' || currentPersonType === 'Entrenador')) {
+      const age = data.age || (existingData ? existingData.age : null);
+      const birthDate = data.birthDate || (existingData ? existingData.birthDate : null);
+      
+      let calculatedAge = age;
+      if (birthDate && !age) {
+        calculatedAge = this.calculateAge(birthDate);
+      }
+
+      if (calculatedAge && calculatedAge < 18) {
+        // Para menores de edad deportistas/entrenadores, se recomienda tener más información
+        // Esto es solo una advertencia, no un error bloqueante
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(errors.join('. '));
+    }
+  }
+
+  /**
    * Mapear campos del frontend al backend
    */
   mapFrontendToBackend(frontendData) {
     const backendData = {};
 
     // Mapeo de campos
-    if (frontendData.firstName) backendData.firstName = frontendData.firstName;
-    if (frontendData.lastName) backendData.lastName = frontendData.lastName;
-    if (frontendData.identification) backendData.identification = frontendData.identification;
-    if (frontendData.email) backendData.email = frontendData.email;
-    if (frontendData.phone) backendData.phone = frontendData.phone;
+    if (frontendData.firstName) backendData.firstName = frontendData.firstName.trim();
+    if (frontendData.lastName) backendData.lastName = frontendData.lastName.trim();
+    if (frontendData.identification) backendData.identification = frontendData.identification.trim();
+    if (frontendData.email) backendData.email = frontendData.email.toLowerCase().trim();
+    if (frontendData.phone) backendData.phone = frontendData.phone.trim();
     if (frontendData.birthDate) backendData.birthDate = new Date(frontendData.birthDate);
     if (frontendData.age !== undefined) backendData.age = parseInt(frontendData.age);
-    if (frontendData.address) backendData.address = frontendData.address;
-    if (frontendData.team !== undefined) backendData.team = frontendData.team;
-    if (frontendData.category !== undefined) backendData.category = frontendData.category;
+    if (frontendData.address) backendData.address = frontendData.address.trim();
+    if (frontendData.team !== undefined) backendData.team = frontendData.team ? frontendData.team.trim() : null;
+    if (frontendData.category !== undefined) backendData.category = frontendData.category ? frontendData.category.trim() : null;
     if (frontendData.status) backendData.status = frontendData.status;
     if (frontendData.documentTypeId) backendData.documentTypeId = parseInt(frontendData.documentTypeId);
     if (frontendData.personType) backendData.personType = frontendData.personType;
