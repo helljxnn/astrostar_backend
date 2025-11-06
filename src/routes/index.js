@@ -6,6 +6,7 @@ import providerRoutes from '../modules/Providers/routes/providers.routes.js'
 import documentTypesRoutes from './documentTypes.routes.js';
 import testEmailRoutes from './testEmail.js';
 import authRoutes from '../modules/Auth/routes/auth.routes.js';
+import sportsEquipmentRoutes from '../modules/SportsEquipment/routes/sportsEquipment.routes.js';
 import { authenticateToken } from '../middlewares/checkToken.js';
 
 const router = express.Router();
@@ -22,7 +23,9 @@ router.use('/roles', authenticateToken, roleRoutes);
 router.use('/employees', authenticateToken, employeeRoutes);
 router.use('/users', authenticateToken, usersRoutes); 
 router.use('/providers', authenticateToken, providerRoutes);
-router.use('/document-types', authenticateToken, documentTypesRoutes);  
+router.use('/document-types', authenticateToken, documentTypesRoutes); 
+router.use('/sportsEquipment', authenticateToken, sportsEquipmentRoutes);
+ 
 
 
 // Test routes (only in development)

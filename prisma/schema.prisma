@@ -404,18 +404,22 @@ model Purchase {
 }
 
 model PurchaseItem {
-  id          Int      @id @default(autoincrement())
-  productName String   @db.VarChar(200)
-  description String?
-  quantity    Int
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  subtotal    Decimal  @db.Decimal(12, 2)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  purchaseId  Int
-  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  id                  Int             @id @default(autoincrement())
+  productName         String          @db.VarChar(200)
+  description         String?
+  quantity            Int
+  unitPrice           Decimal         @db.Decimal(10, 2)
+  subtotal            Decimal         @db.Decimal(12, 2)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  purchaseId          Int
+  purchase            Purchase        @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  sportsEquipmentId   Int
+  sportsEquipment     SportsEquipment @relation(fields: [sportsEquipmentId], references: [id], onDelete: Cascade)
+
 
   @@index([purchaseId])
+  @@index([sportsEquipmentId])
   @@map("purchase_items")
 }
 
@@ -522,4 +526,50 @@ enum PurchaseStatus {
   Received
   Partial
   Cancelled
+}
+
+model SportsEquipment{
+  id                  Int                     @id @default(autoincrement())
+  name                String                  @db.VarChar(200)
+  quantityInitial     Int                     @default(0)
+  quantityTotal       Int                     @default(0)
+  status              SportsEquipmentStatus   @default(Activated)
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  disposals           SportsDisposals[]
+  purchases_item      PurchaseItem[]
+
+  @@index([status])
+  @@map("sports_equipment")
+}
+
+enum SportsEquipmentStatus{
+  Activated
+  Disabled
+  SoldOut
+}
+
+model SportsDisposals{
+  id                  Int                     @id @default(autoincrement())
+  quantity            Int
+  reason              SportsDisposalsStatus   @default(other)
+  observation         String?
+  imageUrlOne         String?
+  imageUrlSecond      String?
+  imageUrlThirth      String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  sportsEquipmentId   Int
+  sportsEquipment     SportsEquipment @relation(fields: [sportsEquipmentId], references: [id], onDelete: Cascade)
+
+  @@index([sportsEquipmentId])
+  @@map("sports_disposals")
+}
+
+enum SportsDisposalsStatus{
+  damaged
+  lost
+  stolen
+  obsolete
+  other
 }

@@ -81,7 +81,7 @@ class Auth {
         httpOnly: true,
         secure: process.env.NODE_ENV == "production",
         sameSite: "strict",
-        maxAge: 15 * 60 * 1000, // 15 minutos
+        maxAge: 60 * 60 * 1000, // 1 hora
       });
 
       // Devolver el accessToken en la respuesta JSON
