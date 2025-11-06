@@ -1,5 +1,15 @@
-// Aqui es donde se cargan datos iniciales en esas tablas (por ejemplo, los tipos de documento por defecto).
-import { PrismaClient } from '../generated/prisma/index.js';
+/**
+ * SEED DE DATOS MAESTROS DEL SISTEMA ASTROSTAR
+ *
+ * Este archivo carga los datos esenciales que el sistema necesita para funcionar:
+ * - Tipos de documento (obligatorios para usuarios)
+ * - Rol de Administrador (crítico para acceso inicial)
+ *
+ * Estos datos son considerados "maestros" y no deben ser modificados por usuarios finales.
+ * Se ejecuta automáticamente en la inicialización de la base de datos.
+ */
+
+import { PrismaClient } from "../generated/prisma/index.js";
 const prisma = new PrismaClient();
 
 async function main() {
@@ -44,23 +54,12 @@ async function main() {
     skipDuplicates: true,
   });
 
-  // Seed employee types
-  await prisma.employeeType.createMany({
-    data: [
-      { name: 'Administrador', description: 'Personal administrativo y de gestión' },
-      { name: 'Entrenador', description: 'Entrenadores deportivos y técnicos' },
-      { name: 'Instructor', description: 'Instructores de actividades específicas' },
-      { name: 'Coordinador', description: 'Coordinadores de programas y eventos' },
-      { name: 'Auxiliar', description: 'Personal auxiliar y de apoyo' },
-      { name: 'Mantenimiento', description: 'Personal de mantenimiento y servicios generales' },
-      { name: 'Seguridad', description: 'Personal de seguridad y vigilancia' }
-    ],
-    skipDuplicates: true,
-  });
 
-  // Solo crear rol de Administrador (crítico para el sistema)
-  await prisma.role.upsert({
-    where: { name: 'Administrador' },
+
+  // ROL DE ADMINISTRADOR (CRÍTICO PARA EL SISTEMA)
+  console.log("👑 Configurando rol de Administrador...");
+  const adminRole = await prisma.role.upsert({
+    where: { name: "Administrador" },
     update: {}, // No actualizar si ya existe
     create: {
       name: "Administrador",
@@ -150,9 +149,15 @@ async function main() {
     },
   });
 
-  console.log('✅ Document types seeded successfully!');
-  console.log('✅ Employee types seeded successfully!');
-  console.log('✅ Administrator role ensured!');
+  console.log(`   ✓ ${adminRole.name} configurado correctamente\n`);
+
+  console.log("🎉 Seed completado exitosamente!");
+  console.log("📊 Resumen:");
+  console.log("   • Tipos de documento: Configurados");
+  console.log("   • Rol Administrador: Listo para usar");
+  console.log(
+    "\n💡 El sistema está listo para crear el primer usuario administrador."
+  );
 }
 
 main()

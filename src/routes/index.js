@@ -1,4 +1,5 @@
 import express from 'express';
+import authRoutes from '../modules/Auth/routes/auth.routes.js';
 import roleRoutes from '../modules/Roles/routes/roles.routes.js';
 import employeeRoutes from '../modules/Services/Employees/routes/employees.routes.js';
 import usersRoutes from '../modules/Users/routes/users.routes.js';
@@ -39,7 +40,7 @@ router.get('/health', (req, res) => {
     success: true,
     message: 'API is running!',
     timestamp: new Date().toISOString(),
-    modules: ['Roles', 'Employees', 'Users','Providers', 'DocumentTypes']  
+    modules: ['Auth', 'Roles', 'Employees', 'Users','Providers', 'DocumentTypes']  
   });
 });
 
