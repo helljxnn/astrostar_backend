@@ -275,7 +275,8 @@ model TemporaryPerson {
   birthDate      DateTime?
   age            Int?
   address        String?
-  organization   String?
+  team           String?
+  category       String?
   status         TemporaryPersonStatus @default(Active)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt

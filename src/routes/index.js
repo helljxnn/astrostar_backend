@@ -4,6 +4,7 @@ import roleRoutes from '../modules/Roles/routes/roles.routes.js';
 import employeeRoutes from '../modules/Services/Employees/routes/employees.routes.js';
 import usersRoutes from '../modules/Users/routes/users.routes.js';
 import providerRoutes from '../modules/Providers/routes/providers.routes.js'
+import temporaryWorkersRoutes from '../modules/Athletes/TemporaryWorkers/temporaryworkers.routes.js';
 import documentTypesRoutes from './documentTypes.routes.js';
 import testEmailRoutes from './testEmail.js';
 
@@ -15,6 +16,7 @@ router.use('/roles', roleRoutes);
 router.use('/employees', employeeRoutes);
 router.use('/users', usersRoutes); 
 router.use('/providers', providerRoutes);
+router.use('/temporary-workers', temporaryWorkersRoutes);
 router.use('/document-types', documentTypesRoutes);  
 
 
@@ -30,7 +32,7 @@ router.get('/health', (req, res) => {
     success: true,
     message: 'API is running!',
     timestamp: new Date().toISOString(),
-    modules: ['Auth', 'Roles', 'Employees', 'Users','Providers', 'DocumentTypes']  
+    modules: ['Auth', 'Roles', 'Employees', 'Users','Providers', 'TemporaryWorkers', 'DocumentTypes']  
   });
 });
 
