@@ -1,6 +1,6 @@
 import express from "express";
 import { Auth } from "../controllers/login.controller.js";
-import { authenticateToken } from "../../../middlewares/checkToken.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
 
 const router = express.Router();
 const AuthController = new Auth();
