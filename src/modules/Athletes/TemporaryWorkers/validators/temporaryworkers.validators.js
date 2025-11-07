@@ -2,24 +2,42 @@ import { body, param, query, validationResult } from 'express-validator';
 
 // Validaciones para crear persona temporal
 export const createTemporaryWorkerValidation = [
-  // Nombre - Requerido
+  // Primer Nombre - Requerido
   body('firstName')
     .notEmpty()
-    .withMessage('El nombre es requerido')
+    .withMessage('El primer nombre es requerido')
     .isLength({ min: 2, max: 100 })
-    .withMessage('El nombre debe tener entre 2 y 100 caracteres')
+    .withMessage('El primer nombre debe tener entre 2 y 100 caracteres')
     .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
-    .withMessage('El nombre solo puede contener letras y espacios')
+    .withMessage('El primer nombre solo puede contener letras y espacios')
     .trim(),
 
-  // Apellido - Requerido
+  // Segundo Nombre - Opcional
+  body('middleName')
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 2, max: 100 })
+    .withMessage('El segundo nombre debe tener entre 2 y 100 caracteres')
+    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+    .withMessage('El segundo nombre solo puede contener letras y espacios')
+    .trim(),
+
+  // Primer Apellido - Requerido
   body('lastName')
     .notEmpty()
-    .withMessage('El apellido es requerido')
+    .withMessage('El primer apellido es requerido')
     .isLength({ min: 2, max: 100 })
-    .withMessage('El apellido debe tener entre 2 y 100 caracteres')
+    .withMessage('El primer apellido debe tener entre 2 y 100 caracteres')
     .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
-    .withMessage('El apellido solo puede contener letras y espacios')
+    .withMessage('El primer apellido solo puede contener letras y espacios')
+    .trim(),
+
+  // Segundo Apellido - Opcional
+  body('secondLastName')
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 2, max: 100 })
+    .withMessage('El segundo apellido debe tener entre 2 y 100 caracteres')
+    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+    .withMessage('El segundo apellido solo puede contener letras y espacios')
     .trim(),
 
   // Tipo de persona - Requerido
@@ -29,36 +47,40 @@ export const createTemporaryWorkerValidation = [
     .isIn(['Deportista', 'Entrenador', 'Participante'])
     .withMessage('El tipo de persona debe ser: Deportista, Entrenador o Participante'),
 
-  // Identificación - Opcional pero con validaciones si se proporciona
+  // Identificación - Requerido
   body('identification')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('La identificación es requerida')
     .isLength({ min: 6, max: 50 })
     .withMessage('La identificación debe tener entre 6 y 50 caracteres')
     .matches(/^[a-zA-Z0-9\-]+$/)
     .withMessage('La identificación solo puede contener letras, números y guiones')
     .trim(),
 
-  // Email - Opcional pero con validaciones si se proporciona
+  // Email - Requerido
   body('email')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('El email es requerido')
     .isEmail()
     .withMessage('El formato del email no es válido')
     .isLength({ max: 150 })
     .withMessage('El email no puede exceder 150 caracteres')
     .normalizeEmail(),
 
-  // Teléfono - Opcional pero con validaciones si se proporciona
+  // Teléfono - Requerido
   body('phone')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('El teléfono es requerido')
     .matches(/^[0-9\s\-\+\(\)]+$/)
     .withMessage('El teléfono solo puede contener números, espacios, guiones, paréntesis y el signo +')
     .isLength({ min: 7, max: 20 })
     .withMessage('El teléfono debe tener entre 7 y 20 caracteres')
     .trim(),
 
-  // Fecha de nacimiento - Opcional pero con validaciones si se proporciona
+  // Fecha de nacimiento - Requerido
   body('birthDate')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('La fecha de nacimiento es requerida')
     .isISO8601()
     .withMessage('La fecha de nacimiento debe tener un formato válido (YYYY-MM-DD)')
     .custom((value) => {
@@ -82,9 +104,10 @@ export const createTemporaryWorkerValidation = [
     .isInt({ min: 5, max: 120 })
     .withMessage('La edad debe estar entre 5 y 120 años'),
 
-  // Dirección - Opcional
+  // Dirección - Requerido
   body('address')
-    .optional({ nullable: true, checkFalsy: true })
+    .notEmpty()
+    .withMessage('La dirección es requerida')
     .isLength({ max: 200 })
     .withMessage('La dirección no puede exceder 200 caracteres')
     .trim(),
@@ -127,17 +150,33 @@ export const updateTemporaryWorkerValidation = [
   body('firstName')
     .optional()
     .isLength({ min: 2, max: 100 })
-    .withMessage('El nombre debe tener entre 2 y 100 caracteres')
+    .withMessage('El primer nombre debe tener entre 2 y 100 caracteres')
     .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
-    .withMessage('El nombre solo puede contener letras y espacios')
+    .withMessage('El primer nombre solo puede contener letras y espacios')
+    .trim(),
+
+  body('middleName')
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 2, max: 100 })
+    .withMessage('El segundo nombre debe tener entre 2 y 100 caracteres')
+    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+    .withMessage('El segundo nombre solo puede contener letras y espacios')
     .trim(),
 
   body('lastName')
     .optional()
     .isLength({ min: 2, max: 100 })
-    .withMessage('El apellido debe tener entre 2 y 100 caracteres')
+    .withMessage('El primer apellido debe tener entre 2 y 100 caracteres')
     .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
-    .withMessage('El apellido solo puede contener letras y espacios')
+    .withMessage('El primer apellido solo puede contener letras y espacios')
+    .trim(),
+
+  body('secondLastName')
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 2, max: 100 })
+    .withMessage('El segundo apellido debe tener entre 2 y 100 caracteres')
+    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+    .withMessage('El segundo apellido solo puede contener letras y espacios')
     .trim(),
 
   body('personType')

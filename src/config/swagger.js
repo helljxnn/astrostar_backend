@@ -239,15 +239,25 @@ const options = {
             },
             firstName: {
               type: "string",
-              description: "Nombre de la persona temporal"
+              description: "Primer nombre de la persona temporal"
+            },
+            middleName: {
+              type: "string",
+              nullable: true,
+              description: "Segundo nombre de la persona temporal"
             },
             lastName: {
               type: "string",
-              description: "Apellido de la persona temporal"
+              description: "Primer apellido de la persona temporal"
+            },
+            secondLastName: {
+              type: "string",
+              nullable: true,
+              description: "Segundo apellido de la persona temporal"
             },
             identification: {
               type: "string",
-              description: "Número de identificación"
+              description: "Número de identificación único"
             },
             email: {
               type: "string",
@@ -260,20 +270,27 @@ const options = {
             },
             birthDate: {
               type: "string",
-              format: "date",
+              format: "date-time",
               description: "Fecha de nacimiento"
             },
             age: {
               type: "integer",
-              description: "Edad calculada"
+              nullable: true,
+              description: "Edad calculada automáticamente"
             },
             address: {
               type: "string",
               description: "Dirección de residencia"
             },
-            organization: {
+            team: {
               type: "string",
-              description: "Organización a la que pertenece"
+              nullable: true,
+              description: "Equipo al que pertenece (solo para Deportista y Entrenador)"
+            },
+            category: {
+              type: "string",
+              nullable: true,
+              description: "Categoría deportiva (solo para Deportista y Entrenador)"
             },
             status: {
               type: "string",
@@ -311,55 +328,73 @@ const options = {
         },
         CreateTemporaryWorkerRequest: {
           type: "object",
-          required: ["firstName", "personType"],
+          required: ["firstName", "lastName", "personType", "identification", "email", "phone", "birthDate", "address", "documentTypeId"],
           properties: {
             firstName: {
               type: "string",
               minLength: 2,
               maxLength: 100,
-              description: "Nombre de la persona temporal (obligatorio)"
+              description: "Primer nombre de la persona temporal (obligatorio)"
+            },
+            middleName: {
+              type: "string",
+              maxLength: 100,
+              description: "Segundo nombre de la persona temporal (opcional)"
             },
             lastName: {
               type: "string",
+              minLength: 2,
               maxLength: 100,
-              description: "Apellido de la persona temporal"
+              description: "Primer apellido de la persona temporal (obligatorio)"
+            },
+            secondLastName: {
+              type: "string",
+              maxLength: 100,
+              description: "Segundo apellido de la persona temporal (opcional)"
             },
             identification: {
               type: "string",
               minLength: 6,
               maxLength: 50,
-              description: "Número de identificación"
+              description: "Número de identificación único (obligatorio)"
             },
             email: {
               type: "string",
               format: "email",
-              description: "Correo electrónico"
+              maxLength: 150,
+              description: "Correo electrónico (obligatorio)"
             },
             phone: {
               type: "string",
-              pattern: "^\\d{7,15}$",
-              description: "Número telefónico (7-15 dígitos)"
+              minLength: 7,
+              maxLength: 20,
+              description: "Número telefónico (obligatorio, 7-20 caracteres)"
             },
             birthDate: {
               type: "string",
               format: "date",
-              description: "Fecha de nacimiento"
+              description: "Fecha de nacimiento (obligatorio, formato YYYY-MM-DD)"
             },
             age: {
               type: "integer",
-              minimum: 0,
+              minimum: 5,
               maximum: 120,
-              description: "Edad"
+              description: "Edad (se calcula automáticamente si no se proporciona)"
             },
             address: {
               type: "string",
               maxLength: 200,
-              description: "Dirección de residencia"
+              description: "Dirección de residencia (obligatorio)"
             },
-            organization: {
+            team: {
               type: "string",
-              maxLength: 200,
-              description: "Organización a la que pertenece"
+              maxLength: 100,
+              description: "Equipo al que pertenece (opcional, solo para Deportista y Entrenador)"
+            },
+            category: {
+              type: "string",
+              maxLength: 100,
+              description: "Categoría deportiva (opcional, solo para Deportista y Entrenador)"
             },
             status: {
               type: "string",
@@ -375,7 +410,7 @@ const options = {
             documentTypeId: {
               type: "integer",
               minimum: 1,
-              description: "ID del tipo de documento"
+              description: "ID del tipo de documento (obligatorio)"
             }
           }
         },
@@ -386,49 +421,67 @@ const options = {
               type: "string",
               minLength: 2,
               maxLength: 100,
-              description: "Nombre de la persona temporal"
+              description: "Primer nombre de la persona temporal"
+            },
+            middleName: {
+              type: "string",
+              maxLength: 100,
+              description: "Segundo nombre de la persona temporal"
             },
             lastName: {
               type: "string",
+              minLength: 2,
               maxLength: 100,
-              description: "Apellido de la persona temporal"
+              description: "Primer apellido de la persona temporal"
+            },
+            secondLastName: {
+              type: "string",
+              maxLength: 100,
+              description: "Segundo apellido de la persona temporal"
             },
             identification: {
               type: "string",
               minLength: 6,
               maxLength: 50,
-              description: "Número de identificación"
+              description: "Número de identificación único"
             },
             email: {
               type: "string",
               format: "email",
+              maxLength: 150,
               description: "Correo electrónico"
             },
             phone: {
               type: "string",
-              pattern: "^\\d{7,15}$",
-              description: "Número telefónico (7-15 dígitos)"
+              minLength: 7,
+              maxLength: 20,
+              description: "Número telefónico (7-20 caracteres)"
             },
             birthDate: {
               type: "string",
               format: "date",
-              description: "Fecha de nacimiento"
+              description: "Fecha de nacimiento (formato YYYY-MM-DD)"
             },
             age: {
               type: "integer",
-              minimum: 0,
+              minimum: 5,
               maximum: 120,
-              description: "Edad"
+              description: "Edad (se calcula automáticamente si no se proporciona)"
             },
             address: {
               type: "string",
               maxLength: 200,
               description: "Dirección de residencia"
             },
-            organization: {
+            team: {
               type: "string",
-              maxLength: 200,
-              description: "Organización a la que pertenece"
+              maxLength: 100,
+              description: "Equipo al que pertenece (solo para Deportista y Entrenador)"
+            },
+            category: {
+              type: "string",
+              maxLength: 100,
+              description: "Categoría deportiva (solo para Deportista y Entrenador)"
             },
             status: {
               type: "string",

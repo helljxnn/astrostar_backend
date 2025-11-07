@@ -271,7 +271,7 @@ model TemporaryPerson {
   middleName     String?
   lastName       String
   secondLastName String?
-  identification String
+  identification String                @unique
   email          String
   phone          String
   birthDate      DateTime
