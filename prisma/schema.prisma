@@ -356,6 +356,7 @@ model Provider {
   city           String             @db.VarChar(100)
   description    String?
   status         ProviderStatus     @default(Active)
+  statusAssignedAt DateTime           @default(now())
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   documentTypeId Int?

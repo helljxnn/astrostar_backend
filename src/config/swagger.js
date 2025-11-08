@@ -169,74 +169,75 @@ const options = {
             }
           }
         },
-         Provider: {
-      type: "object",
-      properties: {
-        id: {
-          type: "integer",
-          description: "ID del proveedor"
+        // PROVEEDORES
+        Provider: {
+          type: "object",
+          properties: {
+            id: { type: "integer", description: "Provider ID" },
+            tipoEntidad: { type: "string", enum: ["juridica", "natural"], description: "Entity type" },
+            razonSocial: { type: "string", description: "Business name or full name" },
+            nit: { type: "string", description: "Tax ID (NIT) or personal ID" },
+            tipoDocumento: {
+              type: "string",
+              enum: ["CC", "TI", "CE", "PAS"],
+              description: "Document type (only for natural person)",
+            },
+            contactoPrincipal: { type: "string", description: "Main contact" },
+            correo: { type: "string", description: "Email" },
+            telefono: { type: "string", description: "Phone" },
+            direccion: { type: "string", description: "Address" },
+            ciudad: { type: "string", description: "City" },
+            descripcion: { type: "string", description: "Description" },
+            estado: { type: "string", enum: ["Activo", "Inactivo"], description: "Status" },
+            createdAt: { type: "string", format: "date-time", description: "Creation date" },
+            updatedAt: { type: "string", format: "date-time", description: "Last update" },
+            statusAssignedAt: { type: "string", format: "date-time", description: "Status assignment date" },
+            fechaRegistro: { type: "string", format: "date-time", description: "Registration date" },
+            documentos: { type: "string", nullable: true, description: "Attached documents" },
+            terminosPago: { type: "string", nullable: true, description: "Payment terms" },
+            servicios: { type: "string", nullable: true, description: "Services offered" },
+            observaciones: { type: "string", nullable: true, description: "Observations" },
+          },
         },
-        tipoEntidad: {
-          type: "string",
-          enum: ["juridica", "natural"],
-          description: "Tipo de entidad"
+
+        ProviderInput: {
+          type: "object",
+          required: [
+            "tipoEntidad",
+            "razonSocial",
+            "nit",
+            "contactoPrincipal",
+            "correo",
+            "telefono",
+            "direccion",
+            "ciudad",
+            "estado",
+          ],
+          properties: {
+            tipoEntidad: { type: "string", enum: ["juridica", "natural"], description: "Entity type" },
+            razonSocial: { type: "string", maxLength: 200, description: "Business name or full name" },
+            nit: { type: "string", description: "Tax ID (NIT) or personal ID" },
+            tipoDocumento: {
+              type: "string",
+              enum: ["CC", "TI", "CE", "PAS"],
+              description: "Document type (only for natural person)",
+            },
+            contactoPrincipal: { type: "string", maxLength: 150, description: "Main contact" },
+            correo: { type: "string", format: "email", maxLength: 150, description: "Email" },
+            telefono: { type: "string", maxLength: 15, description: "Phone" },
+            direccion: { type: "string", maxLength: 200, description: "Address" },
+            ciudad: { type: "string", maxLength: 100, description: "City" },
+            descripcion: { type: "string", maxLength: 500, description: "Description" },
+            estado: { type: "string", enum: ["Activo", "Inactivo"], description: "Status" },
+          },
         },
-        razonSocial: {
-          type: "string",
-          description: "Razón social o nombre completo"
-        },
-        nit: {
-          type: "string",
-          description: "NIT o identificación"
-        },
-        tipoDocumento: {
-          type: "string",
-          enum: ["CC", "TI", "CE", "PAS"],
-          description: "Tipo de documento (solo para persona natural)"
-        },
-        contactoPrincipal: {
-          type: "string",
-          description: "Nombre del contacto principal"
-        },
-        correo: {
-          type: "string",
-          description: "Correo electrónico"
-        },
-        telefono: {
-          type: "string",
-          description: "Número telefónico"
-        },
-        direccion: {
-          type: "string",
-          description: "Dirección completa"
-        },
-        ciudad: {
-          type: "string",
-          description: "Ciudad"
-        },
-        descripcion: {
-          type: "string",
-          description: "Descripción del proveedor"
-        },
-        estado: {
-          type: "string",
-          enum: ["Activo", "Inactivo"],
-          description: "Estado del proveedor"
-        },
-        fechaRegistro: {
-          type: "string",
-          format: "date-time",
-          description: "Fecha de registro"
-        }
-      }
-    },
       },
     },
   },
   apis: [
-    "./src/modules/*/routes/*.routes.js",           // Módulos directos como Roles
-    "./src/modules/Services/*/routes/*.routes.js"   // Módulos dentro de Services como Employees
-  ], // paths to files containing OpenAPI definitions
+    "./src/modules/*/routes/*.routes.js",
+    "./src/modules/Services/*/routes/*.routes.js"  
+  ],
 };
 
 const specs = swaggerJsdoc(options);

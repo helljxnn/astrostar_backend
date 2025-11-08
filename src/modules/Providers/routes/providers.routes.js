@@ -1,107 +1,180 @@
+// src/modules/Providers/routes/providers.routes.js
 import express from 'express';
-import providersController from '../controllers/providers.controller.js';
+import { ProvidersController } from '../controllers/providers.controller.js';
 import { providersValidators, handleValidationErrors } from '../validators/providers.validator.js';
-// import { checkPermission } from '../../../middleware/authMiddleware.js';
 
 const router = express.Router();
+const providersController = new ProvidersController();
 
 /**
- * @swagger
- * tags:
- *   name: Providers
- *   description: Gestión de proveedores
+ * IMPORTANTE: Las rutas de verificación deben ir ANTES de las rutas con parámetros dinámicos
+ * para evitar conflictos de routing
  */
 
 /**
  * @swagger
- * /api/providers:
+ * /api/providers/check-nit:
  *   get:
- *     summary: Obtener lista de proveedores
+ *     summary: Check if NIT is available
  *     tags: [Providers]
  *     parameters:
  *       - in: query
- *         name: page
- *         schema: { type: integer, default: 1 }
+ *         name: nit
+ *         required: true
+ *         schema:
+ *           type: string
  *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 10 }
+ *         name: excludeId
+ *         schema:
+ *           type: integer
  *       - in: query
- *         name: search
- *         schema: { type: string }
- *       - in: query
- *         name: status
- *         schema: { type: string, enum: [Activo, Inactivo] }
- *       - in: query
- *         name: entityType
- *         schema: { type: string, enum: [juridica, natural] }
+ *         name: tipoEntidad
+ *         schema:
+ *           type: string
+ *           enum: [juridica, natural]
+ *           default: juridica
  *     responses:
  *       200:
- *         description: Lista de proveedores obtenida exitosamente
+ *         description: NIT availability
  */
-router.get('/', 
-  providersValidators.getAll, 
-  handleValidationErrors, 
-  providersController.getProviders
+router.get('/check-nit',
+  providersValidators.checkNit,
+  handleValidationErrors,
+  providersController.checkNitAvailability
+);
+
+/**
+ * @swagger
+ * /api/providers/check-business-name:
+ *   get:
+ *     summary: Check if business name is available
+ *     tags: [Providers]
+ *     parameters:
+ *       - in: query
+ *         name: businessName
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: excludeId
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: tipoEntidad
+ *         schema:
+ *           type: string
+ *           enum: [juridica, natural]
+ *           default: juridica
+ *     responses:
+ *       200:
+ *         description: Business name availability
+ */
+router.get('/check-business-name',
+  providersValidators.checkBusinessName,
+  handleValidationErrors,
+  providersController.checkBusinessNameAvailability
+);
+
+/**
+ * @swagger
+ * /api/providers/check-email:
+ *   get:
+ *     summary: Check if email is available
+ *     tags: [Providers]
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: excludeId
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Email availability
+ */
+router.get('/check-email',
+  providersValidators.checkEmail,
+  handleValidationErrors,
+  providersController.checkEmailAvailability
+);
+
+/**
+ * @swagger
+ * /api/providers/check-contact:
+ *   get:
+ *     summary: Check if contact name is available
+ *     tags: [Providers]
+ *     parameters:
+ *       - in: query
+ *         name: contact
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: excludeId
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Contact name availability
+ */
+router.get('/check-contact',
+  providersValidators.checkContact,
+  handleValidationErrors,
+  providersController.checkContactAvailability
 );
 
 /**
  * @swagger
  * /api/providers/stats:
  *   get:
- *     summary: Obtener estadísticas de proveedores
+ *     summary: Get provider statistics
  *     tags: [Providers]
  *     responses:
  *       200:
- *         description: Estadísticas obtenidas exitosamente
+ *         description: Provider statistics
  */
-router.get('/stats', 
-  providersController.getProviderStats
+router.get('/stats', providersController.getProviderStats);
+
+/**
+ * @swagger
+ * /api/providers:
+ *   get:
+ *     summary: Get list of providers
+ *     tags: [Providers]
+ */
+router.get('/',
+  providersValidators.getAll,
+  handleValidationErrors,
+  providersController.getAllProviders
 );
 
 /**
  * @swagger
- * /api/providers/check-nit:
+ * /api/providers/{id}/active-purchases:
  *   get:
- *     summary: Verificar disponibilidad de NIT
+ *     summary: Check if provider has active purchases
  *     tags: [Providers]
- *     parameters:
- *       - in: query
- *         name: nit
- *         required: true
- *         schema: { type: string }
- *       - in: query
- *         name: excludeId
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Disponibilidad verificada
  */
-router.get('/check-nit', 
-  providersValidators.checkNit, 
-  handleValidationErrors, 
-  providersController.checkNitAvailability
+router.get('/:id/active-purchases',
+  providersValidators.getById,
+  handleValidationErrors,
+  providersController.checkActivePurchases
 );
 
 /**
  * @swagger
  * /api/providers/{id}:
  *   get:
- *     summary: Obtener proveedor por ID
+ *     summary: Get provider by ID
  *     tags: [Providers]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Proveedor encontrado
- *       404:
- *         description: Proveedor no encontrado
  */
-router.get('/:id', 
-  providersValidators.getById, 
-  handleValidationErrors, 
+router.get('/:id',
+  providersValidators.getById,
+  handleValidationErrors,
   providersController.getProviderById
 );
 
@@ -109,66 +182,12 @@ router.get('/:id',
  * @swagger
  * /api/providers:
  *   post:
- *     summary: Crear nuevo proveedor
+ *     summary: Create new provider
  *     tags: [Providers]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - tipoEntidad
- *               - razonSocial
- *               - nit
- *               - contactoPrincipal
- *               - correo
- *               - telefono
- *               - direccion
- *               - ciudad
- *               - estado
- *             properties:
- *               tipoEntidad:
- *                 type: string
- *                 enum: [juridica, natural]
- *               razonSocial:
- *                 type: string
- *                 maxLength: 200
- *               nit:
- *                 type: string
- *                 maxLength: 50
- *               tipoDocumento:
- *                 type: string
- *                 enum: [CC, TI, CE, PAS]
- *               contactoPrincipal:
- *                 type: string
- *                 maxLength: 150
- *               correo:
- *                 type: string
- *                 maxLength: 150
- *               telefono:
- *                 type: string
- *                 maxLength: 20
- *               direccion:
- *                 type: string
- *                 maxLength: 200
- *               ciudad:
- *                 type: string
- *                 maxLength: 100
- *               descripcion:
- *                 type: string
- *               estado:
- *                 type: string
- *                 enum: [Activo, Inactivo]
- *     responses:
- *       201:
- *         description: Proveedor creado exitosamente
- *       400:
- *         description: Datos inválidos
  */
-router.post('/', 
-  providersValidators.create, 
-  handleValidationErrors, 
+router.post('/',
+  providersValidators.create,
+  handleValidationErrors,
   providersController.createProvider
 );
 
@@ -176,63 +195,12 @@ router.post('/',
  * @swagger
  * /api/providers/{id}:
  *   put:
- *     summary: Actualizar proveedor
+ *     summary: Update provider
  *     tags: [Providers]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               tipoEntidad:
- *                 type: string
- *                 enum: [juridica, natural]
- *               razonSocial:
- *                 type: string
- *                 maxLength: 200
- *               nit:
- *                 type: string
- *                 maxLength: 50
- *               tipoDocumento:
- *                 type: string
- *                 enum: [CC, TI, CE, PAS]
- *               contactoPrincipal:
- *                 type: string
- *                 maxLength: 150
- *               correo:
- *                 type: string
- *                 maxLength: 150
- *               telefono:
- *                 type: string
- *                 maxLength: 20
- *               direccion:
- *                 type: string
- *                 maxLength: 200
- *               ciudad:
- *                 type: string
- *                 maxLength: 100
- *               descripcion:
- *                 type: string
- *               estado:
- *                 type: string
- *                 enum: [Activo, Inactivo]
- *     responses:
- *       200:
- *         description: Proveedor actualizado exitosamente
- *       400:
- *         description: Datos inválidos
- *       404:
- *         description: Proveedor no encontrado
  */
-router.put('/:id', 
-  providersValidators.update, 
-  handleValidationErrors, 
+router.put('/:id',
+  providersValidators.update,
+  handleValidationErrors,
   providersController.updateProvider
 );
 
@@ -240,36 +208,12 @@ router.put('/:id',
  * @swagger
  * /api/providers/{id}/status:
  *   patch:
- *     summary: Cambiar estado de proveedor
+ *     summary: Change provider status
  *     tags: [Providers]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - status
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [Activo, Inactivo]
- *     responses:
- *       200:
- *         description: Estado cambiado exitosamente
- *       400:
- *         description: Datos inválidos
- *       404:
- *         description: Proveedor no encontrado
  */
-router.patch('/:id/status', 
-  providersValidators.changeStatus, 
-  handleValidationErrors, 
+router.patch('/:id/status',
+  providersValidators.changeStatus,
+  handleValidationErrors,
   providersController.changeProviderStatus
 );
 
@@ -277,22 +221,12 @@ router.patch('/:id/status',
  * @swagger
  * /api/providers/{id}:
  *   delete:
- *     summary: Eliminar proveedor (cambiar estado a Inactivo)
+ *     summary: Delete provider (changes to Inactive)
  *     tags: [Providers]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: integer }
- *     responses:
- *       200:
- *         description: Proveedor eliminado exitosamente
- *       404:
- *         description: Proveedor no encontrado
  */
-router.delete('/:id', 
-  providersValidators.delete, 
-  handleValidationErrors, 
+router.delete('/:id',
+  providersValidators.delete,
+  handleValidationErrors,
   providersController.deleteProvider
 );
 

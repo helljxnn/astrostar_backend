@@ -1,13 +1,9 @@
 import prisma from '../../../config/database.js';
 
 export class ProvidersRepository {
-  /**
-   * Obtener todos los proveedores con paginación y filtros
-   */
   async findAll({ page = 1, limit = 10, search = '', status, entityType }) {
     const skip = (page - 1) * limit;
     
-    // Mapear entityType de frontend a backend
     const entityTypeMap = {
       'juridica': 'legal',
       'natural': 'natural'
@@ -50,7 +46,6 @@ export class ProvidersRepository {
       prisma.provider.count({ where })
     ]);
 
-    // Transformar datos para el frontend
     const transformedProviders = providers.map(provider => this.transformToFrontend(provider));
 
     return {
@@ -64,9 +59,6 @@ export class ProvidersRepository {
     };
   }
 
-  /**
-   * Obtener proveedor por ID
-   */
   async findById(id) {
     const provider = await prisma.provider.findUnique({
       where: { id },
@@ -83,45 +75,43 @@ export class ProvidersRepository {
     return provider ? this.transformToFrontend(provider) : null;
   }
 
-  /**
-   * Obtener proveedor por NIT
-   */
   async findByNit(nit) {
-    return prisma.provider.findUnique({
-      where: { nit }
+    if (!nit) return null;
+    
+    const cleanedNit = nit.replace(/[.\-\s]/g, '');
+    
+    const provider = await prisma.provider.findUnique({
+      where: { nit: cleanedNit }
     });
+    
+    return provider ? this.transformToFrontend(provider) : null;
   }
 
-  /**
-   * Obtener proveedor por email
-   */
   async findByEmail(email) {
-    return prisma.provider.findUnique({
+    const provider = await prisma.provider.findUnique({
       where: { email }
     });
+    
+    return provider ? this.transformToFrontend(provider) : null;
   }
 
-  /**
-   * Buscar por razón social/nombre (case insensitive)
-   */
-  async findByBusinessName(businessName, excludeId = null) {
+  async findByBusinessName(businessName, excludeId = null, tipoEntidad = 'juridica') {
     const where = {
       businessName: { 
         equals: businessName,
         mode: 'insensitive'
-      }
+      },
+      entityType: tipoEntidad === 'juridica' ? 'legal' : 'natural'
     };
     
     if (excludeId) {
       where.NOT = { id: excludeId };
     }
 
-    return prisma.provider.findFirst({ where });
+    const provider = await prisma.provider.findFirst({ where });
+    return provider ? this.transformToFrontend(provider) : null;
   }
 
-  /**
-   * Buscar por nombre caso insensitive
-   */
   async findByNameCaseInsensitive(name, excludeId = null) {
     const where = {
       OR: [
@@ -134,18 +124,16 @@ export class ProvidersRepository {
       where.NOT = { id: excludeId };
     }
 
-    return prisma.provider.findFirst({ where });
+    const provider = await prisma.provider.findFirst({ where });
+    return provider ? this.transformToFrontend(provider) : null;
   }
 
-  /**
-   * Verificar si tiene compras activas
-   */
   async hasActivePurchases(providerId) {
     const purchases = await prisma.purchase.count({
       where: {
         providerId: providerId,
         status: {
-          in: ['Pending', 'InProgress', 'Completed']
+          in: ['Pending', 'Received', 'Partial']
         }
       }
     });
@@ -153,11 +141,7 @@ export class ProvidersRepository {
     return purchases > 0;
   }
 
-  /**
-   * Crear nuevo proveedor
-   */
   async create(providerData) {
-    // Transformar datos del frontend al backend
     const transformedData = this.transformToBackend(providerData);
     
     const { documentTypeId, ...providerInfo } = transformedData;
@@ -177,9 +161,6 @@ export class ProvidersRepository {
     return this.transformToFrontend(provider);
   }
 
-  /**
-   * Actualizar proveedor
-   */
   async update(id, providerData) {
     const transformedData = this.transformToBackend(providerData);
     const { documentTypeId, ...providerInfo } = transformedData;
@@ -187,6 +168,8 @@ export class ProvidersRepository {
 
     if (documentTypeId) {
       data.documentType = { connect: { id: documentTypeId } };
+    } else {
+      data.documentType = { disconnect: true };
     }
 
     const provider = await prisma.provider.update({
@@ -200,29 +183,44 @@ export class ProvidersRepository {
     return this.transformToFrontend(provider);
   }
 
-  /**
-   * Eliminar proveedor
-   */
   async delete(id) {
-    const provider = await prisma.provider.update({
-      where: { id },
-      data: { status: 'Inactive' },
-      include: {
-        documentType: true
-      }
+  try {
+    const provider = await prisma.provider.findUnique({
+      where: { id: parseInt(id) },
+      include: { documentType: true }
+    });
+
+    if (!provider) {
+      return false;
+    }
+
+    // Verificar si el proveedor tiene estado "Active"
+    if (provider.status === 'Active') {
+      throw new Error(
+        `No se puede eliminar el proveedor "${provider.businessName}" porque está en estado "Activo". Primero cambie el estado a "Inactivo".`
+      );
+    }
+
+    // Eliminar físicamente el proveedor de la base de datos
+    await prisma.provider.delete({
+      where: { id: parseInt(id) }
     });
 
     return this.transformToFrontend(provider);
+  } catch (error) {
+    if (error.code === 'P2025') {
+      return false; // Proveedor no encontrado
+    }
+    throw error;
   }
+}
 
-  /**
-   * Cambiar estado de proveedor
-   */
   async changeStatus(id, status) {
     const provider = await prisma.provider.update({
       where: { id },
       data: { 
-        status: status === 'Activo' ? 'Active' : 'Inactive' 
+        status: status === 'Activo' ? 'Active' : 'Inactive',
+        statusAssignedAt: new Date() 
       },
       include: {
         documentType: true
@@ -232,35 +230,6 @@ export class ProvidersRepository {
     return this.transformToFrontend(provider);
   }
 
-  /**
-   * Verificar disponibilidad de NIT
-   */
-  async isNitAvailable(nit, excludeId = null) {
-    const where = { nit };
-    if (excludeId) {
-      where.NOT = { id: excludeId };
-    }
-
-    const existingProvider = await prisma.provider.findFirst({ where });
-    return !existingProvider;
-  }
-
-  /**
-   * Verificar disponibilidad de email
-   */
-  async isEmailAvailable(email, excludeId = null) {
-    const where = { email };
-    if (excludeId) {
-      where.NOT = { id: excludeId };
-    }
-
-    const existingProvider = await prisma.provider.findFirst({ where });
-    return !existingProvider;
-  }
-
-  /**
-   * Obtener estadísticas de proveedores
-   */
   async getStats() {
     const [
       totalProviders,
@@ -296,10 +265,9 @@ export class ProvidersRepository {
     };
   }
 
-  /**
-   * Transformar datos del backend al frontend
-   */
   transformToFrontend(provider) {
+    if (!provider) return null;
+    
     return {
       id: provider.id,
       tipoEntidad: provider.entityType === 'legal' ? 'juridica' : 'natural',
@@ -313,8 +281,10 @@ export class ProvidersRepository {
       ciudad: provider.city,
       descripcion: provider.description,
       estado: provider.status === 'Active' ? 'Activo' : 'Inactivo',
+      createdAt: provider.createdAt,
+      updatedAt: provider.updatedAt,
+      statusAssignedAt: provider.statusAssignedAt,
       fechaRegistro: provider.createdAt,
-      // Campos adicionales para compatibilidad
       documentos: null,
       terminosPago: null,
       servicios: null,
@@ -322,32 +292,38 @@ export class ProvidersRepository {
     };
   }
 
-  /**
-   * Transformar datos del frontend al backend
-   */
   transformToBackend(providerData) {
-    // Mapear tipos de documento
+    let cleanedNit = providerData.nit;
+    
+    if (cleanedNit && typeof cleanedNit === 'string') {
+      cleanedNit = cleanedNit.replace(/[.\-\s]/g, '');
+    }
+    
     const documentTypeMap = {
-      'CC': 1, // Cédula
-      'TI': 2, // Tarjeta Identidad  
-      'CE': 3, // Cédula Extranjería
-      'PAS': 4 // Pasaporte
+      'CC': 1,
+      'TI': 2,  
+      'CE': 3,
+      'PAS': 4
     };
 
-    return {
+    const transformed = {
       entityType: providerData.tipoEntidad === 'juridica' ? 'legal' : 'natural',
       businessName: providerData.razonSocial,
-      nit: providerData.nit,
-      documentTypeId: providerData.tipoDocumento ? 
-        documentTypeMap[providerData.tipoDocumento] : null,
+      ...(cleanedNit && { nit: cleanedNit }),
       mainContact: providerData.contactoPrincipal,
       email: providerData.correo,
       phone: providerData.telefono,
       address: providerData.direccion,
       city: providerData.ciudad,
-      description: providerData.descripcion,
+      description: providerData.descripcion || '',
       status: providerData.estado === 'Activo' ? 'Active' : 'Inactive'
     };
+
+    if (providerData.tipoEntidad === 'natural' && providerData.tipoDocumento) {
+      transformed.documentTypeId = documentTypeMap[providerData.tipoDocumento];
+    }
+
+    return transformed;
   }
 }
 

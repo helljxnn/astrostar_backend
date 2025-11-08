@@ -8,15 +8,15 @@ const router = express.Router();
  * @swagger
  * tags:
  *   name: Users
- *   description: Gestión de usuarios (SOLO LECTURA)
+ *   description: User management (READ ONLY)
  */
 
 /**
  * @swagger
  * /api/users:
  *   get:
- *     summary: Obtener lista de usuarios
- *     description: Endpoint de solo lectura para visualizar usuarios con paginación y filtros
+ *     summary: Get list of users
+ *     description: Read-only endpoint to view users with pagination and filters
  *     tags: [Users]
  *     parameters:
  *       - in: query
@@ -24,38 +24,38 @@ const router = express.Router();
  *         schema: 
  *           type: integer
  *           default: 1
- *         description: Página actual
+ *         description: Current page
  *       - in: query
  *         name: limit
  *         schema: 
  *           type: integer
  *           default: 10
- *         description: Límite de resultados por página
+ *         description: Results limit per page
  *       - in: query
  *         name: search
  *         schema: 
  *           type: string
- *         description: Término de búsqueda (nombre, email, identificación)
+ *         description: Search term (name, email, identification)
  *       - in: query
  *         name: status
  *         schema: 
  *           type: string
  *           enum: [Active, Inactive, Suspended]
- *         description: Filtrar por estado
+ *         description: Filter by status
  *       - in: query
  *         name: roleId
  *         schema: 
  *           type: integer
- *         description: Filtrar por ID de rol
+ *         description: Filter by role ID
  *       - in: query
  *         name: userType
  *         schema: 
  *           type: string
  *           enum: [athletes, employees, system, with-login, active, inactive]
- *         description: Tipo de usuario
+ *         description: User type
  *     responses:
  *       200:
- *         description: Lista de usuarios obtenida exitosamente
+ *         description: User list retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -79,20 +79,20 @@ const router = express.Router();
  *                     pages:
  *                       type: integer
  *       500:
- *         description: Error interno del servidor
+ *         description: Internal server error
  */
 //router.get('/', checkPermission('Users', 'Read'), usersController.getUsers);
-router.get('/', usersController.getUsers);  // Sin checkPermission por ahora
+router.get('/', usersController.getUsers);  // Without checkPermission for now
 
 /**
  * @swagger
  * /api/users/stats:
  *   get:
- *     summary: Obtener estadísticas de usuarios
+ *     summary: Get user statistics
  *     tags: [Users]
  *     responses:
  *       200:
- *         description: Estadísticas obtenidas exitosamente
+ *         description: Statistics retrieved successfully
  *         content:
  *           application/json:
  *             schema:
@@ -122,7 +122,7 @@ router.get('/stats', usersController.getUserStats);
  * @swagger
  * /api/users/{id}:
  *   get:
- *     summary: Obtener usuario por ID
+ *     summary: Get user by ID
  *     tags: [Users]
  *     parameters:
  *       - in: path
@@ -130,10 +130,10 @@ router.get('/stats', usersController.getUserStats);
  *         required: true
  *         schema: 
  *           type: integer
- *         description: ID del usuario
+ *         description: User ID
  *     responses:
  *       200:
- *         description: Usuario encontrado
+ *         description: User found
  *         content:
  *           application/json:
  *             schema:
@@ -144,11 +144,11 @@ router.get('/stats', usersController.getUserStats);
  *                 data:
  *                   $ref: '#/components/schemas/User'
  *       404:
- *         description: Usuario no encontrado
+ *         description: User not found
  *       400:
- *         description: ID inválido
+ *         description: Invalid ID
  *       500:
- *         description: Error interno del servidor
+ *         description: Internal server error
  */
 //router.get('/:id', checkPermission('Users', 'Read'), usersController.getUserById);
 router.get('/:id', usersController.getUserById);

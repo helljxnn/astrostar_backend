@@ -1,10 +1,15 @@
-import providersService from '../services/providers.service.js';
+// src/controllers/providers.controller.js
+import { ProvidersService } from '../services/providers.service.js';
 
 export class ProvidersController {
+  constructor() {
+    this.providersService = new ProvidersService();
+  }
+
   /**
    * Obtener todos los proveedores
    */
-  async getProviders(req, res) {
+  getAllProviders = async (req, res) => {
     try {
       const { 
         page = 1, 
@@ -14,7 +19,7 @@ export class ProvidersController {
         entityType 
       } = req.query;
 
-      const result = await providersService.getProviders({
+      const result = await this.providersService.getAllProviders({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
@@ -22,20 +27,26 @@ export class ProvidersController {
         entityType
       });
 
-      res.json(result);
+      res.json({
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
+        message: `Se encontraron ${result.pagination?.total || 0} proveedores.`
+      });
     } catch (error) {
-      console.error('Error in getProviders controller:', error);
+      console.error('Error in getAllProviders controller:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener proveedores'
+        message: 'Error interno del servidor al obtener proveedores',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  };
 
   /**
    * Obtener proveedor por ID
    */
-  async getProviderById(req, res) {
+  getProviderById = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -46,47 +57,67 @@ export class ProvidersController {
         });
       }
 
-      const result = await providersService.getProviderById(id);
+      const result = await this.providersService.getProviderById(id);
       
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(result.statusCode || 404).json(result);
       }
 
-      res.json(result);
+      res.json({
+        success: true,
+        data: result.data,
+        message: 'Proveedor encontrado exitosamente.'
+      });
     } catch (error) {
       console.error('Error in getProviderById controller:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener proveedor'
+        message: 'Error interno del servidor al obtener proveedor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  };
 
   /**
    * Crear nuevo proveedor
    */
-  async createProvider(req, res) {
+  createProvider = async (req, res) => {
     try {
-      const result = await providersService.createProvider(req.body);
+      console.log('📥 Datos recibidos en createProvider:', req.body);
+      
+      const result = await this.providersService.createProvider(req.body);
       
       if (!result.success) {
-        return res.status(400).json(result);
+        return res.status(result.statusCode || 400).json(result);
       }
 
-      res.status(201).json(result);
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: result.message
+      });
     } catch (error) {
       console.error('Error in createProvider controller:', error);
+      
+      if (error.message.includes('ya está registrado')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al crear proveedor'
+        message: 'Error interno del servidor al crear proveedor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  };
 
   /**
    * Actualizar proveedor
    */
-  async updateProvider(req, res) {
+  updateProvider = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -97,26 +128,41 @@ export class ProvidersController {
         });
       }
 
-      const result = await providersService.updateProvider(id, req.body);
+      console.log('📥 Datos recibidos en updateProvider:', { id, data: req.body });
+
+      const result = await this.providersService.updateProvider(id, req.body);
       
       if (!result.success) {
-        return res.status(400).json(result);
+        return res.status(result.statusCode || 400).json(result);
       }
 
-      res.json(result);
+      res.json({
+        success: true,
+        data: result.data,
+        message: result.message
+      });
     } catch (error) {
       console.error('Error in updateProvider controller:', error);
+      
+      if (error.message.includes('ya está registrado')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al actualizar proveedor'
+        message: 'Error interno del servidor al actualizar proveedor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  };
 
   /**
    * Eliminar proveedor
    */
-  async deleteProvider(req, res) {
+  deleteProvider = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       
@@ -127,26 +173,37 @@ export class ProvidersController {
         });
       }
 
-      const result = await providersService.deleteProvider(id);
+      const result = await this.providersService.deleteProvider(id);
       
       if (!result.success) {
-        return res.status(404).json(result);
+        return res.status(result.statusCode || 404).json(result);
       }
 
-      res.json(result);
+      res.json({
+        success: true,
+        message: result.message
+      });
     } catch (error) {
       console.error('Error in deleteProvider controller:', error);
+      
+      if (error.message.includes('No se puede eliminar')) {
+        return res.status(400).json({
+          success: false,
+          message: error.message
+        });
+      }
+
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al eliminar proveedor'
       });
     }
-  }
+  };
 
   /**
    * Cambiar estado de proveedor
    */
-  async changeProviderStatus(req, res) {
+  changeProviderStatus = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const { status } = req.body;
@@ -165,13 +222,17 @@ export class ProvidersController {
         });
       }
 
-      const result = await providersService.changeProviderStatus(id, status);
+      const result = await this.providersService.changeProviderStatus(id, status);
       
       if (!result.success) {
-        return res.status(400).json(result);
+        return res.status(result.statusCode || 400).json(result);
       }
 
-      res.json(result);
+      res.json({
+        success: true,
+        data: result.data,
+        message: result.message
+      });
     } catch (error) {
       console.error('Error in changeProviderStatus controller:', error);
       res.status(500).json({
@@ -179,14 +240,43 @@ export class ProvidersController {
         message: 'Error interno del servidor al cambiar estado'
       });
     }
-  }
+  };
+
+   //Verificar si un proveedor tiene compras activas
+  checkActivePurchases = async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      
+      if (isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de proveedor inválido'
+        });
+      }
+
+      const result = await this.providersService.checkActivePurchases(id);
+      
+      res.json({
+        success: true,
+        hasActivePurchases: result.hasActivePurchases,
+        message: result.hasActivePurchases 
+          ? 'El proveedor tiene compras activas' 
+          : 'El proveedor no tiene compras activas'
+      });
+    } catch (error) {
+      console.error('Error in checkActivePurchases controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al verificar compras activas',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  };
 
   /**
    * Verificar disponibilidad de NIT/Identificación
-   * Endpoint: GET /api/providers/check-nit
-   * Query params: nit, excludeId (opcional), tipoEntidad (opcional)
    */
-  async checkNitAvailability(req, res) {
+  checkNitAvailability = async (req, res) => {
     try {
       const { nit, excludeId, tipoEntidad = 'juridica' } = req.query;
 
@@ -201,51 +291,29 @@ export class ProvidersController {
         });
       }
 
-      const existingProvider = await providersService.checkNitExists(
-        nit,
-        excludeId ? parseInt(excludeId) : null
-      );
+      const result = await this.providersService.checkNitAvailability(nit, excludeId, tipoEntidad);
 
-      if (existingProvider) {
-        return res.json({
-          success: true,
-          data: {
-            available: false,
-            message: tipoEntidad === 'juridica' 
-              ? `El NIT "${nit}" ya está registrado.`
-              : `El documento de identidad "${nit}" ya está registrado.`,
-            existingProvider: {
-              nit: existingProvider.nit,
-              razonSocial: existingProvider.razonSocial,
-              tipoEntidad: existingProvider.tipoEntidad
-            }
-          }
-        });
-      }
-
-      return res.json({
+      res.json({
         success: true,
-        data: {
-          available: true,
-          message: tipoEntidad === 'juridica' ? 'NIT disponible' : 'Documento disponible'
-        }
+        available: result.available,
+        message: result.available 
+          ? (tipoEntidad === 'juridica' ? 'NIT disponible' : 'Documento disponible')
+          : result.message
       });
     } catch (error) {
       console.error('❌ Error checking NIT availability:', error);
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message: 'Error al verificar disponibilidad',
-        error: error.message
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  };
 
   /**
    * Verificar disponibilidad de razón social/nombre
-   * Endpoint: GET /api/providers/check-business-name
-   * Query params: businessName, excludeId (opcional), tipoEntidad (opcional)
    */
-  async checkBusinessNameAvailability(req, res) {
+  checkBusinessNameAvailability = async (req, res) => {
     try {
       const { businessName, excludeId, tipoEntidad = 'juridica' } = req.query;
 
@@ -260,51 +328,29 @@ export class ProvidersController {
         });
       }
 
-      const existingProvider = await providersService.checkBusinessNameExists(
-        businessName,
-        excludeId ? parseInt(excludeId) : null
-      );
+      const result = await this.providersService.checkBusinessNameAvailability(businessName, excludeId, tipoEntidad);
 
-      if (existingProvider) {
-        return res.json({
-          success: true,
-          data: {
-            available: false,
-            message: tipoEntidad === 'juridica'
-              ? `La razón social "${businessName}" ya está registrada.`
-              : `El nombre "${businessName}" ya está registrado.`,
-            existingProvider: {
-              razonSocial: existingProvider.razonSocial,
-              nit: existingProvider.nit,
-              tipoEntidad: existingProvider.tipoEntidad
-            }
-          }
-        });
-      }
-
-      return res.json({
+      res.json({
         success: true,
-        data: {
-          available: true,
-          message: tipoEntidad === 'juridica' ? 'Razón social disponible' : 'Nombre disponible'
-        }
+        available: result.available,
+        message: result.available 
+          ? (tipoEntidad === 'juridica' ? 'Razón social disponible' : 'Nombre disponible')
+          : result.message
       });
     } catch (error) {
       console.error('❌ Error checking business name availability:', error);
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message: 'Error al verificar disponibilidad',
-        error: error.message
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  };
 
   /**
    * Verificar disponibilidad de email
-   * Endpoint: GET /api/providers/check-email
-   * Query params: email, excludeId (opcional)
    */
-  async checkEmailAvailability(req, res) {
+  checkEmailAvailability = async (req, res) => {
     try {
       const { email, excludeId } = req.query;
 
@@ -317,48 +363,27 @@ export class ProvidersController {
         });
       }
 
-      const existingProvider = await providersService.checkEmailExists(
-        email,
-        excludeId ? parseInt(excludeId) : null
-      );
+      const result = await this.providersService.checkEmailAvailability(email, excludeId);
 
-      if (existingProvider) {
-        return res.json({
-          success: true,
-          data: {
-            available: false,
-            message: `El correo "${email}" ya está registrado.`,
-            existingProvider: {
-              correo: existingProvider.correo,
-              razonSocial: existingProvider.razonSocial
-            }
-          }
-        });
-      }
-
-      return res.json({
+      res.json({
         success: true,
-        data: {
-          available: true,
-          message: 'Email disponible'
-        }
+        available: result.available,
+        message: result.available ? 'Email disponible' : result.message
       });
     } catch (error) {
       console.error('❌ Error checking email availability:', error);
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message: 'Error al verificar disponibilidad del email',
-        error: error.message
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  };
 
   /**
    * Verificar disponibilidad de contacto principal
-   * Endpoint: GET /api/providers/check-contact
-   * Query params: contact, excludeId (opcional)
    */
-  async checkContactAvailability(req, res) {
+  checkContactAvailability = async (req, res) => {
     try {
       const { contact, excludeId } = req.query;
 
@@ -371,57 +396,45 @@ export class ProvidersController {
         });
       }
 
-      const existingProvider = await providersService.checkContactExists(
-        contact,
-        excludeId ? parseInt(excludeId) : null
-      );
+      const result = await this.providersService.checkContactAvailability(contact, excludeId);
 
-      if (existingProvider) {
-        return res.json({
-          success: true,
-          data: {
-            available: false,
-            message: `El nombre de contacto "${contact}" ya está registrado.`,
-            existingProvider: {
-              contactoPrincipal: existingProvider.contactoPrincipal,
-              razonSocial: existingProvider.razonSocial
-            }
-          }
-        });
-      }
-
-      return res.json({
+      res.json({
         success: true,
-        data: {
-          available: true,
-          message: 'Nombre de contacto disponible'
-        }
+        available: result.available,
+        message: result.available ? 'Nombre de contacto disponible' : result.message
       });
     } catch (error) {
       console.error('❌ Error checking contact availability:', error);
-      return res.status(500).json({
+      res.status(500).json({
         success: false,
         message: 'Error al verificar disponibilidad del contacto',
-        error: error.message
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  };
 
   /**
    * Obtener estadísticas de proveedores
    */
-  async getProviderStats(req, res) {
+  getProviderStats = async (req, res) => {
     try {
-      const result = await providersService.getProviderStats();
-      res.json(result);
+      const result = await this.providersService.getProviderStats();
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: 'Estadísticas obtenidas exitosamente.'
+      });
     } catch (error) {
       console.error('Error in getProviderStats controller:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener estadísticas'
+        message: 'Error interno del servidor al obtener estadísticas',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
-  }
+  };
 }
 
+// Exportar instancia única del servicio
 export default new ProvidersController();
