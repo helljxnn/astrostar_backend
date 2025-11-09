@@ -8,6 +8,7 @@ import documentTypesRoutes from "./documentTypes.routes.js";
 import testEmailRoutes from "./testEmail.js";
 import sportsEquipmentRoutes from "../modules/SportsEquipment/routes/sportsEquipment.routes.js";
 import donorsSponsorsRoutes from "../modules/DonorsSponsors/routes/donorsSponsor.routes.js";
+import appointmentsRoutes from "../modules/Appointments/routes/appointments.routes.js";
 import { authenticateToken } from "../middlewares/auth.js";
 
 const router = express.Router();
@@ -25,6 +26,7 @@ router.use("/providers", authenticateToken, providerRoutes);
 router.use("/document-types", authenticateToken, documentTypesRoutes);
 router.use("/sportsEquipment", authenticateToken, sportsEquipmentRoutes);
 router.use("/donorsSponsors", authenticateToken, donorsSponsorsRoutes);
+router.use("/appointments", authenticateToken, appointmentsRoutes);
 
 // Test routes (only in development)
 if (process.env.NODE_ENV === "development") {

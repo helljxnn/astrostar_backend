@@ -598,3 +598,20 @@ model DonorSponsor {
 
   @@map("donors_sponsors")
 }
+
+model Appointment {
+  id          Int       @id @default(autoincrement())
+  title       String
+  date        DateTime
+  time        String
+  description String?
+  status      AppointmentStatus @default(SCHEDULED)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
