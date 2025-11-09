@@ -564,3 +564,37 @@ enum SportsDisposalsStatus {
   obsolete
   other
 }
+
+// Enums for the DonorSponsor model
+enum DonorSponsorType {
+  Donor
+  Sponsor
+}
+
+enum PersonType {
+  Natural
+  Legal
+}
+
+enum Status {
+  Active
+  Inactive
+}
+
+// Model for Donors and Sponsors
+model DonorSponsor {
+  id              Int              @id @default(autoincrement())
+  identification  String           @unique
+  name            String
+  contactPerson   String?
+  type            DonorSponsorType
+  personType      PersonType
+  phone           String
+  email           String           @unique
+  address         String?
+  status          Status           @default(Active)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("donors_sponsors")
+}
