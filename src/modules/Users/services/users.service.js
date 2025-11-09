@@ -1,4 +1,4 @@
-import usersRepository from '../repository/users.repository.js';
+import usersRepository from "../repository/users.repository.js";
 
 export class UsersService {
   /**
@@ -7,17 +7,19 @@ export class UsersService {
   async getUsers(params = {}) {
     try {
       const result = await usersRepository.findAll(params);
-      
+
       // Formatear respuesta
-      const formattedUsers = result.users.map(user => this.formatUserResponse(user));
-      
+      const formattedUsers = result.users.map((user) =>
+        this.formatUserResponse(user)
+      );
+
       return {
         success: true,
         data: formattedUsers,
-        pagination: result.pagination
+        pagination: result.pagination,
       };
     } catch (error) {
-      console.error('Error in getUsers service:', error);
+      console.error("Error in getUsers service:", error);
       throw new Error(`Error obteniendo usuarios: ${error.message}`);
     }
   }
@@ -28,22 +30,22 @@ export class UsersService {
   async getUserById(id) {
     try {
       const user = await usersRepository.findById(id);
-      
+
       if (!user) {
         return {
           success: false,
-          message: 'Usuario no encontrado'
+          message: "Usuario no encontrado",
         };
       }
 
       const formattedUser = this.formatUserResponse(user);
-      
+
       return {
         success: true,
-        data: formattedUser
+        data: formattedUser,
       };
     } catch (error) {
-      console.error('Error in getUserById service:', error);
+      console.error("Error in getUserById service:", error);
       throw new Error(`Error obteniendo usuario: ${error.message}`);
     }
   }
@@ -54,13 +56,13 @@ export class UsersService {
   async getUserStats() {
     try {
       const stats = await usersRepository.getStats();
-      
+
       return {
         success: true,
-        data: stats
+        data: stats,
       };
     } catch (error) {
-      console.error('Error in getUserStats service:', error);
+      console.error("Error in getUserStats service:", error);
       throw new Error(`Error obteniendo estadísticas: ${error.message}`);
     }
   }
@@ -70,12 +72,12 @@ export class UsersService {
    */
   formatUserResponse(user) {
     const { passwordHash, ...userWithoutPassword } = user;
-    
+
     // Determinar tipo de usuario
-    let userType = 'user';
-    if (user.athlete) userType = 'athlete';
-    if (user.employee) userType = 'employee';
-    
+    let userType = "user";
+    if (user.athlete) userType = "athlete";
+    if (user.employee) userType = "employee";
+
     return {
       ...userWithoutPassword,
       userType,
@@ -85,8 +87,8 @@ export class UsersService {
         type: userType,
         status: user.status,
         role: user.role?.name,
-        hasLogin: !!(user.email && user.email.trim() !== '')
-      }
+        hasLogin: !!(user.email && user.email.trim() !== ""),
+      },
     };
   }
 }

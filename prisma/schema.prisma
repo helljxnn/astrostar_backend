@@ -268,21 +268,24 @@ model Inscription {
 model TemporaryPerson {
   id             Int                   @id @default(autoincrement())
   firstName      String
+  middleName     String?
   lastName       String
-  identification String?
-  email          String?
-  phone          String?
-  birthDate      DateTime?
+  secondLastName String?
+  identification String                @unique
+  email          String
+  phone          String
+  birthDate      DateTime
   age            Int?
-  address        String?
-  organization   String?
+  address        String
+  team           String?
+  category       String?
   status         TemporaryPersonStatus @default(Active)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
-  documentTypeId Int?
+  documentTypeId Int
   personType     TemporaryPersonType   @default(Participante)
   teamMembers    TeamMember[]
-  documentType   DocumentType?         @relation(fields: [documentTypeId], references: [id])
+  documentType   DocumentType          @relation(fields: [documentTypeId], references: [id])
 
   @@map("temporary_persons")
 }
@@ -293,7 +296,9 @@ model Team {
   description  String?
   coach        String?
   category     String?
-  status       TeamStatus    @default(Active)
+  phone        String?       // ← NUEVO CAMPO para el teléfono
+  status       TeamStatus    @default(Active) // ← CAMBIO: TeamStatus en lugar de String
+  teamType     TeamType      @default(Temporal) // ← NUEVO CAMPO para fundacion/temporal
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   participants Participant[]
@@ -305,7 +310,7 @@ model Team {
 model TeamMember {
   id                Int              @id @default(autoincrement())
   teamId            Int
-  memberType        MemberType
+  memberType        MemberType       // ← CAMBIO: MemberType enum en lugar de String
   position          String?
   jerseyNumber      Int?
   isActive          Boolean          @default(true)
@@ -408,6 +413,8 @@ model PurchaseItem {
   @@map("purchase_items")
 }
 
+// ============ ENUMS ============
+
 enum RoleStatus {
   Active
   Inactive
@@ -494,6 +501,11 @@ enum MemberType {
   Athlete
   Employee
   TemporaryPerson
+}
+
+enum TeamType {
+  Fundacion
+  Temporal
 }
 
 enum ParticipantType {

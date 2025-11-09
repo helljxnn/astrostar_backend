@@ -1,5 +1,5 @@
-import express from 'express';
-import usersController from '../controllers/users.controller.js';
+import express from "express";
+import usersController from "../controllers/users.controller.js";
 //import { checkPermission } from '../../../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -21,35 +21,35 @@ const router = express.Router();
  *     parameters:
  *       - in: query
  *         name: page
- *         schema: 
+ *         schema:
  *           type: integer
  *           default: 1
  *         description: Current page
  *       - in: query
  *         name: limit
- *         schema: 
+ *         schema:
  *           type: integer
  *           default: 10
  *         description: Results limit per page
  *       - in: query
  *         name: search
- *         schema: 
+ *         schema:
  *           type: string
  *         description: Search term (name, email, identification)
  *       - in: query
  *         name: status
- *         schema: 
+ *         schema:
  *           type: string
  *           enum: [Active, Inactive, Suspended]
  *         description: Filter by status
  *       - in: query
  *         name: roleId
- *         schema: 
+ *         schema:
  *           type: integer
  *         description: Filter by role ID
  *       - in: query
  *         name: userType
- *         schema: 
+ *         schema:
  *           type: string
  *           enum: [athletes, employees, system, with-login, active, inactive]
  *         description: User type
@@ -82,7 +82,7 @@ const router = express.Router();
  *         description: Internal server error
  */
 //router.get('/', checkPermission('Users', 'Read'), usersController.getUsers);
-router.get('/', usersController.getUsers);  // Without checkPermission for now
+router.get("/", usersController.getUsers); // Without checkPermission for now
 
 /**
  * @swagger
@@ -117,7 +117,7 @@ router.get('/', usersController.getUsers);  // Without checkPermission for now
  *                       type: integer
  */
 //router.get('/stats', checkPermission('Users', 'Read'), usersController.getUserStats);
-router.get('/stats', usersController.getUserStats);
+router.get("/stats", usersController.getUserStats);
 /**
  * @swagger
  * /api/users/{id}:
@@ -128,7 +128,7 @@ router.get('/stats', usersController.getUserStats);
  *       - in: path
  *         name: id
  *         required: true
- *         schema: 
+ *         schema:
  *           type: integer
  *         description: User ID
  *     responses:
@@ -151,6 +151,6 @@ router.get('/stats', usersController.getUserStats);
  *         description: Internal server error
  */
 //router.get('/:id', checkPermission('Users', 'Read'), usersController.getUserById);
-router.get('/:id', usersController.getUserById);
+router.get("/:id", usersController.getUserById);
 
 export default router;

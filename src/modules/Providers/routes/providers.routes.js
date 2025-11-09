@@ -1,7 +1,10 @@
 // src/modules/Providers/routes/providers.routes.js
-import express from 'express';
-import { ProvidersController } from '../controllers/providers.controller.js';
-import { providersValidators, handleValidationErrors } from '../validators/providers.validator.js';
+import express from "express";
+import { ProvidersController } from "../controllers/providers.controller.js";
+import {
+  providersValidators,
+  handleValidationErrors,
+} from "../validators/providers.validator.js";
 
 const router = express.Router();
 const providersController = new ProvidersController();
@@ -37,7 +40,8 @@ const providersController = new ProvidersController();
  *       200:
  *         description: NIT availability
  */
-router.get('/check-nit',
+router.get(
+  "/check-nit",
   providersValidators.checkNit,
   handleValidationErrors,
   providersController.checkNitAvailability
@@ -69,7 +73,8 @@ router.get('/check-nit',
  *       200:
  *         description: Business name availability
  */
-router.get('/check-business-name',
+router.get(
+  "/check-business-name",
   providersValidators.checkBusinessName,
   handleValidationErrors,
   providersController.checkBusinessNameAvailability
@@ -95,7 +100,8 @@ router.get('/check-business-name',
  *       200:
  *         description: Email availability
  */
-router.get('/check-email',
+router.get(
+  "/check-email",
   providersValidators.checkEmail,
   handleValidationErrors,
   providersController.checkEmailAvailability
@@ -121,7 +127,8 @@ router.get('/check-email',
  *       200:
  *         description: Contact name availability
  */
-router.get('/check-contact',
+router.get(
+  "/check-contact",
   providersValidators.checkContact,
   handleValidationErrors,
   providersController.checkContactAvailability
@@ -137,7 +144,7 @@ router.get('/check-contact',
  *       200:
  *         description: Provider statistics
  */
-router.get('/stats', providersController.getProviderStats);
+router.get("/stats", providersController.getProviderStats);
 
 /**
  * @swagger
@@ -146,7 +153,8 @@ router.get('/stats', providersController.getProviderStats);
  *     summary: Get list of providers
  *     tags: [Providers]
  */
-router.get('/',
+router.get(
+  "/",
   providersValidators.getAll,
   handleValidationErrors,
   providersController.getAllProviders
@@ -159,7 +167,8 @@ router.get('/',
  *     summary: Check if provider has active purchases
  *     tags: [Providers]
  */
-router.get('/:id/active-purchases',
+router.get(
+  "/:id/active-purchases",
   providersValidators.getById,
   handleValidationErrors,
   providersController.checkActivePurchases
@@ -172,7 +181,8 @@ router.get('/:id/active-purchases',
  *     summary: Get provider by ID
  *     tags: [Providers]
  */
-router.get('/:id',
+router.get(
+  "/:id",
   providersValidators.getById,
   handleValidationErrors,
   providersController.getProviderById
@@ -185,7 +195,8 @@ router.get('/:id',
  *     summary: Create new provider
  *     tags: [Providers]
  */
-router.post('/',
+router.post(
+  "/",
   providersValidators.create,
   handleValidationErrors,
   providersController.createProvider
@@ -198,7 +209,8 @@ router.post('/',
  *     summary: Update provider
  *     tags: [Providers]
  */
-router.put('/:id',
+router.put(
+  "/:id",
   providersValidators.update,
   handleValidationErrors,
   providersController.updateProvider
@@ -211,7 +223,8 @@ router.put('/:id',
  *     summary: Change provider status
  *     tags: [Providers]
  */
-router.patch('/:id/status',
+router.patch(
+  "/:id/status",
   providersValidators.changeStatus,
   handleValidationErrors,
   providersController.changeProviderStatus
@@ -224,7 +237,8 @@ router.patch('/:id/status',
  *     summary: Delete provider (changes to Inactive)
  *     tags: [Providers]
  */
-router.delete('/:id',
+router.delete(
+  "/:id",
   providersValidators.delete,
   handleValidationErrors,
   providersController.deleteProvider

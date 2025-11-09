@@ -32,17 +32,22 @@ export const providersValidators = {
           : "El documento de identidad es obligatorio."
       )
       .custom((value, { req }) => {
-        const cleanedValue = value.replace(/[.\-\s]/g, '');
-        
-        if (!/^\d{8,15}$/.test(cleanedValue)) {
-          throw new Error(
-            req.body.tipoEntidad === 'juridica'
-              ? "El NIT debe contener entre 8 y 15 dígitos."
-              : "El documento debe contener entre 8 y 15 dígitos."
-          );
-        }
-        return true;
-      }),
+    const cleanedValue = value.replace(/[.\-\s]/g, '');
+    
+    if (req.body.tipoEntidad === 'juridica') {
+      // PERSONA JURÍDICA: Solo números (NIT colombiano)
+      if (!/^\d{8,15}$/.test(cleanedValue)) {
+        throw new Error("El NIT debe contener entre 8 y 15 dígitos numéricos.");
+      }
+    } else {
+      // PERSONA NATURAL: Permite letras y números (documentos extranjeros)
+      if (!/^[a-zA-Z0-9\-]{6,20}$/.test(cleanedValue)) {
+        throw new Error("El documento debe contener entre 6 y 20 caracteres alfanuméricos.");
+      }
+    }
+    
+    return true;
+  }),
 
     body("tipoDocumento")
       .optional()
@@ -136,19 +141,23 @@ export const providersValidators = {
     body("nit")
       .optional()
       .custom((value, { req }) => {
-        if (value) {
-          const cleanedValue = value.replace(/[.\-\s]/g, '');
-          
-          if (!/^\d{8,15}$/.test(cleanedValue)) {
-            throw new Error(
-              req.body.tipoEntidad === 'juridica'
-                ? "El NIT debe contener entre 8 y 15 dígitos."
-                : "El documento debe contener entre 8 y 15 dígitos."
-            );
-          }
+    if (value) {
+      const cleanedValue = value.replace(/[.\-\s]/g, '');
+      
+      if (req.body.tipoEntidad === 'juridica') {
+        // PERSONA JURÍDICA: Solo números
+        if (!/^\d{8,15}$/.test(cleanedValue)) {
+          throw new Error("El NIT debe contener entre 8 y 15 dígitos numéricos.");
         }
-        return true;
-      }),
+      } else {
+        // PERSONA NATURAL: Permite letras y números
+        if (!/^[a-zA-Z0-9\-]{6,20}$/.test(cleanedValue)) {
+          throw new Error("El documento debe contener entre 6 y 20 caracteres alfanuméricos.");
+        }
+      }
+    }
+    return true;
+  }),
 
     body("tipoDocumento")
       .optional()
@@ -246,17 +255,22 @@ export const providersValidators = {
           : "El documento de identidad es obligatorio."
       )
       .custom((value, { req }) => {
-        const cleanedValue = value.replace(/[.\-\s]/g, '');
-        
-        if (!/^\d{8,15}$/.test(cleanedValue)) {
-          throw new Error(
-            req.query.tipoEntidad === 'juridica'
-              ? "El NIT debe contener entre 8 y 15 dígitos."
-              : "El documento debe contener entre 8 y 15 dígitos."
-          );
-        }
-        return true;
-      }),
+    const cleanedValue = value.replace(/[.\-\s]/g, '');
+    
+    if (req.query.tipoEntidad === 'juridica') {
+      // PERSONA JURÍDICA: Solo números
+      if (!/^\d{8,15}$/.test(cleanedValue)) {
+        throw new Error("El NIT debe contener entre 8 y 15 dígitos numéricos.");
+      }
+    } else {
+      // PERSONA NATURAL: Permite letras y números
+      if (!/^[a-zA-Z0-9\-]{6,20}$/.test(cleanedValue)) {
+        throw new Error("El documento debe contener entre 6 y 20 caracteres alfanuméricos.");
+      }
+    }
+    
+    return true;
+  }),
 
     query("excludeId")
       .optional()
