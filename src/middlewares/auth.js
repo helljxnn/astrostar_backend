@@ -16,7 +16,7 @@ export const authenticateToken = async (req, res, next) => {
     // Verificar el token y decodificacion
     const decoded = jwt.verify(
       accessToken,
-      process.env.JWT_SECRET || "your-secret-key"
+      process.env.JWT_SECRET
     );
 
     // Guardamos los datos del token

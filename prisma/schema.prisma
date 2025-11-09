@@ -23,14 +23,14 @@ model DocumentType {
 }
 
 model Role {
-  id          Int        @id @default(autoincrement())
-  name        String     @unique @db.VarChar(50)
-  description String     @db.VarChar(200)
-  status      RoleStatus @default(Active)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  permissions Json?      @default("{}")
-  users       User[]
+  id                      Int              @id @default(autoincrement())
+  name                    String           @unique @db.VarChar(50)
+  description             String           @db.VarChar(200)
+  status                  RoleStatus       @default(Active)
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  users                   User[]
+  rolePermissionPrivilege RolePermissionPrivilege[]
 
   @@map("roles")
 }
@@ -63,56 +63,54 @@ model User {
 }
 
 model Employee {
-  id                  Int                  @id @default(autoincrement())
-  status              EmployeeStatus       @default(Activo)
-  statusAssignedAt    DateTime             @default(now())
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  userId              Int                  @unique
-  employeePermissions EmployeePermission[]
-  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purchases           Purchase[]
-  teamMembers         TeamMember[]
+  id               Int            @id @default(autoincrement())
+  status           EmployeeStatus @default(Activo)
+  statusAssignedAt DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  userId           Int            @unique
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchases        Purchase[]
+  teamMembers      TeamMember[]
 
   @@map("employees")
 }
 
 model Permission {
-  id                  Int                  @id @default(autoincrement())
-  name                String               @unique
-  description         String?
-  icon                String?
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  employeePermissions EmployeePermission[]
-  privileges          Privilege[]
+  id                      Int              @id @default(autoincrement())
+  name                    String           @unique
+  description             String?
+  icon                    String?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  rolePermissionPrivilege RolePermissionPrivilege[]
 
   @@map("permissions")
 }
 
 model Privilege {
-  id           Int        @id @default(autoincrement())
-  name         String
-  description  String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  permissionId Int
-  permission   Permission @relation(fields: [permissionId], references: [id])
-
-  @@unique([name, permissionId])
+  id                      Int        @id @default(autoincrement())
+  name                    String
+  description             String?
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+  rolePermissionPrivilege RolePermissionPrivilege[]
   @@map("privileges")
 }
 
-model EmployeePermission {
-  id           Int        @id @default(autoincrement())
-  employeeId   Int
+model RolePermissionPrivilege {
+  id           Int      @id @default(autoincrement())
+  roleId       Int
   permissionId Int
-  createdAt    DateTime   @default(now())
-  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  privilegeId  Int
+  assignedAt   DateTime @default(now())
 
-  @@unique([employeeId, permissionId])
-  @@map("employee_permissions")
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+  privilege  Privilege  @relation(fields: [privilegeId], references: [id])
+
+  @@unique([roleId, permissionId, privilegeId])
+  @@map("role_permission_privilege")
 }
 
 model Service {
@@ -393,19 +391,18 @@ model Purchase {
 }
 
 model PurchaseItem {
-  id                  Int             @id @default(autoincrement())
-  productName         String          @db.VarChar(200)
-  description         String?
-  quantity            Int
-  unitPrice           Decimal         @db.Decimal(10, 2)
-  subtotal            Decimal         @db.Decimal(12, 2)
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
-  purchaseId          Int
-  purchase            Purchase        @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  sportsEquipmentId   Int
-  sportsEquipment     SportsEquipment @relation(fields: [sportsEquipmentId], references: [id], onDelete: Cascade)
-
+  id                Int             @id @default(autoincrement())
+  productName       String          @db.VarChar(200)
+  description       String?
+  quantity          Int
+  unitPrice         Decimal         @db.Decimal(10, 2)
+  subtotal          Decimal         @db.Decimal(12, 2)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  purchaseId        Int
+  purchase          Purchase        @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  sportsEquipmentId Int
+  sportsEquipment   SportsEquipment @relation(fields: [sportsEquipmentId], references: [id], onDelete: Cascade)
 
   @@index([purchaseId])
   @@index([sportsEquipmentId])
@@ -522,45 +519,45 @@ enum PurchaseStatus {
   Cancelled
 }
 
-model SportsEquipment{
-  id                  Int                     @id @default(autoincrement())
-  name                String                  @db.VarChar(200)
-  quantityInitial     Int                     @default(0)
-  quantityTotal       Int                     @default(0)
-  status              SportsEquipmentStatus   @default(Activated)
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
-  disposals           SportsDisposals[]
-  purchases_item      PurchaseItem[]
+model SportsEquipment {
+  id              Int                   @id @default(autoincrement())
+  name            String                @db.VarChar(200)
+  quantityInitial Int                   @default(0)
+  quantityTotal   Int                   @default(0)
+  status          SportsEquipmentStatus @default(Activated)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  disposals       SportsDisposals[]
+  purchases_item  PurchaseItem[]
 
   @@index([status])
   @@map("sports_equipment")
 }
 
-enum SportsEquipmentStatus{
+enum SportsEquipmentStatus {
   Activated
   Disabled
   SoldOut
 }
 
-model SportsDisposals{
-  id                  Int                     @id @default(autoincrement())
-  quantity            Int
-  reason              SportsDisposalsStatus   @default(other)
-  observation         String?
-  imageUrlOne         String?
-  imageUrlSecond      String?
-  imageUrlThirth      String?
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
-  sportsEquipmentId   Int
-  sportsEquipment     SportsEquipment @relation(fields: [sportsEquipmentId], references: [id], onDelete: Cascade)
+model SportsDisposals {
+  id                Int                   @id @default(autoincrement())
+  quantity          Int
+  reason            SportsDisposalsStatus @default(other)
+  observation       String?
+  imageUrlOne       String?
+  imageUrlSecond    String?
+  imageUrlThirth    String?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  sportsEquipmentId Int
+  sportsEquipment   SportsEquipment       @relation(fields: [sportsEquipmentId], references: [id], onDelete: Cascade)
 
   @@index([sportsEquipmentId])
   @@map("sports_disposals")
 }
 
-enum SportsDisposalsStatus{
+enum SportsDisposalsStatus {
   damaged
   lost
   stolen

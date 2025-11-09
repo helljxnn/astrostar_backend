@@ -132,7 +132,7 @@ router.post("/login", AuthController.Login);
  *       500:
  *         description: Error interno del servidor.
  */
-router.get("/profile", authenticateToken, AuthController.Profile);
+router.post("/profile", authenticateToken, AuthController.Profile);
 
 /**
  * @swagger
@@ -152,4 +152,31 @@ router.get("/profile", authenticateToken, AuthController.Profile);
  *         description: Error interno del servidor.
  */
 router.get("/logout", AuthController.Logout);
+/**
+ * @swagger
+ * /api/auth/refreshToken:
+ *   post:
+ *     summary: Refrescar el token de acceso
+ *     tags: [Auth]
+ *     description: Genera un nuevo accessToken utilizando el refreshToken almacenado en las cookies.
+ *     responses:
+ *       200:
+ *         description: Nuevo token de acceso generado exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Nuevo access token generado."
+ *       401:
+ *         description: Refresh token inválido o ausente.
+ *       500:
+ *         description: Error interno del servidor. 
+ */
+router.post("/refreshToken", AuthController.RefreshToken);
 export default router;
