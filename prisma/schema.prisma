@@ -383,6 +383,7 @@ model Purchase {
   providerId     Int
   employeeId     Int?
   items          PurchaseItem[]
+  images         PurchaseImage[]
   employee       Employee?      @relation(fields: [employeeId], references: [id])
   provider       Provider       @relation(fields: [providerId], references: [id])
 
@@ -410,6 +411,16 @@ model PurchaseItem {
   @@index([purchaseId])
   @@index([sportsEquipmentId])
   @@map("purchase_items")
+}
+
+model PurchaseImage {
+  id         Int      @id @default(autoincrement())
+  url        String
+  publicId   String
+  purchaseId Int
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@map("purchase_images")
 }
 
 enum RoleStatus {
@@ -518,7 +529,6 @@ enum ProviderStatus {
 enum PurchaseStatus {
   Pending
   Received
-  Partial
   Cancelled
 }
 
@@ -609,19 +619,26 @@ model DonorSponsor {
 }
 
 model Appointment {
-  id                 Int               @id @default(autoincrement())
-  title              String
-  date               DateTime
-  time               String
-  description        String?
-  status             AppointmentStatus @default(SCHEDULED)
-  cancellationReason String?
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  id                      Int                 @id @default(autoincrement())
+  title                   String
+  description             String?
+  start                   DateTime // Fecha y hora de inicio combinadas
+  end                     DateTime // Fecha y hora de fin combinadas
+  status                  AppointmentStatus   @default(PENDING)
+  reasonForCancellation   String?
+  createdAt               DateTime            @default(now())
+  updatedAt               DateTime            @updatedAt
+
+  // Campos para las relaciones (listos para que los conectes)
+  athleteId               Int
+  specialistId            Int
+  specialtyId             Int // Asumiendo que tienes un modelo Specialty
+
+  @@map("appointments")
 }
 
 enum AppointmentStatus {
-  SCHEDULED
+  PENDING
   COMPLETED
   CANCELLED
 }

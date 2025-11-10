@@ -1,5 +1,5 @@
 import express from "express";
-import { AppointmentController } from "../controllers/appointments.controller.js";
+import { AppointmentController } from "../controllers/appointment.controller.js";
 
 const router = express.Router();
 const controller = new AppointmentController();
@@ -8,7 +8,7 @@ const controller = new AppointmentController();
  * @swagger
  * tags:
  *   name: Appointments
- *   description: API for managing appointments
+ *   description: Gestión de citas médicas y de especialistas
  */
 
 /**
@@ -17,154 +17,146 @@ const controller = new AppointmentController();
  *   schemas:
  *     Appointment:
  *       type: object
- *       required:
- *         - title
- *         - date
- *         - time
  *       properties:
  *         id:
  *           type: integer
- *           description: The auto-generated id of the appointment.
  *           example: 1
  *         title:
  *           type: string
- *           description: The title of the appointment.
- *           example: "Medical Check-up"
- *         date:
- *           type: string
- *           format: date
- *           description: The date of the appointment.
- *           example: "2025-11-10"
- *         time:
- *           type: string
- *           description: The time of the appointment.
- *           example: "09:30"
+ *           example: "Cita de Fisioterapia"
  *         description:
  *           type: string
- *           description: A brief description of the appointment.
- *           example: "General health check."
+ *           example: "Revisión de rodilla post-partido."
+ *         start:
+ *           type: string
+ *           format: date-time
+ *           example: "2024-11-20T14:00:00.000Z"
+ *         end:
+ *           type: string
+ *           format: date-time
+ *           example: "2024-11-20T14:45:00.000Z"
  *         status:
  *           type: string
- *           enum: [SCHEDULED, COMPLETED, CANCELLED]
- *           description: The current status of the appointment.
- *           example: "SCHEDULED"
- *         cancellationReason:
+ *           enum: [PENDING, COMPLETED, CANCELLED]
+ *           example: "PENDING"
+ *         reasonForCancellation:
  *           type: string
- *           description: The reason for cancelling the appointment.
- *           example: "Patient rescheduled."
+ *           nullable: true
+ *           example: "El atleta no puede asistir."
+ *         athleteId:
+ *           type: integer
+ *           example: 1
+ *         specialistId:
+ *           type: integer
+ *           example: 2
+ *         specialtyId:
+ *           type: integer
+ *           example: 3
  *
- *     CancelAppointment:
+ *     CreateAppointmentRequest:
  *       type: object
  *       required:
- *         - cancellationReason
+ *         - title
+ *         - start
+ *         - end
+ *         - athleteId
+ *         - specialistId
+ *         - specialtyId
  *       properties:
- *         cancellationReason:
+ *         title:
  *           type: string
- *           description: The reason for cancelling the appointment.
- *           example: "Unable to attend due to a conflict."
- */
-
-/**
- * @swagger
- * /appointments:
- *   get:
- *     summary: Retrieve a list of all appointments
- *     tags: [Appointments]
- *     parameters:
- *       - in: query
- *         name: search
- *         schema:
+ *           example: "Consulta Nutricional"
+ *         description:
  *           type: string
- *         description: Search for appointments by title.
- *     responses:
- *       200:
- *         description: A list of appointments.
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Appointment'
- */
-router.get("/", controller.getAll);
-
-/**
- * @swagger
- * /appointments/{id}:
- *   get:
- *     summary: Get a single appointment by ID
- *     tags: [Appointments]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
+ *           example: "Plan de alimentación para competencia."
+ *         start:
+ *           type: string
+ *           format: date-time
+ *           description: "Fecha y hora de inicio de la cita en formato ISO 8601."
+ *           example: "2024-12-01T10:00:00.000Z"
+ *         end:
+ *           type: string
+ *           format: date-time
+ *           description: "Fecha y hora de fin de la cita en formato ISO 8601."
+ *           example: "2024-12-01T10:30:00.000Z"
+ *         athleteId:
  *           type: integer
- *         description: The ID of the appointment to retrieve.
- *     responses:
- *       200:
- *         description: The requested appointment.
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Appointment'
- *       404:
- *         description: Appointment not found.
+ *           description: "ID del atleta."
+ *           example: 15
+ *         specialistId:
+ *           type: integer
+ *           description: "ID del especialista (empleado)."
+ *           example: 4
+ *         specialtyId:
+ *           type: integer
+ *           description: "ID de la especialidad."
+ *           example: 2
+ *
+ *     CancelAppointmentRequest:
+ *       type: object
+ *       required:
+ *         - reason
+ *       properties:
+ *         reason:
+ *           type: string
+ *           description: "Motivo por el cual se cancela la cita."
+ *           example: "El especialista tuvo una emergencia."
  */
-router.get("/:id", controller.getById);
 
 /**
  * @swagger
- * /appointments:
+ * /api/appointments:
+ *   get:
+ *     summary: Obtener todas las citas
+ *     tags: [Appointments]
+ *     responses:
+ *       200:
+ *         description: Lista de citas obtenida exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Appointment'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/", controller.GetAll);
+
+/**
+ * @swagger
+ * /api/appointments:
  *   post:
- *     summary: Create a new appointment
+ *     summary: Crear una nueva cita
  *     tags: [Appointments]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Appointment'
+ *             $ref: '#/components/schemas/CreateAppointmentRequest'
  *     responses:
  *       201:
- *         description: Appointment created successfully.
+ *         description: Cita creada exitosamente.
  *       400:
- *         description: Bad request, check input data.
+ *         description: Datos inválidos o fuera del horario del especialista.
+ *       409:
+ *         description: Conflicto, el especialista ya tiene una cita en ese horario.
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/", controller.create);
+router.post("/", controller.Create);
 
 /**
  * @swagger
- * /appointments/{id}:
- *   put:
- *     summary: Update an existing appointment
- *     tags: [Appointments]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: The ID of the appointment to update.
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/Appointment'
- *     responses:
- *       200:
- *         description: Appointment updated successfully.
- *       404:
- *         description: Appointment not found.
- */
-router.put("/:id", controller.update);
-
-/**
- * @swagger
- * /appointments/{id}/cancel:
+ * /api/appointments/{id}/cancel:
  *   patch:
- *     summary: Cancel an appointment
+ *     summary: Cancelar una cita existente
  *     tags: [Appointments]
  *     parameters:
  *       - in: path
@@ -172,22 +164,23 @@ router.put("/:id", controller.update);
  *         required: true
  *         schema:
  *           type: integer
- *         description: The ID of the appointment to cancel.
+ *         description: ID de la cita a cancelar.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CancelAppointment'
+ *             $ref: '#/components/schemas/CancelAppointmentRequest'
  *     responses:
  *       200:
- *         description: Appointment cancelled successfully.
+ *         description: Cita cancelada exitosamente.
  *       400:
- *         description: Cancellation reason is required.
+ *         description: La cita ya estaba cancelada o falta el motivo.
  *       404:
- *         description: Appointment not found.
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
-router.patch("/:id/cancel", controller.cancel);
+router.patch("/:id/cancel", controller.Cancel);
 
 export default router;
-
