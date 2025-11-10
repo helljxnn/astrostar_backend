@@ -1,4 +1,4 @@
-import { TemporaryWorkersRepository } from './temporaryworkers.repository.js';
+import { TemporaryWorkersRepository } from '../repository/temporaryworkers.repository.js';
 
 export class TemporaryWorkersService {
   constructor() {

@@ -1,5 +1,5 @@
 import express from 'express';
-import { TemporaryWorkersController } from './temporaryworkers.controller.js';
+import { TemporaryWorkersController } from '../controllers/temporaryworkers.controller.js';
 import {
   createTemporaryWorkerValidation,
   updateTemporaryWorkerValidation,
@@ -10,13 +10,13 @@ import {
   checkIdentificationValidation,
   checkEmailValidation,
   handleValidationErrors
-} from './validators/temporaryworkers.validators.js';
+} from '../validators/temporaryworkers.validators.js';
 import {
   validateTemporaryPersonBusinessLogic,
   validateTemporaryPersonDeletion,
   validateCriticalUpdates,
   sanitizeTemporaryPersonData
-} from '../../../middlewares/businessValidation.js';
+} from '../../../../middlewares/businessValidation.js';
 
 const router = express.Router();
 const temporaryWorkersController = new TemporaryWorkersController();

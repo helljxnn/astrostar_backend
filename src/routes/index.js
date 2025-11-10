@@ -10,6 +10,8 @@ import testEmailRoutes from "./testEmail.js";
 import teamsRoutes from "../modules/Teams/routes/teams.routes.js";
 import trainersRoutes from "../modules/Teams/routes/trainers.routes.js";
 import athletesRoutes from "../modules/Teams/routes/athletes.routes.js";
+import eventsRoutes from '../modules/Events/events.routes.js';
+
 
 const router = express.Router();
 
@@ -24,6 +26,8 @@ router.use("/document-types", documentTypesRoutes);
 router.use("/teams", teamsRoutes);
 router.use("/trainers", trainersRoutes);
 router.use("/athletes", athletesRoutes);
+router.use('/events', eventsRoutes);
+
 
 
 // Test routes (only in development)
@@ -47,7 +51,8 @@ router.get("/health", (req, res) => {
       "DocumentTypes",
       "Teams",
       "Trainers",
-      "Athletes"
+      "Athletes",
+      "Events"
     ],
   });
 });
