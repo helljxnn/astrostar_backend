@@ -1,5 +1,4 @@
-import { body, param, query } from "express-validator";
-import { ProvidersRepository } from "../repository/providers.repository.js";
+import { body, param, query, validationResult } from "express-validator";
 
 export const providersValidators = {
   // Validaciones para crear proveedor
@@ -12,72 +11,72 @@ export const providersValidators = {
 
     body("razonSocial")
       .notEmpty()
-      .withMessage("La razón social es obligatoria.")
+      .withMessage((value, { req }) => 
+        req.body.tipoEntidad === 'juridica' 
+          ? "La razón social es obligatoria." 
+          : "El nombre completo es obligatorio."
+      )
       .isLength({ min: 3, max: 200 })
-      .withMessage("La razón social debe tener entre 3 y 200 caracteres.")
-      .custom(async (value) => {
-        const providersRepository = new ProvidersRepository();
-        const existingProvider = await providersRepository.findByBusinessName(value);
-        if (existingProvider) {
-          throw new Error(`La razón social "${value}" ya está registrada.`);
-        }
-        return true;
-      })
+      .withMessage((value, { req }) => 
+        req.body.tipoEntidad === 'juridica'
+          ? "La razón social debe tener entre 3 y 200 caracteres."
+          : "El nombre debe tener entre 3 y 200 caracteres."
+      )
       .trim(),
 
     body("nit")
       .notEmpty()
-      .withMessage("El NIT es obligatorio.")
-      .isLength({ min: 8, max: 15 })
-      .withMessage("El NIT debe tener entre 8 y 15 dígitos.")
-      .matches(/^\d+$/)
-      .withMessage("El NIT solo puede contener números.")
-      .custom(async (value) => {
-        const providersRepository = new ProvidersRepository();
-        const existingProvider = await providersRepository.findByNit(value);
-        if (existingProvider) {
-          throw new Error(`El NIT "${value}" ya está registrado.`);
-        }
-        return true;
-      }),
+      .withMessage((value, { req }) => 
+        req.body.tipoEntidad === 'juridica'
+          ? "El NIT es obligatorio."
+          : "El documento de identidad es obligatorio."
+      )
+      .custom((value, { req }) => {
+    const cleanedValue = value.replace(/[.\-\s]/g, '');
+    
+    if (req.body.tipoEntidad === 'juridica') {
+      // PERSONA JURÍDICA: Solo números (NIT colombiano)
+      if (!/^\d{8,15}$/.test(cleanedValue)) {
+        throw new Error("El NIT debe contener entre 8 y 15 dígitos numéricos.");
+      }
+    } else {
+      // PERSONA NATURAL: Permite letras y números (documentos extranjeros)
+      if (!/^[a-zA-Z0-9\-]{6,20}$/.test(cleanedValue)) {
+        throw new Error("El documento debe contener entre 6 y 20 caracteres alfanuméricos.");
+      }
+    }
+    
+    return true;
+  }),
 
     body("tipoDocumento")
       .optional()
-      .isIn(["CC", "TI", "CE", "PAS"])
-      .withMessage("Seleccione un tipo de documento válido."),
+      .custom((value, { req }) => {
+        if (req.body.tipoEntidad === 'natural' && !value) {
+          throw new Error("Debe seleccionar un tipo de documento para persona natural.");
+        }
+        if (value && !['CC', 'TI', 'CE', 'PAS'].includes(value)) {
+          throw new Error("Seleccione un tipo de documento válido.");
+        }
+        return true;
+      }),
 
     body("contactoPrincipal")
       .notEmpty()
       .withMessage("El contacto principal es obligatorio.")
       .isLength({ min: 2, max: 150 })
       .withMessage("El contacto principal debe tener entre 2 y 150 caracteres.")
-      .custom(async (value) => {
-        const providersRepository = new ProvidersRepository();
-        const existingProvider = await providersRepository.findByNameCaseInsensitive(value);
-        if (existingProvider) {
-          throw new Error(`El nombre de contacto "${value}" ya está registrado.`);
-        }
-        return true;
-      })
       .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
       .withMessage("El contacto principal solo puede contener letras y espacios.")
       .trim(),
 
     body("correo")
       .notEmpty()
-      .withMessage("El correo electrónico es obligatorio.")
+      .optional({ checkFalsy: true })
       .isEmail()
       .withMessage("El correo electrónico no es válido.")
       .isLength({ max: 150 })
       .withMessage("El correo no puede exceder 150 caracteres.")
-      .custom(async (value) => {
-        const providersRepository = new ProvidersRepository();
-        const existingProvider = await providersRepository.findByEmail(value);
-        if (existingProvider) {
-          throw new Error(`El correo "${value}" ya está registrado.`);
-        }
-        return true;
-      })
       .trim(),
 
     body("telefono")
@@ -132,57 +131,47 @@ export const providersValidators = {
     body("razonSocial")
       .optional()
       .isLength({ min: 3, max: 200 })
-      .withMessage("La razón social debe tener entre 3 y 200 caracteres.")
-      .custom(async (value, { req }) => {
-        if (value) {
-          const providersRepository = new ProvidersRepository();
-          const existingProvider = await providersRepository.findByBusinessName(value, parseInt(req.params.id));
-          if (existingProvider) {
-            throw new Error(`La razón social "${value}" ya está registrada.`);
-          }
-        }
-        return true;
-      })
+      .withMessage((value, { req }) => 
+        req.body.tipoEntidad === 'juridica'
+          ? "La razón social debe tener entre 3 y 200 caracteres."
+          : "El nombre debe tener entre 3 y 200 caracteres."
+      )
       .trim(),
 
     body("nit")
       .optional()
-      .isLength({ min: 8, max: 15 })
-      .withMessage("El NIT debe tener entre 8 y 15 dígitos.")
-      .matches(/^\d+$/)
-      .withMessage("El NIT solo puede contener números.")
-      .custom(async (value, { req }) => {
-        if (value) {
-          const providersRepository = new ProvidersRepository();
-          const existingProvider = await providersRepository.findByNit(value);
-          const currentProvider = await providersRepository.findById(parseInt(req.params.id));
-          
-          if (existingProvider && (!currentProvider || existingProvider.id !== currentProvider.id)) {
-            throw new Error(`El NIT "${value}" ya está registrado.`);
-          }
+      .custom((value, { req }) => {
+    if (value) {
+      const cleanedValue = value.replace(/[.\-\s]/g, '');
+      
+      if (req.body.tipoEntidad === 'juridica') {
+        // PERSONA JURÍDICA: Solo números
+        if (!/^\d{8,15}$/.test(cleanedValue)) {
+          throw new Error("El NIT debe contener entre 8 y 15 dígitos numéricos.");
         }
-        return true;
-      }),
+      } else {
+        // PERSONA NATURAL: Permite letras y números
+        if (!/^[a-zA-Z0-9\-]{6,20}$/.test(cleanedValue)) {
+          throw new Error("El documento debe contener entre 6 y 20 caracteres alfanuméricos.");
+        }
+      }
+    }
+    return true;
+  }),
 
     body("tipoDocumento")
       .optional()
-      .isIn(["CC", "TI", "CE", "PAS"])
-      .withMessage("Seleccione un tipo de documento válido."),
+      .custom((value, { req }) => {
+        if (value && !['CC', 'TI', 'CE', 'PAS'].includes(value)) {
+          throw new Error("Seleccione un tipo de documento válido.");
+        }
+        return true;
+      }),
 
     body("contactoPrincipal")
       .optional()
       .isLength({ min: 2, max: 150 })
       .withMessage("El contacto principal debe tener entre 2 y 150 caracteres.")
-      .custom(async (value, { req }) => {
-        if (value) {
-          const providersRepository = new ProvidersRepository();
-          const existingProvider = await providersRepository.findByNameCaseInsensitive(value, parseInt(req.params.id));
-          if (existingProvider) {
-            throw new Error(`El nombre de contacto "${value}" ya está registrado.`);
-          }
-        }
-        return true;
-      })
       .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
       .withMessage("El contacto principal solo puede contener letras y espacios.")
       .trim(),
@@ -193,18 +182,6 @@ export const providersValidators = {
       .withMessage("El correo electrónico no es válido.")
       .isLength({ max: 150 })
       .withMessage("El correo no puede exceder 150 caracteres.")
-      .custom(async (value, { req }) => {
-        if (value) {
-          const providersRepository = new ProvidersRepository();
-          const existingProvider = await providersRepository.findByEmail(value);
-          const currentProvider = await providersRepository.findById(parseInt(req.params.id));
-          
-          if (existingProvider && (!currentProvider || existingProvider.id !== currentProvider.id)) {
-            throw new Error(`El correo "${value}" ya está registrado.`);
-          }
-        }
-        return true;
-      })
       .trim(),
 
     body("telefono")
@@ -253,28 +230,6 @@ export const providersValidators = {
     param("id")
       .isInt({ min: 1 })
       .withMessage("El ID del proveedor debe ser un número entero positivo.")
-      .custom(async (value) => {
-        const providersRepository = new ProvidersRepository();
-        
-        // Verificar si el proveedor existe
-        const provider = await providersRepository.findById(parseInt(value));
-        if (!provider) {
-          throw new Error("El proveedor no existe.");
-        }
-
-        // Verificar si tiene compras activas (HU04.1_04_04)
-        const hasPurchases = await providersRepository.hasActivePurchases(parseInt(value));
-        if (hasPurchases) {
-          throw new Error("No se puede eliminar un proveedor con compras activas asociadas.");
-        }
-
-        // Verificar si el estado es activo (HU04.1_04_05)
-        if (provider.estado === 'Activo') {
-          throw new Error("No se puede eliminar un proveedor con estado activo.");
-        }
-
-        return true;
-      })
   ],
 
   // Validaciones para cambiar estado
@@ -294,11 +249,74 @@ export const providersValidators = {
   checkNit: [
     query("nit")
       .notEmpty()
-      .withMessage("El NIT es obligatorio.")
-      .isLength({ min: 8, max: 15 })
-      .withMessage("El NIT debe tener entre 8 y 15 dígitos.")
-      .matches(/^\d+$/)
-      .withMessage("El NIT solo puede contener números."),
+      .withMessage((value, { req }) => 
+        req.query.tipoEntidad === 'juridica'
+          ? "El NIT es obligatorio." 
+          : "El documento de identidad es obligatorio."
+      )
+      .custom((value, { req }) => {
+    const cleanedValue = value.replace(/[.\-\s]/g, '');
+    
+    if (req.query.tipoEntidad === 'juridica') {
+      // PERSONA JURÍDICA: Solo números
+      if (!/^\d{8,15}$/.test(cleanedValue)) {
+        throw new Error("El NIT debe contener entre 8 y 15 dígitos numéricos.");
+      }
+    } else {
+      // PERSONA NATURAL: Permite letras y números
+      if (!/^[a-zA-Z0-9\-]{6,20}$/.test(cleanedValue)) {
+        throw new Error("El documento debe contener entre 6 y 20 caracteres alfanuméricos.");
+      }
+    }
+    
+    return true;
+  }),
+
+    query("excludeId")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("El excludeId debe ser un número entero positivo."),
+
+    query("tipoEntidad")
+      .optional()
+      .isIn(["juridica", "natural"])
+      .withMessage('El tipo de entidad debe ser "juridica" o "natural".')
+  ],
+
+  // Validaciones para verificar razón social/nombre
+  checkBusinessName: [
+    query("businessName")
+      .notEmpty()
+      .withMessage((value, { req }) => 
+        req.query.tipoEntidad === 'juridica'
+          ? "La razón social es requerida." 
+          : "El nombre es requerido."
+      )
+      .isLength({ min: 3, max: 200 })
+      .withMessage("Debe tener entre 3 y 200 caracteres.")
+      .trim(),
+
+    query("excludeId")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("El excludeId debe ser un número entero positivo."),
+
+    query("tipoEntidad")
+      .optional()
+      .isIn(["juridica", "natural"])
+      .withMessage('El tipo de entidad debe ser "juridica" o "natural".')
+  ],
+
+  // Validaciones para verificar email
+  checkEmail: [
+    query("email")
+      .notEmpty()
+      .withMessage("El email es requerido.")
+      .isEmail()
+      .withMessage("El correo electrónico no es válido.")
+      .isLength({ max: 150 })
+      .withMessage("El correo no puede exceder 150 caracteres.")
+      .trim(),
 
     query("excludeId")
       .optional()
@@ -306,7 +324,24 @@ export const providersValidators = {
       .withMessage("El excludeId debe ser un número entero positivo.")
   ],
 
-  // ✅ CORRECCIÓN: Validaciones mejoradas para consultas con paginación
+  // Validaciones para verificar contacto
+  checkContact: [
+    query("contact")
+      .notEmpty()
+      .withMessage("El nombre de contacto es requerido.")
+      .isLength({ min: 2, max: 150 })
+      .withMessage("El contacto debe tener entre 2 y 150 caracteres.")
+      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+      .withMessage("El contacto solo puede contener letras y espacios.")
+      .trim(),
+
+    query("excludeId")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("El excludeId debe ser un número entero positivo.")
+  ],
+
+  // Validaciones para consultas con paginación
   getAll: [
     query("page")
       .optional()
@@ -324,15 +359,13 @@ export const providersValidators = {
       .withMessage("El término de búsqueda no puede exceder 100 caracteres.")
       .trim(),
 
-    // ✅ CORRECCIÓN: Solo validar status si NO está vacío
     query("status")
-      .optional({ checkFalsy: true }) // Ignora strings vacíos
+      .optional({ checkFalsy: true })
       .isIn(["Activo", "Inactivo"])
       .withMessage('El estado debe ser "Activo" o "Inactivo".'),
 
-    // ✅ CORRECCIÓN: Solo validar entityType si NO está vacío
     query("entityType")
-      .optional({ checkFalsy: true }) // Ignora strings vacíos
+      .optional({ checkFalsy: true })
       .isIn(["juridica", "natural"])
       .withMessage('El tipo de entidad debe ser "juridica" o "natural".')
   ]
@@ -340,26 +373,17 @@ export const providersValidators = {
 
 // Middleware para manejar errores de validación
 export const handleValidationErrors = (req, res, next) => {
-  import("express-validator")
-    .then(({ validationResult }) => {
-      const errors = validationResult(req);
+  const errors = validationResult(req);
 
-      if (!errors.isEmpty()) {
-        const errorMessages = errors.array();
-        const firstError = errorMessages[0];
-
-        return res.status(400).json({
-          success: false,
-          message: firstError.msg,
-          field: firstError.path,
-          value: firstError.value,
-        });
-      }
-
-      next();
-    })
-    .catch((error) => {
-      console.error("Error importing validationResult:", error);
-      next();
+  if (!errors.isEmpty()) {
+    const firstError = errors.array()[0];
+    return res.status(400).json({
+      success: false,
+      message: firstError.msg,
+      field: firstError.path,
+      value: firstError.value,
     });
+  }
+
+  next();
 };

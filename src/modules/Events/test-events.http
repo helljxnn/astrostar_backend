@@ -1,0 +1,104 @@
+### Variables
+@baseUrl = http://localhost:3000/api
+@token = YOUR_AUTH_TOKEN_HERE
+
+### 1. Obtener datos de referencia (categorías y tipos)
+GET {{baseUrl}}/events/reference-data
+Content-Type: application/json
+
+### 2. Obtener todos los eventos
+GET {{baseUrl}}/events?page=1&limit=10
+Content-Type: application/json
+
+### 3. Obtener eventos filtrados por estado
+GET {{baseUrl}}/events?status=Programado
+Content-Type: application/json
+
+### 4. Obtener eventos filtrados por categoría
+GET {{baseUrl}}/events?categoryId=1
+Content-Type: application/json
+
+### 5. Buscar eventos
+GET {{baseUrl}}/events?search=torneo
+Content-Type: application/json
+
+### 6. Crear un nuevo evento
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "name": "Torneo de Fútbol Interbarrial 2024",
+  "description": "Torneo de fútbol para todas las categorías del municipio",
+  "startDate": "2024-12-15",
+  "endDate": "2024-12-17",
+  "startTime": "08:00",
+  "endTime": "18:00",
+  "location": "Estadio Municipal",
+  "phone": "+57 300 1234567",
+  "status": "Programado",
+  "publish": true,
+  "categoryId": 1,
+  "typeId": 1
+}
+
+### 7. Obtener evento por ID (reemplazar :id con el ID real)
+GET {{baseUrl}}/events/1
+Content-Type: application/json
+
+### 8. Actualizar evento
+PUT {{baseUrl}}/events/1
+Content-Type: application/json
+
+{
+  "name": "Torneo de Fútbol Interbarrial 2024 - Actualizado",
+  "description": "Torneo de fútbol para todas las categorías del municipio - Inscripciones abiertas",
+  "status": "Programado"
+}
+
+### 9. Obtener estadísticas de eventos
+GET {{baseUrl}}/events/stats
+Content-Type: application/json
+
+### 10. Eliminar evento (solo si no tiene participantes)
+DELETE {{baseUrl}}/events/1
+Content-Type: application/json
+
+### 11. Crear evento con imagen
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "name": "Festival Deportivo 2024",
+  "description": "Festival con múltiples disciplinas deportivas",
+  "startDate": "2024-12-20",
+  "endDate": "2024-12-22",
+  "startTime": "09:00",
+  "endTime": "17:00",
+  "location": "Parque Central",
+  "phone": "+57 301 7654321",
+  "status": "Programado",
+  "imageUrl": "https://example.com/images/festival.jpg",
+  "scheduleFile": "https://example.com/files/schedule.pdf",
+  "publish": true,
+  "categoryId": 3,
+  "typeId": 3
+}
+
+### 12. Crear evento cultural
+POST {{baseUrl}}/events
+Content-Type: application/json
+
+{
+  "name": "Taller de Danza Urbana",
+  "description": "Taller intensivo de danza urbana para jóvenes",
+  "startDate": "2024-12-10",
+  "endDate": "2024-12-10",
+  "startTime": "14:00",
+  "endTime": "18:00",
+  "location": "Casa de la Cultura",
+  "phone": "+57 302 9876543",
+  "status": "Programado",
+  "publish": false,
+  "categoryId": 2,
+  "typeId": 4
+}
