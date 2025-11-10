@@ -230,12 +230,409 @@ const options = {
         }
       }
     },
+        TemporaryWorker: {
+          type: "object",
+          properties: {
+            id: {
+              type: "integer",
+              description: "ID único de la persona temporal"
+            },
+            firstName: {
+              type: "string",
+              description: "Primer nombre de la persona temporal"
+            },
+            middleName: {
+              type: "string",
+              nullable: true,
+              description: "Segundo nombre de la persona temporal"
+            },
+            lastName: {
+              type: "string",
+              description: "Primer apellido de la persona temporal"
+            },
+            secondLastName: {
+              type: "string",
+              nullable: true,
+              description: "Segundo apellido de la persona temporal"
+            },
+            identification: {
+              type: "string",
+              description: "Número de identificación único"
+            },
+            email: {
+              type: "string",
+              format: "email",
+              description: "Correo electrónico"
+            },
+            phone: {
+              type: "string",
+              description: "Número telefónico"
+            },
+            birthDate: {
+              type: "string",
+              format: "date-time",
+              description: "Fecha de nacimiento"
+            },
+            age: {
+              type: "integer",
+              nullable: true,
+              description: "Edad calculada automáticamente"
+            },
+            address: {
+              type: "string",
+              description: "Dirección de residencia"
+            },
+            team: {
+              type: "string",
+              nullable: true,
+              description: "Equipo al que pertenece (solo para Deportista y Entrenador)"
+            },
+            category: {
+              type: "string",
+              nullable: true,
+              description: "Categoría deportiva (solo para Deportista y Entrenador)"
+            },
+            status: {
+              type: "string",
+              enum: ["Active", "Inactive"],
+              description: "Estado de la persona temporal"
+            },
+            personType: {
+              type: "string",
+              enum: ["Deportista", "Entrenador", "Participante"],
+              description: "Tipo de persona temporal"
+            },
+            documentTypeId: {
+              type: "integer",
+              description: "ID del tipo de documento"
+            },
+            documentType: {
+              type: "object",
+              properties: {
+                id: { type: "integer" },
+                name: { type: "string" }
+              },
+              description: "Información del tipo de documento"
+            },
+            createdAt: {
+              type: "string",
+              format: "date-time",
+              description: "Fecha de creación"
+            },
+            updatedAt: {
+              type: "string",
+              format: "date-time",
+              description: "Fecha de última actualización"
+            }
+          }
+        },
+        CreateTemporaryWorkerRequest: {
+          type: "object",
+          required: ["firstName", "lastName", "personType", "identification", "email", "phone", "birthDate", "address", "documentTypeId"],
+          properties: {
+            firstName: {
+              type: "string",
+              minLength: 2,
+              maxLength: 100,
+              description: "Primer nombre de la persona temporal (obligatorio)"
+            },
+            middleName: {
+              type: "string",
+              maxLength: 100,
+              description: "Segundo nombre de la persona temporal (opcional)"
+            },
+            lastName: {
+              type: "string",
+              minLength: 2,
+              maxLength: 100,
+              description: "Primer apellido de la persona temporal (obligatorio)"
+            },
+            secondLastName: {
+              type: "string",
+              maxLength: 100,
+              description: "Segundo apellido de la persona temporal (opcional)"
+            },
+            identification: {
+              type: "string",
+              minLength: 6,
+              maxLength: 50,
+              description: "Número de identificación único (obligatorio)"
+            },
+            email: {
+              type: "string",
+              format: "email",
+              maxLength: 150,
+              description: "Correo electrónico (obligatorio)"
+            },
+            phone: {
+              type: "string",
+              minLength: 7,
+              maxLength: 20,
+              description: "Número telefónico (obligatorio, 7-20 caracteres)"
+            },
+            birthDate: {
+              type: "string",
+              format: "date",
+              description: "Fecha de nacimiento (obligatorio, formato YYYY-MM-DD)"
+            },
+            age: {
+              type: "integer",
+              minimum: 5,
+              maximum: 120,
+              description: "Edad (se calcula automáticamente si no se proporciona)"
+            },
+            address: {
+              type: "string",
+              maxLength: 200,
+              description: "Dirección de residencia (obligatorio)"
+            },
+            team: {
+              type: "string",
+              maxLength: 100,
+              description: "Equipo al que pertenece (opcional, solo para Deportista y Entrenador)"
+            },
+            category: {
+              type: "string",
+              maxLength: 100,
+              description: "Categoría deportiva (opcional, solo para Deportista y Entrenador)"
+            },
+            status: {
+              type: "string",
+              enum: ["Active", "Inactive"],
+              default: "Active",
+              description: "Estado de la persona temporal"
+            },
+            personType: {
+              type: "string",
+              enum: ["Deportista", "Entrenador", "Participante"],
+              description: "Tipo de persona temporal (obligatorio)"
+            },
+            documentTypeId: {
+              type: "integer",
+              minimum: 1,
+              description: "ID del tipo de documento (obligatorio)"
+            }
+          }
+        },
+        UpdateTemporaryWorkerRequest: {
+          type: "object",
+          properties: {
+            firstName: {
+              type: "string",
+              minLength: 2,
+              maxLength: 100,
+              description: "Primer nombre de la persona temporal"
+            },
+            middleName: {
+              type: "string",
+              maxLength: 100,
+              description: "Segundo nombre de la persona temporal"
+            },
+            lastName: {
+              type: "string",
+              minLength: 2,
+              maxLength: 100,
+              description: "Primer apellido de la persona temporal"
+            },
+            secondLastName: {
+              type: "string",
+              maxLength: 100,
+              description: "Segundo apellido de la persona temporal"
+            },
+            identification: {
+              type: "string",
+              minLength: 6,
+              maxLength: 50,
+              description: "Número de identificación único"
+            },
+            email: {
+              type: "string",
+              format: "email",
+              maxLength: 150,
+              description: "Correo electrónico"
+            },
+            phone: {
+              type: "string",
+              minLength: 7,
+              maxLength: 20,
+              description: "Número telefónico (7-20 caracteres)"
+            },
+            birthDate: {
+              type: "string",
+              format: "date",
+              description: "Fecha de nacimiento (formato YYYY-MM-DD)"
+            },
+            age: {
+              type: "integer",
+              minimum: 5,
+              maximum: 120,
+              description: "Edad (se calcula automáticamente si no se proporciona)"
+            },
+            address: {
+              type: "string",
+              maxLength: 200,
+              description: "Dirección de residencia"
+            },
+            team: {
+              type: "string",
+              maxLength: 100,
+              description: "Equipo al que pertenece (solo para Deportista y Entrenador)"
+            },
+            category: {
+              type: "string",
+              maxLength: 100,
+              description: "Categoría deportiva (solo para Deportista y Entrenador)"
+            },
+            status: {
+              type: "string",
+              enum: ["Active", "Inactive"],
+              description: "Estado de la persona temporal"
+            },
+            personType: {
+              type: "string",
+              enum: ["Deportista", "Entrenador", "Participante"],
+              description: "Tipo de persona temporal"
+            },
+            documentTypeId: {
+              type: "integer",
+              minimum: 1,
+              description: "ID del tipo de documento"
+            }
+          }
+        },
+        DocumentType: {
+          type: "object",
+          properties: {
+            id: {
+              type: "integer",
+              description: "ID del tipo de documento"
+            },
+            name: {
+              type: "string",
+              description: "Nombre del tipo de documento"
+            }
+          }
+        },
+        Pagination: {
+          type: "object",
+          properties: {
+            page: {
+              type: "integer",
+              description: "Página actual"
+            },
+            limit: {
+              type: "integer",
+              description: "Elementos por página"
+            },
+            total: {
+              type: "integer",
+              description: "Total de elementos"
+            },
+            totalPages: {
+              type: "integer",
+              description: "Total de páginas"
+            },
+            hasNext: {
+              type: "boolean",
+              description: "Indica si hay página siguiente"
+            },
+            hasPrev: {
+              type: "boolean",
+              description: "Indica si hay página anterior"
+            }
+          }
+        },
       },
+      responses: {
+        BadRequest: {
+          description: "Solicitud incorrecta - Error de validación",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: {
+                    type: "boolean",
+                    example: false
+                  },
+                  message: {
+                    type: "string",
+                    example: "Errores de validación"
+                  },
+                  errors: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        field: { type: "string" },
+                        message: { type: "string" },
+                        value: { type: "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        NotFound: {
+          description: "Recurso no encontrado",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: {
+                    type: "boolean",
+                    example: false
+                  },
+                  message: {
+                    type: "string",
+                    example: "Persona temporal no encontrada."
+                  }
+                }
+              }
+            }
+          }
+        },
+        InternalServerError: {
+          description: "Error interno del servidor",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  success: {
+                    type: "boolean",
+                    example: false
+                  },
+                  message: {
+                    type: "string",
+                    example: "Error interno del servidor."
+                  },
+                  error: {
+                    type: "string",
+                    description: "Detalles del error (solo en desarrollo)"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT"
+        }
+      }
     },
   },
   apis: [
     "./src/modules/*/routes/*.routes.js",           // Módulos directos como Roles
-    "./src/modules/Services/*/routes/*.routes.js"   // Módulos dentro de Services como Employees
+    "./src/modules/Services/*/routes/*.routes.js",  // Módulos dentro de Services como Employees
+    "./src/modules/Athletes/*/temporaryworkers.routes.js" // Módulo de TemporaryWorkers
   ], // paths to files containing OpenAPI definitions
 };
 

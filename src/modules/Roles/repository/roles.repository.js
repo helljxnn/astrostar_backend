@@ -5,14 +5,37 @@ export class RoleRepository {
   async findAll({ page, limit, search }) {
     const skip = (page - 1) * limit;
 
-    const where = search
-      ? {
+    let where = {};
+    
+    if (search) {
+      const searchLower = search.toLowerCase().trim();
+      
+      // Mapeo de términos en español a valores en inglés
+      const statusMap = {
+        'activo': 'Active',
+        'inactivo': 'Inactive',
+        'active': 'Active',
+        'inactive': 'Inactive'
+      };
+
+      // Verificar si la búsqueda es exactamente un estado
+      const mappedStatus = statusMap[searchLower];
+
+      if (mappedStatus) {
+        // Si es un estado, buscar solo por estado (búsqueda exacta)
+        where = {
+          status: mappedStatus
+        };
+      } else {
+        // Si no es un estado, buscar en nombre y descripción
+        where = {
           OR: [
             { name: { contains: search, mode: "insensitive" } },
             { description: { contains: search, mode: "insensitive" } },
           ],
-        }
-      : {};
+        };
+      }
+    }
 
     const [roles, total] = await Promise.all([
       prisma.role.findMany({
