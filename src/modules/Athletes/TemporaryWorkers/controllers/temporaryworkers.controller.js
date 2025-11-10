@@ -1,15 +1,4 @@
-import { TemporaryWorkersService } from './temporaryworkers.service.js';
-import {
-  validateCreateTemporaryPerson,
-  validateUpdateTemporaryPerson,
-  validateGetTemporaryPersonById,
-  validateDeleteTemporaryPerson,
-  validateQueryParams,
-  validateCheckIdentification,
-  validateCheckEmail,
-  validateRequiredFields,
-  validateBusinessLogic
-} from '../../../middlewares/temporaryPersonValidation.js';
+import { TemporaryWorkersService } from '../services/temporaryworkers.service.js';
 
 /**
  * @swagger
@@ -639,3 +628,403 @@ export class TemporaryWorkersController {
     }
   };
 }
+
+/**
+
+ * @swagger
+ * components:
+ *   schemas:
+ *     TemporaryWorker:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: ID único de la persona temporal
+ *           example: 1
+ *         firstName:
+ *           type: string
+ *           description: Primer nombre
+ *           example: "Juan"
+ *         middleName:
+ *           type: string
+ *           nullable: true
+ *           description: Segundo nombre (opcional)
+ *           example: "Carlos"
+ *         lastName:
+ *           type: string
+ *           description: Primer apellido
+ *           example: "Pérez"
+ *         secondLastName:
+ *           type: string
+ *           nullable: true
+ *           description: Segundo apellido (opcional)
+ *           example: "García"
+ *         identification:
+ *           type: string
+ *           description: Número de identificación
+ *           example: "1234567890"
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Correo electrónico
+ *           example: "juan.perez@example.com"
+ *         phone:
+ *           type: string
+ *           description: Número de teléfono
+ *           example: "+57 300 1234567"
+ *         birthDate:
+ *           type: string
+ *           format: date
+ *           nullable: true
+ *           description: Fecha de nacimiento
+ *           example: "1990-05-15"
+ *         age:
+ *           type: integer
+ *           nullable: true
+ *           description: Edad calculada
+ *           example: 33
+ *         address:
+ *           type: string
+ *           nullable: true
+ *           description: Dirección de residencia
+ *           example: "Calle 123 #45-67"
+ *         team:
+ *           type: string
+ *           nullable: true
+ *           description: Equipo al que pertenece
+ *           example: "Equipo A"
+ *         category:
+ *           type: string
+ *           nullable: true
+ *           description: Categoría deportiva
+ *           example: "Juvenil"
+ *         personType:
+ *           type: string
+ *           enum: [Deportista, Entrenador, Participante]
+ *           description: Tipo de persona temporal
+ *           example: "Deportista"
+ *         status:
+ *           type: string
+ *           enum: [Active, Inactive]
+ *           description: Estado de la persona temporal
+ *           example: "Active"
+ *         documentTypeId:
+ *           type: integer
+ *           nullable: true
+ *           description: ID del tipo de documento
+ *           example: 1
+ *         documentType:
+ *           $ref: '#/components/schemas/DocumentType'
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Fecha de creación
+ *           example: "2024-01-15T10:30:00Z"
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Fecha de última actualización
+ *           example: "2024-01-20T15:45:00Z"
+ *
+ *     CreateTemporaryWorkerRequest:
+ *       type: object
+ *       required:
+ *         - firstName
+ *         - lastName
+ *         - personType
+ *         - identification
+ *         - email
+ *         - phone
+ *         - birthDate
+ *         - address
+ *       properties:
+ *         firstName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 100
+ *           description: Primer nombre (requerido)
+ *           example: "Juan"
+ *         middleName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 100
+ *           nullable: true
+ *           description: Segundo nombre (opcional)
+ *           example: "Carlos"
+ *         lastName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 100
+ *           description: Primer apellido (requerido)
+ *           example: "Pérez"
+ *         secondLastName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 100
+ *           nullable: true
+ *           description: Segundo apellido (opcional)
+ *           example: "García"
+ *         personType:
+ *           type: string
+ *           enum: [Deportista, Entrenador, Participante]
+ *           description: Tipo de persona temporal (requerido)
+ *           example: "Deportista"
+ *         identification:
+ *           type: string
+ *           minLength: 6
+ *           maxLength: 50
+ *           description: Número de identificación (requerido)
+ *           example: "1234567890"
+ *         email:
+ *           type: string
+ *           format: email
+ *           maxLength: 150
+ *           description: Correo electrónico (requerido)
+ *           example: "juan.perez@example.com"
+ *         phone:
+ *           type: string
+ *           minLength: 7
+ *           maxLength: 20
+ *           description: Número de teléfono (requerido)
+ *           example: "+57 300 1234567"
+ *         birthDate:
+ *           type: string
+ *           format: date
+ *           description: Fecha de nacimiento (requerido)
+ *           example: "1990-05-15"
+ *         age:
+ *           type: integer
+ *           minimum: 5
+ *           maximum: 120
+ *           nullable: true
+ *           description: Edad (opcional, se calcula automáticamente)
+ *           example: 33
+ *         address:
+ *           type: string
+ *           maxLength: 200
+ *           description: Dirección de residencia (requerido)
+ *           example: "Calle 123 #45-67"
+ *         team:
+ *           type: string
+ *           maxLength: 100
+ *           nullable: true
+ *           description: Equipo al que pertenece (opcional)
+ *           example: "Equipo A"
+ *         category:
+ *           type: string
+ *           maxLength: 100
+ *           nullable: true
+ *           description: Categoría deportiva (opcional)
+ *           example: "Juvenil"
+ *         documentTypeId:
+ *           type: integer
+ *           minimum: 1
+ *           nullable: true
+ *           description: ID del tipo de documento (opcional)
+ *           example: 1
+ *         status:
+ *           type: string
+ *           enum: [Active, Inactive]
+ *           default: Active
+ *           description: Estado de la persona temporal (opcional, por defecto Active)
+ *           example: "Active"
+ *
+ *     UpdateTemporaryWorkerRequest:
+ *       type: object
+ *       properties:
+ *         firstName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 100
+ *           description: Primer nombre
+ *           example: "Juan"
+ *         middleName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 100
+ *           nullable: true
+ *           description: Segundo nombre
+ *           example: "Carlos"
+ *         lastName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 100
+ *           description: Primer apellido
+ *           example: "Pérez"
+ *         secondLastName:
+ *           type: string
+ *           minLength: 2
+ *           maxLength: 100
+ *           nullable: true
+ *           description: Segundo apellido
+ *           example: "García"
+ *         personType:
+ *           type: string
+ *           enum: [Deportista, Entrenador, Participante]
+ *           description: Tipo de persona temporal
+ *           example: "Deportista"
+ *         identification:
+ *           type: string
+ *           minLength: 6
+ *           maxLength: 50
+ *           nullable: true
+ *           description: Número de identificación
+ *           example: "1234567890"
+ *         email:
+ *           type: string
+ *           format: email
+ *           maxLength: 150
+ *           nullable: true
+ *           description: Correo electrónico
+ *           example: "juan.perez@example.com"
+ *         phone:
+ *           type: string
+ *           minLength: 7
+ *           maxLength: 20
+ *           nullable: true
+ *           description: Número de teléfono
+ *           example: "+57 300 1234567"
+ *         birthDate:
+ *           type: string
+ *           format: date
+ *           nullable: true
+ *           description: Fecha de nacimiento
+ *           example: "1990-05-15"
+ *         age:
+ *           type: integer
+ *           minimum: 5
+ *           maximum: 120
+ *           nullable: true
+ *           description: Edad
+ *           example: 33
+ *         address:
+ *           type: string
+ *           maxLength: 200
+ *           nullable: true
+ *           description: Dirección de residencia
+ *           example: "Calle 123 #45-67"
+ *         team:
+ *           type: string
+ *           maxLength: 100
+ *           nullable: true
+ *           description: Equipo al que pertenece
+ *           example: "Equipo A"
+ *         category:
+ *           type: string
+ *           maxLength: 100
+ *           nullable: true
+ *           description: Categoría deportiva
+ *           example: "Juvenil"
+ *         documentTypeId:
+ *           type: integer
+ *           minimum: 1
+ *           nullable: true
+ *           description: ID del tipo de documento
+ *           example: 1
+ *         status:
+ *           type: string
+ *           enum: [Active, Inactive]
+ *           description: Estado de la persona temporal
+ *           example: "Active"
+ *
+ *     DocumentType:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: ID del tipo de documento
+ *           example: 1
+ *         name:
+ *           type: string
+ *           description: Nombre del tipo de documento
+ *           example: "Cédula de Ciudadanía"
+ *
+ *     Pagination:
+ *       type: object
+ *       properties:
+ *         page:
+ *           type: integer
+ *           description: Página actual
+ *           example: 1
+ *         limit:
+ *           type: integer
+ *           description: Cantidad de registros por página
+ *           example: 10
+ *         total:
+ *           type: integer
+ *           description: Total de registros
+ *           example: 50
+ *         pages:
+ *           type: integer
+ *           description: Total de páginas
+ *           example: 5
+ *         hasNext:
+ *           type: boolean
+ *           description: Indica si hay página siguiente
+ *           example: true
+ *         hasPrev:
+ *           type: boolean
+ *           description: Indica si hay página anterior
+ *           example: false
+ *
+ *   responses:
+ *     BadRequest:
+ *       description: Solicitud incorrecta - Error de validación
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               success:
+ *                 type: boolean
+ *                 example: false
+ *               message:
+ *                 type: string
+ *                 example: "Errores de validación"
+ *               errors:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     field:
+ *                       type: string
+ *                       example: "email"
+ *                     message:
+ *                       type: string
+ *                       example: "El formato del email no es válido"
+ *                     value:
+ *                       type: string
+ *                       example: "correo-invalido"
+ *
+ *     NotFound:
+ *       description: Recurso no encontrado
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               success:
+ *                 type: boolean
+ *                 example: false
+ *               message:
+ *                 type: string
+ *                 example: "Persona temporal no encontrada."
+ *
+ *     InternalServerError:
+ *       description: Error interno del servidor
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               success:
+ *                 type: boolean
+ *                 example: false
+ *               message:
+ *                 type: string
+ *                 example: "Error interno del servidor"
+ *               error:
+ *                 type: string
+ *                 description: Detalles del error (solo en desarrollo)
+ *                 example: "Database connection failed"
+ */
