@@ -4,7 +4,7 @@ import roleRoutes from "../modules/Roles/routes/roles.routes.js";
 import employeeRoutes from "../modules/Services/Employees/routes/employees.routes.js";
 import usersRoutes from "../modules/Users/routes/users.routes.js";
 import providerRoutes from "../modules/Providers/routes/providers.routes.js";
-import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/temporaryworkers.routes.js";
+import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/routes/temporaryworkers.routes.js";
 import documentTypesRoutes from "./documentTypes.routes.js";
 import sportsCategoryRoutes from "../modules/Athletes/SportsCategory/routes/sportsCategory.routes.js";
 import teamsRoutes from "../modules/Teams/routes/teams.routes.js";
