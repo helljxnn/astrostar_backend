@@ -631,8 +631,6 @@ model Appointment {
 
   // Campos para las relaciones (listos para que los conectes)
   athleteId               Int
-  specialistId            Int
-  specialtyId             Int // Asumiendo que tienes un modelo Specialty
 
   @@map("appointments")
 }
