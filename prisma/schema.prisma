@@ -548,14 +548,12 @@ model SportsDisposals {
   quantity          Int
   reason            SportsDisposalsStatus @default(other)
   observation       String?
-  imageUrlOne       String?
-  imageUrlSecond    String?
-  imageUrlThirth    String?
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
   sportsEquipmentId Int
   sportsEquipment   SportsEquipment       @relation(fields: [sportsEquipmentId], references: [id], onDelete: Cascade)
-
+  images            SportsDisposalImage[]
+  
   @@index([sportsEquipmentId])
   @@map("sports_disposals")
 }
@@ -566,6 +564,14 @@ enum SportsDisposalsStatus {
   stolen
   obsolete
   other
+}
+
+model SportsDisposalImage {
+  id                Int      @id @default(autoincrement())
+  url               String   // URL de la imagen en Cloudinary
+  publicId          String   // ID público para poder eliminarla de Cloudinary
+  disposalId        Int
+  disposal          SportsDisposals @relation(fields: [disposalId], references: [id], onDelete: Cascade)
 }
 
 // Enums for the DonorSponsor model

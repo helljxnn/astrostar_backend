@@ -1,12 +1,23 @@
 import prisma from "../../../config/database.js";
+import { v2 as cloudinary } from "cloudinary";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+// Configuración de Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export class SportsEquipment {
   /**
-   * Creates a new piece of sports equipment.
+   * Crea un nuevo material deportivo. La cantidad inicial siempre es 0.
    */
   Create = async (req, res) => {
     try {
-      const { name, quantityInitial } = req.body;
+      const { name } = req.body;
 
       if (!name || name.trim() === "") {
         return res.status(400).json({
@@ -15,13 +26,11 @@ export class SportsEquipment {
         });
       }
 
-      const initialQty = quantityInitial ? parseInt(quantityInitial) : 0;
-
       const newEquipment = await prisma.sportsEquipment.create({
         data: {
           name: name.trim(),
-          quantityInitial: initialQty,
-          quantityTotal: initialQty, // Total quantity is same as initial on creation
+          quantityInitial: 0, // Siempre inicializa en cero
+          quantityTotal: 0,
         },
       });
 
@@ -46,39 +55,7 @@ export class SportsEquipment {
   };
 
   /**
-   * Gets a single piece of sports equipment by ID.
-   */
-  GetById = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const equipment = await prisma.sportsEquipment.findUnique({
-        where: { id: parseInt(id) },
-        include: { disposals: true }, // Include disposal history
-      });
-
-      if (!equipment) {
-        return res.status(404).json({
-          success: false,
-          message: `Sports equipment with ID ${id} not found.`,
-        });
-      }
-
-      res.status(200).json({
-        success: true,
-        message: "Sports equipment found.",
-        data: equipment,
-      });
-    } catch (error) {
-      console.error("Error fetching sports equipment by ID:", error);
-      res.status(500).json({
-        success: false,
-        message: "Internal server error.",
-      });
-    }
-  };
-
-  /**
-   * Gets all sports equipment with pagination and search.
+   * Obtiene todos los materiales deportivos con paginación y búsqueda.
    */
   GetAll = async (req, res) => {
     try {
@@ -125,7 +102,43 @@ export class SportsEquipment {
   };
 
   /**
-   * Updates sports equipment (name and status).
+   * Obtiene un material deportivo por su ID.
+   */
+  GetById = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const equipment = await prisma.sportsEquipment.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          disposals: {
+            include: { images: true }, // Incluye las bajas y sus imágenes
+          },
+        },
+      });
+
+      if (!equipment) {
+        return res.status(404).json({
+          success: false,
+          message: `Sports equipment with ID ${id} not found.`,
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Sports equipment found.",
+        data: equipment,
+      });
+    } catch (error) {
+      console.error("Error fetching sports equipment by ID:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error.",
+      });
+    }
+  };
+
+  /**
+   * Actualiza el nombre o estado de un material deportivo.
    */
   Update = async (req, res) => {
     try {
@@ -161,7 +174,7 @@ export class SportsEquipment {
   };
 
   /**
-   * Deletes a piece of sports equipment.
+   * Elimina un material deportivo si no tiene registros asociados.
    */
   Delete = async (req, res) => {
     try {
@@ -180,7 +193,8 @@ export class SportsEquipment {
       if (error.code === "P2003") {
         return res.status(400).json({
           success: false,
-          message: "Cannot delete this equipment because it is associated with purchases or disposals.",
+          message:
+            "Cannot delete this equipment because it is associated with purchases or disposals.",
         });
       }
       res.status(500).json({
@@ -191,13 +205,14 @@ export class SportsEquipment {
   };
 
   /**
-   * Creates a disposal record for a piece of sports equipment.
+   * Crea un registro de baja para un material, subiendo imágenes si se proporcionan.
    */
   CreateDisposal = async (req, res) => {
-    try {
-      const { id } = req.params; // ID of the SportsEquipment
-      const { quantity, reason, observation } = req.body;
+    const { id } = req.params;
+    const { quantity, reason, observation } = req.body;
+    const files = req.files;
 
+    try {
       if (!quantity || !reason) {
         return res.status(400).json({
           success: false,
@@ -208,8 +223,8 @@ export class SportsEquipment {
       const quantityToDispose = parseInt(quantity);
       if (isNaN(quantityToDispose) || quantityToDispose <= 0) {
         return res.status(400).json({
-            success: false,
-            message: "Quantity must be a positive number.",
+          success: false,
+          message: "Quantity must be a positive number.",
         });
       }
 
@@ -227,34 +242,63 @@ export class SportsEquipment {
       if (equipment.quantityTotal < quantityToDispose) {
         return res.status(400).json({
           success: false,
-          message: `Cannot dispose ${quantityToDispose} items. Only ${equipment.quantityTotal} items are available.`,
+          message: `La cantidad a dar de baja (${quantityToDispose}) supera el total disponible (${equipment.quantityTotal}). La operación no puede dejar un saldo negativo.`,
         });
       }
 
-      // Perform operations in a transaction
-      const [newDisposal, updatedEquipment] = await prisma.$transaction([
-        prisma.sportsDisposals.create({
+      // Subir imágenes a Cloudinary
+      const uploadPromises = files.map((file) => {
+        return new Promise((resolve, reject) => {
+          const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "sports_equipment_disposals" },
+            (error, result) => {
+              if (error) return reject(error);
+              resolve({ url: result.secure_url, publicId: result.public_id });
+            }
+          );
+          uploadStream.end(file.buffer);
+        });
+      });
+
+      const uploadedImages = await Promise.all(uploadPromises);
+
+      // Realizar operaciones en una transacción
+      const result = await prisma.$transaction(async (tx) => {
+        const newDisposal = await tx.sportsDisposals.create({
           data: {
             quantity: quantityToDispose,
             reason,
             observation,
             sportsEquipmentId: parseInt(id),
           },
-        }),
-        prisma.sportsEquipment.update({
+        });
+
+        if (uploadedImages.length > 0) {
+          await tx.sportsDisposalImage.createMany({
+            data: uploadedImages.map((img) => ({
+              url: img.url,
+              publicId: img.publicId,
+              disposalId: newDisposal.id,
+            })),
+          });
+        }
+
+        const updatedEquipment = await tx.sportsEquipment.update({
           where: { id: parseInt(id) },
           data: {
             quantityTotal: {
               decrement: quantityToDispose,
             },
           },
-        }),
-      ]);
+        });
+
+        return { newDisposal, updatedEquipment };
+      });
 
       res.status(201).json({
         success: true,
         message: `Successfully disposed of ${quantityToDispose} item(s).`,
-        data: { newDisposal, updatedEquipment },
+        data: result,
       });
     } catch (error) {
       console.error("Error creating disposal:", error);
@@ -265,4 +309,3 @@ export class SportsEquipment {
     }
   };
 }
-

@@ -1,14 +1,19 @@
 import express from "express";
 import { SportsEquipment } from "../controllers/sportEquipment.controller.js";
+import multer from "multer";
 
 const router = express.Router();
 const controller = new SportsEquipment();
+
+// Configuración de Multer para manejar la subida de archivos en memoria
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
 
 /**
  * @swagger
  * tags:
  *   name: SportsEquipment
- *   description: Management of sports equipment
+ *   description: Gestión de material deportivo
  */
 
 /**
@@ -20,27 +25,58 @@ const controller = new SportsEquipment();
  *       properties:
  *         id:
  *           type: integer
- *           description: The unique ID of the equipment.
+ *           description: ID único del material deportivo.
  *           example: 1
  *         name:
  *           type: string
- *           description: The name of the equipment.
- *           example: "Soccer Ball"
+ *           description: Nombre del material deportivo.
+ *           example: "Balón de Fútbol"
  *         quantityInitial:
  *           type: integer
- *           description: The initial quantity when the equipment was first registered.
- *           example: 100
+ *           description: Cantidad inicial registrada (histórico).
+ *           example: 50
  *         quantityTotal:
  *           type: integer
- *           description: The current total available quantity.
- *           example: 85
+ *           description: Cantidad actual disponible en inventario.
+ *           example: 45
  *         status:
  *           type: string
- *           enum: [Activated, Disabled, SoldOut]
- *           description: The current status of the equipment item.
- *           example: "Activated"
+ *           enum: [Active, Inactive, InRepair]
+ *           description: Estado del material deportivo.
+ *           example: "Active"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Fecha de creación.
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Fecha de última actualización.
  *
- *     DisposalRequest:
+ *     CreateSportsEquipmentRequest:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Nombre del nuevo material deportivo.
+ *           example: "Conos de Entrenamiento"
+ *
+ *     UpdateSportsEquipmentRequest:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Nuevo nombre para el material deportivo.
+ *           example: "Balón de Baloncesto"
+ *         status:
+ *           type: string
+ *           enum: [Active, Inactive, InRepair]
+ *           description: Nuevo estado para el material deportivo.
+ *           example: "Inactive"
+ *
+ *     CreateDisposalRequest:
  *       type: object
  *       required:
  *         - quantity
@@ -48,24 +84,29 @@ const controller = new SportsEquipment();
  *       properties:
  *         quantity:
  *           type: integer
- *           description: The number of items to dispose of.
- *           example: 5
+ *           description: Cantidad de material a dar de baja.
+ *           example: 2
  *         reason:
  *           type: string
- *           enum: [damaged, lost, stolen, obsolete, other]
- *           description: The reason for the disposal.
- *           example: "damaged"
+ *           description: Motivo de la baja.
+ *           example: "Desgaste por uso"
  *         observation:
  *           type: string
- *           description: Optional notes about the disposal.
- *           example: "Worn out from excessive use."
+ *           description: Observaciones adicionales (opcional).
+ *           example: "El material presenta roturas irreparables."
+ *         images:
+ *           type: array
+ *           items:
+ *             type: string
+ *             format: binary
+ *           description: "Hasta 5 imágenes como evidencia de la baja."
  */
 
 /**
  * @swagger
  * /api/sports-equipment:
  *   get:
- *     summary: Get all sports equipment with pagination and search
+ *     summary: Obtener todos los materiales deportivos
  *     tags: [SportsEquipment]
  *     parameters:
  *       - in: query
@@ -73,21 +114,38 @@ const controller = new SportsEquipment();
  *         schema:
  *           type: integer
  *           default: 1
+ *         description: Número de página para la paginación.
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
+ *         description: Cantidad de resultados por página.
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
- *         description: Search by name or status.
+ *         description: Término de búsqueda para filtrar por nombre o estado.
  *     responses:
  *       200:
- *         description: A list of sports equipment.
+ *         description: Lista de materiales deportivos obtenida exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/SportsEquipment'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
  *       500:
- *         description: Internal server error.
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", controller.GetAll);
 
@@ -95,7 +153,7 @@ router.get("/", controller.GetAll);
  * @swagger
  * /api/sports-equipment/{id}:
  *   get:
- *     summary: Get a single piece of sports equipment by ID
+ *     summary: Obtener un material deportivo por su ID
  *     tags: [SportsEquipment]
  *     parameters:
  *       - in: path
@@ -103,11 +161,18 @@ router.get("/", controller.GetAll);
  *         required: true
  *         schema:
  *           type: integer
+ *         description: ID del material deportivo a obtener.
  *     responses:
  *       200:
- *         description: Details of the sports equipment.
+ *         description: Material deportivo encontrado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SportsEquipment'
  *       404:
- *         description: Equipment not found.
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/:id", controller.GetById);
 
@@ -115,26 +180,21 @@ router.get("/:id", controller.GetById);
  * @swagger
  * /api/sports-equipment:
  *   post:
- *     summary: Create a new piece of sports equipment
+ *     summary: Crear un nuevo material deportivo
  *     tags: [SportsEquipment]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 example: "Training Cones"
- *               quantityInitial:
- *                 type: integer
- *                 example: 50
+ *             $ref: '#/components/schemas/CreateSportsEquipmentRequest'
  *     responses:
  *       201:
- *         description: Sports equipment created successfully.
+ *         description: Material deportivo creado exitosamente.
  *       400:
- *         description: Invalid data (e.g., duplicate or empty name).
+ *         description: Datos inválidos, como nombre duplicado o faltante.
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.post("/", controller.Create);
 
@@ -142,7 +202,7 @@ router.post("/", controller.Create);
  * @swagger
  * /api/sports-equipment/{id}:
  *   put:
- *     summary: Update sports equipment
+ *     summary: Actualizar un material deportivo
  *     tags: [SportsEquipment]
  *     parameters:
  *       - in: path
@@ -150,25 +210,20 @@ router.post("/", controller.Create);
  *         required: true
  *         schema:
  *           type: integer
+ *         description: ID del material deportivo a actualizar.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 example: "Basketball"
- *               status:
- *                 type: string
- *                 enum: [Activated, Disabled, SoldOut]
- *                 example: "Disabled"
+ *             $ref: '#/components/schemas/UpdateSportsEquipmentRequest'
  *     responses:
  *       200:
- *         description: Sports equipment updated.
+ *         description: Material deportivo actualizado exitosamente.
  *       404:
- *         description: Equipment not found.
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.put("/:id", controller.Update);
 
@@ -176,7 +231,7 @@ router.put("/:id", controller.Update);
  * @swagger
  * /api/sports-equipment/{id}:
  *   delete:
- *     summary: Delete a piece of sports equipment
+ *     summary: Eliminar un material deportivo
  *     tags: [SportsEquipment]
  *     parameters:
  *       - in: path
@@ -184,13 +239,16 @@ router.put("/:id", controller.Update);
  *         required: true
  *         schema:
  *           type: integer
+ *         description: ID del material deportivo a eliminar.
  *     responses:
  *       200:
- *         description: Sports equipment deleted.
+ *         description: Material deportivo eliminado exitosamente.
  *       400:
- *         description: Cannot delete because it has associated records.
+ *         description: No se puede eliminar porque tiene registros asociados (compras, bajas).
  *       404:
- *         description: Equipment not found.
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.delete("/:id", controller.Delete);
 
@@ -198,7 +256,7 @@ router.delete("/:id", controller.Delete);
  * @swagger
  * /api/sports-equipment/{id}/disposals:
  *   post:
- *     summary: Create a disposal record for a piece of equipment
+ *     summary: Registrar una baja de material deportivo
  *     tags: [SportsEquipment]
  *     parameters:
  *       - in: path
@@ -206,22 +264,27 @@ router.delete("/:id", controller.Delete);
  *         required: true
  *         schema:
  *           type: integer
- *         description: The ID of the equipment to dispose of.
+ *         description: ID del material deportivo al que se le dará de baja.
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/DisposalRequest'
+ *             $ref: '#/components/schemas/CreateDisposalRequest'
  *     responses:
  *       201:
- *         description: Disposal created successfully.
+ *         description: Baja registrada exitosamente.
  *       400:
- *         description: Invalid data (e.g., quantity exceeds available total).
+ *         description: Datos inválidos, como cantidad insuficiente o campos faltantes.
  *       404:
- *         description: Equipment not found.
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
-router.post("/:id/disposals", controller.CreateDisposal);
+router.post(
+  "/:id/disposals",
+  upload.array("images", 5),
+  controller.CreateDisposal
+);
 
 export default router;
-
