@@ -113,7 +113,7 @@ router.post("/login", AuthController.Login);
 /**
  * @swagger
  * /api/auth/profile:
- *   get:
+ *   post:
  *     summary: Obtener el perfil del usuario autenticado
  *     tags: [Auth]
  *     security:
@@ -152,6 +152,7 @@ router.post("/profile", authenticateToken, AuthController.Profile);
  *         description: Error interno del servidor.
  */
 router.get("/logout", AuthController.Logout);
+
 /**
  * @swagger
  * /api/auth/refreshToken:
@@ -176,7 +177,222 @@ router.get("/logout", AuthController.Logout);
  *       401:
  *         description: Refresh token inválido o ausente.
  *       500:
- *         description: Error interno del servidor. 
+ *         description: Error interno del servidor.
  */
 router.post("/refreshToken", AuthController.RefreshToken);
+
+/**
+ * @swagger
+ * /api/auth/updateProfile/{pk}:
+ *   put:
+ *     summary: Actualizar el perfil de un usuario
+ *     tags: [Auth]
+ *     description: Permite actualizar los datos del usuario según su ID.
+ *     parameters:
+ *       - in: path
+ *         name: pk
+ *         required: true
+ *         description: ID del usuario que se desea actualizar.
+ *         schema:
+ *           type: integer
+ *           example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             example:
+ *               firstName: "Carlos"
+ *               lastName: "Pérez"
+ *               phoneNumber: "3001234567"
+ *     responses:
+ *       200:
+ *         description: Usuario actualizado exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "User updated successfully"
+ *       400:
+ *         description: Error al actualizar el usuario.
+ *       404:
+ *         description: Usuario no encontrado.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.put("/updateProfile/:pk", AuthController.UpdateProfile);
+
+/**
+ * @swagger
+ * /api/auth/documentType:
+ *   get:
+ *     summary: Obtener los tipos de documento
+ *     tags: [Auth]
+ *     description: Devuelve una lista de todos los tipos de documento disponibles en el sistema.
+ *     responses:
+ *       200:
+ *         description: Tipos de documento obtenidos exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Tipos de documento encontrados exitosamente."
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       name:
+ *                         type: string
+ *                         example: "Cédula de Ciudadanía"
+ *       404:
+ *         description: No se encontraron tipos de documento.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.get("/documentType", AuthController.DocumentType);
+
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Iniciar proceso de recuperación de contraseña
+ *     tags: [Auth]
+ *     description: Recibe un email y, si existe, envía un correo con un token para restablecer la contraseña.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "user@example.com"
+ *     responses:
+ *       200:
+ *         description: Solicitud procesada. Por seguridad, la respuesta es siempre la misma.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Si existe una cuenta con este correo, se ha enviado un enlace para restablecer la contraseña."
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.post("/forgot-password", AuthController.forgotPassword);
+
+/**
+ * @swagger
+ * /api/auth/verify-code:
+ *   post:
+ *     summary: Verificar el código de recuperación de contraseña
+ *     tags: [Auth]
+ *     description: Recibe el token enviado por correo y verifica si es válido y no ha expirado.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: El token recibido en el correo de recuperación.
+ *                 example: "a1b2c3d4e5f6..."
+ *     responses:
+ *       200:
+ *         description: El código es válido.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Código verificado correctamente."
+ *       400:
+ *         description: El código es inválido o ha expirado.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.post("/verify-code", AuthController.verifyCode);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Restablecer la contraseña del usuario
+ *     tags: [Auth]
+ *     description: Recibe el token de recuperación y la nueva contraseña para actualizarla.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - password
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: El token de recuperación validado previamente.
+ *                 example: "a1b2c3d4e5f6..."
+ *               password:
+ *                 type: string
+ *                 format: password
+ *                 description: La nueva contraseña para el usuario.
+ *                 example: "newSecurePassword123!"
+ *     responses:
+ *       200:
+ *         description: Contraseña actualizada correctamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Contraseña actualizada correctamente."
+ *       400:
+ *         description: El token es inválido, ha expirado o la contraseña no cumple los requisitos.
+ *       500:
+ *         description: Error interno del servidor.
+ */
+router.post("/reset-password", AuthController.resetPassword);
+
 export default router;

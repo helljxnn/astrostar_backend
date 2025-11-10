@@ -24,41 +24,61 @@ const controller = new AppointmentController();
  *       properties:
  *         id:
  *           type: integer
+ *           description: The auto-generated id of the appointment.
  *           example: 1
  *         title:
  *           type: string
- *           example: "Consulta médica"
+ *           description: The title of the appointment.
+ *           example: "Medical Check-up"
  *         date:
  *           type: string
  *           format: date
+ *           description: The date of the appointment.
  *           example: "2025-11-10"
  *         time:
  *           type: string
+ *           description: The time of the appointment.
  *           example: "09:30"
  *         description:
  *           type: string
- *           example: "Chequeo general"
+ *           description: A brief description of the appointment.
+ *           example: "General health check."
  *         status:
  *           type: string
  *           enum: [SCHEDULED, COMPLETED, CANCELLED]
+ *           description: The current status of the appointment.
  *           example: "SCHEDULED"
+ *         cancellationReason:
+ *           type: string
+ *           description: The reason for cancelling the appointment.
+ *           example: "Patient rescheduled."
+ *
+ *     CancelAppointment:
+ *       type: object
+ *       required:
+ *         - cancellationReason
+ *       properties:
+ *         cancellationReason:
+ *           type: string
+ *           description: The reason for cancelling the appointment.
+ *           example: "Unable to attend due to a conflict."
  */
 
 /**
  * @swagger
  * /appointments:
  *   get:
- *     summary: Get all appointments
+ *     summary: Retrieve a list of all appointments
  *     tags: [Appointments]
  *     parameters:
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
- *         description: Search appointments by title
+ *         description: Search for appointments by title.
  *     responses:
  *       200:
- *         description: List of appointments
+ *         description: A list of appointments.
  *         content:
  *           application/json:
  *             schema:
@@ -66,13 +86,13 @@ const controller = new AppointmentController();
  *               items:
  *                 $ref: '#/components/schemas/Appointment'
  */
-router.get("/", controller.GetAll);
+router.get("/", controller.getAll);
 
 /**
  * @swagger
  * /appointments/{id}:
  *   get:
- *     summary: Get appointment by ID
+ *     summary: Get a single appointment by ID
  *     tags: [Appointments]
  *     parameters:
  *       - in: path
@@ -80,17 +100,18 @@ router.get("/", controller.GetAll);
  *         required: true
  *         schema:
  *           type: integer
+ *         description: The ID of the appointment to retrieve.
  *     responses:
  *       200:
- *         description: Appointment found
+ *         description: The requested appointment.
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Appointment'
  *       404:
- *         description: Appointment not found
+ *         description: Appointment not found.
  */
-router.get("/:id", controller.GetById);
+router.get("/:id", controller.getById);
 
 /**
  * @swagger
@@ -106,17 +127,17 @@ router.get("/:id", controller.GetById);
  *             $ref: '#/components/schemas/Appointment'
  *     responses:
  *       201:
- *         description: Appointment created
+ *         description: Appointment created successfully.
  *       400:
- *         description: Missing required fields
+ *         description: Bad request, check input data.
  */
-router.post("/", controller.Create);
+router.post("/", controller.create);
 
 /**
  * @swagger
  * /appointments/{id}:
  *   put:
- *     summary: Update appointment
+ *     summary: Update an existing appointment
  *     tags: [Appointments]
  *     parameters:
  *       - in: path
@@ -124,6 +145,7 @@ router.post("/", controller.Create);
  *         required: true
  *         schema:
  *           type: integer
+ *         description: The ID of the appointment to update.
  *     requestBody:
  *       required: true
  *       content:
@@ -132,15 +154,17 @@ router.post("/", controller.Create);
  *             $ref: '#/components/schemas/Appointment'
  *     responses:
  *       200:
- *         description: Appointment updated
+ *         description: Appointment updated successfully.
+ *       404:
+ *         description: Appointment not found.
  */
-router.put("/:id", controller.Update);
+router.put("/:id", controller.update);
 
 /**
  * @swagger
- * /appointments/{id}/status:
+ * /appointments/{id}/cancel:
  *   patch:
- *     summary: Change appointment status
+ *     summary: Cancel an appointment
  *     tags: [Appointments]
  *     parameters:
  *       - in: path
@@ -148,38 +172,22 @@ router.put("/:id", controller.Update);
  *         required: true
  *         schema:
  *           type: integer
+ *         description: The ID of the appointment to cancel.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [COMPLETED, CANCELLED]
+ *             $ref: '#/components/schemas/CancelAppointment'
  *     responses:
  *       200:
- *         description: Appointment status updated
+ *         description: Appointment cancelled successfully.
+ *       400:
+ *         description: Cancellation reason is required.
+ *       404:
+ *         description: Appointment not found.
  */
-router.patch("/:id/status", controller.ChangeStatus);
-
-/**
- * @swagger
- * /appointments/{id}:
- *   delete:
- *     summary: Delete an appointment
- *     tags: [Appointments]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Appointment deleted
- */
-router.delete("/:id", controller.Delete);
+router.patch("/:id/cancel", controller.cancel);
 
 export default router;
+

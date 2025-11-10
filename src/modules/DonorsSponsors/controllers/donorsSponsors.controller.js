@@ -171,10 +171,9 @@ export class DonorSponsorController {
     try {
       const { id } = req.params;
 
-      // Check if the record has associated donations
+      // First, check if the record exists
       const record = await prisma.donorSponsor.findUnique({
         where: { id: parseInt(id) },
-        include: { donations: true },
       });
 
       if (!record) {
@@ -184,13 +183,7 @@ export class DonorSponsorController {
         });
       }
 
-      if (record.donations && record.donations.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: "This record cannot be deleted because it has associated donations. Please remove those associations first.",
-        });
-      }
-
+      // Now, delete the record
       await prisma.donorSponsor.delete({
         where: { id: parseInt(id) },
       });
@@ -201,6 +194,13 @@ export class DonorSponsorController {
       });
     } catch (error) {
       console.error("Error deleting record:", error);
+      // Handle cases where deletion is prevented by a database constraint
+      if (error.code === 'P2003') {
+          return res.status(400).json({
+              success: false,
+              message: "This record cannot be deleted because it is associated with other data.",
+          });
+      }
       res.status(500).json({
         success: false,
         message: "Internal server error.",

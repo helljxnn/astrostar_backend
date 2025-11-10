@@ -36,28 +36,31 @@ model Role {
 }
 
 model User {
-  id             Int          @id @default(autoincrement())
-  firstName      String
-  middleName     String?
-  lastName       String
-  secondLastName String?
-  email          String       @unique
-  passwordHash   String
-  refreshToken   String?
-  phoneNumber    String?
-  address        String?
-  birthDate      DateTime
-  identification String       @unique
-  status         UserStatus   @default(Active)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  documentTypeId Int
-  roleId         Int
-  age            Int?
-  athlete        Athlete?
-  employee       Employee?
-  documentType   DocumentType @relation(fields: [documentTypeId], references: [id])
-  role           Role         @relation(fields: [roleId], references: [id])
+  id                   Int          @id @default(autoincrement())
+  firstName            String
+  middleName           String?
+  lastName             String
+  secondLastName       String?
+  email                String       @unique
+  passwordHash         String
+  refreshToken         String?
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+  phoneNumber          String?
+  address              String ?
+  birthDate            DateTime
+  identification       String       @unique
+  status               UserStatus   @default(Active)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+  documentTypeId       Int
+  roleId               Int
+  age                  Int?
+  urlPhoto             String?
+  athlete              Athlete?
+  employee             Employee?
+  documentType         DocumentType @relation(fields: [documentTypeId], references: [id])
+  role                 Role         @relation(fields: [roleId], references: [id])
 
   @@map("users")
 }
@@ -600,14 +603,15 @@ model DonorSponsor {
 }
 
 model Appointment {
-  id          Int       @id @default(autoincrement())
-  title       String
-  date        DateTime
-  time        String
-  description String?
-  status      AppointmentStatus @default(SCHEDULED)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 Int               @id @default(autoincrement())
+  title              String
+  date               DateTime
+  time               String
+  description        String?
+  status             AppointmentStatus @default(SCHEDULED)
+  cancellationReason String?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 }
 
 enum AppointmentStatus {

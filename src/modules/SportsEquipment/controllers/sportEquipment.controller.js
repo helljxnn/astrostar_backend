@@ -1,75 +1,85 @@
 import prisma from "../../../config/database.js";
 
 export class SportsEquipment {
-  // 1. Crear Material Deportivo (solo nombre)
+  /**
+   * Creates a new piece of sports equipment.
+   */
   Create = async (req, res) => {
     try {
-      const { name } = req.body;
+      const { name, quantityInitial } = req.body;
 
       if (!name || name.trim() === "") {
         return res.status(400).json({
           success: false,
-          message: "Por favor, proporcione el nombre del material deportivo.",
+          message: "Please provide the name of the sports equipment.",
         });
       }
+
+      const initialQty = quantityInitial ? parseInt(quantityInitial) : 0;
 
       const newEquipment = await prisma.sportsEquipment.create({
         data: {
           name: name.trim(),
-          // El estado por defecto será 'Disponible' según el schema.prisma
+          quantityInitial: initialQty,
+          quantityTotal: initialQty, // Total quantity is same as initial on creation
         },
       });
 
       res.status(201).json({
         success: true,
-        message: "Material deportivo creado exitosamente.",
+        message: "Sports equipment created successfully.",
         data: newEquipment,
       });
     } catch (error) {
-      console.error("Error al crear material deportivo:", error);
+      console.error("Error creating sports equipment:", error);
       if (error.code === "P2002") {
         return res.status(400).json({
           success: false,
-          message: `El material deportivo con el nombre "${req.body.name}" ya existe.`,
+          message: `Equipment with the name "${req.body.name}" already exists.`,
         });
       }
       res.status(500).json({
         success: false,
-        message: "Error interno del servidor. Por favor, inténtelo de nuevo.",
+        message: "Internal server error. Please try again.",
       });
     }
   };
 
-  // 2. Obtener un Material Deportivo por ID
+  /**
+   * Gets a single piece of sports equipment by ID.
+   */
   GetById = async (req, res) => {
     try {
       const { id } = req.params;
       const equipment = await prisma.sportsEquipment.findUnique({
         where: { id: parseInt(id) },
+        include: { disposals: true }, // Include disposal history
       });
 
       if (!equipment) {
         return res.status(404).json({
           success: false,
-          message: `No se encontró material deportivo con el ID ${id}.`,
+          message: `Sports equipment with ID ${id} not found.`,
         });
       }
 
       res.status(200).json({
         success: true,
-        message: "Material deportivo encontrado.",
+        message: "Sports equipment found.",
         data: equipment,
       });
     } catch (error) {
-      console.error("Error al obtener material deportivo por ID:", error);
+      console.error("Error fetching sports equipment by ID:", error);
       res.status(500).json({
         success: false,
-        message: "Error interno del servidor.",
+        message: "Internal server error.",
       });
     }
   };
 
-  // 3. Obtener Todos los Materiales (con paginación y búsqueda)
+  /**
+   * Gets all sports equipment with pagination and search.
+   */
   GetAll = async (req, res) => {
     try {
       const { page = 1, limit = 10, search = "" } = req.query;
@@ -79,7 +89,7 @@ export class SportsEquipment {
         ? {
             OR: [
               { name: { contains: search, mode: "insensitive" } },
-              { state: { contains: search, mode: "insensitive" } },
+              { status: { contains: search, mode: "insensitive" } },
             ],
           }
         : {};
@@ -96,7 +106,7 @@ export class SportsEquipment {
 
       res.status(200).json({
         success: true,
-        message: `Se encontraron ${equipments.length} de ${total} materiales deportivos.`,
+        message: `Found ${equipments.length} of ${total} equipment items.`,
         data: equipments,
         pagination: {
           total,
@@ -106,74 +116,56 @@ export class SportsEquipment {
         },
       });
     } catch (error) {
-      console.error("Error al obtener todos los materiales deportivos:", error);
+      console.error("Error fetching all sports equipment:", error);
       res.status(500).json({
         success: false,
-        message: "Error interno del servidor.",
+        message: "Internal server error.",
       });
     }
   };
 
-  // 4. Actualizar Material Deportivo (nombre y estado)
+  /**
+   * Updates sports equipment (name and status).
+   */
   Update = async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, state } = req.body;
+      const { name, status } = req.body;
 
       const updatedEquipment = await prisma.sportsEquipment.update({
         where: { id: parseInt(id) },
         data: {
           name: name ? name.trim() : undefined,
-          state: state,
+          status: status,
         },
       });
 
       res.status(200).json({
         success: true,
-        message: "Material deportivo actualizado exitosamente.",
+        message: "Sports equipment updated successfully.",
         data: updatedEquipment,
       });
     } catch (error) {
-      console.error("Error al actualizar material deportivo:", error);
+      console.error("Error updating sports equipment:", error);
       if (error.code === "P2025") {
-        // Prisma error for record not found
         return res.status(404).json({
           success: false,
-          message: `No se encontró material deportivo con el ID ${req.params.id}.`,
+          message: `Sports equipment with ID ${req.params.id} not found.`,
         });
       }
       res.status(500).json({
         success: false,
-        message: "Error interno del servidor.",
+        message: "Internal server error.",
       });
     }
   };
 
-  // 5. Eliminar Material Deportivo (con validación de relaciones)
+  /**
+   * Deletes a piece of sports equipment.
+   */
   Delete = async (req, res) => {
     try {
       const { id } = req.params;
-
-      const equipment = await prisma.sportsEquipment.findUnique({
-        where: { id: parseInt(id) },
-        include: { purchases_item: true }, // Cambia 'purchaseDetails' si es necesario
-      });
-
-      if (!equipment) {
-        return res.status(404).json({
-          success: false,
-          message: `No se encontró material deportivo con el ID ${id}.`,
-        });
-      }
-
-      // Validación de la relación
-      if (equipment.purchaseDetails && equipment.purchaseDetails.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message:
-            "No se puede eliminar este material deportivo porque está asociado a registros de compras. Elimine primero esas asociaciones.",
-        });
-      }
 
       await prisma.sportsEquipment.delete({
         where: { id: parseInt(id) },
@@ -181,14 +173,96 @@ export class SportsEquipment {
 
       res.status(200).json({
         success: true,
-        message: "Material deportivo eliminado exitosamente.",
+        message: "Sports equipment deleted successfully.",
       });
     } catch (error) {
-      console.error("Error al eliminar material deportivo:", error);
+      console.error("Error deleting sports equipment:", error);
+      if (error.code === "P2003") {
+        return res.status(400).json({
+          success: false,
+          message: "Cannot delete this equipment because it is associated with purchases or disposals.",
+        });
+      }
       res.status(500).json({
         success: false,
-        message: "Error interno del servidor.",
+        message: "Internal server error.",
+      });
+    }
+  };
+
+  /**
+   * Creates a disposal record for a piece of sports equipment.
+   */
+  CreateDisposal = async (req, res) => {
+    try {
+      const { id } = req.params; // ID of the SportsEquipment
+      const { quantity, reason, observation } = req.body;
+
+      if (!quantity || !reason) {
+        return res.status(400).json({
+          success: false,
+          message: "Fields 'quantity' and 'reason' are required.",
+        });
+      }
+
+      const quantityToDispose = parseInt(quantity);
+      if (isNaN(quantityToDispose) || quantityToDispose <= 0) {
+        return res.status(400).json({
+            success: false,
+            message: "Quantity must be a positive number.",
+        });
+      }
+
+      const equipment = await prisma.sportsEquipment.findUnique({
+        where: { id: parseInt(id) },
+      });
+
+      if (!equipment) {
+        return res.status(404).json({
+          success: false,
+          message: `Sports equipment with ID ${id} not found.`,
+        });
+      }
+
+      if (equipment.quantityTotal < quantityToDispose) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot dispose ${quantityToDispose} items. Only ${equipment.quantityTotal} items are available.`,
+        });
+      }
+
+      // Perform operations in a transaction
+      const [newDisposal, updatedEquipment] = await prisma.$transaction([
+        prisma.sportsDisposals.create({
+          data: {
+            quantity: quantityToDispose,
+            reason,
+            observation,
+            sportsEquipmentId: parseInt(id),
+          },
+        }),
+        prisma.sportsEquipment.update({
+          where: { id: parseInt(id) },
+          data: {
+            quantityTotal: {
+              decrement: quantityToDispose,
+            },
+          },
+        }),
+      ]);
+
+      res.status(201).json({
+        success: true,
+        message: `Successfully disposed of ${quantityToDispose} item(s).`,
+        data: { newDisposal, updatedEquipment },
+      });
+    } catch (error) {
+      console.error("Error creating disposal:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal server error while creating disposal.",
       });
     }
   };
 }
+

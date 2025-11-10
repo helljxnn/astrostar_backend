@@ -1,20 +1,30 @@
 import prisma from "../../../config/database.js";
 
 export class AppointmentController {
-  // Crear una nueva cita
-  Create = async (req, res) => {
+  /**
+   * Creates a new appointment.
+   * @param {object} req - The request object.
+   * @param {object} res - The response object.
+   */
+  create = async (req, res) => {
     try {
       const { title, date, time, description } = req.body;
 
       if (!title || !date || !time) {
         return res.status(400).json({
           success: false,
-          message: "Fields 'title', 'date' and 'time' are required.",
+          message: "Fields 'title', 'date', and 'time' are required.",
         });
       }
 
       const appointment = await prisma.appointment.create({
-        data: { title, date: new Date(date), time, description },
+        data: {
+          title,
+          date: new Date(date),
+          time,
+          description,
+          status: "SCHEDULED",
+        },
       });
 
       res.status(201).json({
@@ -28,8 +38,12 @@ export class AppointmentController {
     }
   };
 
-  // Obtener todas las citas (con búsqueda opcional)
-  GetAll = async (req, res) => {
+  /**
+   * Retrieves all appointments, with optional search.
+   * @param {object} req - The request object.
+   * @param {object} res - The response object.
+   */
+  getAll = async (req, res) => {
     try {
       const { search = "" } = req.query;
       const where = search
@@ -51,8 +65,12 @@ export class AppointmentController {
     }
   };
 
-  // Obtener una cita por ID
-  GetById = async (req, res) => {
+  /**
+   * Retrieves a single appointment by its ID.
+   * @param {object} req - The request object.
+   * @param {object} res - The response object.
+   */
+  getById = async (req, res) => {
     try {
       const { id } = req.params;
       const appointment = await prisma.appointment.findUnique({
@@ -76,13 +94,21 @@ export class AppointmentController {
     }
   };
 
-  // Actualizar cita
-  Update = async (req, res) => {
+  /**
+   * Updates an existing appointment.
+   * @param {object} req - The request object.
+   * @param {object} res - The response object.
+   */
+  update = async (req, res) => {
     try {
       const { id } = req.params;
       const data = req.body;
 
-      const updated = await prisma.appointment.update({
+      // Prevent changing status or cancellation reason via this endpoint
+      delete data.status;
+      delete data.cancellationReason;
+
+      const updatedAppointment = await prisma.appointment.update({
         where: { id: parseInt(id) },
         data,
       });
@@ -90,7 +116,7 @@ export class AppointmentController {
       res.status(200).json({
         success: true,
         message: "Appointment updated successfully.",
-        data: updated,
+        data: updatedAppointment,
       });
     } catch (error) {
       console.error("Error updating appointment:", error);
@@ -98,50 +124,56 @@ export class AppointmentController {
     }
   };
 
-  // Cambiar estado (completar o cancelar)
-  ChangeStatus = async (req, res) => {
+  /**
+   * Cancels an appointment and records the reason.
+   * @param {object} req - The request object.
+   * @param {object} res - The response object.
+   */
+  cancel = async (req, res) => {
     try {
       const { id } = req.params;
-      const { status } = req.body;
+      const { cancellationReason } = req.body;
 
-      if (!["COMPLETED", "CANCELLED"].includes(status)) {
+      if (!cancellationReason) {
         return res.status(400).json({
           success: false,
-          message: "Status must be either COMPLETED or CANCELLED.",
+          message: "A 'cancellationReason' is required to cancel an appointment.",
         });
       }
 
-      const updated = await prisma.appointment.update({
+      const appointment = await prisma.appointment.findUnique({
         where: { id: parseInt(id) },
-        data: { status },
+      });
+
+      if (!appointment) {
+        return res.status(404).json({
+          success: false,
+          message: "Appointment not found.",
+        });
+      }
+
+      if (appointment.status === 'CANCELLED') {
+        return res.status(409).json({
+            success: false,
+            message: "This appointment has already been cancelled.",
+        });
+      }
+
+      const updatedAppointment = await prisma.appointment.update({
+        where: { id: parseInt(id) },
+        data: {
+          status: "CANCELLED",
+          cancellationReason,
+        },
       });
 
       res.status(200).json({
         success: true,
-        message: "Appointment status updated.",
-        data: updated,
+        message: "Appointment cancelled successfully.",
+        data: updatedAppointment,
       });
     } catch (error) {
-      console.error("Error changing appointment status:", error);
-      res.status(500).json({ success: false, message: "Internal server error." });
-    }
-  };
-
-  // Eliminar cita
-  Delete = async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      await prisma.appointment.delete({
-        where: { id: parseInt(id) },
-      });
-
-      res.status(200).json({
-        success: true,
-        message: "Appointment deleted successfully.",
-      });
-    } catch (error) {
-      console.error("Error deleting appointment:", error);
+      console.error("Error cancelling appointment:", error);
       res.status(500).json({ success: false, message: "Internal server error." });
     }
   };
