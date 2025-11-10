@@ -1,293 +1,162 @@
-// Importar desde la ruta generada personalizada
-import pkg from '../../../../../../generated/prisma/index.js';
-const { PrismaClient } = pkg;
-
-const prisma = new PrismaClient();
+import prisma from '../../../../config/database.js';
 
 export class SportsCategoryService {
-  
-  // Obtener todas las categorías deportivas con paginación y búsqueda
-  async getAllSportsCategories({ page = 1, limit = 10, search = '' }) {
+
+  async getAllSportsCategories({ page = 1, limit = 10, search = '', status = '' }) {
     const skip = (page - 1) * limit;
+    const where = {};
 
-    const where = search
-      ? {
-          OR: [
-            { nombre: { contains: search, mode: 'insensitive' } },
-            { descripcion: { contains: search, mode: 'insensitive' } },
-            { estado: { equals: search, mode: 'insensitive' } }
-          ]
-        }
-      : {};
+    if (search) {
+      where.OR = [
+        { nombre: { contains: search, mode: 'insensitive' } },
+        { descripcion: { contains: search, mode: 'insensitive' } }
+      ];
+    }
 
-    const [categories, total] = await Promise.all([
-      prisma.sportsCategory.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          _count: {
-            select: {
-              inscriptions: true,
-              participants: true
-            }
-          }
-        }
-      }),
+    if (status) {
+      const map = { Active: 'Activo', Inactive: 'Inactivo' };
+      where.estado = map[status] || status;
+    }
+
+    const [cats, total] = await Promise.all([
+      prisma.sportsCategory.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' } }),
       prisma.sportsCategory.count({ where })
     ]);
 
     return {
-      categories,
+      success: true,
+      data: cats.map(c => ({
+        id: c.id,
+        name: c.nombre,
+        description: c.descripcion,
+        minAge: c.edadMinima,
+        maxAge: c.edadMaxima,
+        status: c.estado === 'Activo' ? 'Active' : 'Inactive',
+        publish: c.publicar,
+        createdAt: c.createdAt,
+        updatedAt: c.updatedAt
+      })),
       pagination: {
         total,
-        page,
+        page: Number(page),
         pages: Math.ceil(total / limit),
-        limit
+        limit: Number(limit)
       }
     };
   }
 
-  // Crear nueva categoría deportiva
   async createSportsCategory(data) {
-    // Verificar si el nombre ya existe
-    const existingCategory = await prisma.sportsCategory.findFirst({
-      where: {
-        nombre: {
-          equals: data.nombre,
-          mode: 'insensitive'
-        }
-      }
+    const { nombre, descripcion, edadMinima, edadMaxima, estado = 'Activo', publicar = false } = data;
+
+    if (edadMinima >= edadMaxima) {
+      return { success: false, message: 'La edad máxima debe ser mayor que la mínima.', statusCode: 400 };
+    }
+
+    const exists = await prisma.sportsCategory.findFirst({
+      where: { nombre: { equals: nombre.trim(), mode: 'insensitive' } }
     });
+    if (exists) return { success: false, message: `El nombre "${nombre}" ya está en uso.`, statusCode: 409 };
 
-    if (existingCategory) {
-      throw new Error(`La categoría deportiva "${data.nombre}" ya existe en el sistema.`);
-    }
-
-    // Validar rango de edades
-    if (data.edadMinima >= data.edadMaxima) {
-      throw new Error('La edad máxima debe ser mayor que la edad mínima.');
-    }
-
-    return await prisma.sportsCategory.create({
+    const cat = await prisma.sportsCategory.create({
       data: {
-        nombre: data.nombre,
-        edadMinima: data.edadMinima,
-        edadMaxima: data.edadMaxima,
-        descripcion: data.descripcion,
-        archivo: data.archivo,
-        estado: data.estado,
-        publicar: data.publicar
+        nombre: nombre.trim(),
+        descripcion: descripcion?.trim() || null,
+        edadMinima,
+        edadMaxima,
+        estado,
+        publicar,
+        ...(data.archivo && { archivo: data.archivo })
       }
-    });
-  }
-
-  // Obtener categoría deportiva por ID
-  async getSportsCategoryById(id) {
-    return await prisma.sportsCategory.findUnique({
-      where: { id },
-      include: {
-        inscriptions: {
-          include: {
-            athlete: {
-              include: {
-                user: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                    email: true
-                  }
-                }
-              }
-            }
-          }
-        },
-        participants: {
-          include: {
-            service: {
-              select: {
-                name: true
-              }
-            }
-          }
-        },
-        _count: {
-          select: {
-            inscriptions: true,
-            participants: true
-          }
-        }
-      }
-    });
-  }
-
-  // Actualizar categoría deportiva
-  async updateSportsCategory(id, data) {
-    // Verificar que la categoría existe
-    const category = await prisma.sportsCategory.findUnique({
-      where: { id }
-    });
-
-    if (!category) {
-      return null;
-    }
-
-    // Si se está actualizando el nombre, verificar que no exista
-    if (data.nombre && data.nombre !== category.nombre) {
-      const existingCategory = await prisma.sportsCategory.findFirst({
-        where: {
-          nombre: {
-            equals: data.nombre,
-            mode: 'insensitive'
-          },
-          NOT: { id }
-        }
-      });
-
-      if (existingCategory) {
-        throw new Error(`El nombre "${data.nombre}" ya está en uso por otra categoría deportiva.`);
-      }
-    }
-
-    // Validar rango de edades si se están actualizando
-    const newEdadMinima = data.edadMinima ?? category.edadMinima;
-    const newEdadMaxima = data.edadMaxima ?? category.edadMaxima;
-
-    if (newEdadMinima >= newEdadMaxima) {
-      throw new Error('La edad máxima debe ser mayor que la edad mínima.');
-    }
-
-    // Filtrar campos undefined para actualización parcial
-    const updateData = Object.fromEntries(
-      Object.entries(data).filter(([_, value]) => value !== undefined)
-    );
-
-    return await prisma.sportsCategory.update({
-      where: { id },
-      data: updateData
-    });
-  }
-
-  // Eliminar categoría deportiva
-  async deleteSportsCategory(id) {
-    const category = await prisma.sportsCategory.findUnique({
-      where: { id },
-      include: {
-        _count: {
-          select: {
-            inscriptions: true,
-            participants: true
-          }
-        }
-      }
-    });
-
-    if (!category) {
-      return {
-        success: false,
-        message: `No se encontró la categoría deportiva con ID ${id}.`,
-        statusCode: 404
-      };
-    }
-
-    // No permitir eliminar si está en estado Activo
-    if (category.estado === 'Activo') {
-      return {
-        success: false,
-        message: 'No se pueden eliminar categorías con estado "Activo". Primero cambie el estado a "Inactivo".',
-        statusCode: 400
-      };
-    }
-
-    // Verificar si tiene inscripciones o participantes
-    if (category._count.inscriptions > 0 || category._count.participants > 0) {
-      return {
-        success: false,
-        message: `No se puede eliminar la categoría "${category.nombre}" porque tiene ${category._count.inscriptions} inscripción(es) y ${category._count.participants} participante(s) asociados.`,
-        statusCode: 400
-      };
-    }
-
-    await prisma.sportsCategory.delete({
-      where: { id }
     });
 
     return {
       success: true,
-      message: `La categoría deportiva "${category.nombre}" ha sido eliminada exitosamente.`
+      data: {
+        id: cat.id,
+        name: cat.nombre,
+        description: cat.descripcion,
+        minAge: cat.edadMinima,
+        maxAge: cat.edadMaxima,
+        status: cat.estado === 'Activo' ? 'Active' : 'Inactive',
+        publish: cat.publicar,
+        createdAt: cat.createdAt,
+        updatedAt: cat.updatedAt
+      },
+      message: 'Categoría creada exitosamente.',
+      statusCode: 201
     };
   }
 
-  // Obtener estadísticas de categorías deportivas
-  async getSportsCategoryStats() {
-    const [total, activas, inactivas] = await Promise.all([
-      prisma.sportsCategory.count(),
-      prisma.sportsCategory.count({ where: { estado: 'Activo' } }),
-      prisma.sportsCategory.count({ where: { estado: 'Inactivo' } })
-    ]);
+  async getSportsCategoryById(id) {
+    const cat = await prisma.sportsCategory.findUnique({ where: { id: Number(id) } });
+    if (!cat) return { success: false, message: `Categoría con ID ${id} no encontrada.`, statusCode: 404 };
 
     return {
-      total,
-      activas,
-      inactivas
+      success: true,
+      data: {
+        id: cat.id,
+        name: cat.nombre,
+        description: cat.descripcion,
+        minAge: cat.edadMinima,
+        maxAge: cat.edadMaxima,
+        status: cat.estado === 'Activo' ? 'Active' : 'Inactive',
+        publish: cat.publicar,
+        createdAt: cat.createdAt,
+        updatedAt: cat.updatedAt
+      },
+      statusCode: 200
     };
   }
 
-  // Verificar si existe una categoría con el mismo nombre
-  async checkCategoryNameExists(nombre, excludeId = null) {
-    const where = {
-      nombre: {
-        equals: nombre,
-        mode: 'insensitive'
-      }
-    };
+  async updateSportsCategory(id, data) {
+    const cat = await prisma.sportsCategory.findUnique({ where: { id: Number(id) } });
+    if (!cat) return { success: false, message: `Categoría con ID ${id} no encontrada.`, statusCode: 404 };
 
-    if (excludeId) {
-      where.NOT = { id: excludeId };
+    if (data.nombre && data.nombre.trim() !== cat.nombre) {
+      const dup = await prisma.sportsCategory.findFirst({
+        where: { nombre: { equals: data.nombre.trim(), mode: 'insensitive' }, NOT: { id: cat.id } }
+      });
+      if (dup) return { success: false, message: `El nombre "${data.nombre}" ya está en uso.`, statusCode: 409 };
     }
 
-    return await prisma.sportsCategory.findFirst({ where });
-  }
+    if (data.edadMinima !== undefined && data.edadMaxima !== undefined && data.edadMinima >= data.edadMaxima) {
+      return { success: false, message: 'La edad máxima debe ser mayor que la mínima.', statusCode: 400 };
+    }
 
-  // Obtener atletas inscritos en una categoría
-  async getAthletesByCategory(categoryId) {
-    const inscriptions = await prisma.inscription.findMany({
-      where: {
-        sportsCategoryId: categoryId,
-        status: 'Active'
-      },
-      include: {
-        athlete: {
-          include: {
-            user: {
-              select: {
-                firstName: true,
-                middleName: true,
-                lastName: true,
-                secondLastName: true,
-                email: true,
-                phoneNumber: true,
-                birthDate: true
-              }
-            }
-          }
-        }
-      },
-      orderBy: {
-        inscriptionDate: 'desc'
+    const upd = await prisma.sportsCategory.update({
+      where: { id: cat.id },
+      data: {
+        ...(data.nombre && { nombre: data.nombre.trim() }),
+        ...(data.descripcion !== undefined && { descripcion: data.descripcion?.trim() || null }),
+        ...(data.edadMinima !== undefined && { edadMinima: data.edadMinima }),
+        ...(data.edadMaxima !== undefined && { edadMaxima: data.edadMaxima }),
+        ...(data.estado !== undefined && { estado: data.estado }),
+        ...(data.publicar !== undefined && { publicar: data.publicar }),
+        ...(data.archivo && { archivo: data.archivo })
       }
     });
 
-    return inscriptions.map(inscription => ({
-      id: inscription.athlete.id,
-      nombre: `${inscription.athlete.user.firstName} ${inscription.athlete.user.middleName || ''} ${inscription.athlete.user.lastName} ${inscription.athlete.user.secondLastName || ''}`.trim(),
-      email: inscription.athlete.user.email,
-      telefono: inscription.athlete.user.phoneNumber,
-      fechaNacimiento: inscription.athlete.user.birthDate,
-      fechaInscripcion: inscription.inscriptionDate,
-      fechaVencimiento: inscription.expirationDate,
-      estado: inscription.status
-    }));
+    return {
+      success: true,
+      data: {
+        id: upd.id,
+        name: upd.nombre,
+        description: upd.descripcion,
+        minAge: upd.edadMinima,
+        maxAge: upd.edadMaxima,
+        status: upd.estado === 'Activo' ? 'Active' : 'Inactive',
+        publish: upd.publicar,
+        createdAt: upd.createdAt,
+        updatedAt: upd.updatedAt
+      },
+      message: 'Categoría actualizada exitosamente.',
+      statusCode: 200
+    };
   }
+
+  async deleteSportsCategory(id) {
+    await prisma.sportsCategory.delete({ where: { id: Number(id) } });
+    return { success: true, message: 'Categoría eliminada exitosamente.', statusCode: 200 };
+  }
+
 }
