@@ -210,7 +210,8 @@ export class SportsEquipment {
   CreateDisposal = async (req, res) => {
     const { id } = req.params;
     const { quantity, reason, observation } = req.body;
-    const files = req.files;
+    // Asegurarse de que 'files' sea siempre un array, incluso si no se envían archivos.
+    const files = req.files || [];
 
     try {
       if (!quantity || !reason) {
