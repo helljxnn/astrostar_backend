@@ -1,225 +1,359 @@
-import providersRepository from '../repository/providers.repository.js';
+import { ProvidersRepository } from "../repository/providers.repository.js";
 
 export class ProvidersService {
-  /**
-   * Obtener todos los proveedores
-   */
-  async getProviders(params) {
+  constructor() {
+    this.providersRepository = new ProvidersRepository();
+  }
+
+  async getAllProviders({
+    page = 1,
+    limit = 10,
+    search = "",
+    status,
+    entityType,
+  }) {
     try {
-      const result = await providersRepository.findAll(params);
+      const result = await this.providersRepository.findAll({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        status,
+        entityType,
+      });
+
       return {
         success: true,
         data: result.providers,
-        pagination: result.pagination
+        pagination: result.pagination,
       };
     } catch (error) {
-      throw new Error(`Error obteniendo proveedores: ${error.message}`);
+      throw error;
     }
   }
 
-  /**
-   * Obtener proveedor por ID
-   */
   async getProviderById(id) {
     try {
-      const provider = await providersRepository.findById(id);
+      const provider = await this.providersRepository.findById(id);
+
       if (!provider) {
         return {
           success: false,
-          message: 'Proveedor no encontrado'
+          statusCode: 404,
+          message: `No se encontró el proveedor con ID ${id}.`,
         };
       }
 
       return {
         success: true,
-        data: provider
+        data: provider,
       };
     } catch (error) {
-      throw new Error(`Error obteniendo proveedor: ${error.message}`);
+      throw error;
     }
   }
 
-  /**
-   * Crear nuevo proveedor
-   */
   async createProvider(providerData) {
     try {
-      // Verificar NIT único
-      const isNitAvailable = await providersRepository.isNitAvailable(providerData.nit);
-      if (!isNitAvailable) {
-        return {
-          success: false,
-          message: 'El NIT ya está registrado'
-        };
+      const existingByNit = await this.providersRepository.findByNit(
+        providerData.nit
+      );
+      if (existingByNit) {
+        const fieldName =
+          providerData.tipoEntidad === "juridica"
+            ? "NIT"
+            : "documento de identificación";
+        throw new Error(
+          `El ${fieldName} "${providerData.nit}" ya está registrado.`
+        );
       }
 
-      // Verificar email único
-      if (providerData.correo) {
-        const isEmailAvailable = await providersRepository.isEmailAvailable(providerData.correo);
-        if (!isEmailAvailable) {
-          return {
-            success: false,
-            message: 'El email ya está registrado'
-          };
-        }
+      const existingByName = await this.providersRepository.findByBusinessName(
+        providerData.razonSocial,
+        null,
+        providerData.tipoEntidad
+      );
+      if (existingByName) {
+        const fieldName =
+          providerData.tipoEntidad === "juridica" ? "razón social" : "nombre";
+        throw new Error(
+          `El ${fieldName} "${providerData.razonSocial}" ya está registrado.`
+        );
       }
 
-      const provider = await providersRepository.create(providerData);
+      const existingByEmail = await this.providersRepository.findByEmail(
+        providerData.correo
+      );
+      if (existingByEmail) {
+        throw new Error(
+          `El email "${providerData.correo}" ya está registrado.`
+        );
+      }
+
+      const newProvider = await this.providersRepository.create(providerData);
 
       return {
         success: true,
-        message: 'Proveedor creado exitosamente',
-        data: provider
+        data: newProvider,
+        message: `Proveedor "${providerData.razonSocial}" creado exitosamente.`,
       };
     } catch (error) {
-      throw new Error(`Error creando proveedor: ${error.message}`);
+      throw error;
     }
   }
 
-  /**
-   * Actualizar proveedor
-   */
-  async updateProvider(id, providerData) {
+  async updateProvider(id, updateData) {
     try {
-      const existingProvider = await providersRepository.findById(id);
+      const existingProvider = await this.providersRepository.findById(id);
       if (!existingProvider) {
         return {
           success: false,
-          message: 'Proveedor no encontrado'
+          statusCode: 404,
+          message: `No se encontró el proveedor con ID ${id}.`,
         };
       }
 
-      // Verificar NIT único (excluyendo el actual)
-      if (providerData.nit && providerData.nit !== existingProvider.nit) {
-        const isNitAvailable = await providersRepository.isNitAvailable(providerData.nit, id);
-        if (!isNitAvailable) {
-          return {
-            success: false,
-            message: 'El NIT ya está registrado'
-          };
+      if (updateData.nit && updateData.nit !== existingProvider.nit) {
+        const existingByNit = await this.providersRepository.findByNit(
+          updateData.nit
+        );
+        if (existingByNit && existingByNit.id !== id) {
+          const fieldName =
+            updateData.tipoEntidad === "juridica"
+              ? "NIT"
+              : "documento de identificación";
+          throw new Error(
+            `El ${fieldName} "${updateData.nit}" ya está registrado por otro proveedor.`
+          );
         }
       }
 
-      // Verificar email único (excluyendo el actual)
-      if (providerData.correo && providerData.correo !== existingProvider.correo) {
-        const isEmailAvailable = await providersRepository.isEmailAvailable(providerData.correo, id);
-        if (!isEmailAvailable) {
-          return {
-            success: false,
-            message: 'El email ya está registrado'
-          };
+      if (
+        updateData.razonSocial &&
+        updateData.razonSocial !== existingProvider.razonSocial
+      ) {
+        const existingByName =
+          await this.providersRepository.findByBusinessName(
+            updateData.razonSocial,
+            id,
+            updateData.tipoEntidad || existingProvider.tipoEntidad
+          );
+        if (existingByName) {
+          const fieldName =
+            updateData.tipoEntidad === "juridica" ? "razón social" : "nombre";
+          throw new Error(
+            `El ${fieldName} "${updateData.razonSocial}" ya está registrado por otro proveedor.`
+          );
         }
       }
 
-      const updatedProvider = await providersRepository.update(id, providerData);
+      if (updateData.correo && updateData.correo !== existingProvider.correo) {
+        const existingByEmail = await this.providersRepository.findByEmail(
+          updateData.correo
+        );
+        if (existingByEmail && existingByEmail.id !== id) {
+          throw new Error(
+            `El email "${updateData.correo}" ya está registrado por otro proveedor.`
+          );
+        }
+      }
+
+      const updatedProvider = await this.providersRepository.update(
+        id,
+        updateData
+      );
 
       return {
         success: true,
-        message: 'Proveedor actualizado exitosamente',
-        data: updatedProvider
+        data: updatedProvider,
+        message: `Proveedor "${updatedProvider.razonSocial}" actualizado exitosamente.`,
       };
     } catch (error) {
-      throw new Error(`Error actualizando proveedor: ${error.message}`);
+      throw error;
     }
   }
 
-  /**
-   * Eliminar proveedor (ACTUALIZADO con validaciones de HUs)
-   */
   async deleteProvider(id) {
     try {
-      const existingProvider = await providersRepository.findById(id);
-      if (!existingProvider) {
+      const providerToDelete = await this.providersRepository.findById(id);
+      if (!providerToDelete) {
         return {
           success: false,
-          message: "Proveedor no encontrado"
+          statusCode: 404,
+          message: `No se encontró el proveedor con ID ${id}.`,
         };
       }
 
-      // Estas validaciones ya se hacen en el validador, pero por seguridad:
-      const hasPurchases = await providersRepository.hasActivePurchases(id);
-      if (hasPurchases) {
+      if (providerToDelete.estado === "Activo") {
         return {
           success: false,
-          message: "No se puede eliminar un proveedor con compras activas asociadas"
+          statusCode: 400,
+          message: `No se puede eliminar el proveedor "${providerToDelete.razonSocial}" porque está en estado "Activo". Primero cambie el estado a "Inactivo".`,
         };
       }
 
-      if (existingProvider.estado === 'Activo') {
+      const hasActivePurchases =
+        await this.providersRepository.hasActivePurchases(id);
+      if (hasActivePurchases) {
         return {
           success: false,
-          message: "No se puede eliminar un proveedor con estado activo"
+          statusCode: 400,
+          message: `No se puede eliminar el proveedor "${providerToDelete.razonSocial}" porque tiene compras activas asociadas.`,
         };
       }
 
-      await providersRepository.delete(id);
+      const deletedProvider = await this.providersRepository.delete(id);
 
       return {
         success: true,
-        message: "Proveedor eliminado exitosamente"
+        message: `Proveedor "${deletedProvider.razonSocial}" eliminado exitosamente.`,
       };
     } catch (error) {
-      throw new Error(`Error eliminando proveedor: ${error.message}`);
+      throw error;
     }
   }
 
-  /**
-   * Cambiar estado de proveedor
-   */
   async changeProviderStatus(id, status) {
     try {
-      const existingProvider = await providersRepository.findById(id);
+      const existingProvider = await this.providersRepository.findById(id);
       if (!existingProvider) {
         return {
           success: false,
-          message: 'Proveedor no encontrado'
+          statusCode: 404,
+          message: `No se encontró el proveedor con ID ${id}.`,
         };
       }
 
-      const updatedProvider = await providersRepository.changeStatus(id, status);
+      const updatedProvider = await this.providersRepository.changeStatus(
+        id,
+        status
+      );
 
       return {
         success: true,
-        message: `Estado del proveedor cambiado a ${status}`,
-        data: updatedProvider
+        data: updatedProvider,
+        message: `Estado del proveedor "${updatedProvider.razonSocial}" cambiado a "${status}" exitosamente.`,
       };
     } catch (error) {
-      throw new Error(`Error cambiando estado: ${error.message}`);
+      throw error;
     }
   }
 
-  /**
-   * Verificar disponibilidad de NIT
-   */
-  async checkNitAvailability(nit, excludeId = null) {
+  async checkNitAvailability(nit, excludeId = null, tipoEntidad = "juridica") {
     try {
-      const isAvailable = await providersRepository.isNitAvailable(nit, excludeId);
+      const existingProvider = await this.providersRepository.findByNit(nit);
+
+      if (!existingProvider) {
+        return { available: true };
+      }
+
+      if (excludeId && existingProvider.id === parseInt(excludeId)) {
+        return { available: true };
+      }
+
+      const fieldName =
+        tipoEntidad === "juridica" ? "NIT" : "documento de identificación";
       return {
-        success: true,
-        data: {
-          nit,
-          available: isAvailable
-        }
+        available: false,
+        message: `El ${fieldName} "${nit}" ya está registrado.`,
       };
     } catch (error) {
-      throw new Error(`Error verificando NIT: ${error.message}`);
+      throw error;
     }
   }
 
-  /**
-   * Obtener estadísticas de proveedores
-   */
+  async checkBusinessNameAvailability(
+    businessName,
+    excludeId = null,
+    tipoEntidad = "juridica"
+  ) {
+    try {
+      const existingProvider =
+        await this.providersRepository.findByBusinessName(
+          businessName,
+          excludeId,
+          tipoEntidad
+        );
+
+      if (!existingProvider) {
+        return { available: true };
+      }
+
+      const fieldName = tipoEntidad === "juridica" ? "razón social" : "nombre";
+      return {
+        available: false,
+        message: `El ${fieldName} "${businessName}" ya está registrado.`,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async checkEmailAvailability(email, excludeId = null) {
+    try {
+      const existingProvider = await this.providersRepository.findByEmail(
+        email
+      );
+
+      if (!existingProvider) {
+        return { available: true };
+      }
+
+      if (excludeId && existingProvider.id === parseInt(excludeId)) {
+        return { available: true };
+      }
+
+      return {
+        available: false,
+        message: `El email "${email}" ya está registrado.`,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async checkContactAvailability(contact, excludeId = null) {
+    try {
+      const existingProvider =
+        await this.providersRepository.findByNameCaseInsensitive(
+          contact,
+          excludeId
+        );
+
+      if (!existingProvider) {
+        return { available: true };
+      }
+
+      return {
+        available: false,
+        message: `El contacto "${contact}" ya está registrado.`,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
   async getProviderStats() {
     try {
-      const stats = await providersRepository.getStats();
+      const stats = await this.providersRepository.getStats();
       return {
         success: true,
-        data: stats
+        data: stats,
       };
     } catch (error) {
-      throw new Error(`Error obteniendo estadísticas: ${error.message}`);
+      throw error;
+    }
+  }
+
+  async checkActivePurchases(providerId) {
+    try {
+      const hasActivePurchases =
+        await this.providersRepository.hasActivePurchases(providerId);
+      return {
+        success: true,
+        hasActivePurchases,
+      };
+    } catch (error) {
+      throw error;
     }
   }
 }
-
-export default new ProvidersService();

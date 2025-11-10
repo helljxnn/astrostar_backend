@@ -20,8 +20,18 @@ app.use(
 
 //Libreria para guardar en las cookies el token JWT
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ charset: 'utf-8' }));
+app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
+
+// Asegurar UTF-8 en todas las respuestas
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
+
+// 💾 Servir imágenes subidas de categorías
+app.use('/uploads/categories', express.static('src/uploads/categories'));
+
 
 // Swagger documentation
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));

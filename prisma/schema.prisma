@@ -134,28 +134,41 @@ model Service {
   typeId       Int
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
+  participants Participant[]
+  sponsors     ServiceSponsor[]
   category     EventCategory    @relation(fields: [categoryId], references: [id])
   type         ServiceType      @relation(fields: [typeId], references: [id])
-  sponsors     ServiceSponsor[]
-  participants Participant[]
+
+  @@map("services")
 }
 
 model ServiceType {
-  id        Int       @id @default(autoincrement())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  services  Service[]
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  services    Service[]
+
+  @@map("service_types")
 }
 
 model ServiceSponsor {
-  id        Int     @id @default(autoincrement())
-  serviceId Int
-  sponsorId Int
-  service   Service @relation(fields: [serviceId], references: [id])
-  sponsor   Sponsor @relation(fields: [sponsorId], references: [id])
+  id               Int      @id @default(autoincrement())
+  serviceId        Int
+  sponsorId        Int
+  contributionType String?  @db.VarChar(100)
+  amount           Decimal? @db.Decimal(12, 2)
+  notes            String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  service          Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  sponsor          Sponsor  @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
 
-  @@unique([serviceId, sponsorId])
+  @@unique([serviceId, sponsorId], name: "unique_sponsor_per_service")
+  @@index([serviceId])
+  @@index([sponsorId])
+  @@map("service_sponsors")
 }
 
 model Sponsor {
@@ -164,10 +177,15 @@ model Sponsor {
   description  String?
   contactEmail String?
   phone        String?
+  logoUrl      String?
+  website      String?
   status       SponsorStatus    @default(Active)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
   services     ServiceSponsor[]
+
+  @@index([status])
+  @@map("sponsors")
 }
 
 model SportsCategory {
@@ -271,20 +289,23 @@ model TemporaryPerson {
   id             Int                   @id @default(autoincrement())
   firstName      String
   lastName       String
-  identification String?
-  email          String?
-  phone          String?
-  birthDate      DateTime?
+  identification String                @unique
+  email          String
+  phone          String
+  birthDate      DateTime
   age            Int?
-  address        String?
-  organization   String?
+  address        String
   status         TemporaryPersonStatus @default(Active)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
-  documentTypeId Int?
+  documentTypeId Int
   personType     TemporaryPersonType   @default(Participante)
+  category       String?
+  team           String?
+  middleName     String?
+  secondLastName String?
   teamMembers    TeamMember[]
-  documentType   DocumentType?         @relation(fields: [documentTypeId], references: [id])
+  documentType   DocumentType          @relation(fields: [documentTypeId], references: [id])
 
   @@map("temporary_persons")
 }
@@ -295,19 +316,23 @@ model Team {
   description  String?
   coach        String?
   category     String?
+  phone        String?
   status       TeamStatus    @default(Active)
+  teamType     TeamType      @default(Fundacion)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   participants Participant[]
   members      TeamMember[]
 
+  @@index([status])
+  @@index([teamType])
   @@map("teams")
 }
 
 model TeamMember {
   id                Int              @id @default(autoincrement())
   teamId            Int
-  memberType        MemberType
+  memberType        MemberType       // ← CAMBIO: MemberType enum en lugar de String
   position          String?
   jerseyNumber      Int?
   isActive          Boolean          @default(true)
@@ -317,32 +342,47 @@ model TeamMember {
   athleteId         Int?
   employeeId        Int?
   temporaryPersonId Int?
+  role              TeamMemberRole   @default(Player)
   athlete           Athlete?         @relation(fields: [athleteId], references: [id], onDelete: Cascade)
   employee          Employee?        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   team              Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
   temporaryPerson   TemporaryPerson? @relation(fields: [temporaryPersonId], references: [id], onDelete: Cascade)
 
-  @@unique([teamId, jerseyNumber])
+  @@unique([teamId, athleteId], name: "unique_athlete_per_team")
+  @@unique([teamId, temporaryPersonId], name: "unique_temporary_person_per_team")
+  @@unique([teamId, employeeId], name: "unique_employee_per_team")
+  @@unique([teamId, jerseyNumber], name: "unique_jersey_per_team")
+  @@index([teamId])
+  @@index([athleteId])
+  @@index([temporaryPersonId])
+  @@index([employeeId])
+  @@index([memberType])
   @@map("team_members")
 }
 
 model Participant {
-  id               Int             @id @default(autoincrement())
+  id               Int               @id @default(autoincrement())
   type             ParticipantType
-  registrationDate DateTime        @default(now())
-  status           String          @default("Registered")
+  registrationDate DateTime          @default(now())
   notes            String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   serviceId        Int
   sportsCategoryId Int?
   athleteId        Int?
   teamId           Int?
-  athlete          Athlete?        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  service          Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  sportsCategory   SportsCategory? @relation(fields: [sportsCategoryId], references: [id])
-  team             Team?           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  status           ParticipantStatus @default(Registered)
+  athlete          Athlete?          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  service          Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  sportsCategory   SportsCategory?   @relation(fields: [sportsCategoryId], references: [id])
+  team             Team?             @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
+  @@unique([serviceId, athleteId], name: "unique_athlete_per_service")
+  @@unique([serviceId, teamId], name: "unique_team_per_service")
+  @@index([serviceId])
+  @@index([athleteId])
+  @@index([teamId])
+  @@index([type])
   @@map("participants")
 }
 
@@ -358,6 +398,7 @@ model Provider {
   city           String             @db.VarChar(100)
   description    String?
   status         ProviderStatus     @default(Active)
+  statusAssignedAt DateTime           @default(now())
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   documentTypeId Int?
@@ -511,9 +552,28 @@ enum MemberType {
   TemporaryPerson
 }
 
+enum TeamType {
+  Fundacion
+  Temporal
+}
+
+enum TeamMemberRole {
+  Player
+  Coach
+  Assistant
+  Manager
+}
+
 enum ParticipantType {
   Individual
   Team
+}
+
+enum ParticipantStatus {
+  Registered
+  Confirmed
+  Cancelled
+  Attended
 }
 
 enum ProviderEntityType {

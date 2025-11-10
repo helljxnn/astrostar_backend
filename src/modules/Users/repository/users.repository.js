@@ -1,26 +1,35 @@
-import prisma from '../../../config/database.js';
+import prisma from "../../../config/database.js";
 
 export class UsersRepository {
   /**
    * Obtener todos los usuarios con paginación y filtros (SOLO LECTURA)
    */
-  async findAll({ page = 1, limit = 10, search = '', status, roleId, userType }) {
+  async findAll({
+    page = 1,
+    limit = 10,
+    search = "",
+    status,
+    roleId,
+    userType,
+  }) {
     const skip = (page - 1) * limit;
-    
+
     const where = {
       AND: [
-        search ? {
-          OR: [
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName: { contains: search, mode: 'insensitive' } },
-            { email: { contains: search, mode: 'insensitive' } },
-            { identification: { contains: search, mode: 'insensitive' } }
-          ]
-        } : {},
+        search
+          ? {
+              OR: [
+                { firstName: { contains: search, mode: "insensitive" } },
+                { lastName: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+                { identification: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {},
         status ? { status } : {},
         roleId ? { roleId } : {},
-        userType ? this.getUserTypeFilter(userType) : {}
-      ].filter(condition => Object.keys(condition).length > 0)
+        userType ? this.getUserTypeFilter(userType) : {},
+      ].filter((condition) => Object.keys(condition).length > 0),
     };
 
     const [users, total] = await Promise.all([
@@ -34,15 +43,15 @@ export class UsersRepository {
               id: true,
               name: true,
               description: true,
-              status: true
-            }
+              status: true,
+            },
           },
           documentType: {
             select: {
               id: true,
               name: true,
-              description: true
-            }
+              description: true,
+            },
           },
           athlete: {
             select: {
@@ -55,10 +64,10 @@ export class UsersRepository {
                   firstName: true,
                   lastName: true,
                   email: true,
-                  phone: true
-                }
-              }
-            }
+                  phone: true,
+                },
+              },
+            },
           },
           employee: {
             select: {
@@ -70,17 +79,17 @@ export class UsersRepository {
                     select: {
                       id: true,
                       name: true,
-                      description: true
-                    }
-                  }
-                }
-              }
-            }
-          }
+                      description: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       }),
-      prisma.user.count({ where })
+      prisma.user.count({ where }),
     ]);
 
     return {
@@ -89,8 +98,8 @@ export class UsersRepository {
         page: parseInt(page),
         limit: parseInt(limit),
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -107,31 +116,31 @@ export class UsersRepository {
             name: true,
             description: true,
             status: true,
-            permissions: true
-          }
+            permissions: true,
+          },
         },
         documentType: {
           select: {
             id: true,
             name: true,
-            description: true
-          }
+            description: true,
+          },
         },
         athlete: {
           include: {
             guardian: {
               include: {
-                documentType: true
-              }
+                documentType: true,
+              },
             },
             inscriptions: {
               include: {
-                sportsCategory: true
+                sportsCategory: true,
               },
-              orderBy: { inscriptionDate: 'desc' },
-              take: 5
-            }
-          }
+              orderBy: { inscriptionDate: "desc" },
+              take: 5,
+            },
+          },
         },
         employee: {
           include: {
@@ -139,14 +148,14 @@ export class UsersRepository {
               include: {
                 permission: {
                   include: {
-                    privileges: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                    privileges: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -155,22 +164,21 @@ export class UsersRepository {
    */
   getUserTypeFilter(userType) {
     const filters = {
-      'athletes': { athlete: { isNot: null } },
-      'employees': { employee: { isNot: null } },
-      'system': { 
+      athletes: { athlete: { isNot: null } },
+      employees: { employee: { isNot: null } },
+      system: {
         OR: [
           { employee: { isNot: null } },
-          { role: { name: { in: ['Administrador', 'Manager', 'Coordinator'] } } }
-        ]
+          {
+            role: { name: { in: ["Administrador", "Manager", "Coordinator"] } },
+          },
+        ],
       },
-      'with-login': { 
-        AND: [
-          { email: { not: null } },
-          { email: { not: '' } }
-        ]
+      "with-login": {
+        AND: [{ email: { not: null } }, { email: { not: "" } }],
       },
-      'active': { status: 'Active' },
-      'inactive': { status: 'Inactive' }
+      active: { status: "Active" },
+      inactive: { status: "Inactive" },
     };
 
     return filters[userType] || {};
@@ -180,30 +188,25 @@ export class UsersRepository {
    * Obtener estadísticas de usuarios
    */
   async getStats() {
-    const [
-      totalUsers,
-      activeUsers,
-      usersByRole,
-      usersByType,
-      recentUsers
-    ] = await Promise.all([
-      // Total usuarios
-      prisma.user.count(),
-      
-      // Usuarios activos
-      prisma.user.count({ 
-        where: { status: 'Active' } 
-      }),
-      
-      // Usuarios por rol
-      prisma.user.groupBy({
-        by: ['roleId'],
-        _count: true,
-        where: { status: 'Active' }
-      }),
-      
-      // Usuarios por tipo
-     await prisma.$queryRaw`
+    const [totalUsers, activeUsers, usersByRole, usersByType, recentUsers] =
+      await Promise.all([
+        // Total usuarios
+        prisma.user.count(),
+
+        // Usuarios activos
+        prisma.user.count({
+          where: { status: "Active" },
+        }),
+
+        // Usuarios por rol
+        prisma.user.groupBy({
+          by: ["roleId"],
+          _count: true,
+          where: { status: "Active" },
+        }),
+
+        // Usuarios por tipo
+        await prisma.$queryRaw`
         SELECT 
           COUNT(*) as total,
           CASE 
@@ -217,16 +220,16 @@ export class UsersRepository {
         WHERE u.status = 'Active'
         GROUP BY user_type
       `,
-      
-      // Usuarios recientes (últimos 30 días)
-      prisma.user.count({
-        where: {
-          createdAt: {
-            gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-          }
-        }
-      })
-    ]);
+
+        // Usuarios recientes (últimos 30 días)
+        prisma.user.count({
+          where: {
+            createdAt: {
+              gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+            },
+          },
+        }),
+      ]);
 
     return {
       totalUsers,
@@ -234,7 +237,7 @@ export class UsersRepository {
       inactiveUsers: totalUsers - activeUsers,
       usersByRole: await this.enrichRoleStats(usersByRole),
       usersByType,
-      recentUsers
+      recentUsers,
     };
   }
 
@@ -242,18 +245,18 @@ export class UsersRepository {
    * Enriquecer estadísticas con nombres de roles
    */
   async enrichRoleStats(usersByRole) {
-    const roleIds = usersByRole.map(item => item.roleId);
+    const roleIds = usersByRole.map((item) => item.roleId);
     const roles = await prisma.role.findMany({
       where: { id: { in: roleIds } },
-      select: { id: true, name: true }
+      select: { id: true, name: true },
     });
 
-    return usersByRole.map(item => {
-      const role = roles.find(r => r.id === item.roleId);
+    return usersByRole.map((item) => {
+      const role = roles.find((r) => r.id === item.roleId);
       return {
         roleId: item.roleId,
-        roleName: role?.name || 'Unknown',
-        count: item._count
+        roleName: role?.name || "Unknown",
+        count: item._count,
       };
     });
   }

@@ -21,134 +21,50 @@ const options = {
           type: "object",
           required: ["name", "description", "status"],
           properties: {
-            id: {
-              type: "integer",
-              description: "The auto-generated id of the role",
-            },
-            name: {
-              type: "string",
-              maxLength: 50,
-              description: "The name of the role",
-            },
-            description: {
-              type: "string",
-              maxLength: 200,
-              description: "The description of the role",
-            },
-            status: {
-              type: "string",
-              enum: ["Active", "Inactive"],
-              description: "The status of the role",
-            },
-            permissions: {
-              type: "object",
-              description: "The permissions object for the role",
-            },
-            createdAt: {
-              type: "string",
-              format: "date-time",
-              description: "The date the role was created",
-            },
-            updatedAt: {
-              type: "string",
-              format: "date-time",
-              description: "The date the role was last updated",
-            },
+            id: { type: "integer", description: "The auto-generated id of the role" },
+            name: { type: "string", maxLength: 50, description: "The name of the role" },
+            description: { type: "string", maxLength: 200, description: "The description of the role" },
+            status: { type: "string", enum: ["Active", "Inactive"], description: "The status of the role" },
+            permissions: { type: "object", description: "The permissions object for the role" },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
           },
         },
+
         RoleInput: {
           type: "object",
           required: ["name", "description", "status"],
           properties: {
-            name: {
-              type: "string",
-              maxLength: 50,
-              description: "The name of the role",
-            },
-            description: {
-              type: "string",
-              maxLength: 200,
-              description: "The description of the role",
-            },
-            status: {
-              type: "string",
-              enum: ["Active", "Inactive"],
-              description: "The status of the role",
-            },
-            permissions: {
-              type: "object",
-              description: "The permissions object for the role",
-            },
+            name: { type: "string", maxLength: 50 },
+            description: { type: "string", maxLength: 200 },
+            status: { type: "string", enum: ["Active", "Inactive"] },
+            permissions: { type: "object" },
           },
         },
+
         ApiResponse: {
           type: "object",
           properties: {
-            success: {
-              type: "boolean",
-              description: "Indicates if the request was successful",
-            },
-            message: {
-              type: "string",
-              description: "Response message",
-            },
-            data: {
-              type: "object",
-              description: "Response data",
-            },
-            error: {
-              type: "string",
-              description: "Error message if any",
-            },
+            success: { type: "boolean" },
+            message: { type: "string" },
+            data: { type: "object" },
+            error: { type: "string" },
           },
         },
+
         User: {
           type: "object",
           properties: {
-            id: {
-              type: "integer",
-              description: "ID del usuario"
-            },
-            firstName: {
-              type: "string",
-              description: "Nombre del usuario"
-            },
-            lastName: {
-              type: "string",
-              description: "Apellido del usuario"
-            },
-            email: {
-              type: "string",
-              description: "Email del usuario"
-            },
-            status: {
-              type: "string",
-              enum: ["Active", "Inactive", "Suspended"],
-              description: "Estado del usuario"
-            },
-            role: {
-              $ref: '#/components/schemas/Role'
-            },
-            documentType: {
-              type: "object",
-              properties: {
-                id: { type: "integer" },
-                name: { type: "string" }
-              }
-            },
-            athlete: {
-              type: "object",
-              description: "Datos de atleta si aplica"
-            },
-            employee: {
-              type: "object",
-              description: "Datos de empleado si aplica"
-            },
-            userType: {
-              type: "string",
-              enum: ["user", "athlete", "employee"],
-              description: "Tipo de usuario"
-            },
+            id: { type: "integer" },
+            firstName: { type: "string" },
+            lastName: { type: "string" },
+            email: { type: "string" },
+            status: { type: "string", enum: ["Active", "Inactive", "Suspended"] },
+            role: { $ref: "#/components/schemas/Role" },
+            documentType: { type: "object", properties: { id: { type: "integer" }, name: { type: "string" } } },
+            athlete: { type: "object" },
+            employee: { type: "object" },
+            userType: { type: "string", enum: ["user", "athlete", "employee"] },
             summary: {
               type: "object",
               properties: {
@@ -156,87 +72,94 @@ const options = {
                 type: { type: "string" },
                 status: { type: "string" },
                 role: { type: "string" },
-                hasLogin: { type: "boolean" }
-              }
+                hasLogin: { type: "boolean" },
+              },
             },
-            createdAt: {
-              type: "string",
-              format: "date-time"
-            },
-            updatedAt: {
-              type: "string",
-              format: "date-time"
-            }
-          }
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+          },
         },
-         Provider: {
-      type: "object",
-      properties: {
-        id: {
-          type: "integer",
-          description: "ID del proveedor"
+
+        Provider: {
+          type: "object",
+          properties: {
+            id: { type: "integer" },
+            tipoEntidad: { type: "string", enum: ["juridica", "natural"] },
+            razonSocial: { type: "string" },
+            nit: { type: "string" },
+            tipoDocumento: { type: "string", enum: ["CC", "TI", "CE", "PAS"] },
+            contactoPrincipal: { type: "string" },
+            correo: { type: "string" },
+            telefono: { type: "string" },
+            direccion: { type: "string" },
+            ciudad: { type: "string" },
+            descripcion: { type: "string" },
+            estado: { type: "string", enum: ["Activo", "Inactivo"] },
+            createdAt: { type: "string", format: "date-time" },
+            updatedAt: { type: "string", format: "date-time" },
+            statusAssignedAt: { type: "string", format: "date-time" },
+            fechaRegistro: { type: "string", format: "date-time" },
+            documentos: { type: "string", nullable: true },
+            terminosPago: { type: "string", nullable: true },
+            servicios: { type: "string", nullable: true },
+            observaciones: { type: "string", nullable: true },
+          },
         },
-        tipoEntidad: {
-          type: "string",
-          enum: ["juridica", "natural"],
-          description: "Tipo de entidad"
+
+        ProviderInput: {
+          type: "object",
+          required: [
+            "tipoEntidad",
+            "razonSocial",
+            "nit",
+            "contactoPrincipal",
+            "correo",
+            "telefono",
+            "direccion",
+            "ciudad",
+            "estado",
+          ],
+          properties: {
+            tipoEntidad: { type: "string", enum: ["juridica", "natural"] },
+            razonSocial: { type: "string", maxLength: 200 },
+            nit: { type: "string" },
+            tipoDocumento: { type: "string", enum: ["CC", "TI", "CE", "PAS"] },
+            contactoPrincipal: { type: "string", maxLength: 150 },
+            correo: { type: "string", format: "email", maxLength: 150 },
+            telefono: { type: "string", maxLength: 15 },
+            direccion: { type: "string", maxLength: 200 },
+            ciudad: { type: "string", maxLength: 100 },
+            descripcion: { type: "string", maxLength: 500 },
+            estado: { type: "string", enum: ["Activo", "Inactivo"] },
+          },
         },
-        razonSocial: {
-          type: "string",
-          description: "Razón social o nombre completo"
+      },
+
+      responses: {
+        BadRequest: {
+          description: "Solicitud incorrecta - Error de validación",
         },
-        nit: {
-          type: "string",
-          description: "NIT o identificación"
+        NotFound: {
+          description: "Recurso no encontrado",
         },
-        tipoDocumento: {
-          type: "string",
-          enum: ["CC", "TI", "CE", "PAS"],
-          description: "Tipo de documento (solo para persona natural)"
+        InternalServerError: {
+          description: "Error interno del servidor",
         },
-        contactoPrincipal: {
-          type: "string",
-          description: "Nombre del contacto principal"
+      },
+
+      securitySchemes: {
+        bearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
         },
-        correo: {
-          type: "string",
-          description: "Correo electrónico"
-        },
-        telefono: {
-          type: "string",
-          description: "Número telefónico"
-        },
-        direccion: {
-          type: "string",
-          description: "Dirección completa"
-        },
-        ciudad: {
-          type: "string",
-          description: "Ciudad"
-        },
-        descripcion: {
-          type: "string",
-          description: "Descripción del proveedor"
-        },
-        estado: {
-          type: "string",
-          enum: ["Activo", "Inactivo"],
-          description: "Estado del proveedor"
-        },
-        fechaRegistro: {
-          type: "string",
-          format: "date-time",
-          description: "Fecha de registro"
-        }
-      }
-    },
       },
     },
   },
+
   apis: [
-    "./src/modules/*/routes/*.routes.js",           // Módulos directos como Roles
-    "./src/modules/Services/*/routes/*.routes.js"   // Módulos dentro de Services como Employees
-  ], // paths to files containing OpenAPI definitions
+     "./src/modules/**/routes/*.js",      
+  ],
 };
 
 const specs = swaggerJsdoc(options);

@@ -15,7 +15,7 @@ async function initializeServices() {
 
 app.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
-
+  
   // Inicializar servicios adicionales
   await initializeServices();
 });

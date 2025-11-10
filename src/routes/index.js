@@ -33,12 +33,16 @@ router.use("/purchases", authenticateToken, purchaseRoutes);
 // Test routes (only in development)
 if (process.env.NODE_ENV === "development") {
   router.use("/test", testEmailRoutes);
+if (process.env.NODE_ENV === "development") {
+  router.use("/test", testEmailRoutes);
 }
 
 // Health check for API
 router.get("/health", (req, res) => {
+router.get("/health", (req, res) => {
   res.json({
     success: true,
+    message: "API is running!",
     message: "API is running!",
     timestamp: new Date().toISOString(),
     modules: [
@@ -47,7 +51,13 @@ router.get("/health", (req, res) => {
       "Employees",
       "Users",
       "Providers",
+      "TemporaryWorkers",
       "DocumentTypes",
+      "SportsCategories",
+      "Teams",
+      "Trainers",
+      "Athletes",
+      "Events"
     ],
   });
 });
