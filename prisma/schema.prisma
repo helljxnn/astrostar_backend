@@ -314,7 +314,9 @@ model Team {
   description  String?
   coach        String?
   category     String?
-  status       TeamStatus    @default(Active)
+  phone        String?       // ← NUEVO CAMPO para el teléfono
+  status       TeamStatus    @default(Active) // ← CAMBIO: TeamStatus en lugar de String
+  teamType     TeamType      @default(Temporal) // ← NUEVO CAMPO para fundacion/temporal
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   teamType     TeamType      @default(Internal)
@@ -329,7 +331,7 @@ model Team {
 model TeamMember {
   id                Int              @id @default(autoincrement())
   teamId            Int
-  memberType        MemberType
+  memberType        MemberType       // ← CAMBIO: MemberType enum en lugar de String
   position          String?
   jerseyNumber      Int?
   isActive          Boolean          @default(true)
@@ -395,6 +397,7 @@ model Provider {
   city           String             @db.VarChar(100)
   description    String?
   status         ProviderStatus     @default(Active)
+  statusAssignedAt DateTime           @default(now())
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   documentTypeId Int?
@@ -445,6 +448,8 @@ model PurchaseItem {
   @@index([purchaseId])
   @@map("purchase_items")
 }
+
+// ============ ENUMS ============
 
 enum RoleStatus {
   Active
@@ -539,11 +544,9 @@ enum MemberType {
   TemporaryPerson
 }
 
-enum TeamMemberRole {
-  Player
-  Coach
-  AssistantCoach
-  Captain
+enum TeamType {
+  Fundacion
+  Temporal
 }
 
 enum ParticipantType {
