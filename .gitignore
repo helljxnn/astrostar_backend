@@ -2,3 +2,9 @@ node_modules
 /generated/prisma
 
 .env
+
+SETUP_ROLES.md
+ROLES_DETAILS.md
+BACKEND_ARCHITECTURE.md
+
+astrostar_db_querys.sql
