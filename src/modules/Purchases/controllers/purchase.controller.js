@@ -257,12 +257,10 @@ export class PurchaseController {
         });
       });
 
-      res
-        .status(200)
-        .json({
-          success: true,
-          message: "La compra ha sido anulada y el stock revertido.",
-        });
+      res.status(200).json({
+        success: true,
+        message: "La compra ha sido anulada y el stock revertido.",
+      });
     } catch (error) {
       console.error("Error anulando la compra:", error);
       res
@@ -312,6 +310,51 @@ export class PurchaseController {
       });
     } catch (error) {
       console.error("Error obteniendo proveedores:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Error interno del servidor." });
+    }
+  };
+
+  /**
+   * Obtiene todo el material deportivo con paginación y búsqueda por nombre.
+   * Ideal para seleccionar artículos al crear una compra.
+   */
+  GetSportsEquipment = async (req, res) => {
+    try {
+      const { page = 1, limit = 10, search = "" } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const where = {
+        status: "Active", // Solo traer material deportivo activo
+        ...(search && {
+          name: { contains: search, mode: "insensitive" },
+        }),
+      };
+
+      const [equipments, total] = await prisma.$transaction([
+        prisma.sportsEquipment.findMany({
+          where,
+          skip,
+          take: parseInt(limit),
+          orderBy: { name: "asc" },
+        }),
+        prisma.sportsEquipment.count({ where }),
+      ]);
+
+      res.status(200).json({
+        success: true,
+        message: `Se encontraron ${equipments.length} de ${total} materiales deportivos.`,
+        data: equipments,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error obteniendo material deportivo:", error);
       res
         .status(500)
         .json({ success: false, message: "Error interno del servidor." });

@@ -225,6 +225,55 @@ router.get("/providers", controller.GetProviders);
 
 /**
  * @swagger
+ * /api/purchases/sports-equipment:
+ *   get:
+ *     summary: Obtener todo el material deportivo con paginación y búsqueda
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número de página.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Cantidad de resultados por página.
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Buscar por nombre del material deportivo.
+ *     responses:
+ *       200:
+ *         description: Lista de material deportivo obtenida exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Se encontraron 8 de 20 materiales deportivos."
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/SportsEquipment'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/sports-equipment", controller.GetSportsEquipment);
+
+/**
+ * @swagger
  * /api/purchases/{id}:
  *   get:
  *     summary: Obtener una compra por su ID
