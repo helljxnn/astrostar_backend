@@ -1,7 +1,7 @@
 import prisma from "../../../config/database.js";
-import { v4 as uuidv4 } from 'uuid';
-import { v2 as cloudinary } from 'cloudinary';
-import dotenv from 'dotenv';
+import { v4 as uuidv4 } from "uuid";
+import { v2 as cloudinary } from "cloudinary";
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -34,12 +34,16 @@ export class PurchaseController {
         if (!item.sportsEquipmentId || !item.quantity || !item.unitPrice) {
           return res.status(400).json({
             success: false,
-            message: "Cada artículo debe tener ID de material, cantidad y precio.",
+            message:
+              "Cada artículo debe tener ID de material, cantidad y precio.",
           });
         }
       }
 
-      const totalAmount = parsedItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
+      const totalAmount = parsedItems.reduce(
+        (acc, item) => acc + item.quantity * item.unitPrice,
+        0
+      );
 
       const result = await prisma.$transaction(async (tx) => {
         const newPurchase = await tx.purchase.create({
@@ -50,7 +54,7 @@ export class PurchaseController {
             totalAmount,
             notes,
             providerId: parseInt(providerId),
-            status: 'Received',
+            status: "Received",
           },
         });
 
@@ -77,12 +81,18 @@ export class PurchaseController {
 
         // Subir imágenes a Cloudinary si existen
         if (files && files.length > 0) {
-          const uploadPromises = files.map(file => {
+          const uploadPromises = files.map((file) => {
             return new Promise((resolve, reject) => {
-              const uploadStream = cloudinary.uploader.upload_stream({ folder: "purchase_invoices" }, (error, result) => {
-                if (error) return reject(error);
-                resolve({ url: result.secure_url, publicId: result.public_id });
-              });
+              const uploadStream = cloudinary.uploader.upload_stream(
+                { folder: "purchase_invoices" },
+                (error, result) => {
+                  if (error) return reject(error);
+                  resolve({
+                    url: result.secure_url,
+                    publicId: result.public_id,
+                  });
+                }
+              );
               uploadStream.end(file.buffer);
             });
           });
@@ -90,7 +100,7 @@ export class PurchaseController {
           const uploadedImages = await Promise.all(uploadPromises);
 
           await tx.purchaseImage.createMany({
-            data: uploadedImages.map(img => ({
+            data: uploadedImages.map((img) => ({
               ...img,
               purchaseId: newPurchase.id,
             })),
@@ -105,7 +115,6 @@ export class PurchaseController {
         message: "Compra creada y stock actualizado exitosamente.",
         data: result,
       });
-
     } catch (error) {
       console.error("Error creando la compra:", error);
       res.status(500).json({
@@ -120,43 +129,49 @@ export class PurchaseController {
    */
   GetAll = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = "" } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+      const { page = 1, limit = 10, search = "" } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
 
-        const where = search
+      const where = search
         ? {
             OR: [
               { purchaseNumber: { contains: search, mode: "insensitive" } },
-              { provider: { businessName: { contains: search, mode: "insensitive" } } },
+              {
+                provider: {
+                  businessName: { contains: search, mode: "insensitive" },
+                },
+              },
             ],
           }
         : {};
 
-        const [purchases, total] = await prisma.$transaction([
-            prisma.purchase.findMany({
-                where,
-                skip,
-                take: parseInt(limit),
-                orderBy: { purchaseDate: "desc" },
-                include: { provider: { select: { businessName: true } } },
-            }),
-            prisma.purchase.count({ where }),
-        ]);
+      const [purchases, total] = await prisma.$transaction([
+        prisma.purchase.findMany({
+          where,
+          skip,
+          take: parseInt(limit),
+          orderBy: { purchaseDate: "desc" },
+          include: { provider: { select: { businessName: true } } },
+        }),
+        prisma.purchase.count({ where }),
+      ]);
 
-        res.status(200).json({
-            success: true,
-            message: `Se encontraron ${purchases.length} de ${total} compras.`,
-            data: purchases,
-            pagination: {
-                total,
-                page: parseInt(page),
-                limit: parseInt(limit),
-                pages: Math.ceil(total / limit),
-            },
-        });
+      res.status(200).json({
+        success: true,
+        message: `Se encontraron ${purchases.length} de ${total} compras.`,
+        data: purchases,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / limit),
+        },
+      });
     } catch (error) {
-        console.error("Error obteniendo compras:", error);
-        res.status(500).json({ success: false, message: "Error interno del servidor." });
+      console.error("Error obteniendo compras:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Error interno del servidor." });
     }
   };
 
@@ -165,35 +180,37 @@ export class PurchaseController {
    */
   GetById = async (req, res) => {
     try {
-        const { id } = req.params;
-        const purchase = await prisma.purchase.findUnique({
-            where: { id: parseInt(id) },
+      const { id } = req.params;
+      const purchase = await prisma.purchase.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          provider: true,
+          items: {
             include: {
-                provider: true,
-                items: {
-                    include: {
-                        sportsEquipment: { select: { name: true } },
-                    },
-                },
-                images: true, // Incluir imágenes
+              sportsEquipment: { select: { name: true } },
             },
-        });
+          },
+          images: true, // Incluir imágenes
+        },
+      });
 
-        if (!purchase) {
-            return res.status(404).json({
-                success: false,
-                message: `Compra con ID ${id} no encontrada.`,
-            });
-        }
-
-        res.status(200).json({
-            success: true,
-            message: "Compra encontrada.",
-            data: purchase,
+      if (!purchase) {
+        return res.status(404).json({
+          success: false,
+          message: `Compra con ID ${id} no encontrada.`,
         });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Compra encontrada.",
+        data: purchase,
+      });
     } catch (error) {
-        console.error("Error obteniendo compra por ID:", error);
-        res.status(500).json({ success: false, message: "Error interno del servidor." });
+      console.error("Error obteniendo compra por ID:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Error interno del servidor." });
     }
   };
 
@@ -210,11 +227,15 @@ export class PurchaseController {
       });
 
       if (!purchaseToCancel) {
-        return res.status(404).json({ success: false, message: "Compra no encontrada." });
+        return res
+          .status(404)
+          .json({ success: false, message: "Compra no encontrada." });
       }
 
-      if (purchaseToCancel.status === 'Cancelled') {
-        return res.status(400).json({ success: false, message: "Esta compra ya ha sido anulada." });
+      if (purchaseToCancel.status === "Cancelled") {
+        return res
+          .status(400)
+          .json({ success: false, message: "Esta compra ya ha sido anulada." });
       }
 
       await prisma.$transaction(async (tx) => {
@@ -232,15 +253,68 @@ export class PurchaseController {
         // Actualizar el estado de la compra a 'Cancelled'
         await tx.purchase.update({
           where: { id: parseInt(id) },
-          data: { status: 'Cancelled' },
+          data: { status: "Cancelled" },
         });
       });
 
-      res.status(200).json({ success: true, message: "La compra ha sido anulada y el stock revertido." });
-
+      res
+        .status(200)
+        .json({
+          success: true,
+          message: "La compra ha sido anulada y el stock revertido.",
+        });
     } catch (error) {
       console.error("Error anulando la compra:", error);
-      res.status(500).json({ success: false, message: "Error interno del servidor." });
+      res
+        .status(500)
+        .json({ success: false, message: "Error interno del servidor." });
+    }
+  };
+
+  /**
+   * Obtiene todos los proveedores con paginación y búsqueda por nombre o NIT.
+   */
+  GetProviders = async (req, res) => {
+    try {
+      const { page = 1, limit = 10, search = "" } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const where = {
+        status: "Active", // Solo traer proveedores activos
+        ...(search && {
+          OR: [
+            { businessName: { contains: search, mode: "insensitive" } },
+            { nit: { contains: search, mode: "insensitive" } },
+          ],
+        }),
+      };
+
+      const [providers, total] = await prisma.$transaction([
+        prisma.provider.findMany({
+          where,
+          skip,
+          take: parseInt(limit),
+          orderBy: { businessName: "asc" },
+        }),
+        prisma.provider.count({ where }),
+      ]);
+
+      res.status(200).json({
+        success: true,
+        message: `Se encontraron ${providers.length} de ${total} proveedores.`,
+        data: providers,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error obteniendo proveedores:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Error interno del servidor." });
     }
   };
 }

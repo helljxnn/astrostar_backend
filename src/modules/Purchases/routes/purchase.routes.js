@@ -2,6 +2,7 @@ import express from "express";
 import { PurchaseController } from "../controllers/purchase.controller.js";
 import multer from "multer";
 
+import { authenticateToken } from "../../../middlewares/auth.js";
 const router = express.Router();
 const controller = new PurchaseController();
 
@@ -172,6 +173,55 @@ const upload = multer({ storage: storage });
  *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/", controller.GetAll);
+
+/**
+ * @swagger
+ * /api/purchases/providers:
+ *   get:
+ *     summary: Obtener todos los proveedores con paginación y búsqueda
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número de página.
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Cantidad de resultados por página.
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Buscar por nombre de empresa (businessName) o NIT del proveedor.
+ *     responses:
+ *       200:
+ *         description: Lista de proveedores obtenida exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Se encontraron 5 de 10 proveedores."
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Provider'
+ *                 pagination:
+ *                   $ref: '#/components/schemas/Pagination'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/providers", controller.GetProviders);
 
 /**
  * @swagger
