@@ -1,5 +1,5 @@
 import express from "express";
-import { AppointmentController } from "../controllers/appointment.controller.js";
+import { AppointmentController } from "../controllers/appointments.controller.js";
 
 const router = express.Router();
 const controller = new AppointmentController();

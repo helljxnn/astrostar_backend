@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -249,6 +248,7 @@ model Athlete {
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
+  appointments             Appointment[]
 
   @@index([status])
   @@index([guardianId])
@@ -690,7 +690,8 @@ model Appointment {
   updatedAt               DateTime            @updatedAt
 
   // Campos para las relaciones (listos para que los conectes)
-  athleteId               Int
+  athleteId               Int                 
+  athlete                 Athlete             @relation(fields: [athleteId], references: [id])
 
   @@map("appointments")
 }

@@ -79,9 +79,7 @@ class Auth {
         secure: process.env.NODE_ENV == "production",
         sameSite: "strict",
       });
-
-      // Devolver el accessToken en la respuesta JSON
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         message: `Welcome, ${user.firstName}!`,
       });
@@ -147,6 +145,7 @@ class Auth {
       const user = await prisma.user.findUnique({
         where: { id },
         include: {
+          documentType: true, // Incluir el tipo de documento
           role: {
             include: {
               rolePermissionPrivilege: {
@@ -168,11 +167,9 @@ class Auth {
         });
       }
 
+      // Ahora, `formattedUser` incluirá todos los campos de `user`
       const formattedUser = {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
+        ...user, // Copiamos todos los campos del usuario
         role: {
           id: user.role.id,
           name: user.role.name,
@@ -199,6 +196,12 @@ class Auth {
         },
       };
 
+      // La contraseña nunca debe ser enviada al frontend. Se elimina el hash.
+      delete formattedUser.passwordHash;
+      delete formattedUser.refreshToken;
+      delete formattedUser.resetPasswordExpires;
+      delete formattedUser.resetPasswordToken;
+
       return res.status(200).json({
         success: true,
         message: "Permissions found successfully",
@@ -212,6 +215,7 @@ class Auth {
       });
     }
   };
+
 
   DocumentType = async (req, res) => {
     try {
@@ -305,7 +309,7 @@ class Auth {
         message: "New access token generated successfully",
       });
     } catch (error) {
-      return res.status(500).jsxon({
+      return res.status(500).json({
         success: false,
         message: "Internal server error. Please try again",
       });

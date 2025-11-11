@@ -26,12 +26,25 @@ export const authenticateToken = async (req, res, next) => {
     // Seguimos con la api
     next();
   } catch (error) {
-    if (error.name === "JsonWebTokenError") {
+    // Si el error es porque el token ha expirado, enviamos una respuesta 401 específica.
+    if (error instanceof jwt.TokenExpiredError) {
       return res.status(401).json({
         success: false,
-        message: "Token inválido",
+        message: "Token expirado. Por favor, refresque el token.",
+        error: "token_expired", // Un código de error para que el frontend lo identifique fácil.
       });
     }
+
+    // Para otros errores de JWT (ej. firma inválida), también es un error de autorización.
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({
+        success: false,
+        message: "Token inválido.",
+        error: "invalid_token",
+      });
+    }
+
+    // Para cualquier otro tipo de error, sí es un error del servidor.
     console.error("Error en autenticación:", error);
     return res.status(500).json({
       success: false,

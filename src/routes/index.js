@@ -33,12 +33,9 @@ router.use("/purchases", authenticateToken, purchaseRoutes);
 // Test routes (only in development)
 if (process.env.NODE_ENV === "development") {
   router.use("/test", testEmailRoutes);
-if (process.env.NODE_ENV === "development") {
-  router.use("/test", testEmailRoutes);
 }
 
 // Health check for API
-router.get("/health", (req, res) => {
 router.get("/health", (req, res) => {
   res.json({
     success: true,
