@@ -1,3 +1,4 @@
+// src/services/providers.service.js
 import { ProvidersRepository } from "../repository/providers.repository.js";
 
 export class ProvidersService {
@@ -353,6 +354,19 @@ export class ProvidersService {
         hasActivePurchases,
       };
     } catch (error) {
+      throw error;
+    }
+  }
+
+  async getDocumentTypes() {
+    try {
+      const documentTypes = await this.providersRepository.getDocumentTypes();
+      return {
+        success: true,
+        data: documentTypes
+      };
+    } catch (error) {
+      console.error('Service error - getDocumentTypes:', error);
       throw error;
     }
   }

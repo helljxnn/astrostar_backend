@@ -299,7 +299,8 @@ export const providersValidators = {
     query("excludeId")
       .optional()
       .isInt({ min: 1 })
-      .withMessage("El excludeId debe ser un número entero positivo."),
+      .withMessage("El excludeId debe ser un número entero positivo.")
+      .toInt(),
 
     query("tipoEntidad")
       .optional()

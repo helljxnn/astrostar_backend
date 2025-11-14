@@ -5,6 +5,46 @@ export class TeamsService {
     this.teamsRepository = new TeamsRepository();
   }
 
+  normalizeTeamType(type) {
+    if (typeof type !== 'string') return 'Temporal';
+    const normalized = type.toLowerCase();
+    return normalized === 'fundacion' ? 'Fundacion' : 'Temporal';
+  }
+
+  validateTeamConsistency(teamData) {
+    const { entrenadorData, deportistas, teamType } = teamData;
+    
+    if (entrenadorData && deportistas.length > 0) {
+      if (entrenadorData.type !== deportistas[0].type) {
+        throw new Error('El entrenador y los deportistas deben ser del mismo tipo (fundación o temporales)');
+      }
+    }
+    
+    if (deportistas.length > 0) {
+      const firstType = deportistas[0].type;
+      const hasMixedTypes = deportistas.some(d => d.type !== firstType);
+      
+      if (hasMixedTypes) {
+        throw new Error('No se pueden mezclar deportistas de fundación y temporales en el mismo equipo');
+      }
+    }
+
+    if (teamType === 'temporal' || teamType === 'Temporal') {
+      if (!teamData.categoria?.trim()) {
+        throw new Error('La categoría es obligatoria para equipos temporales');
+      }
+    }
+
+    if ((teamType === 'fundacion' || teamType === 'Fundacion') && deportistas.length > 0) {
+      const firstCategory = deportistas[0].categoria;
+      const hasMixedCategories = deportistas.some(d => d.categoria !== firstCategory);
+      
+      if (hasMixedCategories) {
+        throw new Error('Todos los deportistas de fundación deben ser de la misma categoría deportiva');
+      }
+    }
+  }
+
   async getAllTeams({
     page = 1,
     limit = 10,
@@ -54,18 +94,19 @@ export class TeamsService {
 
   async createTeam(teamData) {
     try {
-      // Verificar si el nombre del equipo ya existe
+      const normalizedTeamType = this.normalizeTeamType(teamData.teamType);
+      teamData.teamType = normalizedTeamType;
+
       const existingTeam = await this.teamsRepository.findByName(teamData.nombre);
       if (existingTeam) {
-        throw new Error(
-          `El equipo "${teamData.nombre}" ya está registrado.`
-        );
+        throw new Error(`El equipo "${teamData.nombre}" ya está registrado.`);
       }
 
-      // Validar que tenga al menos un deportista
       if (!teamData.deportistasIds || teamData.deportistasIds.length === 0) {
         throw new Error("El equipo debe tener al menos un deportista.");
       }
+
+      this.validateTeamConsistency(teamData);
 
       const newTeam = await this.teamsRepository.create(teamData);
 
@@ -75,7 +116,21 @@ export class TeamsService {
         message: `Equipo "${teamData.nombre}" creado exitosamente.`,
       };
     } catch (error) {
-      throw error;
+      if (error.message.includes('ya está asignado')) {
+        throw new Error(`Error de asignación: ${error.message}`);
+      }
+      if (error.message.includes('no existe')) {
+        throw new Error(`Error de datos: ${error.message}`);
+      }
+      if (error.message.includes('ya está registrado') || 
+          error.message.includes('deben ser del mismo tipo') ||
+          error.message.includes('No se pueden mezclar') ||
+          error.message.includes('misma categoría')) {
+        throw error;
+      }
+      
+      console.error('Error no manejado en createTeam:', error);
+      throw new Error('Error interno del servidor al crear equipo');
     }
   }
 
@@ -90,7 +145,6 @@ export class TeamsService {
         };
       }
 
-      // Verificar si el nombre ya está en uso por otro equipo
       if (updateData.nombre && updateData.nombre !== existingTeam.nombre) {
         const existingByName = await this.teamsRepository.findByName(
           updateData.nombre,
@@ -103,10 +157,11 @@ export class TeamsService {
         }
       }
 
-      // Validar que tenga al menos un deportista
       if (updateData.deportistasIds && updateData.deportistasIds.length === 0) {
         throw new Error("El equipo debe tener al menos un deportista.");
       }
+
+      this.validateTeamConsistency(updateData);
 
       const updatedTeam = await this.teamsRepository.update(id, updateData);
 
@@ -116,7 +171,21 @@ export class TeamsService {
         message: `Equipo "${updatedTeam.nombre}" actualizado exitosamente.`,
       };
     } catch (error) {
-      throw error;
+      if (error.message.includes('ya está asignado')) {
+        throw new Error(`Error de asignación: ${error.message}`);
+      }
+      if (error.message.includes('no existe')) {
+        throw new Error(`Error de datos: ${error.message}`);
+      }
+      if (error.message.includes('ya está registrado') || 
+          error.message.includes('deben ser del mismo tipo') ||
+          error.message.includes('No se pueden mezclar') ||
+          error.message.includes('misma categoría')) {
+        throw error;
+      }
+      
+      console.error('Error no manejado en updateTeam:', error);
+      throw new Error('Error interno del servidor al actualizar equipo');
     }
   }
 

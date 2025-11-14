@@ -14,6 +14,21 @@ const providersController = new ProvidersController();
  * para evitar conflictos de routing
  */
 
+// ============================================
+// NUEVO: Ruta para obtener tipos de documento
+// ============================================
+/**
+ * @swagger
+ * /api/providers/document-types:
+ *   get:
+ *     summary: Get available document types
+ *     tags: [Providers]
+ *     responses:
+ *       200:
+ *         description: Document types retrieved successfully
+ */
+router.get("/document-types", providersController.getDocumentTypes);
+
 /**
  * @swagger
  * /api/providers/check-nit:

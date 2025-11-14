@@ -2,9 +2,67 @@ import prisma from "../../../config/database.js";
 
 export class TeamsRepository {
   
-  /**
-   * Validar que los miembros existen y están disponibles
-   */
+  async validateTemporalPersonNotInOtherTeams(personId, excludeTeamId, errors) {
+    const existingMembership = await prisma.teamMember.findFirst({
+      where: {
+        temporaryPersonId: personId,
+        isActive: true,
+        team: {
+          status: 'Active',
+          ...(excludeTeamId ? { id: { not: parseInt(excludeTeamId) } } : {})
+        }
+      },
+      include: {
+        team: true,
+        temporaryPerson: true
+      }
+    });
+
+    if (existingMembership) {
+      const person = existingMembership.temporaryPerson;
+      const team = existingMembership.team;
+      errors.push(
+        `${person.firstName} ${person.lastName} (Temporal) ya está asignado/a al equipo "${team.name}". Las personas temporales no pueden estar en múltiples equipos.`
+      );
+    }
+  }
+
+  async validateMembersAvailability(memberIds, teamType, excludeTeamId = null) {
+    if (!memberIds || memberIds.length === 0) return;
+
+    const errors = [];
+
+    for (const memberId of memberIds) {
+      const id = parseInt(memberId);
+      if (isNaN(id)) continue;
+
+      if (teamType === 'Temporal') {
+        await this.validateTemporalPersonNotInOtherTeams(id, excludeTeamId, errors);
+      } else {
+        console.log(`✅ Persona de fundación ${id} puede estar en múltiples equipos`);
+      }
+    }
+
+    if (errors.length > 0) {
+      throw new Error(errors.join('. '));
+    }
+  }
+
+  async validateTrainerAvailability(trainerId, teamType, excludeTeamId = null) {
+    if (!trainerId) return;
+
+    const id = parseInt(trainerId);
+    if (isNaN(id)) return;
+
+    if (teamType === 'Temporal') {
+      const errors = [];
+      await this.validateTemporalPersonNotInOtherTeams(id, excludeTeamId, errors);
+      if (errors.length > 0) {
+        throw new Error(errors[0]);
+      }
+    }
+  }
+
   async validateMembers(memberIds, teamType) {
     if (!memberIds || memberIds.length === 0) {
       return;
@@ -44,10 +102,6 @@ export class TeamsRepository {
     }
   }
 
-  /**
-   * Actualizar categoría y equipo en personas temporales - CORREGIDO
-   * Ahora actualiza tanto deportistas como entrenadores temporales
-   */
   async updateTemporaryPersonsCategory(temporaryPersonIds, category, teamName) {
     if (!temporaryPersonIds || temporaryPersonIds.length === 0) {
       console.log('❌ No hay personas temporales para actualizar');
@@ -60,14 +114,6 @@ export class TeamsRepository {
         category: category,
         teamName: teamName
       });
-
-      // Primero verificar que las personas existen
-      const persons = await prisma.temporaryPerson.findMany({
-        where: { id: { in: temporaryPersonIds.map(id => parseInt(id)) } },
-        select: { id: true, firstName: true, lastName: true, personType: true }
-      });
-
-      console.log('🔍 Personas encontradas para actualizar:', persons);
 
       const updates = temporaryPersonIds.map(id =>
         prisma.temporaryPerson.update({
@@ -82,22 +128,12 @@ export class TeamsRepository {
       const results = await Promise.all(updates);
       console.log('✅ Actualización completada para:', results.length, 'personas');
       
-      // Log detallado de cada actualización
-      results.forEach(person => {
-        console.log(`   ✅ ${person.firstName} ${person.lastName} (${person.personType}): equipo="${person.team}", categoría="${person.category}"`);
-      });
-      
     } catch (error) {
       console.error('❌ Error actualizando personas temporales:', error);
-      console.error('❌ Detalle del error:', error.message);
       throw new Error(`Error actualizando personas temporales: ${error.message}`);
     }
   }
 
-  /**
-   * Limpiar categoría y equipo de personas temporales - CORREGIDO
-   * Ahora limpia tanto deportistas como entrenadores temporales
-   */
   async clearTemporaryPersonsCategory(temporaryPersonIds) {
     if (!temporaryPersonIds || temporaryPersonIds.length === 0) {
       console.log('No hay personas para limpiar');
@@ -121,47 +157,69 @@ export class TeamsRepository {
     }
   }
 
-  /**
-   * Debug temporal para verificar personas
-   */
-  async debugTemporaryPerson(personId) {
-    try {
-      const person = await prisma.temporaryPerson.findUnique({
-        where: { id: parseInt(personId) },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          personType: true,
-          team: true,
-          category: true,
-          status: true
-        }
-      });
-      
-      console.log('🐛 DEBUG Persona Temporal:', person);
-      return person;
-    } catch (error) {
-      console.error('❌ Error en debug:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Transformar equipo de BD a frontend
-   */
   transformToFrontend(team) {
     if (!team) return null;
 
-    // ✅ CORRECCIÓN: Contar SOLO deportistas, NO entrenadores
     const deportistasCount = Array.isArray(team.members) ? 
       team.members.filter(member => {
-        // Solo contar miembros que NO sean entrenadores
         const isEntrenador = member.position === 'Entrenador' || 
                             member.memberType === 'Employee' || 
                             member.employeeId;
         return !isEntrenador;
       }).length : 0;
+
+    const deportistas = team.members
+      ?.filter(member => {
+        const isEntrenador = member.position === 'Entrenador' || 
+                            member.memberType === 'Employee' || 
+                            member.employeeId;
+        return !isEntrenador;
+      })
+      .map(member => {
+        if (member.temporaryPerson) {
+          return {
+            id: member.temporaryPerson.id,
+            name: `${member.temporaryPerson.firstName} ${member.temporaryPerson.lastName}`,
+            identification: member.temporaryPerson.identification,
+            categoria: member.temporaryPerson.category,
+            type: 'temporal'
+          };
+        }
+        if (member.athlete?.user) {
+          return {
+            id: member.athlete.id,
+            name: `${member.athlete.user.firstName} ${member.athlete.user.lastName}`,
+            identification: member.athlete.user.identification,
+            categoria: member.athlete.inscriptions?.[0]?.sportsCategory?.nombre || 'Sin categoría',
+            type: 'fundacion'
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) || [];
+
+    const entrenadorMember = team.members?.find(member => 
+      member.position === 'Entrenador' || member.memberType === 'Employee' || member.employeeId
+    );
+
+    let entrenadorData = null;
+    if (entrenadorMember) {
+      if (entrenadorMember.temporaryPerson) {
+        entrenadorData = {
+          id: entrenadorMember.temporaryPerson.id,
+          name: `${entrenadorMember.temporaryPerson.firstName} ${entrenadorMember.temporaryPerson.lastName}`,
+          identification: entrenadorMember.temporaryPerson.identification,
+          type: 'temporal'
+        };
+      } else if (entrenadorMember.employee?.user) {
+        entrenadorData = {
+          id: entrenadorMember.employee.id,
+          name: `${entrenadorMember.employee.user.firstName} ${entrenadorMember.employee.user.lastName}`,
+          identification: entrenadorMember.employee.user.identification,
+          type: 'fundacion'
+        };
+      }
+    }
 
     return {
       id: team.id,
@@ -175,34 +233,20 @@ export class TeamsRepository {
       createdAt: team.createdAt,
       updatedAt: team.updatedAt,
       members: team.members || [],
-      cantidadDeportistas: deportistasCount, // ✅ Solo deportistas
-      // Mantener datos para edición
-      deportistasIds: team.members
-        ?.filter(member => {
-          const isEntrenador = member.position === 'Entrenador' || 
-                              member.memberType === 'Employee' || 
-                              member.employeeId;
-          return !isEntrenador;
-        })
-        .map(member => member.athleteId || member.temporaryPersonId) || [],
-      entrenadorData: team.members?.find(member => 
-        member.position === 'Entrenador' || member.memberType === 'Employee' || member.employeeId
-      ) || null
+      cantidadDeportistas: deportistasCount,
+      deportistas: deportistas,
+      deportistasIds: deportistas.map(d => d.id),
+      entrenadorData: entrenadorData
     };
   }
 
-  /**
-   * Crear equipo - CORREGIDO para actualizar entrenadores temporales también
-   */
   async create(teamData) {
     try {
       console.log('📥 Datos recibidos en repository:', JSON.stringify(teamData, null, 2));
 
-      // Transformar datos del frontend
       const transformed = this.transformToBackend(teamData);
       const { deportistasIds = [], entrenadorId } = transformed;
 
-      // Construir teamInfo manualmente (evitar campos extras)
       const teamInfo = {
         name: transformed.name,
         description: transformed.description,
@@ -214,71 +258,47 @@ export class TeamsRepository {
       };
 
       console.log('🔧 Team Info transformado:', teamInfo);
-      console.log('👥 Deportistas IDs:', deportistasIds);
-      console.log('🏋️ Entrenador ID:', entrenadorId);
 
-      // Validar miembros
       const allMemberIds = [...deportistasIds];
       if (entrenadorId) allMemberIds.push(entrenadorId);
       await this.validateMembers(allMemberIds, teamInfo.teamType);
 
-      // ✅ CORRECCIÓN: Verificar específicamente si el entrenador es temporal
+      await this.validateMembersAvailability(deportistasIds, teamInfo.teamType);
+      await this.validateTrainerAvailability(entrenadorId, teamInfo.teamType);
+
       let entrenadorTemporalId = null;
       if (entrenadorId && teamInfo.teamType === 'Temporal') {
         const entrenador = await prisma.temporaryPerson.findUnique({
           where: { id: parseInt(entrenadorId) }
         });
         
-        console.log('🔍 Información del entrenador:', {
-          id: entrenadorId,
-          encontrado: !!entrenador,
-          personType: entrenador?.personType,
-          nombre: entrenador ? `${entrenador.firstName} ${entrenador.lastName}` : 'N/A',
-          esTemporal: entrenador?.personType === 'Entrenador'
-        });
-        
         if (entrenador && entrenador.personType === 'Entrenador') {
           entrenadorTemporalId = parseInt(entrenadorId);
           console.log('✅ Entrenador temporal identificado:', entrenadorTemporalId);
-          
-          // Debug del entrenador
-          console.log('🔍 Debug del entrenador temporal:');
-          await this.debugTemporaryPerson(entrenadorTemporalId);
         }
       }
 
-      // ✅ CORRECCIÓN: Actualizar TODAS las personas temporales (deportistas Y entrenadores)
       if (teamInfo.teamType === 'Temporal') {
-        console.log('🔄 Actualizando personas temporales...');
-        
-        // Crear array con TODOS los IDs temporales (deportistas + entrenador si es temporal)
         const allTemporaryPersonIds = [...deportistasIds];
-        
-        // Agregar entrenador temporal si existe
         if (entrenadorTemporalId) {
           allTemporaryPersonIds.push(entrenadorTemporalId);
-          console.log('✅ Entrenador temporal incluido para actualización:', entrenadorTemporalId);
         }
         
-        console.log('📋 IDs a actualizar:', allTemporaryPersonIds);
-        
         if (allTemporaryPersonIds.length > 0) {
-          await this.updateTemporaryPersonsCategory(allTemporaryPersonIds, teamInfo.category, teamInfo.name);
-        } else {
-          console.log('⚠️ No hay personas temporales para actualizar');
+          await this.updateTemporaryPersonsCategory(
+            allTemporaryPersonIds, 
+            teamInfo.category, 
+            teamInfo.name
+          );
         }
       }
 
       return await prisma.$transaction(async (tx) => {
-        console.log('💾 Iniciando transacción...');
-
-        // 1. Crear equipo
         const newTeam = await tx.team.create({ data: teamInfo });
         console.log('✅ Equipo creado con ID:', newTeam.id);
 
         const memberPromises = [];
 
-        // 2. Crear deportistas
         for (const memberId of deportistasIds) {
           const data = {
             teamId: newTeam.id,
@@ -294,7 +314,6 @@ export class TeamsRepository {
           memberPromises.push(tx.teamMember.create({ data }));
         }
 
-        // 3. Crear entrenador
         if (entrenadorId) {
           const data = {
             teamId: newTeam.id,
@@ -312,9 +331,7 @@ export class TeamsRepository {
         }
 
         await Promise.all(memberPromises);
-        console.log('✅ Miembros creados');
 
-        // 4. Devolver equipo completo
         const createdTeam = await tx.team.findUnique({
           where: { id: newTeam.id },
           include: {
@@ -328,19 +345,14 @@ export class TeamsRepository {
           }
         });
 
-        console.log('✅ Equipo completo creado:', createdTeam.name);
         return this.transformToFrontend(createdTeam);
       });
     } catch (error) {
       console.error('❌ Error en create():', error.message);
-      console.error('Stack:', error.stack);
       throw error;
     }
   }
 
-  /**
-   * Actualizar equipo - CORREGIDO para actualizar entrenadores temporales también
-   */
   async update(id, teamData) {
     try {
       const transformed = this.transformToBackend(teamData);
@@ -362,8 +374,10 @@ export class TeamsRepository {
       if (entrenadorId) allMemberIds.push(entrenadorId);
       await this.validateMembers(allMemberIds, currentTeam.teamType);
 
+      await this.validateMembersAvailability(deportistasIds, currentTeam.teamType, id);
+      await this.validateTrainerAvailability(entrenadorId, currentTeam.teamType, id);
+
       return await prisma.$transaction(async (tx) => {
-        // ✅ CORRECCIÓN: Limpiar y actualizar TODAS las personas temporales
         if (currentTeam.teamType === 'Temporal') {
           const currentIds = currentTeam.members
             .filter(m => m.temporaryPersonId)
@@ -377,7 +391,6 @@ export class TeamsRepository {
             await this.clearTemporaryPersonsCategory(removedIds);
           }
 
-          // Crear array con TODOS los IDs temporales actuales
           const allCurrentIds = [...deportistasIds];
           if (entrenadorId) {
             const entrenador = await prisma.temporaryPerson.findUnique({
@@ -389,20 +402,21 @@ export class TeamsRepository {
           }
           
           if (allCurrentIds.length > 0) {
-            await this.updateTemporaryPersonsCategory(allCurrentIds, teamInfo.category, teamInfo.name);
+            await this.updateTemporaryPersonsCategory(
+              allCurrentIds, 
+              teamInfo.category, 
+              teamInfo.name
+            );
           }
         }
 
-        // Actualizar equipo
         const updatedTeam = await tx.team.update({
           where: { id: parseInt(id) },
           data: teamInfo
         });
 
-        // Eliminar miembros antiguos
         await tx.teamMember.deleteMany({ where: { teamId: parseInt(id) } });
 
-        // Crear nuevos miembros
         const memberPromises = [];
 
         for (const memberId of deportistasIds) {
@@ -459,9 +473,6 @@ export class TeamsRepository {
     }
   }
 
-  /**
-   * Eliminar equipo (soft delete) - CORREGIDO para limpiar entrenadores temporales también
-   */
   async delete(id) {
     try {
       const team = await this.findById(id);
@@ -469,7 +480,6 @@ export class TeamsRepository {
 
       return await prisma.$transaction(async (tx) => {
         if (team.teamType === 'Temporal') {
-          // ✅ CORRECCIÓN: Limpiar TODOS los IDs temporales (deportistas y entrenadores)
           const tempIds = team.members
             .filter(m => m.temporaryPersonId)
             .map(m => m.temporaryPersonId);
@@ -493,9 +503,6 @@ export class TeamsRepository {
     }
   }
 
-  /**
-   * Listar equipos
-   */
   async findAll({ page = 1, limit = 10, search = '', status = '', teamType = '' }) {
     const skip = (page - 1) * limit;
     const where = {};
@@ -508,7 +515,6 @@ export class TeamsRepository {
       ];
     }
     if (status) {
-      // Normalizar estado
       const normalizedStatus = status === 'Activo' ? 'Active' : 
                              status === 'Inactivo' ? 'Inactive' : status;
       where.status = normalizedStatus;
@@ -546,7 +552,6 @@ export class TeamsRepository {
       prisma.team.count({ where })
     ]);
 
-    // ✅ TRANSFORMAR TODOS LOS EQUIPOS AL FORMATO DEL FRONTEND
     const transformedTeams = teams.map(team => this.transformToFrontend(team));
 
     return {
@@ -615,9 +620,6 @@ export class TeamsRepository {
     };
   }
 
-  /**
-   * Transformar datos del frontend al formato de BD
-   */
   transformToBackend(frontendData) {
     const entrenadorId = frontendData.entrenadorData?.id || null;
 
