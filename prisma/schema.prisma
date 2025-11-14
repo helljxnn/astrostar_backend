@@ -412,21 +412,21 @@ model Provider {
 }
 
 model Purchase {
-  id             Int            @id @default(autoincrement())
-  purchaseNumber String         @unique @db.VarChar(50)
-  purchaseDate   DateTime       @default(now())
-  deliveryDate   DateTime?
-  totalAmount    Decimal        @db.Decimal(12, 2)
-  status         PurchaseStatus @default(Pending)
-  notes          String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  providerId     Int
-  employeeId     Int?
-  items          PurchaseItem[]
-  images         PurchaseImage[]
-  employee       Employee?      @relation(fields: [employeeId], references: [id])
-  provider       Provider       @relation(fields: [providerId], references: [id])
+  id                 Int            @id @default(autoincrement())
+  invoiceNumber      String         @uniqe  @db.Varchar(250)
+  purchaseDate       DateTime       @default(now())
+  registrationDate   DateTime?
+  totalAmount        Decimal        @db.Decimal(12, 2)
+  status             PurchaseStatus @default(Registered)
+  observations       String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  providerId         Int
+  employeeId         Int?
+  items              PurchaseItem[]
+  images             PurchaseImage[]
+  employee           Employee?      @relation(fields: [employeeId], references: [id])
+  provider           Provider       @relation(fields: [providerId], references: [id])
 
   @@index([providerId])
   @@index([employeeId])
@@ -587,8 +587,7 @@ enum ProviderStatus {
 }
 
 enum PurchaseStatus {
-  Pending
-  Received
+  Registered
   Cancelled
 }
 

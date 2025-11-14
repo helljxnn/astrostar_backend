@@ -18,13 +18,30 @@ export class PurchaseController {
    */
   Create = async (req, res) => {
     try {
-      const { providerId, purchaseDate, deliveryDate, notes, items } = req.body;
+      const {
+        providerId,
+        invoiceNumber,
+        purchaseDate,
+        registrationDate,
+        totalAmount,
+        status,
+        observations,
+        items,
+      } = req.body;
       const files = req.files; // Archivos de imagen desde multer
 
       if (!providerId || !items || !items.length) {
         return res.status(400).json({
           success: false,
           message: "El proveedor y los artículos son obligatorios.",
+        });
+      }
+
+      if (!invoiceNumber || !purchaseDate || !totalAmount) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "invoiceNumber, purchaseDate y totalAmount son campos obligatorios.",
         });
       }
 
@@ -40,18 +57,17 @@ export class PurchaseController {
         }
       }
 
-      const totalAmount = parsedItems.reduce(
-        (acc, item) => acc + item.quantity * item.unitPrice,
-        0
-      );
-
       const result = await prisma.$transaction(async (tx) => {
         const newPurchase = await tx.purchase.create({
           data: {
-            purchaseNumber: `PN-${uuidv4().slice(0, 8).toUpperCase()}`,
+            invoiceNumber,
             purchaseDate: new Date(purchaseDate),
-            deliveryDate: deliveryDate ? new Date(deliveryDate) : null,
-            totalAmount,
+            registrationDate: registrationDate
+              ? new Date(registrationDate)
+              : null,
+            totalAmount: parseFloat(totalAmount),
+            status: status || "Registered",
+            observations,
             notes,
             providerId: parseInt(providerId),
             status: "Received",
@@ -112,7 +128,7 @@ export class PurchaseController {
 
       res.status(201).json({
         success: true,
-        message: "Compra creada y stock actualizado exitosamente.",
+        message: "Compra creada exitosamente.",
         data: result,
       });
     } catch (error) {
@@ -326,7 +342,7 @@ export class PurchaseController {
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
       const where = {
-        status: "Active", // Solo traer material deportivo activo
+        status: "Activated",
         ...(search && {
           name: { contains: search, mode: "insensitive" },
         }),
