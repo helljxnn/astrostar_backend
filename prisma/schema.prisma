@@ -314,12 +314,11 @@ model Team {
   description  String?
   coach        String?
   category     String?
-  phone        String?       // ← NUEVO CAMPO para el teléfono
-  status       TeamStatus    @default(Active) // ← CAMBIO: TeamStatus en lugar de String
-  teamType     TeamType      @default(Temporal) // ← NUEVO CAMPO para fundacion/temporal
+  phone        String?
+  status       TeamStatus    @default(Active)
+  teamType     TeamType      @default(Fundacion)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  teamType     TeamType      @default(Internal)
   participants Participant[]
   members      TeamMember[]
 
@@ -533,11 +532,6 @@ enum TeamStatus {
   Disbanded
 }
 
-enum TeamType {
-  Internal
-  External
-}
-
 enum MemberType {
   Athlete
   Employee
@@ -547,6 +541,13 @@ enum MemberType {
 enum TeamType {
   Fundacion
   Temporal
+}
+
+enum TeamMemberRole {
+  Player
+  Coach
+  Assistant
+  Manager
 }
 
 enum ParticipantType {
