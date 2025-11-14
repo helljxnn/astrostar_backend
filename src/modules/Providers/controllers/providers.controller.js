@@ -480,7 +480,29 @@ export class ProvidersController {
       });
     }
   };
+
+  // ============================================
+  // NUEVO: Obtener tipos de documento
+  // ============================================
+  getDocumentTypes = async (req, res) => {
+    try {
+      const result = await this.providersService.getDocumentTypes();
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: "Tipos de documento obtenidos exitosamente.",
+      });
+    } catch (error) {
+      console.error("Error in getDocumentTypes controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener tipos de documento",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 }
 
-// Exportar instancia única del servicio
 export default new ProvidersController();
