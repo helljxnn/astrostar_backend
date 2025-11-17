@@ -23,13 +23,12 @@ model DocumentType {
 }
 
 model Role {
-  id          Int        @id @default(autoincrement())
-  name        String     @unique @db.VarChar(50)
-  description String     @db.VarChar(200)
-  status      RoleStatus @default(Active)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  permissions Json?      @default("{}")
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(50)
+  description String   @db.VarChar(200)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  permissions Json?    @default("{}")
   users       User[]
 
   @@map("roles")
@@ -450,11 +449,6 @@ model PurchaseItem {
 
 // ============ ENUMS ============
 
-enum RoleStatus {
-  Active
-  Inactive
-}
-
 enum UserStatus {
   Active
   Inactive
@@ -472,7 +466,7 @@ enum EventStatus {
   Programado
   Finalizado
   Cancelado
-  En_pausa
+  Pausado
 }
 
 enum SponsorStatus {

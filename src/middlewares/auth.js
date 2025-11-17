@@ -30,7 +30,6 @@ export const authenticateToken = async (req, res, next) => {
           select: {
             id: true,
             name: true,
-            status: true,
             permissions: true
           }
         }
@@ -102,7 +101,6 @@ export const optionalAuth = async (req, res, next) => {
           select: {
             id: true,
             name: true,
-            status: true,
             permissions: true
           }
         }

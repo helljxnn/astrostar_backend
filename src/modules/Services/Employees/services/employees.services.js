@@ -201,10 +201,30 @@ export class EmployeeService {
       // 6. Actualizar empleado
       const updatedEmployee = await this.employeeRepository.update(id, employeeData, userData);
 
+      // 7. REGLA DE NEGOCIO: Si se actualizó el email o se solicita reenvío, generar nueva contraseña y enviar correo
+      let emailSent = false;
+      if (updateData.sendWelcomeEmail || (updateData.email && updateData.email !== existingEmployee.user.email)) {
+        try {
+          // Generar nueva contraseña temporal
+          const temporaryPassword = this.generateTemporaryPassword();
+          const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+          
+          // Actualizar contraseña en la base de datos
+          await this.employeeRepository.updateUserPassword(existingEmployee.userId, hashedPassword);
+          
+          // Enviar email con nuevas credenciales
+          const emailResult = await this.sendWelcomeEmail(updatedEmployee, temporaryPassword);
+          emailSent = emailResult.success;
+        } catch (emailError) {
+          console.error('Error enviando email de actualización:', emailError);
+          // No fallar la actualización si el email falla
+        }
+      }
+
       return {
         success: true,
         data: updatedEmployee,
-        message: `Empleado "${updatedEmployee.user.firstName} ${updatedEmployee.user.lastName}" actualizado exitosamente.`
+        message: `Empleado "${updatedEmployee.user.firstName} ${updatedEmployee.user.lastName}" actualizado exitosamente.${emailSent ? ' Se ha enviado un correo con las nuevas credenciales.' : ''}`
       };
     } catch (error) {
       console.error('Service error - updateEmployee:', error);
