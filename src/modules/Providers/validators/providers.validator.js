@@ -55,8 +55,12 @@ export const providersValidators = {
         if (req.body.tipoEntidad === 'natural' && !value) {
           throw new Error("Debe seleccionar un tipo de documento para persona natural.");
         }
-        if (value && !['CC', 'TI', 'CE', 'PAS'].includes(value)) {
-          throw new Error("Seleccione un tipo de documento válido.");
+        // Validar que sea un número válido (ID del tipo de documento)
+        if (value) {
+          const numValue = typeof value === 'string' ? parseInt(value) : value;
+          if (isNaN(numValue) || numValue < 1) {
+            throw new Error("Seleccione un tipo de documento válido.");
+          }
         }
         return true;
       }),
@@ -162,8 +166,12 @@ export const providersValidators = {
     body("tipoDocumento")
       .optional()
       .custom((value, { req }) => {
-        if (value && !['CC', 'TI', 'CE', 'PAS'].includes(value)) {
-          throw new Error("Seleccione un tipo de documento válido.");
+        // Validar que sea un número válido (ID del tipo de documento)
+        if (value) {
+          const numValue = typeof value === 'string' ? parseInt(value) : value;
+          if (isNaN(numValue) || numValue < 1) {
+            throw new Error("Seleccione un tipo de documento válido.");
+          }
         }
         return true;
       }),
