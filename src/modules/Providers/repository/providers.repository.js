@@ -2,9 +2,23 @@ import prisma from "../../../config/database.js";
 
 export class ProvidersRepository {
   async getDocumentTypes() {
-    return await prisma.documentType.findMany({
+    const documentTypes = await prisma.documentType.findMany({
+      select: {
+        id: true,
+        name: true,
+        description: true
+      },
       orderBy: { name: 'asc' }
     });
+
+    // Transformar para el frontend
+    return documentTypes.map(docType => ({
+      value: docType.id.toString(),
+      label: docType.name,
+      id: docType.id,
+      name: docType.name,
+      description: docType.description
+    }));
   }
 
   async findAll({ page = 1, limit = 10, search = "", status, entityType }) {
@@ -111,11 +125,7 @@ export class ProvidersRepository {
     return provider ? this.transformToFrontend(provider) : null;
   }
 
-  async findByBusinessName(
-    businessName,
-    excludeId = null,
-    tipoEntidad = "juridica"
-  ) {
+  async findByBusinessName(businessName, excludeId = null, tipoEntidad = "juridica") {
     const where = {
       businessName: {
         equals: businessName,
@@ -125,7 +135,7 @@ export class ProvidersRepository {
     };
 
     if (excludeId) {
-      where.NOT = { id: excludeId };
+      where.NOT = { id: parseInt(excludeId) };
     }
 
     const provider = await prisma.provider.findFirst({ 
@@ -144,7 +154,7 @@ export class ProvidersRepository {
     };
 
     if (excludeId) {
-      where.NOT = { id: excludeId };
+      where.NOT = { id: parseInt(excludeId) };
     }
 
     const provider = await prisma.provider.findFirst({ 
@@ -173,14 +183,21 @@ export class ProvidersRepository {
     const { documentTypeId, ...providerInfo } = transformedData;
 
     const data = { ...providerInfo };
-    if (documentTypeId) {
+    
+    // Solo conectar documentType si es persona natural Y tiene documentTypeId
+    if (providerData.tipoEntidad === 'natural' && documentTypeId) {
       data.documentType = { connect: { id: documentTypeId } };
     }
 
     const provider = await prisma.provider.create({
       data,
       include: {
-        documentType: true,
+        documentType: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -192,9 +209,12 @@ export class ProvidersRepository {
     const { documentTypeId, ...providerInfo } = transformedData;
     const data = { ...providerInfo };
 
-    if (documentTypeId) {
+    // Manejar documentType según el tipo de entidad
+    if (providerData.tipoEntidad === "natural" && documentTypeId) {
+      // Persona natural: conectar documentType
       data.documentType = { connect: { id: documentTypeId } };
-    } else {
+    } else if (providerData.tipoEntidad === "juridica") {
+      // Persona jurídica: desconectar documentType
       data.documentType = { disconnect: true };
     }
 
@@ -202,7 +222,12 @@ export class ProvidersRepository {
       where: { id },
       data,
       include: {
-        documentType: true,
+        documentType: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -289,87 +314,47 @@ export class ProvidersRepository {
     };
   }
 
+  /**
+   * 🔥 TRANSFORMACIÓN FRONTEND - Corregida
+   * Convierte datos de la BD al formato del frontend
+   */
   transformToFrontend(provider) {
-  if (!provider) return null;
+    if (!provider) return null;
 
-  // Mapeo de nombres de tipos de documento a códigos
-  const documentTypeNameToCode = {
-    'Cédula de Ciudadanía': 'CC',
-    'Tarjeta de Identidad': 'TI',
-    'Cédula de Extranjería': 'CE',
-    'Pasaporte': 'PAS',
-    'NIT': 'NIT'
-  };
-
-  // Obtener el código del tipo de documento
-  const getDocumentTypeCode = (documentType) => {
-    if (!documentType) return "";
-    return documentTypeNameToCode[documentType.name] || "";
-  };
-
-  return {
-    id: provider.id,
-    tipoEntidad: provider.entityType === "legal" ? "juridica" : "natural",
-    razonSocial: provider.businessName,
-    nit: provider.nit,
-    tipoDocumento: getDocumentTypeCode(provider.documentType),
-    contactoPrincipal: provider.mainContact,
-    correo: provider.email,
-    telefono: provider.phone,
-    direccion: provider.address,
-    ciudad: provider.city,
-    descripcion: provider.description,
-    estado: provider.status === "Active" ? "Activo" : "Inactivo",
-    createdAt: provider.createdAt,
-    updatedAt: provider.updatedAt,
-    statusAssignedAt: provider.statusAssignedAt,
-    fechaRegistro: provider.createdAt,
-    documentos: null,
-    terminosPago: null,
-    servicios: null,
-    observaciones: null,
-    // Para compatibilidad
-    documentTypeId: provider.documentType?.id || null
-  };
-}
-
-transformToBackend(providerData) {
-  let cleanedNit = providerData.nit;
-
-  if (cleanedNit && typeof cleanedNit === "string") {
-    cleanedNit = cleanedNit.replace(/[.\-\s]/g, "");
-  }
-
-  const documentTypeCodeToName = {
-    'CC': 'Cédula de Ciudadanía',
-    'TI': 'Tarjeta de Identidad',
-    'CE': 'Cédula de Extranjería',
-    'PAS': 'Pasaporte',
-    'NIT': 'NIT'
-  };
-
-  const transformed = {
-    entityType: providerData.tipoEntidad === "juridica" ? "legal" : "natural",
-    businessName: providerData.razonSocial,
-    ...(cleanedNit && { nit: cleanedNit }),
-    mainContact: providerData.contactoPrincipal,
-    email: providerData.correo,
-    phone: providerData.telefono,
-    address: providerData.direccion,
-    city: providerData.ciudad,
-    description: providerData.descripcion || "",
-    status: providerData.estado === "Activo" ? "Active" : "Inactive",
-  };
-
-  if (providerData.tipoEntidad === "natural" && providerData.tipoDocumento) {
-    const documentTypeName = documentTypeCodeToName[providerData.tipoDocumento];
-    if (documentTypeName) {
-      transformed.documentTypeId = this.getDocumentTypeIdByName(documentTypeName);
+    // Determinar el valor de tipoDocumento
+    let tipoDocumento = "";
+    if (provider.documentType?.id) {
+      tipoDocumento = provider.documentType.id.toString();
+    } else if (provider.documentTypeId) {
+      tipoDocumento = provider.documentTypeId.toString();
     }
+
+    return {
+      id: provider.id,
+      tipoEntidad: provider.entityType === "legal" ? "juridica" : "natural",
+      razonSocial: provider.businessName,
+      nit: provider.nit,
+      tipoDocumento: tipoDocumento, // ✅ Ahora siempre retorna el valor correcto
+      documentTypeId: provider.documentTypeId || null,
+      documentTypeName: provider.documentType?.name || "",
+      contactoPrincipal: provider.mainContact,
+      correo: provider.email,
+      telefono: provider.phone,
+      direccion: provider.address,
+      ciudad: provider.city,
+      descripcion: provider.description,
+      estado: provider.status === "Active" ? "Activo" : "Inactivo",
+      createdAt: provider.createdAt,
+      updatedAt: provider.updatedAt,
+      statusAssignedAt: provider.statusAssignedAt,
+      fechaRegistro: provider.createdAt,
+    };
   }
 
-  return transformed;
-}
+  /**
+   * 🔥 TRANSFORMACIÓN BACKEND - Corregida
+   * Convierte datos del frontend al formato de la BD
+   */
   transformToBackend(providerData) {
     let cleanedNit = providerData.nit;
 
@@ -390,22 +375,15 @@ transformToBackend(providerData) {
       status: providerData.estado === "Activo" ? "Active" : "Inactive",
     };
 
-    if (providerData.tipoEntidad === "natural" && providerData.tipoDocumento) {
-      transformed.documentTypeId = this.getDocumentTypeIdByName(providerData.tipoDocumento);
+    // ✅ Solo incluir documentTypeId si es persona natural Y tiene valor
+    if (providerData.tipoEntidad === 'natural' && providerData.tipoDocumento) {
+      transformed.documentTypeId = parseInt(providerData.tipoDocumento);
+    } else if (providerData.tipoEntidad === 'juridica') {
+      // Asegurar que sea null para jurídica
+      transformed.documentTypeId = null;
     }
 
     return transformed;
-  }
-
-  getDocumentTypeIdByName(documentTypeName) {
-    const documentTypeMap = {
-      'Cédula de Ciudadanía': 1,
-      'Tarjeta de Identidad': 2,
-      'Cédula de Extranjería': 3,
-      'Pasaporte': 4,
-      'NIT': 5
-    };
-    return documentTypeMap[documentTypeName] || null;
   }
 }
 

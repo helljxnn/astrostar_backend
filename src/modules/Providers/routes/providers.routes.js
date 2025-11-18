@@ -10,6 +10,13 @@ const router = express.Router();
 const providersController = new ProvidersController();
 
 /**
+ * @swagger
+ * tags:
+ *   name: Providers
+ *   description: Gestión de proveedores
+ */
+
+/**
  * IMPORTANTE: Las rutas de verificación deben ir ANTES de las rutas con parámetros dinámicos
  * para evitar conflictos de routing
  */
@@ -165,8 +172,47 @@ router.get("/stats", providersController.getProviderStats);
  * @swagger
  * /api/providers:
  *   get:
- *     summary: Get list of providers
+ *     summary: Get list of providers with pagination and filters
  *     tags: [Providers]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 100
+ *           default: 10
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *           maxLength: 100
+ *         description: Search term
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *         description: Filter by status
+ *       - in: query
+ *         name: entityType
+ *         schema:
+ *           type: string
+ *           enum: [juridica, natural]
+ *         description: Filter by entity type
+ *     responses:
+ *       200:
+ *         description: List of providers retrieved successfully
+ *       400:
+ *         description: Invalid parameters
  */
 router.get(
   "/",
@@ -209,6 +255,78 @@ router.get(
  *   post:
  *     summary: Create new provider
  *     tags: [Providers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - tipoEntidad
+ *               - razonSocial
+ *               - nit
+ *               - contactoPrincipal
+ *               - telefono
+ *               - direccion
+ *               - ciudad
+ *             properties:
+ *               tipoEntidad:
+ *                 type: string
+ *                 enum: [juridica, natural]
+ *                 description: Entity type
+ *               razonSocial:
+ *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 200
+ *                 description: Business name or full name
+ *               nit:
+ *                 type: string
+ *                 minLength: 6
+ *                 maxLength: 20
+ *                 description: Tax ID or identification document
+ *               tipoDocumento:
+ *                 type: string
+ *                 enum: [CC, TI, CE, PAS]
+ *                 description: Document type (required for natural persons)
+ *               contactoPrincipal:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 150
+ *                 description: Main contact person
+ *               correo:
+ *                 type: string
+ *                 format: email
+ *                 maxLength: 150
+ *                 description: Email address (optional)
+ *               telefono:
+ *                 type: string
+ *                 minLength: 7
+ *                 maxLength: 20
+ *                 description: Phone number
+ *               direccion:
+ *                 type: string
+ *                 minLength: 10
+ *                 maxLength: 200
+ *                 description: Address
+ *               ciudad:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *                 description: City
+ *               descripcion:
+ *                 type: string
+ *                 maxLength: 500
+ *                 description: Description (optional)
+ *               estado:
+ *                 type: string
+ *                 enum: [Activo, Inactivo]
+ *                 default: Activo
+ *                 description: Status
+ *     responses:
+ *       201:
+ *         description: Provider created successfully
+ *       400:
+ *         description: Validation error
  */
 router.post(
   "/",
@@ -223,6 +341,68 @@ router.post(
  *   put:
  *     summary: Update provider
  *     tags: [Providers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Provider ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               tipoEntidad:
+ *                 type: string
+ *                 enum: [juridica, natural]
+ *               razonSocial:
+ *                 type: string
+ *                 minLength: 3
+ *                 maxLength: 200
+ *               nit:
+ *                 type: string
+ *                 minLength: 6
+ *                 maxLength: 20
+ *               tipoDocumento:
+ *                 type: string
+ *                 enum: [CC, TI, CE, PAS]
+ *               contactoPrincipal:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 150
+ *               correo:
+ *                 type: string
+ *                 format: email
+ *                 maxLength: 150
+ *               telefono:
+ *                 type: string
+ *                 minLength: 7
+ *                 maxLength: 20
+ *               direccion:
+ *                 type: string
+ *                 minLength: 10
+ *                 maxLength: 200
+ *               ciudad:
+ *                 type: string
+ *                 minLength: 2
+ *                 maxLength: 100
+ *               descripcion:
+ *                 type: string
+ *                 maxLength: 500
+ *               estado:
+ *                 type: string
+ *                 enum: [Activo, Inactivo]
+ *     responses:
+ *       200:
+ *         description: Provider updated successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Provider not found
  */
 router.put(
   "/:id",
@@ -251,6 +431,21 @@ router.patch(
  *   delete:
  *     summary: Delete provider (changes to Inactive)
  *     tags: [Providers]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Provider ID
+ *     responses:
+ *       200:
+ *         description: Provider deleted successfully
+ *       400:
+ *         description: Cannot delete provider with active purchases
+ *       404:
+ *         description: Provider not found
  */
 router.delete(
   "/:id",

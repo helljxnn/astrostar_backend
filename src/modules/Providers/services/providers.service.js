@@ -1,4 +1,3 @@
-// src/services/providers.service.js
 import { ProvidersRepository } from "../repository/providers.repository.js";
 
 export class ProvidersService {
@@ -119,11 +118,9 @@ export class ProvidersService {
         );
         if (existingByNit && existingByNit.id !== id) {
           const fieldName =
-            updateData.tipoEntidad === "juridica"
-              ? "NIT"
-              : "documento de identificación";
+            updateData.tipoEntidad === "juridica" ? "NIT" : "documento";
           throw new Error(
-            `El ${fieldName} "${updateData.nit}" ya está registrado por otro proveedor.`
+            `El ${fieldName} "${updateData.nit}" ya está registrado.`
           );
         }
       }
@@ -363,10 +360,11 @@ export class ProvidersService {
       const documentTypes = await this.providersRepository.getDocumentTypes();
       return {
         success: true,
-        data: documentTypes
+        data: documentTypes,
+        message: "Tipos de documento obtenidos exitosamente.",
       };
     } catch (error) {
-      console.error('Service error - getDocumentTypes:', error);
+      console.error("Service error - getDocumentTypes:", error);
       throw error;
     }
   }

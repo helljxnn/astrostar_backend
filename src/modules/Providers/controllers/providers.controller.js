@@ -1,4 +1,3 @@
-// src/controllers/providers.controller.js
 import { ProvidersService } from "../services/providers.service.js";
 
 export class ProvidersController {
@@ -6,9 +5,6 @@ export class ProvidersController {
     this.providersService = new ProvidersService();
   }
 
-  /**
-   * Obtener todos los proveedores
-   */
   getAllProviders = async (req, res) => {
     try {
       const {
@@ -44,9 +40,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Obtener proveedor por ID
-   */
   getProviderById = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -80,9 +73,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Crear nuevo proveedor
-   */
   createProvider = async (req, res) => {
     try {
       console.log("📥 Datos recibidos en createProvider:", req.body);
@@ -117,9 +107,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Actualizar proveedor
-   */
   updateProvider = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -132,9 +119,13 @@ export class ProvidersController {
       }
 
       console.log("📥 Datos recibidos en updateProvider:", {
-        id,
-        data: req.body,
-      });
+      id,
+      data: req.body,
+      // 🔥 DEBUG: Mostrar tipoDocumento específicamente
+      tipoDocumento: req.body.tipoDocumento,
+      tipoEntidad: req.body.tipoEntidad
+    });
+
 
       const result = await this.providersService.updateProvider(id, req.body);
 
@@ -166,9 +157,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Eliminar proveedor
-   */
   deleteProvider = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -207,9 +195,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Cambiar estado de proveedor
-   */
   changeProviderStatus = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -252,7 +237,6 @@ export class ProvidersController {
     }
   };
 
-  //Verificar si un proveedor tiene compras activas
   checkActivePurchases = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -284,9 +268,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Verificar disponibilidad de NIT/Identificación
-   */
   checkNitAvailability = async (req, res) => {
     try {
       const { nit, excludeId, tipoEntidad = "juridica" } = req.query;
@@ -333,9 +314,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Verificar disponibilidad de razón social/nombre
-   */
   checkBusinessNameAvailability = async (req, res) => {
     try {
       const { businessName, excludeId, tipoEntidad = "juridica" } = req.query;
@@ -382,9 +360,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Verificar disponibilidad de email
-   */
   checkEmailAvailability = async (req, res) => {
     try {
       const { email, excludeId } = req.query;
@@ -419,9 +394,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Verificar disponibilidad de contacto principal
-   */
   checkContactAvailability = async (req, res) => {
     try {
       const { contact, excludeId } = req.query;
@@ -458,9 +430,6 @@ export class ProvidersController {
     }
   };
 
-  /**
-   * Obtener estadísticas de proveedores
-   */
   getProviderStats = async (req, res) => {
     try {
       const result = await this.providersService.getProviderStats();
@@ -481,9 +450,6 @@ export class ProvidersController {
     }
   };
 
-  // ============================================
-  // NUEVO: Obtener tipos de documento
-  // ============================================
   getDocumentTypes = async (req, res) => {
     try {
       const result = await this.providersService.getDocumentTypes();
