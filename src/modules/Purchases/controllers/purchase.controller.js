@@ -24,7 +24,6 @@ export class PurchaseController {
         purchaseDate,
         registrationDate,
         totalAmount,
-        status,
         observations,
         items,
       } = req.body;
@@ -66,7 +65,6 @@ export class PurchaseController {
               ? new Date(registrationDate)
               : null,
             totalAmount: parseFloat(totalAmount),
-            status: status || "Registered",
             observations,
             notes,
             providerId: parseInt(providerId),

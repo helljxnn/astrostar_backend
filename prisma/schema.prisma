@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -22,14 +23,14 @@ model DocumentType {
 }
 
 model Role {
-  id                      Int              @id @default(autoincrement())
-  name                    String           @unique @db.VarChar(50)
-  description             String           @db.VarChar(200)
-  status                  RoleStatus       @default(Active)
-  createdAt               DateTime         @default(now())
-  updatedAt               DateTime         @updatedAt
-  users                   User[]
-  rolePermissionPrivilege RolePermissionPrivilege[]
+  id          Int        @id @default(autoincrement())
+  name        String     @unique @db.VarChar(50)
+  description String     @db.VarChar(200)
+  status      RoleStatus @default(Active)
+  permissions Json?      @default("{}")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  users       User[]
 
   @@map("roles")
 }
@@ -42,11 +43,11 @@ model User {
   secondLastName       String?
   email                String       @unique
   passwordHash         String
+  passwordResetToken   String?                      
+  passwordResetExpires DateTime?
   refreshToken         String?
-  resetPasswordToken   String?
-  resetPasswordExpires DateTime?
   phoneNumber          String?
-  address              String ?
+  address              String?
   birthDate            DateTime
   identification       String       @unique
   status               UserStatus   @default(Active)
@@ -54,8 +55,6 @@ model User {
   updatedAt            DateTime     @updatedAt
   documentTypeId       Int
   roleId               Int
-  age                  Int?
-  urlPhoto             String?
   athlete              Athlete?
   employee             Employee?
   documentType         DocumentType @relation(fields: [documentTypeId], references: [id])
@@ -64,55 +63,70 @@ model User {
   @@map("users")
 }
 
+model EmployeeType {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  employees   Employee[]
+
+  @@map("employee_types")
+}
+
 model Employee {
-  id               Int            @id @default(autoincrement())
-  status           EmployeeStatus @default(Activo)
-  statusAssignedAt DateTime       @default(now())
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
-  userId           Int            @unique
-  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purchases        Purchase[]
-  teamMembers      TeamMember[]
+  id                  Int                  @id @default(autoincrement())
+  status              EmployeeStatus       @default(Active)
+  statusAssignedAt    DateTime             @default(now())
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  employeeTypeId      Int
+  userId              Int                  @unique
+  employeePermissions EmployeePermission[]
+  employeeType        EmployeeType         @relation(fields: [employeeTypeId], references: [id])
+  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchases           Purchase[]
+  teamMembers         TeamMember[]
 
   @@map("employees")
 }
 
 model Permission {
-  id                      Int              @id @default(autoincrement())
-  name                    String           @unique
-  description             String?
-  icon                    String?
-  createdAt               DateTime         @default(now())
-  updatedAt               DateTime         @updatedAt
-  rolePermissionPrivilege RolePermissionPrivilege[]
+  id                  Int                  @id @default(autoincrement())
+  name                String               @unique
+  description         String?
+  icon                String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  employeePermissions EmployeePermission[]
+  privileges          Privilege[]
 
   @@map("permissions")
 }
 
 model Privilege {
-  id                      Int        @id @default(autoincrement())
-  name                    String
-  description             String?
-  createdAt               DateTime   @default(now())
-  updatedAt               DateTime   @updatedAt
-  rolePermissionPrivilege RolePermissionPrivilege[]
+  id           Int        @id @default(autoincrement())
+  name         String
+  description  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([name, permissionId])
   @@map("privileges")
 }
 
-model RolePermissionPrivilege {
-  id           Int      @id @default(autoincrement())
-  roleId       Int
+model EmployeePermission {
+  id           Int        @id @default(autoincrement())
+  employeeId   Int
   permissionId Int
-  privilegeId  Int
-  assignedAt   DateTime @default(now())
+  createdAt    DateTime   @default(now())
+  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
 
-  role       Role       @relation(fields: [roleId], references: [id])
-  permission Permission @relation(fields: [permissionId], references: [id])
-  privilege  Privilege  @relation(fields: [privilegeId], references: [id])
-
-  @@unique([roleId, permissionId, privilegeId])
-  @@map("role_permission_privilege")
+  @@unique([employeeId, permissionId])
+  @@map("employee_permissions")
 }
 
 model Service {
@@ -133,41 +147,28 @@ model Service {
   typeId       Int
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
-  participants Participant[]
-  sponsors     ServiceSponsor[]
   category     EventCategory    @relation(fields: [categoryId], references: [id])
   type         ServiceType      @relation(fields: [typeId], references: [id])
-
-  @@map("services")
+  sponsors     ServiceSponsor[]
+  participants Participant[]
 }
 
 model ServiceType {
-  id          Int       @id @default(autoincrement())
-  name        String    @unique
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  services    Service[]
-
-  @@map("service_types")
+  id        Int       @id @default(autoincrement())
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  services  Service[]
 }
 
 model ServiceSponsor {
-  id               Int      @id @default(autoincrement())
-  serviceId        Int
-  sponsorId        Int
-  contributionType String?  @db.VarChar(100)
-  amount           Decimal? @db.Decimal(12, 2)
-  notes            String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  service          Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  sponsor          Sponsor  @relation(fields: [sponsorId], references: [id], onDelete: Cascade)
+  id        Int     @id @default(autoincrement())
+  serviceId Int
+  sponsorId Int
+  service   Service @relation(fields: [serviceId], references: [id])
+  sponsor   Sponsor @relation(fields: [sponsorId], references: [id])
 
-  @@unique([serviceId, sponsorId], name: "unique_sponsor_per_service")
-  @@index([serviceId])
-  @@index([sponsorId])
-  @@map("service_sponsors")
+  @@unique([serviceId, sponsorId])
 }
 
 model Sponsor {
@@ -176,15 +177,10 @@ model Sponsor {
   description  String?
   contactEmail String?
   phone        String?
-  logoUrl      String?
-  website      String?
   status       SponsorStatus    @default(Active)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
   services     ServiceSponsor[]
-
-  @@index([status])
-  @@map("sponsors")
 }
 
 model SportsCategory {
@@ -248,7 +244,6 @@ model Athlete {
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
-  appointments             Appointment[]
 
   @@index([status])
   @@index([guardianId])
@@ -289,23 +284,19 @@ model TemporaryPerson {
   id             Int                   @id @default(autoincrement())
   firstName      String
   lastName       String
-  identification String                @unique
-  email          String
-  phone          String
-  birthDate      DateTime
+  identification String?
+  email          String?
+  phone          String?
+  birthDate      DateTime?
   age            Int?
-  address        String
+  address        String?
+  organization   String?
   status         TemporaryPersonStatus @default(Active)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
-  documentTypeId Int
-  personType     TemporaryPersonType   @default(Participante)
-  category       String?
-  team           String?
-  middleName     String?
-  secondLastName String?
+  documentTypeId Int?
   teamMembers    TeamMember[]
-  documentType   DocumentType          @relation(fields: [documentTypeId], references: [id])
+  documentType   DocumentType?         @relation(fields: [documentTypeId], references: [id])
 
   @@map("temporary_persons")
 }
@@ -316,23 +307,19 @@ model Team {
   description  String?
   coach        String?
   category     String?
-  phone        String?
   status       TeamStatus    @default(Active)
-  teamType     TeamType      @default(Fundacion)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   participants Participant[]
   members      TeamMember[]
 
-  @@index([status])
-  @@index([teamType])
   @@map("teams")
 }
 
 model TeamMember {
   id                Int              @id @default(autoincrement())
   teamId            Int
-  memberType        MemberType       // ← CAMBIO: MemberType enum en lugar de String
+  memberType        MemberType
   position          String?
   jerseyNumber      Int?
   isActive          Boolean          @default(true)
@@ -342,47 +329,32 @@ model TeamMember {
   athleteId         Int?
   employeeId        Int?
   temporaryPersonId Int?
-  role              TeamMemberRole   @default(Player)
   athlete           Athlete?         @relation(fields: [athleteId], references: [id], onDelete: Cascade)
   employee          Employee?        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   team              Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
   temporaryPerson   TemporaryPerson? @relation(fields: [temporaryPersonId], references: [id], onDelete: Cascade)
 
-  @@unique([teamId, athleteId], name: "unique_athlete_per_team")
-  @@unique([teamId, temporaryPersonId], name: "unique_temporary_person_per_team")
-  @@unique([teamId, employeeId], name: "unique_employee_per_team")
-  @@unique([teamId, jerseyNumber], name: "unique_jersey_per_team")
-  @@index([teamId])
-  @@index([athleteId])
-  @@index([temporaryPersonId])
-  @@index([employeeId])
-  @@index([memberType])
+  @@unique([teamId, jerseyNumber])
   @@map("team_members")
 }
 
 model Participant {
-  id               Int               @id @default(autoincrement())
+  id               Int             @id @default(autoincrement())
   type             ParticipantType
-  registrationDate DateTime          @default(now())
+  registrationDate DateTime        @default(now())
+  status           String          @default("Registered")
   notes            String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   serviceId        Int
   sportsCategoryId Int?
   athleteId        Int?
   teamId           Int?
-  status           ParticipantStatus @default(Registered)
-  athlete          Athlete?          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  service          Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  sportsCategory   SportsCategory?   @relation(fields: [sportsCategoryId], references: [id])
-  team             Team?             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  athlete          Athlete?        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  service          Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  sportsCategory   SportsCategory? @relation(fields: [sportsCategoryId], references: [id])
+  team             Team?           @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
-  @@unique([serviceId, athleteId], name: "unique_athlete_per_service")
-  @@unique([serviceId, teamId], name: "unique_team_per_service")
-  @@index([serviceId])
-  @@index([athleteId])
-  @@index([teamId])
-  @@index([type])
   @@map("participants")
 }
 
@@ -398,7 +370,6 @@ model Provider {
   city           String             @db.VarChar(100)
   description    String?
   status         ProviderStatus     @default(Active)
-  statusAssignedAt DateTime           @default(now())
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   documentTypeId Int?
@@ -412,21 +383,20 @@ model Provider {
 }
 
 model Purchase {
-  id                 Int            @id @default(autoincrement())
-  invoiceNumber      String         @uniqe  @db.Varchar(250)
-  purchaseDate       DateTime       @default(now())
-  registrationDate   DateTime?
-  totalAmount        Decimal        @db.Decimal(12, 2)
-  status             PurchaseStatus @default(Registered)
-  observations       String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  providerId         Int
-  employeeId         Int?
-  items              PurchaseItem[]
-  images             PurchaseImage[]
-  employee           Employee?      @relation(fields: [employeeId], references: [id])
-  provider           Provider       @relation(fields: [providerId], references: [id])
+  id             Int            @id @default(autoincrement())
+  purchaseNumber String         @unique @db.VarChar(50)
+  purchaseDate   DateTime       @default(now())
+  deliveryDate   DateTime?
+  totalAmount    Decimal        @db.Decimal(12, 2)
+  status         PurchaseStatus @default(Pending)
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  providerId     Int
+  employeeId     Int?
+  items          PurchaseItem[]
+  employee       Employee?      @relation(fields: [employeeId], references: [id])
+  provider       Provider       @relation(fields: [providerId], references: [id])
 
   @@index([providerId])
   @@index([employeeId])
@@ -436,32 +406,19 @@ model Purchase {
 }
 
 model PurchaseItem {
-  id                Int             @id @default(autoincrement())
-  productName       String          @db.VarChar(200)
-  description       String?
-  quantity          Int
-  unitPrice         Decimal         @db.Decimal(10, 2)
-  subtotal          Decimal         @db.Decimal(12, 2)
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  purchaseId        Int
-  purchase          Purchase        @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  sportsEquipmentId Int
-  sportsEquipment   SportsEquipment @relation(fields: [sportsEquipmentId], references: [id], onDelete: Cascade)
+  id          Int      @id @default(autoincrement())
+  productName String   @db.VarChar(200)
+  description String?
+  quantity    Int
+  unitPrice   Decimal  @db.Decimal(10, 2)
+  subtotal    Decimal  @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  purchaseId  Int
+  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
   @@index([purchaseId])
-  @@index([sportsEquipmentId])
   @@map("purchase_items")
-}
-
-model PurchaseImage {
-  id         Int      @id @default(autoincrement())
-  url        String
-  publicId   String
-  purchaseId Int
-  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-
-  @@map("purchase_images")
 }
 
 enum RoleStatus {
@@ -476,10 +433,11 @@ enum UserStatus {
 }
 
 enum EmployeeStatus {
-  Activo
-  Licencia
-  Desvinculado
-  Fallecido
+  Active
+  Disabled
+  OnVacation
+  Retired
+  Deceased
 }
 
 enum EventStatus {
@@ -534,12 +492,6 @@ enum TemporaryPersonStatus {
   Inactive
 }
 
-enum TemporaryPersonType {
-  Deportista
-  Entrenador
-  Participante
-}
-
 enum TeamStatus {
   Active
   Inactive
@@ -552,28 +504,9 @@ enum MemberType {
   TemporaryPerson
 }
 
-enum TeamType {
-  Fundacion
-  Temporal
-}
-
-enum TeamMemberRole {
-  Player
-  Coach
-  Assistant
-  Manager
-}
-
 enum ParticipantType {
   Individual
   Team
-}
-
-enum ParticipantStatus {
-  Registered
-  Confirmed
-  Cancelled
-  Attended
 }
 
 enum ProviderEntityType {
@@ -587,116 +520,8 @@ enum ProviderStatus {
 }
 
 enum PurchaseStatus {
-  Registered
+  Pending
+  Received
+  Partial
   Cancelled
-}
-
-model SportsEquipment {
-  id              Int                   @id @default(autoincrement())
-  name            String                @db.VarChar(200)
-  quantityInitial Int                   @default(0)
-  quantityTotal   Int                   @default(0)
-  status          SportsEquipmentStatus @default(Activated)
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  disposals       SportsDisposals[]
-  purchases_item  PurchaseItem[]
-
-  @@index([status])
-  @@map("sports_equipment")
-}
-
-enum SportsEquipmentStatus {
-  Activated
-  Disabled
-  SoldOut
-}
-
-model SportsDisposals {
-  id                Int                   @id @default(autoincrement())
-  quantity          Int
-  reason            SportsDisposalsStatus @default(other)
-  observation       String?
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
-  sportsEquipmentId Int
-  sportsEquipment   SportsEquipment       @relation(fields: [sportsEquipmentId], references: [id], onDelete: Cascade)
-  images            SportsDisposalImage[]
-  
-  @@index([sportsEquipmentId])
-  @@map("sports_disposals")
-}
-
-enum SportsDisposalsStatus {
-  damaged
-  lost
-  stolen
-  obsolete
-  other
-}
-
-model SportsDisposalImage {
-  id                Int      @id @default(autoincrement())
-  url               String   // URL de la imagen en Cloudinary
-  publicId          String   // ID público para poder eliminarla de Cloudinary
-  disposalId        Int
-  disposal          SportsDisposals @relation(fields: [disposalId], references: [id], onDelete: Cascade)
-}
-
-// Enums for the DonorSponsor model
-enum DonorSponsorType {
-  Donor
-  Sponsor
-}
-
-enum PersonType {
-  Natural
-  Legal
-}
-
-enum Status {
-  Active
-  Inactive
-}
-
-// Model for Donors and Sponsors
-model DonorSponsor {
-  id              Int              @id @default(autoincrement())
-  identification  String           @unique
-  name            String
-  contactPerson   String?
-  type            DonorSponsorType
-  personType      PersonType
-  phone           String
-  email           String           @unique
-  address         String?
-  status          Status           @default(Active)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-
-  @@map("donors_sponsors")
-}
-
-model Appointment {
-  id                      Int                 @id @default(autoincrement())
-  title                   String
-  description             String?
-  start                   DateTime // Fecha y hora de inicio combinadas
-  end                     DateTime // Fecha y hora de fin combinadas
-  status                  AppointmentStatus   @default(PENDING)
-  reasonForCancellation   String?
-  createdAt               DateTime            @default(now())
-  updatedAt               DateTime            @updatedAt
-
-  // Campos para las relaciones (listos para que los conectes)
-  athleteId               Int                 
-  athlete                 Athlete             @relation(fields: [athleteId], references: [id])
-
-  @@map("appointments")
-}
-
-enum AppointmentStatus {
-  PENDING
-  COMPLETED
-  CANCELLED
 }
