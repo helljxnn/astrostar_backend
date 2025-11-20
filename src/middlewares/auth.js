@@ -21,7 +21,6 @@ export const authenticateToken = async (req, res, next) => {
 
     // Guardamos los datos del token
     req.user = decoded;
-    console.log(req.user);
 
     // Seguimos con la api
     next();

@@ -151,6 +151,44 @@ router.get("/", controller.GetAll);
 
 /**
  * @swagger
+ * /api/sports-equipment/deletion-check:
+ *   get:
+ *     summary: Verifica qué materiales deportivos se pueden eliminar
+ *     tags: [SportsEquipment]
+ *     description: >
+ *       Devuelve una lista de todos los materiales deportivos, indicando para cada uno
+ *       si puede ser eliminado (`canBeDeleted`) y el motivo (`reason`) en caso de que no.
+ *       Un material no se puede eliminar si tiene bajas o compras asociadas.
+ *     responses:
+ *       200:
+ *         description: Verificación completada exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       canBeDeleted:
+ *                         type: boolean
+ *                       reason:
+ *                         type: string
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
+router.get("/deletion-check", controller.GetDeletionCheck);
+
+/**
+ * @swagger
  * /api/sports-equipment/{id}:
  *   get:
  *     summary: Obtener un material deportivo por su ID

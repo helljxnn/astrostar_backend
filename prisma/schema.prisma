@@ -382,6 +382,40 @@ model Provider {
   @@map("providers")
 }
 
+model SportsEquipments{
+  id              Int                     @id @default(autoincrement())
+  name            String?              
+  quantityInitial Int                     @default(0)
+  quantityTotal   Int                     @default(0)
+  status          SportsEquipmentsStatus  @default(Active)
+  disposals       Disposals[]
+
+  @@map("sports_equipment")  
+}
+
+enum SportsEquipmentsStatus{
+  Active
+  Inactive 
+}
+
+model Disposals{
+  id                Int              @id @default(autoincrement())
+  quantity          Int
+  reason            DisposalsStatus
+  observations      String
+  sportsEquipmentId Int
+  sportsEquipment   SportsEquipments @relation(fields: [sportsEquipmentId], references: [id])
+
+  @@map("disposals")
+}
+
+enum DisposalsStatus{
+  damaged
+  lost
+  stolen
+  obsolet
+  other
+}
 model Purchase {
   id             Int            @id @default(autoincrement())
   purchaseNumber String         @unique @db.VarChar(50)
