@@ -37,9 +37,9 @@ async function main() {
     where: { name: 'Administrador' },
     update: {}, // No actualizar si ya existe
     create: {
-      name: 'Administrador',
-      description: 'Acceso completo al sistema con todos los permisos. Este rol no puede ser eliminado.',
-      status: 'Active',
+      name: "Administrador",
+      description:
+        "Acceso completo al sistema con todos los permisos. Este rol no puede ser eliminado.",
       permissions: {
         // Permisos completos para todos los módulos
         dashboard: { Ver: true, Crear: true, Editar: true, Eliminar: true },
@@ -47,16 +47,67 @@ async function main() {
         roles: { Ver: true, Crear: true, Editar: true, Eliminar: true },
         sportsEquipment: { Ver: true, Crear: true, Editar: true, Eliminar: true },
         employees: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        employeesSchedule: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        appointmentManagement: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        sportsCategory: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        athletesSection: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        athletesAssistance: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        donorsSponsors: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        donationsManagement: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        eventsManagement: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        temporaryWorkers: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        temporaryTeams: { Ver: true, Crear: true, Editar: true, Eliminar: true },
+        employeesSchedule: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        appointmentManagement: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        sportsCategory: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+          Listar: true,
+        },
+        athletesSection: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        athletesAssistance: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        donorsSponsors: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        donationsManagement: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        eventsManagement: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        temporaryWorkers: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        temporaryTeams: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
         providers: { Ver: true, Crear: true, Editar: true, Eliminar: true },
         purchasesManagement: { Ver: true, Crear: true, Editar: true, Eliminar: true }
       }

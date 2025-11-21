@@ -55,18 +55,9 @@ export class AuthService {
         };
       }
 
-      // 5. Verificar rol activo
-      if (user.role.status !== "Active") {
-        return {
-          success: false,
-          statusCode: 401,
-          message: "Rol inactivo. Contacte al administrador.",
-        };
-      }
-
-      // 6. Generar tokens JWT (Access y Refresh)
-      const accessToken = jwt.sign(
-        {
+      // 5. Generar token JWT
+      const token = jwt.sign(
+        { 
           id: user.id,
           email: user.email,
           roleId: user.roleId,

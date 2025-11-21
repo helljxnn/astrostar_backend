@@ -8,33 +8,12 @@ export class RoleRepository {
     let where = {};
     
     if (search) {
-      const searchLower = search.toLowerCase().trim();
-      
-      // Mapeo de términos en español a valores en inglés
-      const statusMap = {
-        'activo': 'Active',
-        'inactivo': 'Inactive',
-        'active': 'Active',
-        'inactive': 'Inactive'
+      where = {
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+        ],
       };
-
-      // Verificar si la búsqueda es exactamente un estado
-      const mappedStatus = statusMap[searchLower];
-
-      if (mappedStatus) {
-        // Si es un estado, buscar solo por estado (búsqueda exacta)
-        where = {
-          status: mappedStatus
-        };
-      } else {
-        // Si no es un estado, buscar en nombre y descripción
-        where = {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { description: { contains: search, mode: "insensitive" } },
-          ],
-        };
-      }
     }
 
     const [roles, total] = await Promise.all([
@@ -154,8 +133,7 @@ export class RoleRepository {
       const role = await prisma.role.findUnique({
         where: { id },
         select: { 
-          name: true, 
-          status: true,
+          name: true,
           users: {
             select: { id: true }
           }
@@ -183,13 +161,6 @@ export class RoleRepository {
         );
       }
 
-      // Proteger roles activos
-      if (role.status === "Active") {
-        throw new Error(
-          `No se puede eliminar el rol "${role.name}" porque tiene estado "Activo". Primero cambie el estado a "Inactivo" y luego inténtelo de nuevo.`
-        );
-      }
-
       await prisma.role.delete({
         where: { id },
       });
@@ -213,16 +184,10 @@ export class RoleRepository {
 
   // Get role statistics
   async getStats() {
-    const [total, active, inactive] = await Promise.all([
-      prisma.role.count(),
-      prisma.role.count({ where: { status: "Active" } }),
-      prisma.role.count({ where: { status: "Inactive" } }),
-    ]);
+    const total = await prisma.role.count();
 
     return {
       total,
-      active,
-      inactive,
     };
   }
 }

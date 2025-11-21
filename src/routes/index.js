@@ -1,34 +1,38 @@
-import express from "express";
+import { Router } from "express"; 
 import authRoutes from "../modules/Auth/routes/auth.routes.js";
 import roleRoutes from "../modules/Roles/routes/roles.routes.js";
 import employeeRoutes from "../modules/Services/Employees/routes/employees.routes.js";
 import usersRoutes from "../modules/Users/routes/users.routes.js";
 import providerRoutes from "../modules/Providers/routes/providers.routes.js";
+import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/routes/temporaryworkers.routes.js";
 import documentTypesRoutes from "./documentTypes.routes.js";
+import sportsCategoryRoutes from "../modules/Athletes/SportsCategory/routes/sportsCategory.routes.js";
+import teamsRoutes from "../modules/Teams/routes/teams.routes.js";
+import trainersRoutes from "../modules/Teams/routes/trainers.routes.js";
+import athletesRoutes from "../modules/Teams/routes/athletes.routes.js";
+import eventsRoutes from "../modules/Events/events.routes.js";
+import registrationsRoutes from "../modules/Events/Registrations/registrations.routes.js";
+import uploadRoutes from "../shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
-import sportsEquipmentRoutes from "../modules/SportsEquipment/routes/sportsEquipment.routes.js";
-import donorsSponsorsRoutes from "../modules/DonorsSponsors/routes/donorsSponsor.routes.js";
-import appointmentsRoutes from "../modules/Appointments/routes/appointments.routes.js";
-import purchaseRoutes from "../modules/Purchases/routes/purchase.routes.js";
-import { authenticateToken } from "../middlewares/auth.js";
 
-const router = express.Router();
+const router = Router();
 
 // Module routes
-
-// Public routes
 router.use("/auth", authRoutes);
+router.use("/roles", roleRoutes);
+router.use("/employees", employeeRoutes);
+router.use("/users", usersRoutes);
+router.use("/providers", providerRoutes);
+router.use("/temporary-workers", temporaryWorkersRoutes);
+router.use("/document-types", documentTypesRoutes);
+router.use("/sports-categories", sportsCategoryRoutes);
+router.use("/teams", teamsRoutes);
+router.use("/trainers", trainersRoutes);
+router.use("/athletes", athletesRoutes);
+router.use("/events", eventsRoutes);
+router.use("/registrations", registrationsRoutes);
 
-// Private routes
-router.use("/roles", authenticateToken, roleRoutes);
-router.use("/employees", authenticateToken, employeeRoutes);
-router.use("/users", authenticateToken, usersRoutes);
-router.use("/providers", authenticateToken, providerRoutes);
-router.use("/document-types", authenticateToken, documentTypesRoutes);
-router.use("/sportsEquipment", authenticateToken, sportsEquipmentRoutes);
-router.use("/donorsSponsors", authenticateToken, donorsSponsorsRoutes);
-router.use("/appointments", authenticateToken, appointmentsRoutes);
-router.use("/purchases", authenticateToken, purchaseRoutes);
+router.use("/upload", uploadRoutes);
 
 // Test routes (only in development)
 if (process.env.NODE_ENV === "development") {
@@ -39,7 +43,6 @@ if (process.env.NODE_ENV === "development") {
 router.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: "API is running!",
     message: "API is running!",
     timestamp: new Date().toISOString(),
     modules: [
@@ -54,7 +57,8 @@ router.get("/health", (req, res) => {
       "Teams",
       "Trainers",
       "Athletes",
-      "Events"
+      "Events",
+      "Registrations"
     ],
   });
 });

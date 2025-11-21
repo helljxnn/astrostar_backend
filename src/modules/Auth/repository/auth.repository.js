@@ -21,9 +21,8 @@ export class AuthRepository {
               id: true,
               name: true,
               description: true,
-              status: true,
-              permissions: true,
-            },
+              permissions: true
+            }
           },
           employee: {
             select: {

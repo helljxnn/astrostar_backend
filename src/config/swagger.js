@@ -19,12 +19,11 @@ const options = {
       schemas: {
         Role: {
           type: "object",
-          required: ["name", "description", "status"],
+          required: ["name", "description"],
           properties: {
             id: { type: "integer", description: "The auto-generated id of the role" },
             name: { type: "string", maxLength: 50, description: "The name of the role" },
             description: { type: "string", maxLength: 200, description: "The description of the role" },
-            status: { type: "string", enum: ["Active", "Inactive"], description: "The status of the role" },
             permissions: { type: "object", description: "The permissions object for the role" },
             createdAt: { type: "string", format: "date-time" },
             updatedAt: { type: "string", format: "date-time" },
@@ -33,11 +32,10 @@ const options = {
 
         RoleInput: {
           type: "object",
-          required: ["name", "description", "status"],
+          required: ["name", "description"],
           properties: {
             name: { type: "string", maxLength: 50 },
             description: { type: "string", maxLength: 200 },
-            status: { type: "string", enum: ["Active", "Inactive"] },
             permissions: { type: "object" },
           },
         },

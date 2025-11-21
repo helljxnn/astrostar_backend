@@ -48,12 +48,11 @@ export class RoleController {
   // Create a new role
   createRole = async (req, res) => {
     try {
-      const { name, description, status, permissions } = req.body;
+      const { name, description, permissions } = req.body;
 
       const newRole = await this.roleService.createRole({
         name: name.trim(),
         description: description.trim(),
-        status: status || 'Active',
         permissions: permissions || {}
       });
 
@@ -129,12 +128,11 @@ export class RoleController {
   updateRole = async (req, res) => {
     try {
       const { id } = req.params;
-      const { name, description, status, permissions } = req.body;
+      const { name, description, permissions } = req.body;
 
       const updatedRole = await this.roleService.updateRole(parseInt(id), {
         name: name ? name.trim() : undefined,
         description: description ? description.trim() : undefined,
-        status,
         permissions
       });
 
@@ -236,12 +234,6 @@ export class RoleController {
         });
       }
 
-      if (error.message.includes('estado "Activo"')) {
-        return res.status(400).json({
-          success: false,
-          message: error.message
-        });
-      }
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al eliminar el rol. Por favor, inténtelo de nuevo.',
@@ -258,7 +250,7 @@ export class RoleController {
       res.json({
         success: true,
         data: stats,
-        message: `Estadísticas de roles obtenidas exitosamente: ${stats.total} roles en total (${stats.active} activos, ${stats.inactive} inactivos).`
+        message: `Estadísticas de roles obtenidas exitosamente: ${stats.total} roles en total.`
       });
     } catch (error) {
       console.error('Error fetching role stats:', error);

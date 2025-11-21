@@ -15,7 +15,6 @@ const roleController = new RoleController();
  *       required:
  *         - name
  *         - description
- *         - status
  *       properties:
  *         id:
  *           type: integer
@@ -28,10 +27,6 @@ const roleController = new RoleController();
  *           type: string
  *           maxLength: 200
  *           description: The description of the role
- *         status:
- *           type: string
- *           enum: [Active, Inactive]
- *           description: The status of the role
  *         permissions:
  *           type: object
  *           description: The permissions object for the role
@@ -48,7 +43,6 @@ const roleController = new RoleController();
  *       required:
  *         - name
  *         - description
- *         - status
  *       properties:
  *         name:
  *           type: string
@@ -58,10 +52,6 @@ const roleController = new RoleController();
  *           type: string
  *           maxLength: 200
  *           description: The description of the role
- *         status:
- *           type: string
- *           enum: [Active, Inactive]
- *           description: The status of the role
  *         permissions:
  *           type: object
  *           description: The permissions object for the role
@@ -145,7 +135,6 @@ router.get('/',
  *           example:
  *             name: "Administrator"
  *             description: "Full system access"
- *             status: "Active"
  *             permissions:
  *               Users:
  *                 Create: true
