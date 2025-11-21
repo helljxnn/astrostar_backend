@@ -5,9 +5,6 @@ export class TeamsController {
     this.teamsService = new TeamsService();
   }
 
-  /**
-   * Obtener todos los equipos
-   */
   getAllTeams = async (req, res) => {
     try {
       const {
@@ -42,9 +39,6 @@ export class TeamsController {
     }
   };
 
-  /**
-   * Obtener equipo por ID
-   */
   getTeamById = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -77,9 +71,6 @@ export class TeamsController {
     }
   };
 
-  /**
-   * Crear nuevo equipo
-   */
   createTeam = async (req, res) => {
     try {
       console.log("📥 Datos recibidos en createTeam:", req.body);
@@ -98,8 +89,19 @@ export class TeamsController {
     } catch (error) {
       console.error("Error in createTeam controller:", error);
 
-      if (error.message.includes("ya está registrado")) {
+      if (error.message.includes('ya está registrado') ||
+          error.message.includes('Debe seleccionar') ||
+          error.message.includes('deben ser del mismo tipo') ||
+          error.message.includes('No se pueden mezclar') ||
+          error.message.includes('misma categoría')) {
         return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error.message.includes('ya está asignado')) {
+        return res.status(409).json({
           success: false,
           message: error.message,
         });
@@ -113,9 +115,6 @@ export class TeamsController {
     }
   };
 
-  /**
-   * Actualizar equipo
-   */
   updateTeam = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -146,8 +145,19 @@ export class TeamsController {
     } catch (error) {
       console.error("Error in updateTeam controller:", error);
 
-      if (error.message.includes("ya está registrado")) {
+      if (error.message.includes('ya está registrado') ||
+          error.message.includes('Debe seleccionar') ||
+          error.message.includes('deben ser del mismo tipo') ||
+          error.message.includes('No se pueden mezclar') ||
+          error.message.includes('misma categoría')) {
         return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
+      if (error.message.includes('ya está asignado')) {
+        return res.status(409).json({
           success: false,
           message: error.message,
         });
@@ -161,9 +171,6 @@ export class TeamsController {
     }
   };
 
-  /**
-   * Eliminar equipo
-   */
   deleteTeam = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -194,9 +201,6 @@ export class TeamsController {
     }
   };
 
-  /**
-   * Cambiar estado de equipo
-   */
   changeTeamStatus = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -236,9 +240,6 @@ export class TeamsController {
     }
   };
 
-  /**
-   * Verificar disponibilidad de nombre
-   */
   checkNameAvailability = async (req, res) => {
     try {
       const { name, excludeId } = req.query;
@@ -269,9 +270,6 @@ export class TeamsController {
     }
   };
 
-  /**
-   * Obtener estadísticas de equipos
-   */
   getTeamStats = async (req, res) => {
     try {
       const result = await this.teamsService.getTeamStats();
