@@ -174,6 +174,24 @@ export class EventsRepository {
       });
     } catch (error) {
       console.error('Error creating event:', error);
+      
+      // Manejar errores específicos de Prisma
+      if (error.code === 'P2003') {
+        // Foreign key constraint failed
+        if (error.meta?.field_name?.includes('categoryId')) {
+          throw new Error('La categoría seleccionada no existe');
+        }
+        if (error.meta?.field_name?.includes('typeId')) {
+          throw new Error('El tipo de evento seleccionado no existe');
+        }
+        throw new Error('Error de relación: uno de los IDs proporcionados no existe');
+      }
+      
+      if (error.code === 'P2002') {
+        // Unique constraint failed
+        throw new Error('Ya existe un evento con estos datos');
+      }
+      
       throw error;
     }
   }
@@ -214,8 +232,20 @@ export class EventsRepository {
       });
     } catch (error) {
       if (error.code === 'P2025') {
-        throw new Error('El evento no fue encontrado.');
+        throw new Error('El evento no fue encontrado');
       }
+      
+      if (error.code === 'P2003') {
+        // Foreign key constraint failed
+        if (error.meta?.field_name?.includes('categoryId')) {
+          throw new Error('La categoría seleccionada no existe');
+        }
+        if (error.meta?.field_name?.includes('typeId')) {
+          throw new Error('El tipo de evento seleccionado no existe');
+        }
+        throw new Error('Error de relación: uno de los IDs proporcionados no existe');
+      }
+      
       throw error;
     }
   }
@@ -224,21 +254,27 @@ export class EventsRepository {
    * Eliminar evento físicamente
    */
   async delete(id) {
-    return await prisma.service.delete({
-      where: { id: parseInt(id) }
-    });
+    try {
+      const eventId = parseInt(id);
+      const deleted = await prisma.service.delete({
+        where: { id: eventId }
+      });
+      return deleted;
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**
    * Obtener estadísticas de eventos
    */
   async getStats() {
-    const [total, programado, finalizado, cancelado, enPausa, byCategory] = await Promise.all([
+    const [total, programado, finalizado, cancelado, pausado, byCategory] = await Promise.all([
       prisma.service.count(),
       prisma.service.count({ where: { status: 'Programado' } }),
       prisma.service.count({ where: { status: 'Finalizado' } }),
       prisma.service.count({ where: { status: 'Cancelado' } }),
-      prisma.service.count({ where: { status: 'En_pausa' } }),
+      prisma.service.count({ where: { status: 'Pausado' } }),
       prisma.service.groupBy({
         by: ['categoryId'],
         _count: {
@@ -252,7 +288,7 @@ export class EventsRepository {
       programado,
       finalizado,
       cancelado,
-      enPausa,
+      pausado,
       byCategory
     };
   }
@@ -285,5 +321,68 @@ export class EventsRepository {
     ]);
 
     return { categories, types };
+  }
+
+  /**
+   * Encontrar eventos que deberían estar finalizados
+   */
+  async findEventsToFinalize(currentDate, currentTime) {
+    try {
+      return await prisma.service.findMany({
+        where: {
+          OR: [
+            // Eventos cuya fecha de fin ya pasó
+            {
+              endDate: {
+                lt: new Date(currentDate)
+              },
+              status: {
+                notIn: ['Finalizado', 'Cancelado']
+              }
+            },
+            // Eventos cuya fecha de fin es hoy pero la hora ya pasó
+            {
+              endDate: new Date(currentDate),
+              endTime: {
+                lte: currentTime
+              },
+              status: {
+                notIn: ['Finalizado', 'Cancelado']
+              }
+            }
+          ]
+        },
+        select: {
+          id: true,
+          name: true,
+          endDate: true,
+          endTime: true
+        }
+      });
+    } catch (error) {
+      console.error('Error finding events to finalize:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualizar el estado de múltiples eventos
+   */
+  async updateMultipleStatuses(eventIds, newStatus) {
+    try {
+      return await prisma.service.updateMany({
+        where: {
+          id: {
+            in: eventIds
+          }
+        },
+        data: {
+          status: newStatus
+        }
+      });
+    } catch (error) {
+      console.error('Error updating multiple statuses:', error);
+      throw error;
+    }
   }
 }

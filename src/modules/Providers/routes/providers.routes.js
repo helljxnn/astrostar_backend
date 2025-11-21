@@ -29,18 +29,64 @@ const providersController = new ProvidersController();
  * /api/providers/document-types:
  *   get:
  *     summary: Get available document types
+ *     description: Retrieves all available document types for natural persons
  *     tags: [Providers]
  *     responses:
  *       200:
  *         description: Document types retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/DocumentType'
+ *                 message:
+ *                   type: string
+ *                   example: "Tipos de documento obtenidos exitosamente."
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/document-types", providersController.getDocumentTypes);
 
 /**
  * @swagger
+ * /api/providers/reference-data:
+ *   get:
+ *     summary: Get reference data for forms
+ *     tags: [Providers]
+ *     responses:
+ *       200:
+ *         description: Reference data retrieved successfully
+ */
+router.get("/reference-data", providersController.getReferenceData);
+
+/**
+ * @swagger
+ * /api/providers/document-validation-rules:
+ *   get:
+ *     summary: Get document validation rules by type
+ *     tags: [Providers]
+ *     responses:
+ *       200:
+ *         description: Document validation rules retrieved successfully
+ */
+router.get(
+  "/document-validation-rules",
+  providersController.getDocumentValidationRules
+);
+
+/**
+ * @swagger
  * /api/providers/check-nit:
  *   get:
- *     summary: Check if NIT is available
+ *     summary: Check if NIT/document is available
+ *     description: Validates if a NIT (for juridica) or identification document (for natural) is available for use
  *     tags: [Providers]
  *     parameters:
  *       - in: query
@@ -48,19 +94,30 @@ router.get("/document-types", providersController.getDocumentTypes);
  *         required: true
  *         schema:
  *           type: string
+ *         description: NIT for juridica (10 digits) or identification document for natural
+ *         example: "1234567890"
  *       - in: query
  *         name: excludeId
  *         schema:
  *           type: integer
+ *         description: Provider ID to exclude from validation (for updates)
+ *         example: 1
  *       - in: query
  *         name: tipoEntidad
  *         schema:
  *           type: string
  *           enum: [juridica, natural]
  *           default: juridica
+ *         description: Entity type to determine validation rules
  *     responses:
  *       200:
- *         description: NIT availability
+ *         description: NIT/document availability check result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AvailabilityCheck'
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
  */
 router.get(
   "/check-nit",
@@ -158,13 +215,53 @@ router.get(
 
 /**
  * @swagger
+ * /api/providers/check-identification:
+ *   get:
+ *     summary: Check if identification is available
+ *     tags: [Providers]
+ *     parameters:
+ *       - in: query
+ *         name: identification
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: excludeUserId
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Identification availability
+ */
+router.get(
+  "/check-identification",
+  providersValidators.checkIdentification,
+  handleValidationErrors,
+  providersController.checkIdentificationAvailability
+);
+
+/**
+ * @swagger
  * /api/providers/stats:
  *   get:
  *     summary: Get provider statistics
+ *     description: Retrieves statistical information about providers
  *     tags: [Providers]
  *     responses:
  *       200:
- *         description: Provider statistics
+ *         description: Provider statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/ProviderStats'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
  */
 router.get("/stats", providersController.getProviderStats);
 

@@ -2,23 +2,27 @@ import prisma from "../../../config/database.js";
 
 export class ProvidersRepository {
   async getDocumentTypes() {
-    const documentTypes = await prisma.documentType.findMany({
-      select: {
-        id: true,
-        name: true,
-        description: true
-      },
-      orderBy: { name: 'asc' }
-    });
+    try {
+      const documentTypes = await prisma.documentType.findMany({
+        select: {
+          id: true,
+          name: true,
+          description: true,
+        },
+        orderBy: { name: "asc" },
+      });
 
-    // Transformar para el frontend
-    return documentTypes.map(docType => ({
-      value: docType.id.toString(),
-      label: docType.name,
-      id: docType.id,
-      name: docType.name,
-      description: docType.description
-    }));
+      return documentTypes.map((docType) => ({
+        value: docType.id.toString(),
+        label: docType.name,
+        id: docType.id,
+        name: docType.name,
+        description: docType.description,
+      }));
+    } catch (error) {
+      console.error("Repository error - getDocumentTypes:", error);
+      throw error;
+    }
   }
 
   async findAll({ page = 1, limit = 10, search = "", status, entityType }) {
@@ -29,30 +33,32 @@ export class ProvidersRepository {
       natural: "natural",
     };
 
-    const where = {
-      AND: [
-        search
-          ? {
-              OR: [
-                { businessName: { contains: search, mode: "insensitive" } },
-                { nit: { contains: search, mode: "insensitive" } },
-                { mainContact: { contains: search, mode: "insensitive" } },
-                { email: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {},
-        status
-          ? {
-              status: status === "Activo" ? "Active" : "Inactive",
-            }
-          : {},
-        entityType
-          ? {
-              entityType: entityTypeMap[entityType] || entityType,
-            }
-          : {},
-      ].filter((condition) => Object.keys(condition).length > 0),
-    };
+    const conditions = [];
+
+    if (search && search.trim()) {
+      conditions.push({
+        OR: [
+          { businessName: { contains: search, mode: "insensitive" } },
+          { nit: { contains: search, mode: "insensitive" } },
+          { mainContact: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    }
+
+    if (status && status.trim()) {
+      conditions.push({
+        status: status === "Activo" ? "Active" : "Inactive",
+      });
+    }
+
+    if (entityType && entityType.trim()) {
+      conditions.push({
+        entityType: entityTypeMap[entityType] || entityType,
+      });
+    }
+
+    const where = conditions.length > 0 ? { AND: conditions } : {};
 
     const [providers, total] = await Promise.all([
       prisma.provider.findMany({
@@ -110,7 +116,7 @@ export class ProvidersRepository {
 
     const provider = await prisma.provider.findUnique({
       where: { nit: cleanedNit },
-      include: { documentType: true }
+      include: { documentType: true },
     });
 
     return provider ? this.transformToFrontend(provider) : null;
@@ -119,28 +125,38 @@ export class ProvidersRepository {
   async findByEmail(email) {
     const provider = await prisma.provider.findUnique({
       where: { email },
-      include: { documentType: true }
+      include: { documentType: true },
     });
 
     return provider ? this.transformToFrontend(provider) : null;
   }
 
-  async findByBusinessName(businessName, excludeId = null, tipoEntidad = "juridica") {
+  async findByBusinessName(
+    businessName,
+    excludeId = null,
+    tipoEntidad = "juridica"
+  ) {
+    // Para personas naturales, permitir duplicados de nombre
+    if (tipoEntidad === "natural") {
+      return null;
+    }
+
+    // Para personas jurídicas, mantener validación de unicidad
     const where = {
       businessName: {
         equals: businessName,
         mode: "insensitive",
       },
-      entityType: tipoEntidad === "juridica" ? "legal" : "natural",
+      entityType: "legal",
     };
 
     if (excludeId) {
       where.NOT = { id: parseInt(excludeId) };
     }
 
-    const provider = await prisma.provider.findFirst({ 
+    const provider = await prisma.provider.findFirst({
       where,
-      include: { documentType: true }
+      include: { documentType: true },
     });
     return provider ? this.transformToFrontend(provider) : null;
   }
@@ -157,9 +173,9 @@ export class ProvidersRepository {
       where.NOT = { id: parseInt(excludeId) };
     }
 
-    const provider = await prisma.provider.findFirst({ 
+    const provider = await prisma.provider.findFirst({
       where,
-      include: { documentType: true }
+      include: { documentType: true },
     });
     return provider ? this.transformToFrontend(provider) : null;
   }
@@ -183,9 +199,8 @@ export class ProvidersRepository {
     const { documentTypeId, ...providerInfo } = transformedData;
 
     const data = { ...providerInfo };
-    
-    // Solo conectar documentType si es persona natural Y tiene documentTypeId
-    if (providerData.tipoEntidad === 'natural' && documentTypeId) {
+
+    if (providerData.tipoEntidad === "natural" && documentTypeId) {
       data.documentType = { connect: { id: documentTypeId } };
     }
 
@@ -209,13 +224,12 @@ export class ProvidersRepository {
     const { documentTypeId, ...providerInfo } = transformedData;
     const data = { ...providerInfo };
 
-    // Manejar documentType según el tipo de entidad
-    if (providerData.tipoEntidad === "natural" && documentTypeId) {
-      // Persona natural: conectar documentType
-      data.documentType = { connect: { id: documentTypeId } };
-    } else if (providerData.tipoEntidad === "juridica") {
-      // Persona jurídica: desconectar documentType
-      data.documentType = { disconnect: true };
+    if (documentTypeId !== undefined) {
+      if (documentTypeId) {
+        data.documentType = { connect: { id: documentTypeId } };
+      } else if (providerData.tipoEntidad === "juridica") {
+        data.documentType = { disconnect: true };
+      }
     }
 
     const provider = await prisma.provider.update({
@@ -314,14 +328,9 @@ export class ProvidersRepository {
     };
   }
 
-  /**
-   * 🔥 TRANSFORMACIÓN FRONTEND - Corregida
-   * Convierte datos de la BD al formato del frontend
-   */
   transformToFrontend(provider) {
     if (!provider) return null;
 
-    // Determinar el valor de tipoDocumento
     let tipoDocumento = "";
     if (provider.documentType?.id) {
       tipoDocumento = provider.documentType.id.toString();
@@ -334,9 +343,15 @@ export class ProvidersRepository {
       tipoEntidad: provider.entityType === "legal" ? "juridica" : "natural",
       razonSocial: provider.businessName,
       nit: provider.nit,
-      tipoDocumento: tipoDocumento, // ✅ Ahora siempre retorna el valor correcto
-      documentTypeId: provider.documentTypeId || null,
-      documentTypeName: provider.documentType?.name || "",
+      tipoDocumento:
+        provider.entityType === "legal"
+          ? "NIT"
+          : provider.documentType?.name || tipoDocumento, // Nombre para reportes
+      tipoDocumentoId: tipoDocumento, // ID para formularios
+      tipoDocumentoNombre:
+        provider.entityType === "legal"
+          ? "NIT"
+          : provider.documentType?.name || "", // Nombre explícito
       contactoPrincipal: provider.mainContact,
       correo: provider.email,
       telefono: provider.phone,
@@ -351,10 +366,6 @@ export class ProvidersRepository {
     };
   }
 
-  /**
-   * 🔥 TRANSFORMACIÓN BACKEND - Corregida
-   * Convierte datos del frontend al formato de la BD
-   */
   transformToBackend(providerData) {
     let cleanedNit = providerData.nit;
 
@@ -372,19 +383,41 @@ export class ProvidersRepository {
       address: providerData.direccion,
       city: providerData.ciudad,
       description: providerData.descripcion || "",
-      status: providerData.estado === "Activo" ? "Active" : "Inactive",
+      status:
+        providerData.status === "Inactive" || providerData.estado === "Inactivo"
+          ? "Inactive"
+          : "Active",
     };
 
-    // ✅ Solo incluir documentTypeId si es persona natural Y tiene valor
-    if (providerData.tipoEntidad === 'natural' && providerData.tipoDocumento) {
-      transformed.documentTypeId = parseInt(providerData.tipoDocumento);
-    } else if (providerData.tipoEntidad === 'juridica') {
-      // Asegurar que sea null para jurídica
-      transformed.documentTypeId = null;
+    if (providerData.tipoEntidad === "natural" && providerData.tipoDocumento) {
+      if (typeof providerData.tipoDocumento === "number") {
+        transformed.documentTypeId = providerData.tipoDocumento;
+      } else if (typeof providerData.tipoDocumento === "string") {
+        const parsedId = parseInt(providerData.tipoDocumento);
+        if (!isNaN(parsedId)) {
+          transformed.documentTypeId = parsedId;
+        }
+      }
     }
 
     return transformed;
   }
 }
+
+/**
+ * Función auxiliar para obtener el nombre del tipo de documento
+ */
+export const getDocumentTypeName = async (documentTypeId) => {
+  try {
+    const documentType = await prisma.documentType.findUnique({
+      where: { id: parseInt(documentTypeId) },
+      select: { name: true },
+    });
+    return documentType?.name || null;
+  } catch (error) {
+    console.error("Error getting document type name:", error);
+    return null;
+  }
+};
 
 export default new ProvidersRepository();

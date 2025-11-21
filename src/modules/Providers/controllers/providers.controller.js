@@ -75,9 +75,15 @@ export class ProvidersController {
 
   createProvider = async (req, res) => {
     try {
-      console.log("📥 Datos recibidos en createProvider:", req.body);
+      console.log("=== DATOS RECIBIDOS EN BACKEND ===");
+      console.log(JSON.stringify(req.body, null, 2));
+      console.log("tipoEntidad:", req.body.tipoEntidad);
+      console.log("razonSocial:", req.body.razonSocial);
+      console.log("===================================");
 
+      console.log("Llamando al servicio createProvider...");
       const result = await this.providersService.createProvider(req.body);
+      console.log("Servicio completado exitosamente:", result.success);
 
       if (!result.success) {
         return res.status(result.statusCode || 400).json(result);
@@ -118,14 +124,11 @@ export class ProvidersController {
         });
       }
 
-      console.log("📥 Datos recibidos en updateProvider:", {
-      id,
-      data: req.body,
-      // 🔥 DEBUG: Mostrar tipoDocumento específicamente
-      tipoDocumento: req.body.tipoDocumento,
-      tipoEntidad: req.body.tipoEntidad
-    });
-
+      console.log("=== DATOS PARA ACTUALIZAR PROVEEDOR ===");
+      console.log("ID:", id);
+      console.log("Estado recibido:", req.body.estado);
+      console.log("Datos completos:", JSON.stringify(req.body, null, 2));
+      console.log("=======================================");
 
       const result = await this.providersService.updateProvider(id, req.body);
 
@@ -272,12 +275,6 @@ export class ProvidersController {
     try {
       const { nit, excludeId, tipoEntidad = "juridica" } = req.query;
 
-      console.log("🔍 Checking NIT availability:", {
-        nit,
-        excludeId,
-        tipoEntidad,
-      });
-
       if (!nit) {
         return res.status(400).json({
           success: false,
@@ -304,7 +301,7 @@ export class ProvidersController {
           : result.message,
       });
     } catch (error) {
-      console.error("❌ Error checking NIT availability:", error);
+      console.error("Error checking NIT availability:", error);
       res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad",
@@ -317,12 +314,6 @@ export class ProvidersController {
   checkBusinessNameAvailability = async (req, res) => {
     try {
       const { businessName, excludeId, tipoEntidad = "juridica" } = req.query;
-
-      console.log("🔍 Checking business name availability:", {
-        businessName,
-        excludeId,
-        tipoEntidad,
-      });
 
       if (!businessName) {
         return res.status(400).json({
@@ -350,7 +341,7 @@ export class ProvidersController {
           : result.message,
       });
     } catch (error) {
-      console.error("❌ Error checking business name availability:", error);
+      console.error("Error checking business name availability:", error);
       res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad",
@@ -363,8 +354,6 @@ export class ProvidersController {
   checkEmailAvailability = async (req, res) => {
     try {
       const { email, excludeId } = req.query;
-
-      console.log("🔍 Checking email availability:", { email, excludeId });
 
       if (!email) {
         return res.status(400).json({
@@ -384,7 +373,7 @@ export class ProvidersController {
         message: result.available ? "Email disponible" : result.message,
       });
     } catch (error) {
-      console.error("❌ Error checking email availability:", error);
+      console.error("Error checking email availability:", error);
       res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad del email",
@@ -397,8 +386,6 @@ export class ProvidersController {
   checkContactAvailability = async (req, res) => {
     try {
       const { contact, excludeId } = req.query;
-
-      console.log("🔍 Checking contact availability:", { contact, excludeId });
 
       if (!contact) {
         return res.status(400).json({
@@ -420,7 +407,7 @@ export class ProvidersController {
           : result.message,
       });
     } catch (error) {
-      console.error("❌ Error checking contact availability:", error);
+      console.error("Error checking contact availability:", error);
       res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad del contacto",
@@ -464,6 +451,73 @@ export class ProvidersController {
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener tipos de documento",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  getReferenceData = async (req, res) => {
+    try {
+      const result = await this.providersService.getReferenceData();
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: "Datos de referencia obtenidos exitosamente.",
+      });
+    } catch (error) {
+      console.error("Error in getReferenceData controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener datos de referencia",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  checkIdentificationAvailability = async (req, res) => {
+    try {
+      const { identification, excludeUserId } = req.query;
+      const result =
+        await this.providersService.checkIdentificationAvailability(
+          identification,
+          excludeUserId
+        );
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.available
+          ? "Identificación disponible."
+          : result.message,
+      });
+    } catch (error) {
+      console.error("Error checking identification availability:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al verificar identificación.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  getDocumentValidationRules = async (req, res) => {
+    try {
+      const result = await this.providersService.getDocumentValidationRules();
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: "Reglas de validación obtenidas exitosamente.",
+      });
+    } catch (error) {
+      console.error("Error in getDocumentValidationRules controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener reglas de validación",
         error:
           process.env.NODE_ENV === "development" ? error.message : undefined,
       });

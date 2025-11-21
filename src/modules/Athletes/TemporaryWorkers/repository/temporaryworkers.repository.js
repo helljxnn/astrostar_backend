@@ -226,10 +226,15 @@ export class TemporaryWorkersRepository {
   }
 
   /**
-   * Obtener datos de referencia
+   * Obtener datos de referencia (excluye NIT para personas naturales)
    */
   async getReferenceData() {
     const documentTypes = await prisma.documentType.findMany({
+      where: {
+        NOT: {
+          name: 'Número de Identificación Tributaria'
+        }
+      },
       select: {
         id: true,
         name: true
