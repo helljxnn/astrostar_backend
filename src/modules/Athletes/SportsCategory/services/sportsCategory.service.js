@@ -3,46 +3,54 @@ import prisma from '../../../../config/database.js';
 export class SportsCategoryService {
 
   async getAllSportsCategories({ page = 1, limit = 10, search = '', status = '' }) {
-    const skip = (page - 1) * limit;
-    const where = {};
+    try {
+      // Convertir a números
+      const pageNum = Number(page);
+      const limitNum = Number(limit);
+      const skip = (pageNum - 1) * limitNum;
+      const where = {};
 
-    if (search) {
-      where.OR = [
-        { nombre: { contains: search, mode: 'insensitive' } },
-        { descripcion: { contains: search, mode: 'insensitive' } }
-      ];
-    }
-
-    if (status) {
-      const map = { Active: 'Activo', Inactive: 'Inactivo' };
-      where.estado = map[status] || status;
-    }
-
-    const [cats, total] = await Promise.all([
-      prisma.sportsCategory.findMany({ where, skip, take: limit, orderBy: { createdAt: 'desc' } }),
-      prisma.sportsCategory.count({ where })
-    ]);
-
-    return {
-      success: true,
-      data: cats.map(c => ({
-        id: c.id,
-        name: c.nombre,
-        description: c.descripcion,
-        minAge: c.edadMinima,
-        maxAge: c.edadMaxima,
-        status: c.estado === 'Activo' ? 'Active' : 'Inactive',
-        publish: c.publicar,
-        createdAt: c.createdAt,
-        updatedAt: c.updatedAt
-      })),
-      pagination: {
-        total,
-        page: Number(page),
-        pages: Math.ceil(total / limit),
-        limit: Number(limit)
+      if (search) {
+        where.OR = [
+          { nombre: { contains: search, mode: 'insensitive' } },
+          { descripcion: { contains: search, mode: 'insensitive' } }
+        ];
       }
-    };
+
+      if (status) {
+        const map = { Active: 'Activo', Inactive: 'Inactivo' };
+        where.estado = map[status] || status;
+      }
+
+      const [cats, total] = await Promise.all([
+        prisma.sportsCategory.findMany({ where, skip, take: limitNum, orderBy: { createdAt: 'desc' } }),
+        prisma.sportsCategory.count({ where })
+      ]);
+
+      return {
+        success: true,
+        data: cats.map(c => ({
+          id: c.id,
+          name: c.nombre,
+          description: c.descripcion,
+          minAge: c.edadMinima,
+          maxAge: c.edadMaxima,
+          status: c.estado === 'Activo' ? 'Active' : 'Inactive',
+          publish: c.publicar,
+          createdAt: c.createdAt,
+          updatedAt: c.updatedAt
+        })),
+        pagination: {
+          total,
+          page: pageNum,
+          pages: Math.ceil(total / limitNum),
+          limit: limitNum
+        }
+      };
+    } catch (error) {
+      console.error('❌ Error in getAllSportsCategories service:', error);
+      throw error;
+    }
   }
 
   async createSportsCategory(data) {
@@ -157,6 +165,51 @@ export class SportsCategoryService {
   async deleteSportsCategory(id) {
     await prisma.sportsCategory.delete({ where: { id: Number(id) } });
     return { success: true, message: 'Categoría eliminada exitosamente.', statusCode: 200 };
+  }
+
+  async getSportsCategoryStats() {
+    const [total, active, inactive] = await Promise.all([
+      prisma.sportsCategory.count(),
+      prisma.sportsCategory.count({ where: { estado: 'Activo' } }),
+      prisma.sportsCategory.count({ where: { estado: 'Inactivo' } })
+    ]);
+
+    return {
+      success: true,
+      data: { total, active, inactive },
+      message: 'Estadísticas de categorías recuperadas exitosamente.'
+    };
+  }
+
+  async checkCategoryNameExists(name, excludeId = null) {
+    const where = {
+      nombre: { equals: name.trim(), mode: 'insensitive' }
+    };
+
+    if (excludeId) {
+      where.NOT = { id: Number(excludeId) };
+    }
+
+    const exists = await prisma.sportsCategory.findFirst({ where });
+
+    if (exists) {
+      return {
+        success: true,
+        data: {
+          available: false,
+          message: `El nombre "${name}" ya está en uso.`,
+          existingCategory: exists.nombre
+        }
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        available: true,
+        message: 'Nombre disponible.'
+      }
+    };
   }
 
 }

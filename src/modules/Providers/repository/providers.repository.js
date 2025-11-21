@@ -9,30 +9,32 @@ export class ProvidersRepository {
       natural: "natural",
     };
 
-    const where = {
-      AND: [
-        search
-          ? {
-              OR: [
-                { businessName: { contains: search, mode: "insensitive" } },
-                { nit: { contains: search, mode: "insensitive" } },
-                { mainContact: { contains: search, mode: "insensitive" } },
-                { email: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {},
-        status
-          ? {
-              status: status === "Activo" ? "Active" : "Inactive",
-            }
-          : {},
-        entityType
-          ? {
-              entityType: entityTypeMap[entityType] || entityType,
-            }
-          : {},
-      ].filter((condition) => Object.keys(condition).length > 0),
-    };
+    const conditions = [];
+    
+    if (search && search.trim()) {
+      conditions.push({
+        OR: [
+          { businessName: { contains: search, mode: "insensitive" } },
+          { nit: { contains: search, mode: "insensitive" } },
+          { mainContact: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      });
+    }
+    
+    if (status && status.trim()) {
+      conditions.push({
+        status: status === "Activo" ? "Active" : "Inactive",
+      });
+    }
+    
+    if (entityType && entityType.trim()) {
+      conditions.push({
+        entityType: entityTypeMap[entityType] || entityType,
+      });
+    }
+
+    const where = conditions.length > 0 ? { AND: conditions } : {};
 
     const [providers, total] = await Promise.all([
       prisma.provider.findMany({
@@ -178,10 +180,14 @@ export class ProvidersRepository {
     const { documentTypeId, ...providerInfo } = transformedData;
     const data = { ...providerInfo };
 
-    if (documentTypeId) {
-      data.documentType = { connect: { id: documentTypeId } };
-    } else {
-      data.documentType = { disconnect: true };
+    // Solo modificar documentType si se proporciona explícitamente
+    if (documentTypeId !== undefined) {
+      if (documentTypeId) {
+        data.documentType = { connect: { id: documentTypeId } };
+      } else if (providerData.tipoEntidad === 'juridica') {
+        // Solo desconectar si es persona jurídica (no necesita tipo de documento)
+        data.documentType = { disconnect: true };
+      }
     }
 
     const provider = await prisma.provider.update({
@@ -285,7 +291,8 @@ export class ProvidersRepository {
       tipoEntidad: provider.entityType === "legal" ? "juridica" : "natural",
       razonSocial: provider.businessName,
       nit: provider.nit,
-      tipoDocumento: provider.documentType?.name || "",
+      tipoDocumento: provider.documentType?.id || "",
+      tipoDocumentoNombre: provider.documentType?.name || "",
       contactoPrincipal: provider.mainContact,
       correo: provider.email,
       telefono: provider.phone,
@@ -311,13 +318,6 @@ export class ProvidersRepository {
       cleanedNit = cleanedNit.replace(/[.\-\s]/g, "");
     }
 
-    const documentTypeMap = {
-      CC: 1,
-      TI: 2,
-      CE: 3,
-      PAS: 4,
-    };
-
     const transformed = {
       entityType: providerData.tipoEntidad === "juridica" ? "legal" : "natural",
       businessName: providerData.razonSocial,
@@ -331,8 +331,18 @@ export class ProvidersRepository {
       status: providerData.estado === "Activo" ? "Active" : "Inactive",
     };
 
+    // Manejar tipo de documento para personas naturales
     if (providerData.tipoEntidad === "natural" && providerData.tipoDocumento) {
-      transformed.documentTypeId = documentTypeMap[providerData.tipoDocumento];
+      // Si tipoDocumento es un número (ID), usarlo directamente
+      if (typeof providerData.tipoDocumento === 'number') {
+        transformed.documentTypeId = providerData.tipoDocumento;
+      } else if (typeof providerData.tipoDocumento === 'string') {
+        // Si es string, intentar parsearlo como número
+        const parsedId = parseInt(providerData.tipoDocumento);
+        if (!isNaN(parsedId)) {
+          transformed.documentTypeId = parsedId;
+        }
+      }
     }
 
     return transformed;

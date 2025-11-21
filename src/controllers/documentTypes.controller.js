@@ -15,18 +15,9 @@ class DocumentTypesController {
 
       // Mapear para el frontend
       const mappedTypes = documentTypes.map(docType => {
-        let value = 'CC';
-        
-        if (docType.name.includes('Cédula de Ciudadanía')) value = 'CC';
-        else if (docType.name.includes('Tarjeta de Identidad')) value = 'TI';
-        else if (docType.name.includes('Extranjería')) value = 'CE';
-        else if (docType.name.includes('Pasaporte')) value = 'PAS';
-        else if (docType.name.includes('Tributaria')) value = 'NIT';
-        else value = 'CC';
-
         return {
           id: docType.id,
-          value: value,
+          value: docType.id, // Usar el ID como value para el select
           label: docType.name,
           description: docType.description
         };

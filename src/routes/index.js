@@ -4,13 +4,14 @@ import roleRoutes from "../modules/Roles/routes/roles.routes.js";
 import employeeRoutes from "../modules/Services/Employees/routes/employees.routes.js";
 import usersRoutes from "../modules/Users/routes/users.routes.js";
 import providerRoutes from "../modules/Providers/routes/providers.routes.js";
-import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/temporaryworkers.routes.js";
+import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/routes/temporaryworkers.routes.js";
 import documentTypesRoutes from "./documentTypes.routes.js";
 import sportsCategoryRoutes from "../modules/Athletes/SportsCategory/routes/sportsCategory.routes.js";
 import teamsRoutes from "../modules/Teams/routes/teams.routes.js";
 import trainersRoutes from "../modules/Teams/routes/trainers.routes.js";
 import athletesRoutes from "../modules/Teams/routes/athletes.routes.js";
 import eventsRoutes from "../modules/Events/events.routes.js";
+import registrationsRoutes from "../modules/Events/Registrations/registrations.routes.js";
 import uploadRoutes from "../shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
 
@@ -29,6 +30,7 @@ router.use("/teams", teamsRoutes);
 router.use("/trainers", trainersRoutes);
 router.use("/athletes", athletesRoutes);
 router.use("/events", eventsRoutes);
+router.use("/registrations", registrationsRoutes);
 
 router.use("/upload", uploadRoutes);
 
@@ -55,7 +57,8 @@ router.get("/health", (req, res) => {
       "Teams",
       "Trainers",
       "Athletes",
-      "Events"
+      "Events",
+      "Registrations"
     ],
   });
 });
