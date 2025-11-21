@@ -2,6 +2,13 @@ import prisma from '../../../../config/database.js';
 
 export class SportsCategoryService {
 
+  // =============================================================================
+  // 📊 OPERACIONES DE LECTURA (GET)
+  // =============================================================================
+
+  /**
+   * Obtiene todas las categorías con paginación, búsqueda y filtros
+   */
   async getAllSportsCategories({ page = 1, limit = 10, search = '', status = '' }) {
     const skip = (page - 1) * limit;
     const where = {};
@@ -45,6 +52,37 @@ export class SportsCategoryService {
     };
   }
 
+  /**
+   * Obtiene una categoría por ID
+   */
+  async getSportsCategoryById(id) {
+    const cat = await prisma.sportsCategory.findUnique({ where: { id: Number(id) } });
+    if (!cat) return { success: false, message: `Categoría con ID ${id} no encontrada.`, statusCode: 404 };
+
+    return {
+      success: true,
+      data: {
+        id: cat.id,
+        name: cat.nombre,
+        description: cat.descripcion,
+        minAge: cat.edadMinima,
+        maxAge: cat.edadMaxima,
+        status: cat.estado === 'Activo' ? 'Active' : 'Inactive',
+        publish: cat.publicar,
+        createdAt: cat.createdAt,
+        updatedAt: cat.updatedAt
+      },
+      statusCode: 200
+    };
+  }
+
+  // =============================================================================
+  // ✍️ OPERACIONES DE ESCRITURA (CREATE, UPDATE, DELETE)
+  // =============================================================================
+
+  /**
+   * Crea una nueva categoría deportiva
+   */
   async createSportsCategory(data) {
     const { nombre, descripcion, edadMinima, edadMaxima, estado = 'Activo', publicar = false } = data;
 
@@ -87,27 +125,9 @@ export class SportsCategoryService {
     };
   }
 
-  async getSportsCategoryById(id) {
-    const cat = await prisma.sportsCategory.findUnique({ where: { id: Number(id) } });
-    if (!cat) return { success: false, message: `Categoría con ID ${id} no encontrada.`, statusCode: 404 };
-
-    return {
-      success: true,
-      data: {
-        id: cat.id,
-        name: cat.nombre,
-        description: cat.descripcion,
-        minAge: cat.edadMinima,
-        maxAge: cat.edadMaxima,
-        status: cat.estado === 'Activo' ? 'Active' : 'Inactive',
-        publish: cat.publicar,
-        createdAt: cat.createdAt,
-        updatedAt: cat.updatedAt
-      },
-      statusCode: 200
-    };
-  }
-
+  /**
+   * Actualiza una categoría existente por ID
+   */
   async updateSportsCategory(id, data) {
     const cat = await prisma.sportsCategory.findUnique({ where: { id: Number(id) } });
     if (!cat) return { success: false, message: `Categoría con ID ${id} no encontrada.`, statusCode: 404 };
@@ -154,9 +174,75 @@ export class SportsCategoryService {
     };
   }
 
+  /**
+   * Elimina una categoría por ID
+   */
   async deleteSportsCategory(id) {
     await prisma.sportsCategory.delete({ where: { id: Number(id) } });
     return { success: true, message: 'Categoría eliminada exitosamente.', statusCode: 200 };
+  }
+
+  // =============================================================================
+  // 🔍 OPERACIONES DE VALIDACIÓN Y UTILIDADES
+  // =============================================================================
+
+  /**
+   * Verifica disponibilidad de nombre de categoría (para validación en tiempo real)
+   * @param {string} name - Nombre a verificar
+   * @param {string|number|null|undefined} excludeId - ID a excluir (para edición)
+   */
+  async checkCategoryNameExists(name, excludeId) {
+    try {
+      const trimmedName = name?.trim();
+      if (!trimmedName || trimmedName.length < 3) {
+        return {
+          success: false,
+          message: "El nombre debe tener al menos 3 caracteres.",
+          data: { available: false }
+        };
+      }
+
+      // Convertir excludeId a número si es posible
+      let excludeIdNum = null;
+      if (excludeId !== undefined && excludeId !== null && excludeId !== '') {
+        excludeIdNum = Number(excludeId);
+        if (isNaN(excludeIdNum)) {
+          return {
+            success: false,
+            message: "El parámetro 'excludeId' debe ser un número entero válido.",
+            data: { available: false }
+          };
+        }
+      }
+
+      // Buscar categoría con mismo nombre, excluyendo excludeIdNum si existe
+      const where = {
+        nombre: { equals: trimmedName, mode: 'insensitive' }
+      };
+
+      if (excludeIdNum !== null) {
+        where.NOT = { id: excludeIdNum };
+      }
+
+      const existing = await prisma.sportsCategory.findFirst({ where });
+
+      return {
+        success: true,
+        data: {
+          available: !existing,
+          message: existing
+            ? `El nombre "${trimmedName}" ya está en uso.`
+            : "Nombre disponible."
+        }
+      };
+    } catch (error) {
+      console.error("Error checking name availability:", error);
+      return {
+        success: false,
+        message: "Error interno al verificar el nombre.",
+        data: { available: false }
+      };
+    }
   }
 
 }
