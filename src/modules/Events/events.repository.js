@@ -151,6 +151,24 @@ export class EventsRepository {
   }
 
   /**
+   * Buscar evento por nombre (case insensitive)
+   */
+  async findByName(name) {
+    return await prisma.service.findFirst({
+      where: {
+        name: {
+          equals: name,
+          mode: 'insensitive'
+        }
+      },
+      select: {
+        id: true,
+        name: true
+      }
+    });
+  }
+
+  /**
    * Crear nuevo evento
    */
   async create(data) {
@@ -328,37 +346,55 @@ export class EventsRepository {
    */
   async findEventsToFinalize(currentDate, currentTime) {
     try {
-      return await prisma.service.findMany({
+      // Obtener todos los eventos que no están finalizados ni cancelados
+      const events = await prisma.service.findMany({
         where: {
-          OR: [
-            // Eventos cuya fecha de fin ya pasó
-            {
-              endDate: {
-                lt: new Date(currentDate)
-              },
-              status: {
-                notIn: ['Finalizado', 'Cancelado']
-              }
-            },
-            // Eventos cuya fecha de fin es hoy pero la hora ya pasó
-            {
-              endDate: new Date(currentDate),
-              endTime: {
-                lte: currentTime
-              },
-              status: {
-                notIn: ['Finalizado', 'Cancelado']
-              }
-            }
-          ]
+          status: {
+            notIn: ['Finalizado', 'Cancelado']
+          }
         },
         select: {
           id: true,
           name: true,
           endDate: true,
-          endTime: true
+          endTime: true,
+          status: true
         }
       });
+
+      // Filtrar manualmente los eventos que deben finalizarse
+      const now = new Date();
+      const currentDateObj = new Date(currentDate);
+      currentDateObj.setHours(0, 0, 0, 0);
+
+      const eventsToFinalize = events.filter(event => {
+        const eventEndDate = new Date(event.endDate);
+        eventEndDate.setHours(0, 0, 0, 0);
+
+        // Si la fecha de fin es anterior a hoy, finalizar
+        if (eventEndDate < currentDateObj) {
+          return true;
+        }
+
+        // Si la fecha de fin es hoy, verificar la hora
+        if (eventEndDate.getTime() === currentDateObj.getTime()) {
+          // Comparar horas (formato HH:MM)
+          const [eventHour, eventMin] = event.endTime.split(':').map(Number);
+          const [currentHour, currentMin] = currentTime.split(':').map(Number);
+          
+          const eventMinutes = eventHour * 60 + eventMin;
+          const currentMinutes = currentHour * 60 + currentMin;
+
+          // Si la hora de fin ya pasó, finalizar
+          if (eventMinutes <= currentMinutes) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      return eventsToFinalize;
     } catch (error) {
       console.error('Error finding events to finalize:', error);
       throw error;

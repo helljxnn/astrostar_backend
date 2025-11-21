@@ -11,6 +11,7 @@ import teamsRoutes from "../modules/Teams/routes/teams.routes.js";
 import trainersRoutes from "../modules/Teams/routes/trainers.routes.js";
 import athletesRoutes from "../modules/Teams/routes/athletes.routes.js";
 import eventsRoutes from "../modules/Events/events.routes.js";
+import registrationsRoutes from "../modules/Events/Registrations/registrations.routes.js";
 import uploadRoutes from "../shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
 
@@ -29,6 +30,7 @@ router.use("/teams", teamsRoutes);
 router.use("/trainers", trainersRoutes);
 router.use("/athletes", athletesRoutes);
 router.use("/events", eventsRoutes);
+router.use("/registrations", registrationsRoutes);
 
 router.use("/upload", uploadRoutes);
 
@@ -55,7 +57,8 @@ router.get("/health", (req, res) => {
       "Teams",
       "Trainers",
       "Athletes",
-      "Events"
+      "Events",
+      "Registrations"
     ],
   });
 });

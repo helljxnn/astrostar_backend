@@ -805,4 +805,75 @@ export class EventsController {
       });
     }
   };
+
+  /**
+   * @swagger
+   * /api/events/check-name:
+   *   get:
+   *     summary: Verificar si un nombre de evento ya existe
+   *     description: Valida si un nombre de evento está disponible (case insensitive)
+   *     tags: [Events]
+   *     parameters:
+   *       - in: query
+   *         name: name
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: Nombre del evento a verificar
+   *       - in: query
+   *         name: excludeId
+   *         schema:
+   *           type: integer
+   *         description: ID del evento a excluir de la búsqueda (para edición)
+   *     responses:
+   *       200:
+   *         description: Resultado de la verificación
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                 available:
+   *                   type: boolean
+   *                   description: true si el nombre está disponible
+   *                 message:
+   *                   type: string
+   *       400:
+   *         description: Parámetros inválidos
+   *       500:
+   *         description: Error interno del servidor
+   */
+  checkEventName = async (req, res) => {
+    try {
+      const { name, excludeId } = req.query;
+
+      if (!name || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'El nombre es requerido.'
+        });
+      }
+
+      const existingEvent = await this.eventsService.eventsRepository.findByName(name.trim());
+      
+      const isAvailable = !existingEvent || (excludeId && existingEvent.id === parseInt(excludeId));
+
+      res.json({
+        success: true,
+        available: isAvailable,
+        message: isAvailable 
+          ? 'El nombre está disponible.' 
+          : `Ya existe un evento con el nombre "${name}".`
+      });
+    } catch (error) {
+      console.error('Error checking event name:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error al verificar el nombre del evento.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  };
 }

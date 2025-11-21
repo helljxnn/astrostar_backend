@@ -54,6 +54,9 @@ export class EventsService {
       // Validar campos requeridos
       this.validateRequiredFields(data);
 
+      // Validar que el nombre no exista
+      await this.validateUniqueName(data.name);
+
       // Validar formato de datos
       this.validateDataFormats(data);
 
@@ -98,6 +101,11 @@ export class EventsService {
           statusCode: 400,
           message: 'No se puede modificar el estado de un evento finalizado.'
         };
+      }
+
+      // Validar que el nombre no exista (si se está cambiando)
+      if (data.name && data.name !== existing.name) {
+        await this.validateUniqueName(data.name, id);
       }
 
       // Validar formato de datos (solo los campos que se están actualizando)
@@ -195,6 +203,17 @@ export class EventsService {
     } catch (error) {
       console.error('Error in getReferenceData service:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Validar que el nombre del evento sea único
+   */
+  async validateUniqueName(name, excludeId = null) {
+    const existingEvent = await this.eventsRepository.findByName(name);
+    
+    if (existingEvent && (!excludeId || existingEvent.id !== excludeId)) {
+      throw new Error(`Ya existe un evento con el nombre "${name}"`);
     }
   }
 
@@ -375,14 +394,16 @@ export class EventsService {
       endDate = new Date(existingData.endDate);
     }
 
-    // Validar que la fecha de inicio no sea en el pasado (solo al crear)
-    if (!existingData && startDate) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const startDateOnly = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    // Validar que la fecha de finalización no sea en el pasado (solo al crear)
+    // Permitir eventos del día actual sin importar la hora
+    if (!existingData && endDate) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
       
-      if (startDateOnly < today) {
-        errors.push('La fecha de inicio no puede ser en el pasado');
+      // Solo rechazar si la fecha de fin es anterior a hoy (no incluye el día actual)
+      if (endDateOnly < today) {
+        errors.push('La fecha de finalización no puede ser en el pasado');
       }
     }
 
