@@ -1,2 +1,0 @@
--- AlterTable
-ALTER TABLE "providers" ADD COLUMN     "statusAssignedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;

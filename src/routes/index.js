@@ -1,4 +1,4 @@
-import { Router } from "express"; // Usamos Router de expressgit add src/routes/index.js
+import { Router } from "express"; 
 import authRoutes from "../modules/Auth/routes/auth.routes.js";
 import roleRoutes from "../modules/Roles/routes/roles.routes.js";
 import employeeRoutes from "../modules/Services/Employees/routes/employees.routes.js";

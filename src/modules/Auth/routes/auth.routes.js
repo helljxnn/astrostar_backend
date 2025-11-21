@@ -1,7 +1,10 @@
-import express from 'express';
-import { AuthController } from '../controllers/auth.controller.js';
-import { authValidators, handleValidationErrors } from '../validators/auth.validator.js';
-import { authenticateToken } from '../../../middlewares/auth.js';
+import express from "express";
+import { AuthController } from "../controllers/auth.controller.js";
+import {
+  authValidators,
+  handleValidationErrors,
+} from "../validators/auth.validator.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
 
 const router = express.Router();
 const authController = new AuthController();
@@ -24,22 +27,42 @@ const authController = new AuthController();
  */
 
 // Rutas públicas
-router.post('/login', 
-  authValidators.login, 
-  handleValidationErrors, 
+router.post(
+  "/login",
+  authValidators.login,
+  handleValidationErrors,
   authController.login
 );
 
-// Rutas protegidas
-router.get('/me', 
-  authenticateToken, 
-  authController.me
+router.post("/logout", authController.logout);
+router.post("/refresh-token", authController.refreshToken);
+router.post(
+  "/verify-code",
+  handleValidationErrors,
+  authController.verifyCode
+);
+router.post(
+  "/forgot-password",
+  handleValidationErrors,
+  authController.forgotPassword
+);
+router.post(
+  "/reset-password",
+  handleValidationErrors,
+  authController.resetPassword
 );
 
-router.post('/change-password', 
+
+// Rutas protegidas
+router.get("/profile", authController.profile);
+
+router.put("/profile/:id", authenticateToken, authController.updateProfile);
+
+router.post(
+  "/change-password",
   authenticateToken,
-  authValidators.changePassword, 
-  handleValidationErrors, 
+  authValidators.changePassword,
+  handleValidationErrors,
   authController.changePassword
 );
 
