@@ -63,6 +63,39 @@ export class TeamsRepository {
     }
   }
 
+  async validateTrainer(trainerId, teamType) {
+    if (!trainerId) return;
+
+    const id = parseInt(trainerId);
+    if (isNaN(id)) {
+      throw new Error(`ID de entrenador inválido: ${trainerId}`);
+    }
+
+    if (teamType === 'Temporal') {
+      const tempPerson = await prisma.temporaryPerson.findUnique({ where: { id } });
+      if (!tempPerson) {
+        throw new Error(`El entrenador temporal con ID ${id} no existe`);
+      }
+      if (tempPerson.status !== 'Active') {
+        throw new Error(`El entrenador temporal ${tempPerson.firstName} ${tempPerson.lastName} no está activo`);
+      }
+      if (tempPerson.personType !== 'Entrenador') {
+        throw new Error(`La persona temporal con ID ${id} no es un entrenador`);
+      }
+    } else if (teamType === 'Fundacion') {
+      const employee = await prisma.employee.findUnique({
+        where: { id },
+        include: { user: true }
+      });
+      if (!employee) {
+        throw new Error(`El entrenador con ID ${id} no existe`);
+      }
+      if (employee.status !== 'Activo') {
+        throw new Error(`El entrenador ${employee.user.firstName} ${employee.user.lastName} no está activo`);
+      }
+    }
+  }
+
   async validateMembers(memberIds, teamType) {
     if (!memberIds || memberIds.length === 0) {
       return;
@@ -181,6 +214,7 @@ export class TeamsRepository {
             id: member.temporaryPerson.id,
             name: `${member.temporaryPerson.firstName} ${member.temporaryPerson.lastName}`,
             identification: member.temporaryPerson.identification,
+            phoneNumber: member.temporaryPerson.phone,
             categoria: member.temporaryPerson.category,
             type: 'temporal'
           };
@@ -190,6 +224,7 @@ export class TeamsRepository {
             id: member.athlete.id,
             name: `${member.athlete.user.firstName} ${member.athlete.user.lastName}`,
             identification: member.athlete.user.identification,
+            phoneNumber: member.athlete.user.phoneNumber,
             categoria: member.athlete.inscriptions?.[0]?.sportsCategory?.nombre || 'Sin categoría',
             type: 'fundacion'
           };
@@ -198,33 +233,51 @@ export class TeamsRepository {
       })
       .filter(Boolean) || [];
 
-    const entrenadorMember = team.members?.find(member => 
+    const entrenadorMembers = team.members?.filter(member => 
       member.position === 'Entrenador' || member.memberType === 'Employee' || member.employeeId
-    );
+    ) || [];
 
     let entrenadorData = null;
-    if (entrenadorMember) {
-      if (entrenadorMember.temporaryPerson) {
+    let segundoEntrenadorData = null;
+
+    if (entrenadorMembers.length > 0) {
+      const firstTrainer = entrenadorMembers[0];
+      if (firstTrainer.temporaryPerson) {
         entrenadorData = {
-          id: entrenadorMember.temporaryPerson.id,
-          name: `${entrenadorMember.temporaryPerson.firstName} ${entrenadorMember.temporaryPerson.lastName}`,
-          identification: entrenadorMember.temporaryPerson.identification,
+          id: firstTrainer.temporaryPerson.id,
+          name: `${firstTrainer.temporaryPerson.firstName} ${firstTrainer.temporaryPerson.lastName}`,
+          identification: firstTrainer.temporaryPerson.identification,
+          phoneNumber: firstTrainer.temporaryPerson.phone,
           type: 'temporal'
         };
-      } else if (entrenadorMember.employee?.user) {
+      } else if (firstTrainer.employee?.user) {
         entrenadorData = {
-          id: entrenadorMember.employee.id,
-          name: `${entrenadorMember.employee.user.firstName} ${entrenadorMember.employee.user.lastName}`,
-          identification: entrenadorMember.employee.user.identification,
+          id: firstTrainer.employee.id,
+          name: `${firstTrainer.employee.user.firstName} ${firstTrainer.employee.user.lastName}`,
+          identification: firstTrainer.employee.user.identification,
+          phoneNumber: firstTrainer.employee.user.phoneNumber,
           type: 'fundacion'
         };
+      }
+
+      // Segundo entrenador (solo para equipos de fundación)
+      if (entrenadorMembers.length > 1 && team.teamType === 'Fundacion') {
+        const secondTrainer = entrenadorMembers[1];
+        if (secondTrainer.employee?.user) {
+          segundoEntrenadorData = {
+            id: secondTrainer.employee.id,
+            name: `${secondTrainer.employee.user.firstName} ${secondTrainer.employee.user.lastName}`,
+            identification: secondTrainer.employee.user.identification,
+            phoneNumber: secondTrainer.employee.user.phoneNumber,
+            type: 'fundacion'
+          };
+        }
       }
     }
 
     return {
       id: team.id,
       nombre: team.name,
-      telefono: team.phone,
       entrenador: team.coach,
       estado: team.status === 'Active' ? 'Activo' : 'Inactivo',
       descripcion: team.description,
@@ -236,7 +289,8 @@ export class TeamsRepository {
       cantidadDeportistas: deportistasCount,
       deportistas: deportistas,
       deportistasIds: deportistas.map(d => d.id),
-      entrenadorData: entrenadorData
+      entrenadorData: entrenadorData,
+      segundoEntrenadorData: segundoEntrenadorData
     };
   }
 
@@ -245,23 +299,29 @@ export class TeamsRepository {
       console.log('📥 Datos recibidos en repository:', JSON.stringify(teamData, null, 2));
 
       const transformed = this.transformToBackend(teamData);
-      const { deportistasIds = [], entrenadorId } = transformed;
+      const { deportistasIds = [], entrenadorId, segundoEntrenadorId } = transformed;
 
       const teamInfo = {
         name: transformed.name,
         description: transformed.description,
         coach: transformed.coach,
         category: transformed.category,
-        phone: transformed.phone,
-        status: transformed.status || 'Active',
+        status: 'Active',
         teamType: transformed.teamType
       };
 
       console.log('🔧 Team Info transformado:', teamInfo);
 
-      const allMemberIds = [...deportistasIds];
-      if (entrenadorId) allMemberIds.push(entrenadorId);
-      await this.validateMembers(allMemberIds, teamInfo.teamType);
+      // Validar solo los deportistas
+      await this.validateMembers(deportistasIds, teamInfo.teamType);
+      
+      // Validar entrenadores por separado
+      if (entrenadorId) {
+        await this.validateTrainer(entrenadorId, teamInfo.teamType);
+      }
+      if (segundoEntrenadorId) {
+        await this.validateTrainer(segundoEntrenadorId, teamInfo.teamType);
+      }
 
       await this.validateMembersAvailability(deportistasIds, teamInfo.teamType);
       await this.validateTrainerAvailability(entrenadorId, teamInfo.teamType);
@@ -330,6 +390,19 @@ export class TeamsRepository {
           memberPromises.push(tx.teamMember.create({ data }));
         }
 
+        // Segundo entrenador (solo para equipos de fundación)
+        if (segundoEntrenadorId && teamInfo.teamType === 'Fundacion') {
+          const data = {
+            teamId: newTeam.id,
+            position: 'Entrenador',
+            isActive: true,
+            joinedAt: new Date(),
+            memberType: 'Employee',
+            employeeId: parseInt(segundoEntrenadorId)
+          };
+          memberPromises.push(tx.teamMember.create({ data }));
+        }
+
         await Promise.all(memberPromises);
 
         const createdTeam = await tx.team.findUnique({
@@ -337,7 +410,15 @@ export class TeamsRepository {
           include: {
             members: {
               include: {
-                athlete: { include: { user: true } },
+                athlete: { 
+                  include: { 
+                    user: true,
+                    inscriptions: {
+                      where: { status: "Active" },
+                      include: { sportsCategory: true }
+                    }
+                  } 
+                },
                 employee: { include: { user: true } },
                 temporaryPerson: true
               }
@@ -356,23 +437,29 @@ export class TeamsRepository {
   async update(id, teamData) {
     try {
       const transformed = this.transformToBackend(teamData);
-      const { deportistasIds = [], entrenadorId } = transformed;
+      const { deportistasIds = [], entrenadorId, segundoEntrenadorId } = transformed;
 
       const teamInfo = {
         name: transformed.name,
         description: transformed.description,
         coach: transformed.coach,
         category: transformed.category,
-        phone: transformed.phone,
         status: transformed.status
       };
 
       const currentTeam = await this.findById(id);
       if (!currentTeam) throw new Error('Equipo no encontrado');
 
-      const allMemberIds = [...deportistasIds];
-      if (entrenadorId) allMemberIds.push(entrenadorId);
-      await this.validateMembers(allMemberIds, currentTeam.teamType);
+      // Validar solo los deportistas
+      await this.validateMembers(deportistasIds, currentTeam.teamType);
+      
+      // Validar entrenadores por separado
+      if (entrenadorId) {
+        await this.validateTrainer(entrenadorId, currentTeam.teamType);
+      }
+      if (segundoEntrenadorId) {
+        await this.validateTrainer(segundoEntrenadorId, currentTeam.teamType);
+      }
 
       await this.validateMembersAvailability(deportistasIds, currentTeam.teamType, id);
       await this.validateTrainerAvailability(entrenadorId, currentTeam.teamType, id);
@@ -450,6 +537,19 @@ export class TeamsRepository {
           memberPromises.push(tx.teamMember.create({ data }));
         }
 
+        // Segundo entrenador (solo para equipos de fundación)
+        if (segundoEntrenadorId && currentTeam.teamType === 'Fundacion') {
+          const data = {
+            teamId: updatedTeam.id,
+            position: 'Entrenador',
+            isActive: true,
+            joinedAt: new Date(),
+            memberType: 'Employee',
+            employeeId: parseInt(segundoEntrenadorId)
+          };
+          memberPromises.push(tx.teamMember.create({ data }));
+        }
+
         await Promise.all(memberPromises);
 
         const finalTeam = await tx.team.findUnique({
@@ -457,7 +557,15 @@ export class TeamsRepository {
           include: {
             members: {
               include: {
-                athlete: { include: { user: true } },
+                athlete: { 
+                  include: { 
+                    user: true,
+                    inscriptions: {
+                      where: { status: "Active" },
+                      include: { sportsCategory: true }
+                    }
+                  } 
+                },
                 employee: { include: { user: true } },
                 temporaryPerson: true
               }
@@ -490,12 +598,11 @@ export class TeamsRepository {
         }
 
         await tx.teamMember.deleteMany({ where: { teamId: parseInt(id) } });
-        const deletedTeam = await tx.team.update({
-          where: { id: parseInt(id) },
-          data: { status: 'Inactive' }
+        const deletedTeam = await tx.team.delete({
+          where: { id: parseInt(id) }
         });
 
-        return this.transformToFrontend(deletedTeam);
+        return { nombre: team.nombre };
       });
     } catch (error) {
       console.error('Error en delete():', error);
@@ -573,7 +680,15 @@ export class TeamsRepository {
       include: {
         members: {
           include: {
-            athlete: { include: { user: true } },
+            athlete: { 
+              include: { 
+                user: true,
+                inscriptions: {
+                  where: { status: "Active" },
+                  include: { sportsCategory: true }
+                }
+              } 
+            },
             employee: { include: { user: true } },
             temporaryPerson: true
           }
@@ -620,26 +735,81 @@ export class TeamsRepository {
     };
   }
 
+  async checkDuplicateTemporalTeam(athleteIds, trainerId, excludeId = null) {
+    try {
+      const where = {
+        teamType: 'Temporal',
+        status: 'Active'
+      };
+
+      if (excludeId) {
+        where.id = { not: parseInt(excludeId) };
+      }
+
+      const existingTeams = await prisma.team.findMany({
+        where,
+        include: {
+          members: {
+            where: { isActive: true },
+            select: {
+              temporaryPersonId: true,
+              position: true
+            }
+          }
+        }
+      });
+
+      for (const team of existingTeams) {
+        const teamAthleteIds = team.members
+          .filter(m => m.temporaryPersonId && m.position !== 'Entrenador')
+          .map(m => m.temporaryPersonId)
+          .sort();
+        
+        const teamTrainerId = team.members
+          .find(m => m.temporaryPersonId && m.position === 'Entrenador')?.temporaryPersonId;
+
+        const inputAthleteIds = athleteIds.sort();
+        
+        const sameAthletes = JSON.stringify(teamAthleteIds) === JSON.stringify(inputAthleteIds);
+        const sameTrainer = teamTrainerId === trainerId;
+
+        if (sameAthletes && sameTrainer) {
+          return {
+            isDuplicate: true,
+            existingTeamId: team.id,
+            existingTeamName: team.name
+          };
+        }
+      }
+
+      return { isDuplicate: false };
+    } catch (error) {
+      console.error('Error checking duplicate temporal team:', error);
+      throw error;
+    }
+  }
+
   transformToBackend(frontendData) {
     const entrenadorId = frontendData.entrenadorData?.id || null;
+    const segundoEntrenadorId = frontendData.segundoEntrenadorData?.id || null;
 
     let teamType = frontendData.teamType || 'Temporal';
     if (teamType === 'temporal') teamType = 'Temporal';
     if (teamType === 'fundacion') teamType = 'Fundacion';
 
     const statusMap = { 'Activo': 'Active', 'Inactivo': 'Inactive' };
-    const status = statusMap[frontendData.estado] || 'Active';
+    const status = frontendData.estado ? statusMap[frontendData.estado] || 'Active' : 'Active';
 
     return {
       name: frontendData.nombre?.trim() || '',
       description: frontendData.descripcion?.trim() || null,
       coach: frontendData.entrenador?.trim() || null,
       category: frontendData.categoria?.trim() || null,
-      phone: frontendData.telefono?.trim() || null,
       status,
       teamType,
       deportistasIds: frontendData.deportistasIds || [],
-      entrenadorId
+      entrenadorId,
+      segundoEntrenadorId
     };
   }
 }

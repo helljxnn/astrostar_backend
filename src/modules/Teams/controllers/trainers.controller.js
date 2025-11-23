@@ -30,6 +30,7 @@ export class TrainersController {
           id: emp.id,
           name: `${emp.user.firstName} ${emp.user.lastName}`,
           identification: emp.user.identification,
+          phoneNumber: emp.user.phoneNumber,
           categoria: undefined,
           source: "fundacion",
           sourceLabel: "Entrenadores de la Fundación",
@@ -52,7 +53,8 @@ export class TrainersController {
         id: temp.id,
         name: `${temp.firstName} ${temp.lastName}`,
         identification: temp.identification,
-        categoria: undefined,
+        phoneNumber: temp.phone,
+        categoria: temp.category || undefined,
         source: "temporal",
         sourceLabel: "Entrenadores Temporales",
         type: "temporal"

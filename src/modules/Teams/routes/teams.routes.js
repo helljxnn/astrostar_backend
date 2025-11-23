@@ -49,6 +49,47 @@ router.get("/stats", teamsController.getTeamStats);
 
 /**
  * @swagger
+ * /api/teams/sports-categories:
+ *   get:
+ *     summary: Get active sports categories for select
+ *     tags: [Teams]
+ *     responses:
+ *       200:
+ *         description: Active sports categories
+ */
+router.get("/sports-categories", teamsController.getSportsCategories);
+
+/**
+ * @swagger
+ * /api/teams/check-duplicate-temporal:
+ *   get:
+ *     summary: Check for duplicate temporal teams
+ *     tags: [Teams]
+ *     parameters:
+ *       - in: query
+ *         name: athleteIds
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Comma-separated athlete IDs
+ *       - in: query
+ *         name: trainerId
+ *         schema:
+ *           type: integer
+ *         description: Trainer ID
+ *       - in: query
+ *         name: excludeId
+ *         schema:
+ *           type: integer
+ *         description: Team ID to exclude (for editing)
+ *     responses:
+ *       200:
+ *         description: Duplicate check result
+ */
+router.get("/check-duplicate-temporal", teamsController.checkDuplicateTemporalTeam);
+
+/**
+ * @swagger
  * /api/teams:
  *   get:
  *     summary: Get list of teams

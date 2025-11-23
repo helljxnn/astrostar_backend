@@ -88,6 +88,7 @@ export class TeamsController {
       });
     } catch (error) {
       console.error("Error in createTeam controller:", error);
+      console.error("Error stack:", error.stack);
 
       if (error.message.includes('ya está registrado') ||
           error.message.includes('Debe seleccionar') ||
@@ -110,7 +111,8 @@ export class TeamsController {
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al crear equipo",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error: error.message,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
       });
     }
   };
@@ -284,6 +286,60 @@ export class TeamsController {
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener estadísticas",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  getSportsCategories = async (req, res) => {
+    try {
+      const result = await this.teamsService.getSportsCategories();
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: "Categorías deportivas obtenidas exitosamente.",
+      });
+    } catch (error) {
+      console.error("Error in getSportsCategories controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener categorías",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  checkDuplicateTemporalTeam = async (req, res) => {
+    try {
+      const { athleteIds, trainerId, excludeId } = req.query;
+      
+      // Si no hay athleteIds ni trainerId, devolver error
+      if (!athleteIds && !trainerId) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere al menos athleteIds o trainerId",
+        });
+      }
+
+      const athleteIdsArray = athleteIds 
+        ? (Array.isArray(athleteIds) ? athleteIds : athleteIds.split(',').map(id => parseInt(id)))
+        : [];
+      const trainerIdNum = trainerId ? parseInt(trainerId) : null;
+      const excludeIdNum = excludeId ? parseInt(excludeId) : null;
+
+      const result = await this.teamsService.checkDuplicateTemporalTeam(athleteIdsArray, trainerIdNum, excludeIdNum);
+
+      res.json({
+        success: true,
+        data: result,
+        message: result.isDuplicate ? "Equipo duplicado encontrado" : "No hay duplicados",
+      });
+    } catch (error) {
+      console.error("Error in checkDuplicateTemporalTeam controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al verificar duplicados",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }

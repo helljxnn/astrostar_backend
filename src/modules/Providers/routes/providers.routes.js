@@ -1,4 +1,3 @@
-// src/modules/Providers/routes/providers.routes.js
 import express from "express";
 import { ProvidersController } from "../controllers/providers.controller.js";
 import {

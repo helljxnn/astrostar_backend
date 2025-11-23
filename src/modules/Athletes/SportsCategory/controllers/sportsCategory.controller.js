@@ -149,6 +149,19 @@ export class SportsCategoryController {
   };
 
   /* --------------------------------------------------------
+   🟢 OBTENER CATEGORÍAS ACTIVAS PARA SELECT
+  -------------------------------------------------------- */
+  getActiveCategoriesForSelect = async (req, res) => {
+    try {
+      const result = await this.sportsCategoryService.getActiveCategoriesForSelect();
+      res.json(result);
+    } catch (error) {
+      console.error("❌ Error al obtener categorías para select:", error);
+      res.status(500).json({ success: false, message: "Error al obtener categorías." });
+    }
+  };
+
+  /* --------------------------------------------------------
    🔴 NO IMPLEMENTADO AÚN
   -------------------------------------------------------- */
   getAthletesByCategory = async (req, res) => {

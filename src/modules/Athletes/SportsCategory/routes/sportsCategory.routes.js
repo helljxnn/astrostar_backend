@@ -245,6 +245,37 @@ router.get('/stats', sportsCategoryController.getSportsCategoryStats);
 
 /**
  * @swagger
+ * /api/sports-categories/active-for-select:
+ *   get:
+ *     summary: Obtener categorías activas para select
+ *     tags: [SportsCategories]
+ *     responses:
+ *       200:
+ *         description: Categorías activas para select
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                         example: 1
+ *                       name:
+ *                         type: string
+ *                         example: "Sub 12"
+ */
+router.get('/active-for-select', sportsCategoryController.getActiveCategoriesForSelect);
+
+/**
+ * @swagger
  * /api/sports-categories/check-name:
  *   get:
  *     summary: Verificar disponibilidad de nombre de categoría

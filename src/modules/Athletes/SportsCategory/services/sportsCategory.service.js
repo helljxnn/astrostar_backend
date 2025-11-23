@@ -212,4 +212,52 @@ export class SportsCategoryService {
     };
   }
 
+  async getActiveCategoriesForSelect() {
+    try {
+      const categories = await prisma.sportsCategory.findMany({
+        where: { estado: 'Activo' },
+        select: {
+          id: true,
+          nombre: true
+        },
+        orderBy: { nombre: 'asc' }
+      });
+
+      return {
+        success: true,
+        data: categories.map(cat => ({
+          id: cat.id,
+          name: cat.nombre
+        }))
+      };
+    } catch (error) {
+      console.error('❌ Error getting active categories:', error);
+      throw error;
+    }
+  }
+
+  async getActiveCategoriesForSelect() {
+    try {
+      const categories = await prisma.sportsCategory.findMany({
+        where: { estado: 'Activo' },
+        select: {
+          id: true,
+          nombre: true
+        },
+        orderBy: { nombre: 'asc' }
+      });
+
+      return {
+        success: true,
+        data: categories.map(cat => ({
+          id: cat.id,
+          name: cat.nombre
+        }))
+      };
+    } catch (error) {
+      console.error('❌ Error getting active categories:', error);
+      throw error;
+    }
+  }
+
 }

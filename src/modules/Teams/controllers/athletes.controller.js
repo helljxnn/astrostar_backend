@@ -33,6 +33,7 @@ export class AthletesController {
           id: athlete.id,
           name: `${athlete.user.firstName} ${athlete.user.lastName}`,
           identification: athlete.user.identification,
+          phoneNumber: athlete.user.phoneNumber,
           categoria: category,
           source: "fundacion",
           sourceLabel: "Deportistas de la Fundación",
@@ -54,7 +55,8 @@ export class AthletesController {
         id: temp.id,
         name: `${temp.firstName} ${temp.lastName}`,
         identification: temp.identification,
-        categoria: undefined,
+        phoneNumber: temp.phone,
+        categoria: temp.category || undefined,
         source: "temporal",
         sourceLabel: "Deportistas Temporales",
         type: "temporal"
