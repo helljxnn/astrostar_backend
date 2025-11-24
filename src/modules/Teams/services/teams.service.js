@@ -12,15 +12,15 @@ export class TeamsService {
   }
 
   validateTeamConsistency(teamData) {
-    const { entrenadorData, deportistas, teamType } = teamData;
+    const { entrenadorData, deportistas = [], teamType } = teamData;
     
-    if (entrenadorData && deportistas.length > 0) {
+    if (entrenadorData && deportistas && deportistas.length > 0) {
       if (entrenadorData.type !== deportistas[0].type) {
         throw new Error('El entrenador y los deportistas deben ser del mismo tipo (fundación o temporales)');
       }
     }
     
-    if (deportistas.length > 0) {
+    if (deportistas && deportistas.length > 0) {
       const firstType = deportistas[0].type;
       const hasMixedTypes = deportistas.some(d => d.type !== firstType);
       
@@ -35,7 +35,7 @@ export class TeamsService {
       }
     }
 
-    if ((teamType === 'fundacion' || teamType === 'Fundacion') && deportistas.length > 0) {
+    if ((teamType === 'fundacion' || teamType === 'Fundacion') && deportistas && deportistas.length > 0) {
       const firstCategory = deportistas[0].categoria;
       const hasMixedCategories = deportistas.some(d => d.categoria !== firstCategory);
       
@@ -94,6 +94,8 @@ export class TeamsService {
 
   async createTeam(teamData) {
     try {
+      console.log('🔍 [SERVICE] Datos recibidos:', JSON.stringify(teamData, null, 2));
+      
       const normalizedTeamType = this.normalizeTeamType(teamData.teamType);
       teamData.teamType = normalizedTeamType;
 
@@ -106,8 +108,10 @@ export class TeamsService {
         throw new Error("El equipo debe tener al menos un deportista.");
       }
 
+      console.log('🔍 [SERVICE] Validando consistencia del equipo...');
       this.validateTeamConsistency(teamData);
 
+      console.log('🔍 [SERVICE] Creando equipo en repositorio...');
       const newTeam = await this.teamsRepository.create(teamData);
 
       return {
@@ -116,6 +120,9 @@ export class TeamsService {
         message: `Equipo "${teamData.nombre}" creado exitosamente.`,
       };
     } catch (error) {
+      console.error('❌ [SERVICE] Error en createTeam:', error);
+      console.error('❌ [SERVICE] Error stack:', error.stack);
+      
       if (error.message.includes('ya está asignado')) {
         throw new Error(`Error de asignación: ${error.message}`);
       }
@@ -130,7 +137,7 @@ export class TeamsService {
       }
       
       console.error('Error no manejado en createTeam:', error);
-      throw new Error('Error interno del servidor al crear equipo');
+      throw error; // Lanzar el error original en lugar de uno genérico
     }
   }
 
@@ -258,6 +265,26 @@ export class TeamsService {
         success: true,
         data: stats,
       };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getSportsCategories() {
+    try {
+      const { SportsCategoryService } = await import('../../Athletes/SportsCategory/services/sportsCategory.service.js');
+      const sportsCategoryService = new SportsCategoryService();
+      const result = await sportsCategoryService.getActiveCategoriesForSelect();
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async checkDuplicateTemporalTeam(athleteIds, trainerId, excludeId = null) {
+    try {
+      const result = await this.teamsRepository.checkDuplicateTemporalTeam(athleteIds, trainerId, excludeId);
+      return result;
     } catch (error) {
       throw error;
     }

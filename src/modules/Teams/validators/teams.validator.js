@@ -22,17 +22,6 @@ export const teamsValidators = {
         return value;
       }),
 
-    body("estado")
-      .optional()
-      .isIn(["Activo", "Inactivo", "Active", "Inactive"])
-      .withMessage('El estado debe ser "Activo", "Inactivo", "Active" o "Inactive".')
-      .customSanitizer(value => {
-        // Normalizar estados
-        if (value === "Active") return "Activo";
-        if (value === "Inactive") return "Inactivo";
-        return value;
-      }),
-
     body("entrenador")
       .optional()
       .isLength({ min: 2, max: 200 })
@@ -48,11 +37,10 @@ export const teamsValidators = {
       .isObject()
       .withMessage("entrenadorData debe ser un objeto."),
 
-    body("telefono")
+    body("segundoEntrenadorData")
       .optional()
-      .isLength({ min: 7, max: 15 })
-      .withMessage("El teléfono debe tener entre 7 y 15 caracteres.")
-      .trim(),
+      .isObject()
+      .withMessage("segundoEntrenadorData debe ser un objeto."),
 
     body("categoria")
       .optional()
@@ -115,11 +103,10 @@ export const teamsValidators = {
       .isObject()
       .withMessage("entrenadorData debe ser un objeto."),
 
-    body("telefono")
+    body("segundoEntrenadorData")
       .optional()
-      .isLength({ min: 7, max: 15 })
-      .withMessage("El teléfono debe tener entre 7 y 15 caracteres.")
-      .trim(),
+      .isObject()
+      .withMessage("segundoEntrenadorData debe ser un objeto."),
 
     body("categoria")
       .optional()
