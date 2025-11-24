@@ -1,4 +1,3 @@
-// src/controllers/documentTypes.controller.js
 import prisma from '../config/database.js';
 
 class DocumentTypesController {
