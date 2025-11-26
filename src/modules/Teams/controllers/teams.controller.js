@@ -344,6 +344,42 @@ export class TeamsController {
       });
     }
   };
+
+  checkTemporalPersonAvailability = async (req, res) => {
+    try {
+      const { personId, excludeTeamId } = req.query;
+
+      console.log('🔍 [CONTROLLER] Verificando disponibilidad:', { personId, excludeTeamId });
+
+      if (!personId) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere personId",
+        });
+      }
+
+      const personIdNum = parseInt(personId);
+      const excludeTeamIdNum = excludeTeamId ? parseInt(excludeTeamId) : null;
+
+      const result = await this.teamsService.checkTemporalPersonAvailability(personIdNum, excludeTeamIdNum);
+
+      console.log('📡 [CONTROLLER] Resultado:', result);
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.message,
+        teamName: result.teamName,
+      });
+    } catch (error) {
+      console.error("❌ [CONTROLLER] Error in checkTemporalPersonAvailability:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al verificar disponibilidad",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 }
 
 export default new TeamsController();

@@ -90,6 +90,30 @@ router.get("/check-duplicate-temporal", teamsController.checkDuplicateTemporalTe
 
 /**
  * @swagger
+ * /api/teams/check-temporal-person-availability:
+ *   get:
+ *     summary: Check if a temporal person is available (not in another active team)
+ *     tags: [Teams]
+ *     parameters:
+ *       - in: query
+ *         name: personId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Temporal person ID
+ *       - in: query
+ *         name: excludeTeamId
+ *         schema:
+ *           type: integer
+ *         description: Team ID to exclude (for editing)
+ *     responses:
+ *       200:
+ *         description: Availability check result
+ */
+router.get("/check-temporal-person-availability", teamsController.checkTemporalPersonAvailability);
+
+/**
+ * @swagger
  * /api/teams:
  *   get:
  *     summary: Get list of teams
