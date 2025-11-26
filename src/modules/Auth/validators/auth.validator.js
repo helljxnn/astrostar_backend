@@ -60,5 +60,50 @@ export const authValidators = {
       .withMessage('La nueva contraseña debe tener al menos 6 caracteres.')
       .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
       .withMessage('La nueva contraseña debe contener al menos: 1 minúscula, 1 mayúscula y 1 número.')
+  ],
+
+  /**
+   * Validación para solicitar recuperación de contraseña
+   */
+  forgotPassword: [
+    body('email')
+      .notEmpty()
+      .withMessage('El email es obligatorio.')
+      .isEmail()
+      .withMessage('Debe proporcionar un email válido.')
+      .trim()
+      .toLowerCase()
+  ],
+
+  /**
+   * Validación para verificar token de recuperación
+   */
+  verifyResetToken: [
+    body('token')
+      .notEmpty()
+      .withMessage('El código es obligatorio.')
+      .isLength({ min: 6, max: 6 })
+      .withMessage('El código debe tener 6 dígitos.')
+      .isNumeric()
+      .withMessage('El código debe contener solo números.')
+  ],
+
+  /**
+   * Validación para restablecer contraseña
+   */
+  resetPassword: [
+    body('token')
+      .notEmpty()
+      .withMessage('El código es obligatorio.')
+      .isLength({ min: 6, max: 6 })
+      .withMessage('El código debe tener 6 dígitos.')
+      .isNumeric()
+      .withMessage('El código debe contener solo números.'),
+
+    body('newPassword')
+      .notEmpty()
+      .withMessage('La nueva contraseña es obligatoria.')
+      .isLength({ min: 6 })
+      .withMessage('La nueva contraseña debe tener al menos 6 caracteres.')
   ]
 };
