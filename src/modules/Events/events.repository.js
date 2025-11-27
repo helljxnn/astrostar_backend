@@ -40,25 +40,26 @@ export class EventsRepository {
           skip,
           take: limit,
           include: {
-            category: {
+            sportsCategory: {
+              select: {
+                id: true,
+                nombre: true,
+                edadMinima: true,
+                edadMaxima: true
+              }
+            },
+            ServiceType: {
               select: {
                 id: true,
                 name: true
               }
             },
-            type: {
-              select: {
-                id: true,
-                name: true
-              }
-            },
-            sponsors: {
+            ServiceSponsor: {
               include: {
-                sponsor: {
+                Sponsor: {
                   select: {
                     id: true,
-                    name: true,
-                    logoUrl: true
+                    name: true
                   }
                 }
               }
@@ -100,25 +101,26 @@ export class EventsRepository {
     return await prisma.service.findUnique({
       where: { id: parseInt(id) },
       include: {
-        category: {
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+            edadMinima: true,
+            edadMaxima: true
+          }
+        },
+        ServiceType: {
           select: {
             id: true,
             name: true
           }
         },
-        type: {
-          select: {
-            id: true,
-            name: true
-          }
-        },
-        sponsors: {
+        ServiceSponsor: {
           include: {
-            sponsor: {
+            Sponsor: {
               select: {
                 id: true,
                 name: true,
-                logoUrl: true,
                 contactEmail: true,
                 phone: true
               }
@@ -176,13 +178,15 @@ export class EventsRepository {
       return await prisma.service.create({
         data,
         include: {
-          category: {
+          sportsCategory: {
             select: {
               id: true,
-              name: true
+              nombre: true,
+              edadMinima: true,
+              edadMaxima: true
             }
           },
-          type: {
+          ServiceType: {
             select: {
               id: true,
               name: true
@@ -223,25 +227,26 @@ export class EventsRepository {
         where: { id: parseInt(id) },
         data,
         include: {
-          category: {
+          sportsCategory: {
+            select: {
+              id: true,
+              nombre: true,
+              edadMinima: true,
+              edadMaxima: true
+            }
+          },
+          ServiceType: {
             select: {
               id: true,
               name: true
             }
           },
-          type: {
-            select: {
-              id: true,
-              name: true
-            }
-          },
-          sponsors: {
+          ServiceSponsor: {
             include: {
-              sponsor: {
+              Sponsor: {
                 select: {
                   id: true,
-                  name: true,
-                  logoUrl: true
+                  name: true
                 }
               }
             }
@@ -316,14 +321,20 @@ export class EventsRepository {
    */
   async getReferenceData() {
     const [categories, types] = await Promise.all([
-      prisma.eventCategory.findMany({
+      prisma.sportsCategory.findMany({
         select: {
           id: true,
-          name: true,
-          description: true
+          nombre: true,
+          descripcion: true,
+          edadMinima: true,
+          edadMaxima: true,
+          estado: true
+        },
+        where: {
+          estado: 'Activo' // Solo categorías activas
         },
         orderBy: {
-          name: 'asc'
+          nombre: 'asc'
         }
       }),
       prisma.serviceType.findMany({
@@ -338,7 +349,15 @@ export class EventsRepository {
       })
     ]);
 
-    return { categories, types };
+    // Mapear las categorías deportivas al formato esperado por el frontend
+    const mappedCategories = categories.map(cat => ({
+      id: cat.id,
+      name: cat.nombre,
+      description: cat.descripcion,
+      ageRange: `${cat.edadMinima}-${cat.edadMaxima} años`
+    }));
+
+    return { categories: mappedCategories, types };
   }
 
   /**

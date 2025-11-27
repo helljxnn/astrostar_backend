@@ -142,15 +142,7 @@ export class TemporaryWorkersService {
 
       const personName = `${existing.firstName} ${existing.lastName}`;
 
-      if (existing.status === 'Active') {
-        return {
-          success: false,
-          statusCode: 400,
-          message: 'No se puede eliminar una persona temporal activa. Primero cambie el estado a "Inactivo" y luego inténtelo de nuevo.'
-        };
-      }
-
-      // Si está inactiva, hacer eliminación física
+      // Permitir eliminación independientemente del estado
       await this.temporaryWorkersRepository.hardDelete(id);
 
       return {

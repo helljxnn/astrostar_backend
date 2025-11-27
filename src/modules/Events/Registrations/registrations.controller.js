@@ -202,6 +202,30 @@ export class RegistrationsController {
       });
     }
   };
+
+  /**
+   * Obtener equipos disponibles para inscripción
+   */
+  getAvailableTeams = async (req, res) => {
+    try {
+      const { category } = req.query;
+
+      const result = await this.registrationsService.getAvailableTeams({ category });
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.total} equipos disponibles (${result.data.foundation.length} de fundación, ${result.data.temporary.length} temporales).`,
+      });
+    } catch (error) {
+      console.error('Error in getAvailableTeams controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al obtener equipos.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
 }
 
 export default new RegistrationsController();

@@ -394,8 +394,39 @@ export class EventsService {
       endDate = new Date(existingData.endDate);
     }
 
+    // Validar que la fecha de inicio sea al menos el día siguiente (solo al crear)
+    if (!existingData && startDate) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      // Parsear la fecha de inicio sin problemas de zona horaria
+      // Si startDate es un Date object, extraer año, mes, día
+      // Si es un string, parsearlo correctamente
+      let startYear, startMonth, startDay;
+      
+      if (startDate instanceof Date) {
+        // Usar UTC para evitar problemas de zona horaria
+        startYear = startDate.getUTCFullYear();
+        startMonth = startDate.getUTCMonth();
+        startDay = startDate.getUTCDate();
+      } else {
+        // Si es string, parsearlo manualmente
+        const dateStr = startDate.toString();
+        const parts = dateStr.split('T')[0].split('-');
+        startYear = parseInt(parts[0]);
+        startMonth = parseInt(parts[1]) - 1; // Los meses en JS son 0-indexed
+        startDay = parseInt(parts[2]);
+      }
+      
+      const startDateOnly = new Date(startYear, startMonth, startDay);
+      
+      // Rechazar si la fecha de inicio es hoy o anterior (permitir desde mañana)
+      if (startDateOnly.getTime() <= today.getTime()) {
+        errors.push('El evento debe crearse con al menos un día de anticipación. La fecha de inicio debe ser a partir de mañana');
+      }
+    }
+
     // Validar que la fecha de finalización no sea en el pasado (solo al crear)
-    // Permitir eventos del día actual sin importar la hora
     if (!existingData && endDate) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());

@@ -209,8 +209,59 @@ export class RegistrationsRepository {
         id: true,
         name: true,
         status: true,
+        teamType: true,
       },
     });
+  }
+
+  /**
+   * Obtener equipos disponibles para inscripción (separados por tipo)
+   */
+  async getAvailableTeams(filters = {}) {
+    const where = {
+      status: 'Active',
+    };
+
+    if (filters.teamType) {
+      where.teamType = filters.teamType;
+    }
+
+    if (filters.category) {
+      where.category = filters.category;
+    }
+
+    return await prisma.team.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        coach: true,
+        category: true,
+        teamType: true,
+        _count: {
+          select: { members: true },
+        },
+      },
+      orderBy: [
+        { teamType: 'asc' }, // Fundacion primero, luego Temporal
+        { name: 'asc' },
+      ],
+    });
+  }
+
+  /**
+   * Obtener equipos de la fundación
+   */
+  async getFoundationTeams(filters = {}) {
+    return await this.getAvailableTeams({ ...filters, teamType: 'Fundacion' });
+  }
+
+  /**
+   * Obtener equipos temporales
+   */
+  async getTemporaryTeams(filters = {}) {
+    return await this.getAvailableTeams({ ...filters, teamType: 'Temporal' });
   }
 
   /**

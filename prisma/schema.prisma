@@ -172,6 +172,7 @@ model SportsCategory {
   updatedAt    DateTime             @updatedAt
   inscriptions Inscription[]
   participants Participant[]
+  services     Service[]
 
   @@map("sports_categories")
 }
@@ -182,7 +183,6 @@ model EventCategory {
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  Service     Service[]
 
   @@map("event_categories")
 }
@@ -248,6 +248,7 @@ model Inscription {
   athlete                Athlete               @relation(fields: [athleteId], references: [id], onDelete: Cascade)
   sportsCategory         SportsCategory        @relation(fields: [sportsCategoryId], references: [id])
 
+  @@unique([athleteId, sportsCategoryId])
   @@index([athleteId])
   @@index([sportsCategoryId])
   @@index([status])
@@ -420,8 +421,8 @@ model Service {
   categoryId       Int
   typeId           Int
   createdAt        DateTime         @default(now())
-  updatedAt        DateTime
-  event_categories EventCategory    @relation(fields: [categoryId], references: [id])
+  updatedAt        DateTime         @updatedAt
+  sportsCategory   SportsCategory   @relation(fields: [categoryId], references: [id])
   ServiceType      ServiceType      @relation(fields: [typeId], references: [id])
   ServiceSponsor   ServiceSponsor[]
   participants     Participant[]
@@ -438,11 +439,12 @@ model ServiceSponsor {
 }
 
 model ServiceType {
-  id        Int       @id @default(autoincrement())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime
-  Service   Service[]
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Service     Service[]
 }
 
 model Sponsor {
@@ -453,7 +455,7 @@ model Sponsor {
   phone          String?
   status         SponsorStatus    @default(Active)
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime         @updatedAt
   ServiceSponsor ServiceSponsor[]
 }
 

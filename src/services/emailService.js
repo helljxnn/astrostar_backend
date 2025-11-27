@@ -19,10 +19,12 @@ class EmailService {
       // Verificar si las credenciales están configuradas
       if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD || 
           process.env.EMAIL_PASSWORD === 'your-app-password-here') {
-
+        console.log('⚠️  Credenciales de email no configuradas');
         this.transporter = null;
         return;
       }
+
+      console.log('📧 Inicializando servicio de email con:', process.env.EMAIL_USER);
 
       // Configuración unificada para Gmail (desarrollo y producción)
       this.transporter = nodemailer.createTransport({
@@ -39,6 +41,7 @@ class EmailService {
         }
       });
 
+      console.log('✅ Servicio de email inicializado correctamente');
 
     } catch (error) {
       console.error('❌ Error inicializando servicio de email:', error);
@@ -144,16 +147,16 @@ class EmailService {
                         <strong>📧 Usuario:</strong> ${email}
                     </div>
                     <div class="credential-item">
-                        <strong>🔑 Contraseña Temporal:</strong> <code>${password}</code>
+                        <strong>🔑 Contraseña:</strong> <code> Tu documento de identidad</code>
                     </div>
                 </div>
                 
                 <div class="warning">
-                    <strong>⚠️ Importante:</strong>
+                    <strong>⚠️ Importante - Seguridad:</strong>
                     <ul>
-                        <li>Esta es una contraseña temporal generada automáticamente</li>
-                        <li>Debes cambiarla en tu primer inicio de sesión</li>
-                        <li>No compartas estas credenciales con nadie</li>
+                        <li>Por razones de seguridad, <strong>es recomendable cambiar tu contraseña</strong> después de tu primer inicio de sesión</li>
+                        <li>Elige una contraseña segura que incluya letras, números y símbolos</li>
+                        <li>No compartas tus credenciales con nadie</li>
                         <li>Si tienes problemas para acceder, contacta al administrador</li>
                     </ul>
                 </div>
@@ -166,8 +169,8 @@ class EmailService {
                 
                 <h3>📋 Próximos Pasos:</h3>
                 <ol>
-                    <li>Inicia sesión con las credenciales proporcionadas</li>
-                    <li>Cambia tu contraseña por una segura</li>
+                    <li>Inicia sesión con tu correo y tu documento de identidad como contraseña</li>
+                    <li><strong>Cambia tu contraseña inmediatamente</strong> por una segura y personal</li>
                     <li>Completa tu perfil si es necesario</li>
                     <li>Familiarízate con el sistema</li>
                 </ol>
@@ -203,16 +206,18 @@ Nos complace darte la bienvenida al equipo de AstroStar. Tu cuenta de empleado h
 
 CREDENCIALES DE ACCESO:
 - Usuario: ${email}
-- Contraseña Temporal: ${password}
+- Contraseña Inicial: ${password} (Tu número de documento de identidad)
 
-IMPORTANTE:
-- Esta es una contraseña temporal que debes cambiar en tu primer inicio de sesión
-- No compartas estas credenciales con nadie
+IMPORTANTE - SEGURIDAD:
+- Tu contraseña inicial es tu número de documento de identidad
+- Por razones de seguridad, DEBES CAMBIARLA INMEDIATAMENTE después de tu primer inicio de sesión
+- Elige una contraseña segura que incluya letras, números y símbolos
+- No compartas tus credenciales con nadie
 - Si tienes problemas para acceder, contacta al administrador
 
 PRÓXIMOS PASOS:
-1. Inicia sesión con las credenciales proporcionadas
-2. Cambia tu contraseña por una segura
+1. Inicia sesión con tu correo y tu documento de identidad como contraseña
+2. CAMBIA TU CONTRASEÑA INMEDIATAMENTE por una segura y personal
 3. Completa tu perfil si es necesario
 4. Familiarízate con el sistema
 
@@ -234,6 +239,8 @@ Este es un email automático del sistema AstroStar.
    */
   async sendPasswordResetEmail(email, resetToken) {
     try {
+      console.log('📧 Intentando enviar email de recuperación a:', email);
+      
       const mailOptions = {
         from: {
           name: 'AstroStar - Sistema de Gestión',
@@ -246,12 +253,16 @@ Este es un email automático del sistema AstroStar.
       };
 
       if (!this.transporter) {
+        console.log('⚠️  Transporter no configurado, simulando envío');
         return { success: true, messageId: 'simulated-reset-' + Date.now() };
       }
 
+      console.log('📤 Enviando email...');
       const result = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Email enviado exitosamente. MessageId:', result.messageId);
       return { success: true, messageId: result.messageId };
     } catch (error) {
+      console.error('❌ Error enviando email de recuperación:', error.message);
       return { success: false, error: error.message };
     }
   }
@@ -260,8 +271,6 @@ Este es un email automático del sistema AstroStar.
    * Generar template para recuperación de contraseña
    */
   generatePasswordResetTemplate(email, resetToken) {
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-    
     return `
     <!DOCTYPE html>
     <html lang="es">
@@ -272,38 +281,139 @@ Este es un email automático del sistema AstroStar.
         <style>
             body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
             .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #dc3545; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
             .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .button { display: inline-block; background: #dc3545; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; margin: 15px 0; }
-            .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            .code-box { background: white; border: 2px dashed #667eea; padding: 20px; text-align: center; margin: 25px 0; border-radius: 10px; }
+            .code { font-size: 36px; font-weight: bold; color: #667eea; letter-spacing: 8px; font-family: 'Courier New', monospace; }
+            .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
                 <h1>🔐 Recuperación de Contraseña</h1>
+                <p style="margin: 0; opacity: 0.9;">AstroStar - Sistema de Gestión</p>
             </div>
             <div class="content">
                 <p>Hola,</p>
                 <p>Recibimos una solicitud para restablecer la contraseña de tu cuenta en AstroStar.</p>
-                <div style="text-align: center;">
-                    <a href="${resetUrl}" class="button">Restablecer Contraseña</a>
+                <p><strong>Tu código de verificación es:</strong></p>
+                
+                <div class="code-box">
+                    <div class="code">${resetToken}</div>
+                    <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">Ingresa este código en la página de recuperación</p>
                 </div>
+                
                 <div class="warning">
                     <strong>⚠️ Importante:</strong>
-                    <ul>
-                        <li>Este enlace expira en 1 hora</li>
+                    <ul style="margin: 10px 0;">
+                        <li>Este código expira en <strong>15 minutos</strong></li>
                         <li>Si no solicitaste este cambio, ignora este email</li>
                         <li>Tu contraseña actual seguirá siendo válida hasta que la cambies</li>
+                        <li>Nunca compartas este código con nadie</li>
                     </ul>
                 </div>
-                <p>Si tienes problemas con el enlace, copia y pega la siguiente URL en tu navegador:</p>
-                <p style="word-break: break-all; background: #f0f0f0; padding: 10px; border-radius: 5px;">${resetUrl}</p>
+                
+                <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                    Si tienes problemas, contacta con el administrador del sistema.
+                </p>
+            </div>
+            <div class="footer">
+                <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+                <p>© ${new Date().getFullYear()} AstroStar. Todos los derechos reservados.</p>
             </div>
         </div>
     </body>
     </html>
     `;
+  }
+
+  /**
+   * Enviar código de verificación para cambio de email
+   */
+  async sendEmailVerificationCode(email, verificationCode, firstName) {
+    try {
+      console.log('📧 Intentando enviar código de verificación a:', email);
+      
+      const mailOptions = {
+        from: {
+          name: 'AstroStar - Sistema de Gestión',
+          address: process.env.EMAIL_USER || 'astrostar.system@gmail.com'
+        },
+        to: email,
+        subject: '📧 Verificación de Cambio de Correo - AstroStar',
+        html: `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Verificación de Correo</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .code-box { background: white; border: 2px dashed #667eea; padding: 20px; text-align: center; margin: 25px 0; border-radius: 10px; }
+            .code { font-size: 36px; font-weight: bold; color: #667eea; letter-spacing: 8px; font-family: 'Courier New', monospace; }
+            .warning { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>📧 Verificación de Correo Electrónico</h1>
+              <p style="margin: 0; opacity: 0.9;">AstroStar - Sistema de Gestión</p>
+            </div>
+            <div class="content">
+              <p>Hola ${firstName},</p>
+              <p>Recibimos una solicitud para cambiar el correo electrónico de tu cuenta en AstroStar.</p>
+              
+              <p><strong>Tu código de verificación es:</strong></p>
+              <div class="code-box">
+                <div class="code">${verificationCode}</div>
+                <p style="margin: 10px 0 0 0; color: #666; font-size: 14px;">Ingresa este código para confirmar el cambio</p>
+              </div>
+              
+              <div class="warning">
+                <strong>⚠️ Importante:</strong>
+                <ul style="margin: 10px 0;">
+                  <li>Este código expira en <strong>15 minutos</strong></li>
+                  <li>Si no solicitaste este cambio, ignora este email</li>
+                  <li>Nunca compartas este código con nadie</li>
+                </ul>
+              </div>
+              
+              <p style="color: #666; font-size: 14px; margin-top: 20px;">
+                Si tienes problemas, contacta con el administrador del sistema.
+              </p>
+            </div>
+            <div class="footer">
+              <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+              <p>© ${new Date().getFullYear()} AstroStar. Todos los derechos reservados.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+        `,
+        text: `Verificación de Cambio de Correo - AstroStar\n\nHola ${firstName},\n\nTu código de verificación es: ${verificationCode}\n\nEste código expira en 15 minutos.\n\nSi no solicitaste este cambio, ignora este email.`
+      };
+
+      if (!this.transporter) {
+        console.log('⚠️  Transporter no configurado, simulando envío');
+        return { success: true, messageId: 'simulated-verification-' + Date.now() };
+      }
+
+      console.log('📤 Enviando email de verificación...');
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Email de verificación enviado exitosamente. MessageId:', result.messageId);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error('❌ Error enviando email de verificación:', error.message);
+      return { success: false, error: error.message };
+    }
   }
 }
 

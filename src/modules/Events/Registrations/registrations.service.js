@@ -287,4 +287,29 @@ export class RegistrationsService {
       throw error;
     }
   }
+
+  /**
+   * Obtener equipos disponibles para inscripción (separados por tipo)
+   */
+  async getAvailableTeams(filters = {}) {
+    try {
+      const teams = await this.registrationsRepository.getAvailableTeams(filters);
+
+      // Separar equipos por tipo
+      const foundationTeams = teams.filter((team) => team.teamType === 'Fundacion');
+      const temporaryTeams = teams.filter((team) => team.teamType === 'Temporal');
+
+      return {
+        success: true,
+        data: {
+          foundation: foundationTeams,
+          temporary: temporaryTeams,
+          total: teams.length,
+        },
+      };
+    } catch (error) {
+      console.error('Error in getAvailableTeams service:', error);
+      throw error;
+    }
+  }
 }

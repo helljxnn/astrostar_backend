@@ -15,7 +15,10 @@
     "prisma:reset": "npx prisma migrate reset",
     "prisma:deploy": "npx prisma migrate deploy",
     "prisma:status": "npx prisma migrate status",
-    "db:test": "node src/utils/testConnection.js"
+    "db:test": "node src/utils/testConnection.js",
+    "seed:all": "node src/scripts/runSeeders.js",
+    "seed:teams": "node src/scripts/seedTeamsOnly.js",
+    "test:registrations": "node src/scripts/testRegistrations.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

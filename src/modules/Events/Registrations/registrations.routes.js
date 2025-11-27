@@ -22,6 +22,24 @@ router.get('/stats', registrationsController.getRegistrationStats);
 
 /**
  * @swagger
+ * /api/registrations/teams/available:
+ *   get:
+ *     summary: Obtener equipos disponibles para inscripción (separados por tipo)
+ *     tags: [Registrations]
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filtrar por categoría deportiva
+ *     responses:
+ *       200:
+ *         description: Lista de equipos disponibles separados por tipo (fundación y temporales)
+ */
+router.get('/teams/available', registrationsController.getAvailableTeams);
+
+/**
+ * @swagger
  * /api/registrations/event/{serviceId}:
  *   get:
  *     summary: Obtener inscripciones de un evento
