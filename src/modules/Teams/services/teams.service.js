@@ -207,13 +207,13 @@ export class TeamsService {
         };
       }
 
-      // Verificar si el equipo está asignado a algún evento/servicio
+      // Verificar si el equipo está asignado a eventos activos (Programado o En_pausa)
       const isAssignedToEvent = await this.teamsRepository.isTeamAssignedToEvent(id);
       if (isAssignedToEvent.isAssigned) {
         return {
           success: false,
           statusCode: 400,
-          message: `No se puede eliminar el equipo "${teamToDelete.nombre}" porque está asignado a ${isAssignedToEvent.count} evento(s). Primero debe desasignarlo de los eventos.`,
+          message: `No se puede eliminar el equipo "${teamToDelete.nombre}" porque está asignado a ${isAssignedToEvent.count} evento(s) activo(s). Primero debe desasignarlo de los eventos o esperar a que finalicen.`,
         };
       }
 
@@ -329,6 +329,23 @@ export class TeamsService {
     try {
       const result = await this.teamsRepository.checkTemporalPersonAvailability(personId, excludeTeamId);
       return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async checkTeamAssignedToEvents(teamId) {
+    try {
+      const result = await this.teamsRepository.isTeamAssignedToEvent(teamId);
+      return {
+        success: true,
+        isAssigned: result.isAssigned,
+        count: result.count,
+        events: result.events,
+        message: result.isAssigned 
+          ? `El equipo está asignado a ${result.count} evento(s) activo(s) (Programado o En pausa)` 
+          : 'El equipo no está asignado a eventos activos'
+      };
     } catch (error) {
       throw error;
     }

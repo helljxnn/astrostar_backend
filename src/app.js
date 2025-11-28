@@ -19,17 +19,23 @@ app.use(cookieParser());
 app.use(express.json({ charset: 'utf-8' }));
 app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 
-// Asegurar UTF-8 en todas las respuestas
-app.use((req, res, next) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  next();
-});
-
 // 💾 Servir imágenes subidas de categorías
 app.use('/uploads/categories', express.static('src/uploads/categories'));
 
-// Swagger documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+// Swagger documentation - Configuración completa
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "AstroStar API Documentation",
+  swaggerOptions: {
+    persistAuthorization: true,
+  }
+}));
+
+// Asegurar UTF-8 en respuestas JSON (solo para rutas /api)
+app.use('/api', (req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 
 // API routes
 app.use('/api', routes);

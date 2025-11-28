@@ -259,12 +259,6 @@ export class ProvidersRepository {
         return false;
       }
 
-      if (provider.status === "Active") {
-        throw new Error(
-          `No se puede eliminar el proveedor "${provider.businessName}" porque está en estado "Activo". Primero cambie el estado a "Inactivo".`
-        );
-      }
-
       await prisma.provider.delete({
         where: { id: parseInt(id) },
       });

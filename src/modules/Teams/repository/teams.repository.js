@@ -913,12 +913,19 @@ export class TeamsRepository {
 
   async isTeamAssignedToEvent(teamId) {
     try {
-      console.log('🔍 [REPO] Verificando si equipo está asignado a eventos:', teamId);
+      console.log('🔍 [REPO] Verificando si equipo está asignado a eventos activos:', teamId);
       
+      // Solo buscar participaciones en eventos con estados activos (Programado o En_pausa)
+      // NO bloquear si solo está en eventos Finalizado o Cancelado
       const participants = await prisma.participant.findMany({
         where: {
           teamId: parseInt(teamId),
-          type: 'Team'
+          type: 'Team',
+          service: {
+            status: {
+              in: ['Programado', 'En_pausa']
+            }
+          }
         },
         include: {
           service: {
@@ -933,10 +940,10 @@ export class TeamsRepository {
 
       const isAssigned = participants.length > 0;
       
-      console.log('🔍 [REPO] Equipo asignado a eventos:', {
+      console.log('🔍 [REPO] Equipo asignado a eventos activos:', {
         isAssigned,
         count: participants.length,
-        events: participants.map(p => p.service.name)
+        events: participants.map(p => `${p.service.name} (${p.service.status})`)
       });
 
       return {

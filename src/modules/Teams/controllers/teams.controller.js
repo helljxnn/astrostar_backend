@@ -380,6 +380,36 @@ export class TeamsController {
       });
     }
   };
+
+  checkTeamAssignedToEvents = async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID de equipo inválido",
+        });
+      }
+
+      const result = await this.teamsService.checkTeamAssignedToEvents(id);
+
+      res.json({
+        success: true,
+        isAssigned: result.isAssigned,
+        count: result.count,
+        events: result.events,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Error in checkTeamAssignedToEvents controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al verificar asignación a eventos",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 }
 
 export default new TeamsController();
