@@ -1,4 +1,3 @@
-import { createDefaultRoles } from '../seeders/defaultRoles.js';
 import { seedTeamsAndAthletes } from '../seeders/teamsAndAthletes.seeder.js';
 
 /**
@@ -7,9 +6,6 @@ import { seedTeamsAndAthletes } from '../seeders/teamsAndAthletes.seeder.js';
 const runSeeders = async () => {
   try {
     console.log('🚀 Iniciando seeders...');
-    
-    // Ejecutar seeder de roles por defecto
-    await createDefaultRoles();
     
     // Ejecutar seeder de equipos y deportistas
     await seedTeamsAndAthletes();

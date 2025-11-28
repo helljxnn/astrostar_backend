@@ -278,14 +278,20 @@ export class TeamsRepository {
     return {
       id: team.id,
       nombre: team.name,
+      name: team.name, // Para compatibilidad con el frontend
       entrenador: team.coach,
+      coach: team.coach, // Para compatibilidad con el frontend
       estado: team.status === 'Active' ? 'Activo' : 'Inactivo',
       descripcion: team.description,
       categoria: team.category,
+      category: team.category, // Para compatibilidad con el frontend
       teamType: team.teamType,
       createdAt: team.createdAt,
       updatedAt: team.updatedAt,
       members: team.members || [],
+      _count: {
+        members: deportistasCount
+      },
       cantidadDeportistas: deportistasCount,
       deportistas: deportistas,
       deportistasIds: deportistas.map(d => d.id),

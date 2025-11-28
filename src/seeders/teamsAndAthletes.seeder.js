@@ -176,24 +176,27 @@ export async function seedTeamsAndAthletes() {
     }
     console.log('✅ Inscripciones creadas');
 
-    // 7. Crear equipos
-    console.log('⚽ Creando equipos...');
+    // 7. Crear equipos de la Fundación
+    console.log('⚽ Creando equipos de la Fundación...');
     const teams = [];
-    const teamNames = [
+    const foundationTeamNames = [
       'Tigres FC',
       'Águilas Doradas',
       'Leones del Norte',
       'Halcones Azules',
       'Pumas Rojos',
+      'Dragones Verdes',
+      'Lobos Grises',
+      'Cóndores Blancos',
     ];
 
-    for (let i = 0; i < teamNames.length; i++) {
+    for (let i = 0; i < foundationTeamNames.length; i++) {
       const category = categories[i % categories.length];
       const team = await prisma.team.upsert({
-        where: { name: teamNames[i] },
+        where: { name: foundationTeamNames[i] },
         update: {},
         create: {
-          name: teamNames[i],
+          name: foundationTeamNames[i],
           description: `Equipo de ${category.nombre} - Fundación AstroStar`,
           coach: `Entrenador ${i + 1}`,
           category: category.nombre,
@@ -203,15 +206,46 @@ export async function seedTeamsAndAthletes() {
       });
       teams.push(team);
     }
-    console.log(`✅ ${teams.length} equipos creados`);
+    console.log(`✅ ${teams.length} equipos de la Fundación creados`);
 
-    // 8. Asignar deportistas a equipos
-    console.log('👥 Asignando deportistas a equipos...');
+    // 7b. Crear equipos temporales
+    console.log('⚽ Creando equipos temporales...');
+    const temporalTeamNames = [
+      'Estrellas Temporales',
+      'Cometas Rápidos',
+      'Meteoros Unidos',
+      'Galaxia FC',
+      'Nebulosa Team',
+      'Satélites Azules',
+    ];
+
+    for (let i = 0; i < temporalTeamNames.length; i++) {
+      const category = categories[i % categories.length];
+      const team = await prisma.team.upsert({
+        where: { name: temporalTeamNames[i] },
+        update: {},
+        create: {
+          name: temporalTeamNames[i],
+          description: `Equipo temporal para evento especial - ${category.nombre}`,
+          coach: `Entrenador Temporal ${i + 1}`,
+          category: category.nombre,
+          status: 'Active',
+          teamType: 'Temporal',
+        },
+      });
+      teams.push(team);
+    }
+    console.log(`✅ ${temporalTeamNames.length} equipos temporales creados`);
+
+    // 8. Asignar deportistas a equipos de la Fundación
+    console.log('👥 Asignando deportistas a equipos de la Fundación...');
     let memberCount = 0;
+    const foundationTeams = teams.filter(t => t.teamType === 'Fundacion');
 
-    for (let i = 0; i < teams.length; i++) {
-      const team = teams[i];
-      const teamAthletes = athletes.slice(i * 3, (i * 3) + 3); // 3 deportistas por equipo
+    for (let i = 0; i < foundationTeams.length && i < athletes.length; i++) {
+      const team = foundationTeams[i];
+      const startIdx = i * 2;
+      const teamAthletes = athletes.slice(startIdx, startIdx + 2); // 2 deportistas por equipo
 
       for (let j = 0; j < teamAthletes.length; j++) {
         const athlete = teamAthletes[j];
@@ -228,7 +262,7 @@ export async function seedTeamsAndAthletes() {
             teamId: team.id,
             athleteId: athlete.id,
             memberType: 'Athlete',
-            position: j === 0 ? 'Delantero' : j === 1 ? 'Defensa' : 'Portero',
+            position: j === 0 ? 'Delantero' : 'Defensa',
             jerseyNumber: j + 1,
             isActive: true,
           },
@@ -236,14 +270,14 @@ export async function seedTeamsAndAthletes() {
         memberCount++;
       }
     }
-    console.log(`✅ ${memberCount} miembros asignados a equipos`);
+    console.log(`✅ ${memberCount} miembros asignados a equipos de la Fundación`);
 
-    // 9. Crear algunas personas temporales
+    // 9. Crear personas temporales
     console.log('👤 Creando personas temporales...');
     const tempPersons = [];
 
-    for (let i = 1; i <= 5; i++) {
-      const birthDate = new Date(`200${i}-05-15`);
+    for (let i = 1; i <= 10; i++) {
+      const birthDate = new Date(`200${i % 9}-0${(i % 9) + 1}-15`);
       const age = new Date().getFullYear() - birthDate.getFullYear();
 
       const tempPerson = await prisma.temporaryPerson.upsert({
@@ -269,13 +303,54 @@ export async function seedTeamsAndAthletes() {
     }
     console.log(`✅ ${tempPersons.length} personas temporales creadas`);
 
-    // 10. Resumen
+    // 10. Asignar personas temporales a equipos temporales
+    console.log('👥 Asignando personas temporales a equipos temporales...');
+    const temporalTeams = teams.filter(t => t.teamType === 'Temporal');
+    let tempMemberCount = 0;
+
+    for (let i = 0; i < temporalTeams.length && i < tempPersons.length; i++) {
+      const team = temporalTeams[i];
+      const startIdx = i * 2;
+      const teamTempPersons = tempPersons.slice(startIdx, startIdx + 2); // 2 personas por equipo temporal
+
+      for (let j = 0; j < teamTempPersons.length; j++) {
+        const tempPerson = teamTempPersons[j];
+        
+        await prisma.teamMember.upsert({
+          where: {
+            unique_jersey_per_team: {
+              teamId: team.id,
+              jerseyNumber: j + 10, // Números del 10 en adelante para temporales
+            },
+          },
+          update: {},
+          create: {
+            teamId: team.id,
+            temporaryPersonId: tempPerson.id,
+            memberType: 'TemporaryPerson',
+            position: j === 0 ? 'Delantero' : 'Medio',
+            jerseyNumber: j + 10,
+            isActive: true,
+          },
+        });
+        tempMemberCount++;
+      }
+    }
+    console.log(`✅ ${tempMemberCount} personas temporales asignadas a equipos temporales`);
+
+    // 11. Resumen
+    const foundationTeamsCount = teams.filter(t => t.teamType === 'Fundacion').length;
+    const temporalTeamsCount = teams.filter(t => t.teamType === 'Temporal').length;
+    
     console.log('\n📊 Resumen del seed:');
     console.log(`   - Tutores: ${guardians.length}`);
     console.log(`   - Deportistas: ${athletes.length}`);
-    console.log(`   - Equipos: ${teams.length}`);
-    console.log(`   - Miembros de equipos: ${memberCount}`);
+    console.log(`   - Equipos de la Fundación: ${foundationTeamsCount}`);
+    console.log(`   - Equipos Temporales: ${temporalTeamsCount}`);
+    console.log(`   - Total de equipos: ${teams.length}`);
+    console.log(`   - Miembros en equipos de Fundación: ${memberCount}`);
     console.log(`   - Personas temporales: ${tempPersons.length}`);
+    console.log(`   - Miembros en equipos temporales: ${tempMemberCount}`);
     console.log('\n✅ Seed de equipos y deportistas completado exitosamente!');
 
     return {
@@ -283,6 +358,8 @@ export async function seedTeamsAndAthletes() {
       athletes,
       teams,
       tempPersons,
+      memberCount,
+      tempMemberCount,
     };
   } catch (error) {
     console.error('❌ Error en seed de equipos y deportistas:', error);
