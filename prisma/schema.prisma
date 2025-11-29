@@ -160,19 +160,19 @@ model EmployeePermission {
 }
 
 model SportsCategory {
-  id           Int                  @id @default(autoincrement())
-  nombre       String               @db.VarChar(50)
-  edadMinima   Int
-  edadMaxima   Int
-  descripcion  String?              @db.VarChar(500)
-  archivo      String?
-  estado       SportsCategoryStatus @default(Activo)
-  publicar     Boolean              @default(false)
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  inscriptions Inscription[]
-  participants Participant[]
-  services     Service[]
+  id              Int                  @id @default(autoincrement())
+  nombre          String               @db.VarChar(50)
+  edadMinima      Int
+  edadMaxima      Int
+  descripcion     String?              @db.VarChar(500)
+  archivo         String?
+  estado          SportsCategoryStatus @default(Activo)
+  publicar        Boolean              @default(false)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  inscriptions    Inscription[]
+  participants    Participant[]
+  ServiceCategory ServiceCategory[]
 
   @@map("sports_categories")
 }
@@ -405,7 +405,7 @@ model PurchaseItem {
 }
 
 model Service {
-  id               Int              @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   name             String
   description      String?
   startDate        DateTime
@@ -414,18 +414,27 @@ model Service {
   endTime          String
   location         String
   phone            String
-  status           EventStatus      @default(Programado)
+  status           EventStatus        @default(Programado)
   imageUrl         String?
   scheduleFile     String?
-  publish          Boolean          @default(false)
-  categoryId       Int
+  publish          Boolean            @default(false)
   typeId           Int
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  sportsCategory   SportsCategory   @relation(fields: [categoryId], references: [id])
-  ServiceType      ServiceType      @relation(fields: [typeId], references: [id])
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  ServiceType      ServiceType        @relation(fields: [typeId], references: [id])
   ServiceSponsor   ServiceSponsor[]
+  ServiceCategory  ServiceCategory[]
   participants     Participant[]
+}
+
+model ServiceCategory {
+  id               Int            @id @default(autoincrement())
+  serviceId        Int
+  categoryId       Int
+  Service          Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  SportsCategory   SportsCategory @relation(fields: [categoryId], references: [id])
+
+  @@unique([serviceId, categoryId])
 }
 
 model ServiceSponsor {

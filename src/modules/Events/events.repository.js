@@ -26,7 +26,11 @@ export class EventsRepository {
       }
       
       if (categoryId) {
-        where.categoryId = parseInt(categoryId);
+        where.ServiceCategory = {
+          some: {
+            categoryId: parseInt(categoryId)
+          }
+        };
       }
 
       if (typeId) {
@@ -40,12 +44,16 @@ export class EventsRepository {
           skip,
           take: limit,
           include: {
-            sportsCategory: {
-              select: {
-                id: true,
-                nombre: true,
-                edadMinima: true,
-                edadMaxima: true
+            ServiceCategory: {
+              include: {
+                SportsCategory: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    edadMinima: true,
+                    edadMaxima: true
+                  }
+                }
               }
             },
             ServiceType: {
@@ -101,12 +109,16 @@ export class EventsRepository {
     return await prisma.service.findUnique({
       where: { id: parseInt(id) },
       include: {
-        sportsCategory: {
-          select: {
-            id: true,
-            nombre: true,
-            edadMinima: true,
-            edadMaxima: true
+        ServiceCategory: {
+          include: {
+            SportsCategory: {
+              select: {
+                id: true,
+                nombre: true,
+                edadMinima: true,
+                edadMaxima: true
+              }
+            }
           }
         },
         ServiceType: {
@@ -175,21 +187,74 @@ export class EventsRepository {
    */
   async create(data) {
     try {
+      // Extraer categoryIds y sponsorNames si existen
+      const { categoryIds, sponsorNames, ...eventData } = data;
+      
+      // Preparar datos para crear el evento con categorías y patrocinadores
+      const createData = {
+        ...eventData,
+      };
+
+      // Si hay categorías, agregarlas a la relación
+      if (categoryIds && categoryIds.length > 0) {
+        createData.ServiceCategory = {
+          create: categoryIds.map(catId => ({
+            categoryId: parseInt(catId)
+          }))
+        };
+      }
+
+      // Si hay patrocinadores, buscar sus IDs y agregarlos
+      if (sponsorNames && sponsorNames.length > 0) {
+        const sponsors = await prisma.sponsor.findMany({
+          where: {
+            name: {
+              in: sponsorNames
+            }
+          },
+          select: {
+            id: true
+          }
+        });
+
+        if (sponsors.length > 0) {
+          createData.ServiceSponsor = {
+            create: sponsors.map(sponsor => ({
+              sponsorId: sponsor.id
+            }))
+          };
+        }
+      }
+
       return await prisma.service.create({
-        data,
+        data: createData,
         include: {
-          sportsCategory: {
-            select: {
-              id: true,
-              nombre: true,
-              edadMinima: true,
-              edadMaxima: true
+          ServiceCategory: {
+            include: {
+              SportsCategory: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  edadMinima: true,
+                  edadMaxima: true
+                }
+              }
             }
           },
           ServiceType: {
             select: {
               id: true,
               name: true
+            }
+          },
+          ServiceSponsor: {
+            include: {
+              Sponsor: {
+                select: {
+                  id: true,
+                  name: true
+                }
+              }
             }
           }
         }
@@ -201,7 +266,7 @@ export class EventsRepository {
       if (error.code === 'P2003') {
         // Foreign key constraint failed
         if (error.meta?.field_name?.includes('categoryId')) {
-          throw new Error('La categoría seleccionada no existe');
+          throw new Error('Una o más categorías seleccionadas no existen');
         }
         if (error.meta?.field_name?.includes('typeId')) {
           throw new Error('El tipo de evento seleccionado no existe');
@@ -223,16 +288,77 @@ export class EventsRepository {
    */
   async update(id, data) {
     try {
-      return await prisma.service.update({
-        where: { id: parseInt(id) },
-        data,
-        include: {
-          sportsCategory: {
+      const eventId = parseInt(id);
+      
+      // Extraer categoryIds y sponsorNames si existen
+      const { categoryIds, sponsorNames, ...eventData } = data;
+      
+      // Preparar datos para actualizar
+      const updateData = {
+        ...eventData,
+      };
+
+      // Si hay categorías, actualizarlas
+      if (categoryIds !== undefined) {
+        // Primero eliminar las categorías existentes
+        await prisma.serviceCategory.deleteMany({
+          where: { serviceId: eventId }
+        });
+
+        // Luego crear las nuevas categorías
+        if (categoryIds.length > 0) {
+          updateData.ServiceCategory = {
+            create: categoryIds.map(catId => ({
+              categoryId: parseInt(catId)
+            }))
+          };
+        }
+      }
+
+      // Si hay patrocinadores, actualizarlos
+      if (sponsorNames !== undefined) {
+        // Primero eliminar los patrocinadores existentes
+        await prisma.serviceSponsor.deleteMany({
+          where: { serviceId: eventId }
+        });
+
+        // Luego crear los nuevos patrocinadores
+        if (sponsorNames.length > 0) {
+          const sponsors = await prisma.sponsor.findMany({
+            where: {
+              name: {
+                in: sponsorNames
+              }
+            },
             select: {
-              id: true,
-              nombre: true,
-              edadMinima: true,
-              edadMaxima: true
+              id: true
+            }
+          });
+
+          if (sponsors.length > 0) {
+            updateData.ServiceSponsor = {
+              create: sponsors.map(sponsor => ({
+                sponsorId: sponsor.id
+              }))
+            };
+          }
+        }
+      }
+
+      return await prisma.service.update({
+        where: { id: eventId },
+        data: updateData,
+        include: {
+          ServiceCategory: {
+            include: {
+              SportsCategory: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  edadMinima: true,
+                  edadMaxima: true
+                }
+              }
             }
           },
           ServiceType: {
@@ -261,7 +387,7 @@ export class EventsRepository {
       if (error.code === 'P2003') {
         // Foreign key constraint failed
         if (error.meta?.field_name?.includes('categoryId')) {
-          throw new Error('La categoría seleccionada no existe');
+          throw new Error('Una o más categorías seleccionadas no existen');
         }
         if (error.meta?.field_name?.includes('typeId')) {
           throw new Error('El tipo de evento seleccionado no existe');
@@ -298,7 +424,7 @@ export class EventsRepository {
       prisma.service.count({ where: { status: 'Finalizado' } }),
       prisma.service.count({ where: { status: 'Cancelado' } }),
       prisma.service.count({ where: { status: 'Pausado' } }),
-      prisma.service.groupBy({
+      prisma.serviceCategory.groupBy({
         by: ['categoryId'],
         _count: {
           id: true
