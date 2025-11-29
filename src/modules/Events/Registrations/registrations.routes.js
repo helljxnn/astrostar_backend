@@ -119,6 +119,42 @@ router.get(
 
 /**
  * @swagger
+ * /api/registrations/bulk:
+ *   post:
+ *     summary: Inscribir múltiples equipos a un evento
+ *     tags: [Registrations]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - serviceId
+ *               - teamIds
+ *             properties:
+ *               serviceId:
+ *                 type: integer
+ *                 description: ID del evento
+ *               teamIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: IDs de los equipos a inscribir
+ *               notes:
+ *                 type: string
+ *                 description: Notas adicionales (opcional)
+ *     responses:
+ *       201:
+ *         description: Equipos inscritos exitosamente
+ */
+router.post(
+  '/bulk',
+  registrationsController.registerMultipleTeams
+);
+
+/**
+ * @swagger
  * /api/registrations:
  *   post:
  *     summary: Inscribir equipo a un evento

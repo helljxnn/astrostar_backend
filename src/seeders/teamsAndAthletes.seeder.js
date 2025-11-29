@@ -179,26 +179,27 @@ export async function seedTeamsAndAthletes() {
     // 7. Crear equipos de la Fundación
     console.log('⚽ Creando equipos de la Fundación...');
     const teams = [];
-    const foundationTeamNames = [
-      'Tigres FC',
-      'Águilas Doradas',
-      'Leones del Norte',
-      'Halcones Azules',
-      'Pumas Rojos',
-      'Dragones Verdes',
-      'Lobos Grises',
-      'Cóndores Blancos',
+    const foundationTeamsData = [
+      { name: 'Tigres FC', coach: 'Carlos Rodríguez' },
+      { name: 'Águilas Doradas', coach: 'María González' },
+      { name: 'Leones del Norte', coach: 'Juan Martínez' },
+      { name: 'Halcones Azules', coach: 'Ana López' },
+      { name: 'Pumas Rojos', coach: 'Pedro Sánchez' },
+      { name: 'Dragones Verdes', coach: 'Laura Ramírez' },
+      { name: 'Lobos Grises', coach: 'Miguel Torres' },
+      { name: 'Cóndores Blancos', coach: 'Sofia Herrera' },
     ];
 
-    for (let i = 0; i < foundationTeamNames.length; i++) {
+    for (let i = 0; i < foundationTeamsData.length; i++) {
       const category = categories[i % categories.length];
+      const teamData = foundationTeamsData[i];
       const team = await prisma.team.upsert({
-        where: { name: foundationTeamNames[i] },
+        where: { name: teamData.name },
         update: {},
         create: {
-          name: foundationTeamNames[i],
+          name: teamData.name,
           description: `Equipo de ${category.nombre} - Fundación AstroStar`,
-          coach: `Entrenador ${i + 1}`,
+          coach: teamData.coach,
           category: category.nombre,
           status: 'Active',
           teamType: 'Fundacion',
@@ -210,24 +211,25 @@ export async function seedTeamsAndAthletes() {
 
     // 7b. Crear equipos temporales
     console.log('⚽ Creando equipos temporales...');
-    const temporalTeamNames = [
-      'Estrellas Temporales',
-      'Cometas Rápidos',
-      'Meteoros Unidos',
-      'Galaxia FC',
-      'Nebulosa Team',
-      'Satélites Azules',
+    const temporalTeamsData = [
+      { name: 'Estrellas Temporales', coach: 'Roberto Díaz' },
+      { name: 'Cometas Rápidos', coach: 'Patricia Moreno' },
+      { name: 'Meteoros Unidos', coach: 'Fernando Castro' },
+      { name: 'Galaxia FC', coach: 'Claudia Vargas' },
+      { name: 'Nebulosa Team', coach: 'Andrés Ruiz' },
+      { name: 'Satélites Azules', coach: 'Diana Jiménez' },
     ];
 
-    for (let i = 0; i < temporalTeamNames.length; i++) {
+    for (let i = 0; i < temporalTeamsData.length; i++) {
       const category = categories[i % categories.length];
+      const teamData = temporalTeamsData[i];
       const team = await prisma.team.upsert({
-        where: { name: temporalTeamNames[i] },
+        where: { name: teamData.name },
         update: {},
         create: {
-          name: temporalTeamNames[i],
+          name: teamData.name,
           description: `Equipo temporal para evento especial - ${category.nombre}`,
-          coach: `Entrenador Temporal ${i + 1}`,
+          coach: teamData.coach,
           category: category.nombre,
           status: 'Active',
           teamType: 'Temporal',
@@ -235,20 +237,22 @@ export async function seedTeamsAndAthletes() {
       });
       teams.push(team);
     }
-    console.log(`✅ ${temporalTeamNames.length} equipos temporales creados`);
+    console.log(`✅ ${temporalTeamsData.length} equipos temporales creados`);
 
     // 8. Asignar deportistas a equipos de la Fundación
     console.log('👥 Asignando deportistas a equipos de la Fundación...');
     let memberCount = 0;
     const foundationTeams = teams.filter(t => t.teamType === 'Fundacion');
 
-    for (let i = 0; i < foundationTeams.length && i < athletes.length; i++) {
+    for (let i = 0; i < foundationTeams.length; i++) {
       const team = foundationTeams[i];
-      const startIdx = i * 2;
-      const teamAthletes = athletes.slice(startIdx, startIdx + 2); // 2 deportistas por equipo
-
-      for (let j = 0; j < teamAthletes.length; j++) {
-        const athlete = teamAthletes[j];
+      // Asignar entre 5 y 15 miembros por equipo
+      const membersPerTeam = Math.floor(Math.random() * 11) + 5; // Random entre 5 y 15
+      const startIdx = (i * 15) % athletes.length;
+      
+      for (let j = 0; j < membersPerTeam && (startIdx + j) < athletes.length; j++) {
+        const athlete = athletes[(startIdx + j) % athletes.length];
+        const positions = ['Delantero', 'Defensa', 'Mediocampista', 'Portero'];
         
         await prisma.teamMember.upsert({
           where: {
@@ -262,7 +266,7 @@ export async function seedTeamsAndAthletes() {
             teamId: team.id,
             athleteId: athlete.id,
             memberType: 'Athlete',
-            position: j === 0 ? 'Delantero' : 'Defensa',
+            position: positions[j % positions.length],
             jerseyNumber: j + 1,
             isActive: true,
           },

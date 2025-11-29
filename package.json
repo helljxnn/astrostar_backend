@@ -18,6 +18,8 @@
     "db:test": "node src/utils/testConnection.js",
     "seed:all": "node src/scripts/runSeeders.js",
     "seed:teams": "node src/scripts/seedTeamsOnly.js",
+    "clean:teams": "node src/scripts/cleanTeamsData.js",
+    "reset:teams": "npm run clean:teams && npm run seed:teams",
     "test:registrations": "node src/scripts/testRegistrations.js"
   },
   "prisma": {

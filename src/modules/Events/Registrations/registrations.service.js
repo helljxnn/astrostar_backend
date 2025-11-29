@@ -235,6 +235,7 @@ export class RegistrationsService {
     try {
       // Validar que la inscripción existe
       const existingRegistration = await this.registrationsRepository.getRegistrationById(id);
+      
       if (!existingRegistration) {
         return {
           success: false,
@@ -245,9 +246,13 @@ export class RegistrationsService {
 
       await this.registrationsRepository.cancelRegistration(id);
 
+      // Construir mensaje con validación de datos
+      const teamName = existingRegistration.team?.name || 'Equipo desconocido';
+      const eventName = existingRegistration.service?.name || 'Evento desconocido';
+
       return {
         success: true,
-        message: `La inscripción del equipo "${existingRegistration.team.name}" al evento "${existingRegistration.service.name}" ha sido cancelada.`,
+        message: `La inscripción del equipo "${teamName}" al evento "${eventName}" ha sido cancelada.`,
       };
     } catch (error) {
       console.error('Error in cancelRegistration service:', error);
@@ -309,6 +314,115 @@ export class RegistrationsService {
       };
     } catch (error) {
       console.error('Error in getAvailableTeams service:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Inscribir múltiples equipos a un evento
+   */
+  async registerMultipleTeams(data) {
+    try {
+      const { serviceId, teamIds, notes } = data;
+
+      // Validar que el evento existe
+      const event = await this.registrationsRepository.checkEventExists(serviceId);
+      if (!event) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'El evento no existe.',
+        };
+      }
+
+      // Validar que el evento no esté cancelado o finalizado
+      if (event.status === 'Cancelado') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'No se puede inscribir a un evento cancelado.',
+        };
+      }
+
+      if (event.status === 'Finalizado') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'No se puede inscribir a un evento finalizado.',
+        };
+      }
+
+      // Inscribir cada equipo
+      const results = [];
+      const errors = [];
+
+      for (const teamId of teamIds) {
+        try {
+          // Validar que el equipo existe
+          const team = await this.registrationsRepository.checkTeamExists(teamId);
+          if (!team) {
+            errors.push({
+              teamId,
+              error: 'El equipo no existe.',
+            });
+            continue;
+          }
+
+          // Validar que el equipo esté activo
+          if (team.status !== 'Active') {
+            errors.push({
+              teamId,
+              teamName: team.name,
+              error: `El equipo no está activo (estado: ${team.status}).`,
+            });
+            continue;
+          }
+
+          // Verificar si el equipo ya está inscrito
+          const existingRegistration = await this.registrationsRepository.checkTeamRegistration(
+            serviceId,
+            teamId
+          );
+
+          if (existingRegistration) {
+            errors.push({
+              teamId,
+              teamName: team.name,
+              error: 'El equipo ya está inscrito en este evento.',
+            });
+            continue;
+          }
+
+          // Crear la inscripción
+          const registration = await this.registrationsRepository.createRegistration({
+            serviceId,
+            teamId,
+            notes,
+            status: 'Registered',
+          });
+          results.push(registration);
+        } catch (error) {
+          console.error(`Error inscribiendo equipo ${teamId}:`, error);
+          errors.push({
+            teamId,
+            error: error.message,
+          });
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          registered: results,
+          errors: errors.length > 0 ? errors : undefined,
+          total: teamIds.length,
+          successful: results.length,
+          failed: errors.length,
+        },
+        message: `Se inscribieron ${results.length} de ${teamIds.length} equipos exitosamente.`,
+      };
+    } catch (error) {
+      console.error('Error in registerMultipleTeams service:', error);
       throw error;
     }
   }
