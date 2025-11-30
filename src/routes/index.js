@@ -1,4 +1,4 @@
-import { Router } from "express"; // Usamos Router de expressgit add src/routes/index.js
+import { Router } from "express";
 import authRoutes from "../modules/Auth/routes/auth.routes.js";
 import roleRoutes from "../modules/Roles/routes/roles.routes.js";
 import employeeRoutes from "../modules/Services/Employees/routes/employees.routes.js";
@@ -13,6 +13,7 @@ import athletesRoutes from "../modules/Teams/routes/athletes.routes.js";
 import eventsRoutes from "../modules/Events/events.routes.js";
 import uploadRoutes from "../shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
+import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
 
 const router = Router();
 
@@ -29,10 +30,9 @@ router.use("/teams", teamsRoutes);
 router.use("/trainers", trainersRoutes);
 router.use("/athletes", athletesRoutes);
 router.use("/events", eventsRoutes);
+router.use("/schedules", scheduleRoutes);
 
 router.use("/upload", uploadRoutes);
-
-// Test routes (only in development)
 if (process.env.NODE_ENV === "development") {
   router.use("/test", testEmailRoutes);
 }
@@ -55,7 +55,8 @@ router.get("/health", (req, res) => {
       "Teams",
       "Trainers",
       "Athletes",
-      "Events"
+      "Events",
+      "EmployeeSchedules" 
     ],
   });
 });
