@@ -231,9 +231,10 @@ export class TemporaryWorkersRepository {
   async getReferenceData() {
     const documentTypes = await prisma.documentType.findMany({
       where: {
-        NOT: {
-          name: 'Número de Identificación Tributaria'
-        }
+        NOT: [
+          { name: 'Número de Identificación Tributaria' },
+          { name: 'Registro Civil' } // Solo para deportistas
+        ]
       },
       select: {
         id: true,

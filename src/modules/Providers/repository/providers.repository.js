@@ -3,7 +3,13 @@ import prisma from "../../../config/database.js";
 export class ProvidersRepository {
   async getDocumentTypes() {
     try {
+      // Excluir "Registro Civil" - solo para deportistas
       const documentTypes = await prisma.documentType.findMany({
+        where: {
+          NOT: {
+            name: 'Registro Civil'
+          }
+        },
         select: {
           id: true,
           name: true,

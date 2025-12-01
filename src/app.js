@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
 // 💾 Servir imágenes subidas de categorías
 app.use('/uploads/categories', express.static('src/uploads/categories'));
 
-// Swagger documentation - Configuración completa
+// Swagger documentation - DEBE IR ANTES de las rutas API
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: "AstroStar API Documentation",
@@ -30,6 +30,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
     persistAuthorization: true,
   }
 }));
+
 
 // Asegurar UTF-8 en respuestas JSON (solo para rutas /api)
 app.use('/api', (req, res, next) => {

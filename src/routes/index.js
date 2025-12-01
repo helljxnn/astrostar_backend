@@ -10,6 +10,8 @@ import sportsCategoryRoutes from "../modules/Athletes/SportsCategory/routes/spor
 import teamsRoutes from "../modules/Teams/routes/teams.routes.js";
 import trainersRoutes from "../modules/Teams/routes/trainers.routes.js";
 import athletesRoutes from "../modules/Teams/routes/athletes.routes.js";
+import deportistasRoutes from "../modules/Athletes/routes/athletes.routes.js";
+import guardiansRoutes from "../modules/Athletes/Guardians/routes/guardians.routes.js";
 import eventsRoutes from "../modules/Events/events.routes.js";
 import registrationsRoutes from "../modules/Events/Registrations/registrations.routes.js";
 import uploadRoutes from "../shared/routes/upload.routes.js";
@@ -28,7 +30,9 @@ router.use("/document-types", documentTypesRoutes);
 router.use("/sports-categories", sportsCategoryRoutes);
 router.use("/teams", teamsRoutes);
 router.use("/trainers", trainersRoutes);
-router.use("/athletes", athletesRoutes);
+router.use("/teams-athletes", athletesRoutes); // Atletas de equipos (temporal)
+router.use("/deportistas", deportistasRoutes); // Módulo principal de deportistas
+router.use("/guardians", guardiansRoutes);
 router.use("/events", eventsRoutes);
 router.use("/registrations", registrationsRoutes);
 
@@ -56,7 +60,8 @@ router.get("/health", (req, res) => {
       "SportsCategories",
       "Teams",
       "Trainers",
-      "Athletes",
+      "Athletes", // Módulo principal de deportistas
+      "Guardians",
       "Events",
       "Registrations"
     ],
