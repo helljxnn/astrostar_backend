@@ -484,7 +484,9 @@ export class TemporaryWorkersService {
 
     // Mapeo de campos
     if (frontendData.firstName) backendData.firstName = frontendData.firstName.trim();
+    if (frontendData.middleName) backendData.middleName = frontendData.middleName.trim();
     if (frontendData.lastName) backendData.lastName = frontendData.lastName.trim();
+    if (frontendData.secondLastName) backendData.secondLastName = frontendData.secondLastName.trim();
     if (frontendData.identification) backendData.identification = frontendData.identification.trim();
     if (frontendData.email) backendData.email = frontendData.email.toLowerCase().trim();
     if (frontendData.phone) backendData.phone = frontendData.phone.trim();

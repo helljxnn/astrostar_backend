@@ -247,17 +247,31 @@ export class EmployeeRepository {
    */
   async getAvailableRoles() {
     return await prisma.role.findMany({
-      where: { status: 'Active' },
       orderBy: { name: 'asc' }
     });
   }
 
   /**
-   * Obtener tipos de documento
+   * Obtener tipos de documento (excluye NIT para personas naturales)
    */
   async getDocumentTypes() {
     return await prisma.documentType.findMany({
+      where: {
+        NOT: {
+          name: 'Número de Identificación Tributaria'
+        }
+      },
       orderBy: { name: 'asc' }
+    });
+  }
+
+  /**
+   * Actualizar contraseña de usuario
+   */
+  async updateUserPassword(userId, hashedPassword) {
+    return await prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: hashedPassword }
     });
   }
 }

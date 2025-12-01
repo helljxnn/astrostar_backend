@@ -32,8 +32,7 @@ export const checkPermissions = (module, action) => {
           role: {
             select: {
               name: true,
-              permissions: true,
-              status: true
+              permissions: true
             }
           }
         }
@@ -43,14 +42,6 @@ export const checkPermissions = (module, action) => {
         return res.status(403).json({
           success: false,
           message: 'Usuario sin rol asignado'
-        });
-      }
-
-      // Verificar si el rol está activo
-      if (user.role.status !== 'Active') {
-        return res.status(403).json({
-          success: false,
-          message: 'Rol inactivo'
         });
       }
 
@@ -111,14 +102,13 @@ export const checkModuleAccess = (module) => {
         include: {
           role: {
             select: {
-              permissions: true,
-              status: true
+              permissions: true
             }
           }
         }
       });
 
-      if (!user || !user.role || user.role.status !== 'Active') {
+      if (!user || !user.role) {
         return res.status(403).json({
           success: false,
           message: 'Acceso denegado'

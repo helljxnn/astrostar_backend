@@ -33,11 +33,6 @@ export const roleValidators = {
       .withMessage("La descripción debe tener entre 10 y 200 caracteres.")
       .trim(),
 
-    body("status")
-      .optional()
-      .isIn(["Active", "Inactive"])
-      .withMessage("Seleccione un estado válido (Activo o Inactivo)."),
-
     body("permissions")
       .optional()
       .isObject()
@@ -113,11 +108,6 @@ export const roleValidators = {
       .isLength({ min: 10, max: 200 })
       .withMessage("La descripción debe tener entre 10 y 200 caracteres.")
       .trim(),
-
-    body("status")
-      .optional()
-      .isIn(["Active", "Inactive"])
-      .withMessage("Seleccione un estado válido (Activo o Inactivo)."),
 
     body("permissions")
       .optional()

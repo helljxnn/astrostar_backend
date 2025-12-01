@@ -30,6 +30,34 @@ router.post('/login',
   authController.login
 );
 
+router.post('/forgot-password',
+  authValidators.forgotPassword,
+  handleValidationErrors,
+  authController.forgotPassword
+);
+
+router.post('/verify-reset-token',
+  authValidators.verifyResetToken,
+  handleValidationErrors,
+  authController.verifyResetToken
+);
+
+router.post('/reset-password',
+  authValidators.resetPassword,
+  handleValidationErrors,
+  authController.resetPassword
+);
+
+// Refresh token desde cookie HttpOnly
+router.post('/refresh',
+  authController.refresh
+);
+
+// Logout - limpia cookie HttpOnly
+router.post('/logout',
+  authController.logout
+);
+
 // Rutas protegidas
 router.get('/me', 
   authenticateToken, 
@@ -41,6 +69,26 @@ router.post('/change-password',
   authValidators.changePassword, 
   handleValidationErrors, 
   authController.changePassword
+);
+
+router.post('/request-email-change',
+  authenticateToken,
+  authController.requestEmailChange
+);
+
+router.post('/verify-email-change',
+  authenticateToken,
+  authController.verifyEmailChange
+);
+
+router.put('/profile',
+  authenticateToken,
+  authController.updateProfile
+);
+
+router.post('/logout-all',
+  authenticateToken,
+  authController.logoutAll
 );
 
 export default router;

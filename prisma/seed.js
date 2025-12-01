@@ -65,7 +65,6 @@ async function main() {
       name: "Administrador",
       description:
         "Acceso completo al sistema con todos los permisos. Este rol no puede ser eliminado.",
-      status: "Active",
       permissions: {
         // Permisos completos para todos los módulos
         dashboard: { Ver: true, Crear: true, Editar: true, Eliminar: true },
@@ -95,6 +94,7 @@ async function main() {
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
         athletesSection: {
           Ver: true,

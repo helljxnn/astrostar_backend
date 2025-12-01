@@ -21,7 +21,6 @@ export const checkRole = (requiredRoles) => {
             select: {
               id: true,
               name: true,
-              status: true,
               permissions: true
             }
           }
@@ -36,14 +35,6 @@ export const checkRole = (requiredRoles) => {
       }
 
       const userRole = userWithRole.role;
-
-      // Verificar si el rol está activo
-      if (userRole.status !== 'Active') {
-        return res.status(403).json({
-          success: false,
-          message: 'Rol de usuario inactivo'
-        });
-      }
 
       // Convertir requiredRoles a array si es string
       const rolesArray = Array.isArray(requiredRoles) ? requiredRoles : [requiredRoles];
@@ -92,7 +83,6 @@ export const checkPermission = (module, action) => {
             select: {
               id: true,
               name: true,
-              status: true,
               permissions: true
             }
           }
@@ -107,14 +97,6 @@ export const checkPermission = (module, action) => {
       }
 
       const userRole = userWithRole.role;
-
-      // Verificar si el rol está activo
-      if (userRole.status !== 'Active') {
-        return res.status(403).json({
-          success: false,
-          message: 'Rol de usuario inactivo'
-        });
-      }
 
       // Si es administrador, permitir todo
       if (userRole.name === 'Administrador') {

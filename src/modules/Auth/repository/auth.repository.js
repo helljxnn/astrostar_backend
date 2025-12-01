@@ -21,7 +21,6 @@ export class AuthRepository {
               id: true,
               name: true,
               description: true,
-              status: true,
               permissions: true
             }
           },
@@ -90,6 +89,415 @@ export class AuthRepository {
       });
     } catch (error) {
       console.error('Repository error - updatePassword:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Crear token de recuperación de contraseña
+   */
+  async createPasswordResetToken(userId, token, expiresAt) {
+    try {
+      return await prisma.passwordResetToken.create({
+        data: {
+          userId: parseInt(userId),
+          token,
+          expiresAt
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - createPasswordResetToken:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar token de recuperación válido
+   */
+  async findValidResetToken(token) {
+    try {
+      return await prisma.passwordResetToken.findFirst({
+        where: {
+          token,
+          used: false,
+          expiresAt: {
+            gt: new Date()
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - findValidResetToken:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Marcar token como usado
+   */
+  async markTokenAsUsed(tokenId) {
+    try {
+      return await prisma.passwordResetToken.update({
+        where: { id: tokenId },
+        data: { used: true }
+      });
+    } catch (error) {
+      console.error('Repository error - markTokenAsUsed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Eliminar tokens antiguos de un usuario
+   */
+  async deleteOldTokens(userId) {
+    try {
+      return await prisma.passwordResetToken.deleteMany({
+        where: {
+          userId: parseInt(userId),
+          OR: [
+            { used: true },
+            { expiresAt: { lt: new Date() } }
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - deleteOldTokens:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar usuario por ID con información completa
+   */
+  async findByIdComplete(id) {
+    try {
+      return await prisma.user.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          documentType: {
+            select: {
+              id: true,
+              name: true,
+              description: true
+            }
+          },
+          role: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              permissions: true
+            }
+          },
+          employee: {
+            select: {
+              id: true,
+              status: true,
+              statusAssignedAt: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
+          athlete: {
+            select: {
+              id: true,
+              status: true,
+              guardianId: true,
+              relationship: true,
+              otherRelationship: true,
+              currentInscriptionStatus: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - findByIdComplete:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Crear token de verificación de email
+   */
+  async createEmailVerificationToken(userId, newEmail, token, expiresAt) {
+    try {
+      return await prisma.emailVerificationToken.create({
+        data: {
+          userId: parseInt(userId),
+          newEmail,
+          token,
+          expiresAt
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - createEmailVerificationToken:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar token de verificación de email válido
+   */
+  async findValidEmailVerificationToken(userId, token) {
+    try {
+      return await prisma.emailVerificationToken.findFirst({
+        where: {
+          userId: parseInt(userId),
+          token,
+          used: false,
+          expiresAt: {
+            gt: new Date()
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - findValidEmailVerificationToken:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Marcar token de email como usado
+   */
+  async markEmailTokenAsUsed(tokenId) {
+    try {
+      return await prisma.emailVerificationToken.update({
+        where: { id: tokenId },
+        data: { used: true }
+      });
+    } catch (error) {
+      console.error('Repository error - markEmailTokenAsUsed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Eliminar tokens antiguos de verificación de email
+   */
+  async deleteOldEmailVerificationTokens(userId) {
+    try {
+      return await prisma.emailVerificationToken.deleteMany({
+        where: {
+          userId: parseInt(userId),
+          OR: [
+            { used: true },
+            { expiresAt: { lt: new Date() } }
+          ]
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - deleteOldEmailVerificationTokens:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualizar email del usuario
+   */
+  async updateEmail(userId, newEmail) {
+    try {
+      return await prisma.user.update({
+        where: { id: parseInt(userId) },
+        data: { email: newEmail },
+        include: {
+          documentType: {
+            select: {
+              id: true,
+              name: true,
+              description: true
+            }
+          },
+          role: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              permissions: true
+            }
+          },
+          employee: {
+            select: {
+              id: true,
+              status: true,
+              statusAssignedAt: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
+          athlete: {
+            select: {
+              id: true,
+              status: true,
+              guardianId: true,
+              relationship: true,
+              otherRelationship: true,
+              currentInscriptionStatus: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - updateEmail:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualizar perfil del usuario
+   */
+  async updateProfile(userId, updateData) {
+    try {
+      return await prisma.user.update({
+        where: { id: parseInt(userId) },
+        data: updateData,
+        include: {
+          documentType: {
+            select: {
+              id: true,
+              name: true,
+              description: true
+            }
+          },
+          role: {
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              permissions: true
+            }
+          },
+          employee: {
+            select: {
+              id: true,
+              status: true,
+              statusAssignedAt: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          },
+          athlete: {
+            select: {
+              id: true,
+              status: true,
+              guardianId: true,
+              relationship: true,
+              otherRelationship: true,
+              currentInscriptionStatus: true,
+              createdAt: true,
+              updatedAt: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - updateProfile:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Crear refresh token
+   */
+  async createRefreshToken(userId, token, expiresAt) {
+    try {
+      return await prisma.refreshToken.create({
+        data: {
+          userId: parseInt(userId),
+          token,
+          expiresAt
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - createRefreshToken:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar refresh token válido
+   */
+  async findValidRefreshToken(token) {
+    try {
+      return await prisma.refreshToken.findFirst({
+        where: {
+          token,
+          expiresAt: {
+            gt: new Date()
+          }
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+              status: true,
+              roleId: true
+            }
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - findValidRefreshToken:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Eliminar refresh token
+   */
+  async deleteRefreshToken(token) {
+    try {
+      return await prisma.refreshToken.deleteMany({
+        where: { token }
+      });
+    } catch (error) {
+      console.error('Repository error - deleteRefreshToken:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Eliminar todos los refresh tokens de un usuario
+   */
+  async deleteUserRefreshTokens(userId) {
+    try {
+      return await prisma.refreshToken.deleteMany({
+        where: { userId: parseInt(userId) }
+      });
+    } catch (error) {
+      console.error('Repository error - deleteUserRefreshTokens:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Eliminar refresh tokens expirados
+   */
+  async deleteExpiredRefreshTokens() {
+    try {
+      return await prisma.refreshToken.deleteMany({
+        where: {
+          expiresAt: {
+            lt: new Date()
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Repository error - deleteExpiredRefreshTokens:', error);
       throw error;
     }
   }

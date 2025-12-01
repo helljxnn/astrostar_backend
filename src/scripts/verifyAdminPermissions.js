@@ -18,7 +18,6 @@ const verifyAdminPermissions = async () => {
     }
 
     console.log('✅ Rol de Administrador encontrado:', adminRole.name);
-    console.log('📊 Estado:', adminRole.status);
 
     // Verificar permisos
     const permissions = adminRole.permissions || {};

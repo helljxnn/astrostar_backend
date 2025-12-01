@@ -151,6 +151,24 @@ export class EventsRepository {
   }
 
   /**
+   * Buscar evento por nombre (case insensitive)
+   */
+  async findByName(name) {
+    return await prisma.service.findFirst({
+      where: {
+        name: {
+          equals: name,
+          mode: 'insensitive'
+        }
+      },
+      select: {
+        id: true,
+        name: true
+      }
+    });
+  }
+
+  /**
    * Crear nuevo evento
    */
   async create(data) {
@@ -174,6 +192,24 @@ export class EventsRepository {
       });
     } catch (error) {
       console.error('Error creating event:', error);
+      
+      // Manejar errores específicos de Prisma
+      if (error.code === 'P2003') {
+        // Foreign key constraint failed
+        if (error.meta?.field_name?.includes('categoryId')) {
+          throw new Error('La categoría seleccionada no existe');
+        }
+        if (error.meta?.field_name?.includes('typeId')) {
+          throw new Error('El tipo de evento seleccionado no existe');
+        }
+        throw new Error('Error de relación: uno de los IDs proporcionados no existe');
+      }
+      
+      if (error.code === 'P2002') {
+        // Unique constraint failed
+        throw new Error('Ya existe un evento con estos datos');
+      }
+      
       throw error;
     }
   }
@@ -214,8 +250,20 @@ export class EventsRepository {
       });
     } catch (error) {
       if (error.code === 'P2025') {
-        throw new Error('El evento no fue encontrado.');
+        throw new Error('El evento no fue encontrado');
       }
+      
+      if (error.code === 'P2003') {
+        // Foreign key constraint failed
+        if (error.meta?.field_name?.includes('categoryId')) {
+          throw new Error('La categoría seleccionada no existe');
+        }
+        if (error.meta?.field_name?.includes('typeId')) {
+          throw new Error('El tipo de evento seleccionado no existe');
+        }
+        throw new Error('Error de relación: uno de los IDs proporcionados no existe');
+      }
+      
       throw error;
     }
   }
@@ -224,21 +272,27 @@ export class EventsRepository {
    * Eliminar evento físicamente
    */
   async delete(id) {
-    return await prisma.service.delete({
-      where: { id: parseInt(id) }
-    });
+    try {
+      const eventId = parseInt(id);
+      const deleted = await prisma.service.delete({
+        where: { id: eventId }
+      });
+      return deleted;
+    } catch (error) {
+      throw error;
+    }
   }
 
   /**
    * Obtener estadísticas de eventos
    */
   async getStats() {
-    const [total, programado, finalizado, cancelado, enPausa, byCategory] = await Promise.all([
+    const [total, programado, finalizado, cancelado, pausado, byCategory] = await Promise.all([
       prisma.service.count(),
       prisma.service.count({ where: { status: 'Programado' } }),
       prisma.service.count({ where: { status: 'Finalizado' } }),
       prisma.service.count({ where: { status: 'Cancelado' } }),
-      prisma.service.count({ where: { status: 'En_pausa' } }),
+      prisma.service.count({ where: { status: 'Pausado' } }),
       prisma.service.groupBy({
         by: ['categoryId'],
         _count: {
@@ -252,7 +306,7 @@ export class EventsRepository {
       programado,
       finalizado,
       cancelado,
-      enPausa,
+      pausado,
       byCategory
     };
   }
@@ -285,5 +339,86 @@ export class EventsRepository {
     ]);
 
     return { categories, types };
+  }
+
+  /**
+   * Encontrar eventos que deberían estar finalizados
+   */
+  async findEventsToFinalize(currentDate, currentTime) {
+    try {
+      // Obtener todos los eventos que no están finalizados ni cancelados
+      const events = await prisma.service.findMany({
+        where: {
+          status: {
+            notIn: ['Finalizado', 'Cancelado']
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          endDate: true,
+          endTime: true,
+          status: true
+        }
+      });
+
+      // Filtrar manualmente los eventos que deben finalizarse
+      const now = new Date();
+      const currentDateObj = new Date(currentDate);
+      currentDateObj.setHours(0, 0, 0, 0);
+
+      const eventsToFinalize = events.filter(event => {
+        const eventEndDate = new Date(event.endDate);
+        eventEndDate.setHours(0, 0, 0, 0);
+
+        // Si la fecha de fin es anterior a hoy, finalizar
+        if (eventEndDate < currentDateObj) {
+          return true;
+        }
+
+        // Si la fecha de fin es hoy, verificar la hora
+        if (eventEndDate.getTime() === currentDateObj.getTime()) {
+          // Comparar horas (formato HH:MM)
+          const [eventHour, eventMin] = event.endTime.split(':').map(Number);
+          const [currentHour, currentMin] = currentTime.split(':').map(Number);
+          
+          const eventMinutes = eventHour * 60 + eventMin;
+          const currentMinutes = currentHour * 60 + currentMin;
+
+          // Si la hora de fin ya pasó, finalizar
+          if (eventMinutes <= currentMinutes) {
+            return true;
+          }
+        }
+
+        return false;
+      });
+
+      return eventsToFinalize;
+    } catch (error) {
+      console.error('Error finding events to finalize:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualizar el estado de múltiples eventos
+   */
+  async updateMultipleStatuses(eventIds, newStatus) {
+    try {
+      return await prisma.service.updateMany({
+        where: {
+          id: {
+            in: eventIds
+          }
+        },
+        data: {
+          status: newStatus
+        }
+      });
+    } catch (error) {
+      console.error('Error updating multiple statuses:', error);
+      throw error;
+    }
   }
 }

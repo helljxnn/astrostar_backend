@@ -43,7 +43,6 @@ export class UsersRepository {
               id: true,
               name: true,
               description: true,
-              status: true,
             },
           },
           documentType: {
@@ -115,7 +114,6 @@ export class UsersRepository {
             id: true,
             name: true,
             description: true,
-            status: true,
             permissions: true,
           },
         },
