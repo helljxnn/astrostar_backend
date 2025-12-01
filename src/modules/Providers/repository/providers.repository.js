@@ -3,7 +3,13 @@ import prisma from "../../../config/database.js";
 export class ProvidersRepository {
   async getDocumentTypes() {
     try {
+      // Excluir "Registro Civil" - solo para deportistas
       const documentTypes = await prisma.documentType.findMany({
+        where: {
+          NOT: {
+            name: 'Registro Civil'
+          }
+        },
         select: {
           id: true,
           name: true,
@@ -257,12 +263,6 @@ export class ProvidersRepository {
 
       if (!provider) {
         return false;
-      }
-
-      if (provider.status === "Active") {
-        throw new Error(
-          `No se puede eliminar el proveedor "${provider.businessName}" porque está en estado "Activo". Primero cambie el estado a "Inactivo".`
-        );
       }
 
       await prisma.provider.delete({

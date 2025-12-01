@@ -207,6 +207,16 @@ export class TeamsService {
         };
       }
 
+      // Verificar si el equipo está asignado a eventos activos (Programado o En_pausa)
+      const isAssignedToEvent = await this.teamsRepository.isTeamAssignedToEvent(id);
+      if (isAssignedToEvent.isAssigned) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el equipo "${teamToDelete.nombre}" porque está asignado a ${isAssignedToEvent.count} evento(s) activo(s). Primero debe desasignarlo de los eventos o esperar a que finalicen.`,
+        };
+      }
+
       const deletedTeam = await this.teamsRepository.delete(id);
 
       return {
@@ -227,6 +237,31 @@ export class TeamsService {
           statusCode: 404,
           message: `No se encontró el equipo con ID ${id}.`,
         };
+      }
+
+      // Si se está activando un equipo temporal, validar que sus miembros no estén en otros equipos activos
+      if (status === 'Activo' && existingTeam.teamType === 'Temporal' && existingTeam.estado === 'Inactivo') {
+        console.log('🔍 Validando miembros temporales antes de activar equipo...');
+        
+        const temporalMemberIds = existingTeam.members
+          ?.filter(m => m.temporaryPersonId)
+          .map(m => m.temporaryPersonId) || [];
+
+        if (temporalMemberIds.length > 0) {
+          const conflicts = await this.teamsRepository.checkTemporalMembersInOtherActiveTeams(temporalMemberIds, id);
+          
+          if (conflicts.length > 0) {
+            const conflictMessages = conflicts.map(c => 
+              `${c.personName} ya está en el equipo activo "${c.teamName}"`
+            ).join(', ');
+            
+            return {
+              success: false,
+              statusCode: 400,
+              message: `No se puede activar el equipo porque algunos miembros ya están en otros equipos activos: ${conflictMessages}`,
+            };
+          }
+        }
       }
 
       const updatedTeam = await this.teamsRepository.changeStatus(id, status);
@@ -285,6 +320,32 @@ export class TeamsService {
     try {
       const result = await this.teamsRepository.checkDuplicateTemporalTeam(athleteIds, trainerId, excludeId);
       return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async checkTemporalPersonAvailability(personId, excludeTeamId = null) {
+    try {
+      const result = await this.teamsRepository.checkTemporalPersonAvailability(personId, excludeTeamId);
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async checkTeamAssignedToEvents(teamId) {
+    try {
+      const result = await this.teamsRepository.isTeamAssignedToEvent(teamId);
+      return {
+        success: true,
+        isAssigned: result.isAssigned,
+        count: result.count,
+        events: result.events,
+        message: result.isAssigned 
+          ? `El equipo está asignado a ${result.count} evento(s) activo(s) (Programado o En pausa)` 
+          : 'El equipo no está asignado a eventos activos'
+      };
     } catch (error) {
       throw error;
     }

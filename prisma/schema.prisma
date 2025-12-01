@@ -1,3 +1,4 @@
+// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -7,6 +8,155 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// ============================================
+//  ENUMS
+// ============================================
+
+enum RoleStatus {
+  Active
+  Inactive
+}
+
+enum UserStatus {
+  Active
+  Inactive
+  Suspended
+}
+
+enum EmployeeStatus {
+  Activo
+  Licencia
+  Desvinculado
+  Fallecido
+}
+
+enum EventStatus {
+  Programado
+  Finalizado
+  Cancelado
+  En_pausa
+}
+
+enum SponsorStatus {
+  Active
+  Inactive
+}
+
+enum SportsCategoryStatus {
+  Activo
+  Inactivo
+}
+
+enum AthleteStatus {
+  Active
+  Inactive
+}
+
+enum InscriptionStatus {
+  Active
+  Suspended
+  Expired
+}
+
+enum InscriptionRecordType {
+  initial_inscription
+  renewal
+  status_change
+}
+
+enum GuardianRelationship {
+  Mother
+  Father
+  Grandparent
+  Uncle_Aunt
+  Sibling
+  Cousin
+  Legal_Guardian
+  Neighbor
+  Family_Friend
+  Other
+}
+
+enum TemporaryPersonStatus {
+  Active
+  Inactive
+}
+
+enum TemporaryPersonType {
+  Deportista
+  Entrenador
+  Participante
+}
+
+enum TeamStatus {
+  Active
+  Inactive
+  Disbanded
+}
+
+enum MemberType {
+  Athlete
+  Employee
+  TemporaryPerson
+}
+
+enum ParticipantType {
+  Individual
+  Team
+}
+
+enum ParticipantStatus {
+  Registered
+  Confirmed
+  Cancelled
+  Attended
+}
+
+enum ProviderEntityType {
+  legal
+  natural
+}
+
+enum ProviderStatus {
+  Active
+  Inactive
+}
+
+enum PurchaseStatus {
+  Pending
+  Received
+  Partial
+  Cancelled
+}
+
+enum ScheduleRecurrence {
+  no
+  dia
+  semana
+  mes
+  anio
+  laboral
+  personalizado
+}
+
+enum ScheduleStatus {
+  Programado
+  Completado
+  Cancelado
+}
+
+enum TeamMemberRole {
+  Player
+  Coach
+  Assistant
+  Manager
+  Captain
+}
+
+// ============================================
+// MODELOS
+// ============================================
 
 model DocumentType {
   id               Int               @id @default(autoincrement())
@@ -36,27 +186,27 @@ model Role {
 }
 
 model User {
-  id                      Int                       @id @default(autoincrement())
+  id                      Int                      @id @default(autoincrement())
   firstName               String
   middleName              String?
   lastName                String
   secondLastName          String?
-  email                   String                    @unique
+  email                   String                   @unique
   passwordHash            String
   phoneNumber             String
   address                 String
   birthDate               DateTime
-  identification          String                    @unique
-  status                  UserStatus                @default(Active)
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime                  @updatedAt
+  identification          String                   @unique
+  status                  UserStatus               @default(Active)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
   documentTypeId          Int
   roleId                  Int
   age                     Int?
   athlete                 Athlete?
   employee                Employee?
-  documentType            DocumentType              @relation(fields: [documentTypeId], references: [id])
-  role                    Role                      @relation(fields: [roleId], references: [id])
+  documentType            DocumentType             @relation(fields: [documentTypeId], references: [id])
+  role                    Role                     @relation(fields: [roleId], references: [id])
   passwordResets          PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   refreshTokens           RefreshToken[]
@@ -117,8 +267,33 @@ model Employee {
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
+  schedules           EmployeeSchedule[]
 
   @@map("employees")
+}
+
+model EmployeeSchedule {
+  id                 Int                @id @default(autoincrement())
+  employeeId         Int
+  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  scheduleDate       DateTime
+  dayOfWeek          String
+  startTime          String
+  endTime            String
+  timezone           String?            @default("UTC")
+  recurrence         ScheduleRecurrence @default(no)
+  customRecurrence   String?            @db.Text
+  description        String?            @db.Text
+  status             ScheduleStatus     @default(Programado)
+  completedAt        DateTime?
+  cancellationReason String?            @db.Text
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([employeeId])
+  @@index([scheduleDate])
+  @@index([status])
+  @@map("employee_schedules")
 }
 
 model Permission {
@@ -288,13 +463,15 @@ model Team {
   description  String?
   coach        String?
   category     String?
+  phone        String?
   status       TeamStatus    @default(Active)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
-  teamType     TeamType      @default(Temporal)
   participants Participant[]
   members      TeamMember[]
 
+  @@index([status])
+  @@index([teamType])
   @@map("teams")
 }
 
@@ -401,6 +578,7 @@ model PurchaseItem {
   purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
   @@index([purchaseId])
+  
   @@map("purchase_items")
 }
 
