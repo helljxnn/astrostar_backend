@@ -705,6 +705,40 @@ export class TeamsRepository {
     return await prisma.team.findFirst({ where });
   }
 
+  async changeStatus(id, status) {
+    try {
+      const statusMap = { 'Activo': 'Active', 'Inactivo': 'Inactive' };
+      const backendStatus = statusMap[status] || status;
+
+      const updatedTeam = await prisma.team.update({
+        where: { id: parseInt(id) },
+        data: { status: backendStatus },
+        include: {
+          members: {
+            include: {
+              athlete: { 
+                include: { 
+                  user: true,
+                  inscriptions: {
+                    where: { status: "Active" },
+                    include: { sportsCategory: true }
+                  }
+                } 
+              },
+              employee: { include: { user: true } },
+              temporaryPerson: true
+            }
+          }
+        }
+      });
+
+      return this.transformToFrontend(updatedTeam);
+    } catch (error) {
+      console.error('Error en changeStatus():', error);
+      throw error;
+    }
+  }
+
   async checkNameAvailability(name, excludeId = null) {
     const existing = await this.findByName(name, excludeId);
     return {
@@ -785,6 +819,144 @@ export class TeamsRepository {
       return { isDuplicate: false };
     } catch (error) {
       console.error('Error checking duplicate temporal team:', error);
+      throw error;
+    }
+  }
+
+  async checkTemporalPersonAvailability(personId, excludeTeamId = null) {
+    try {
+      console.log('🔍 [REPO] Verificando disponibilidad:', { personId, excludeTeamId });
+      
+      const existingMembership = await prisma.teamMember.findFirst({
+        where: {
+          temporaryPersonId: parseInt(personId),
+          isActive: true,
+          team: {
+            status: 'Active',
+            ...(excludeTeamId ? { id: { not: parseInt(excludeTeamId) } } : {})
+          }
+        },
+        include: {
+          team: true,
+          temporaryPerson: true
+        }
+      });
+
+      console.log('🔍 [REPO] Resultado búsqueda:', existingMembership ? 'ENCONTRADO' : 'NO ENCONTRADO');
+
+      if (existingMembership) {
+        const person = existingMembership.temporaryPerson;
+        const team = existingMembership.team;
+        console.log('⚠️ [REPO] Persona NO disponible:', {
+          person: `${person.firstName} ${person.lastName}`,
+          team: team.name
+        });
+        return {
+          available: false,
+          message: `${person.firstName} ${person.lastName} ya está asignado/a al equipo "${team.name}"`,
+          teamName: team.name
+        };
+      }
+
+      console.log('✅ [REPO] Persona disponible');
+      return {
+        available: true,
+        message: 'Persona disponible'
+      };
+    } catch (error) {
+      console.error('❌ [REPO] Error checking temporal person availability:', error);
+      throw error;
+    }
+  }
+
+  async checkTemporalMembersInOtherActiveTeams(memberIds, excludeTeamId) {
+    try {
+      console.log('🔍 [REPO] Verificando conflictos al activar equipo:', { memberIds, excludeTeamId });
+      
+      const conflicts = [];
+
+      for (const memberId of memberIds) {
+        const existingMembership = await prisma.teamMember.findFirst({
+          where: {
+            temporaryPersonId: parseInt(memberId),
+            isActive: true,
+            team: {
+              status: 'Active',
+              id: { not: parseInt(excludeTeamId) }
+            }
+          },
+          include: {
+            team: true,
+            temporaryPerson: true
+          }
+        });
+
+        if (existingMembership) {
+          const person = existingMembership.temporaryPerson;
+          const team = existingMembership.team;
+          conflicts.push({
+            personId: person.id,
+            personName: `${person.firstName} ${person.lastName}`,
+            teamId: team.id,
+            teamName: team.name
+          });
+        }
+      }
+
+      console.log('🔍 [REPO] Conflictos encontrados:', conflicts.length);
+      return conflicts;
+    } catch (error) {
+      console.error('❌ [REPO] Error checking conflicts:', error);
+      throw error;
+    }
+  }
+
+  async isTeamAssignedToEvent(teamId) {
+    try {
+      console.log('🔍 [REPO] Verificando si equipo está asignado a eventos activos:', teamId);
+      
+      // Solo buscar participaciones en eventos con estados activos (Programado o En_pausa)
+      // NO bloquear si solo está en eventos Finalizado o Cancelado
+      const participants = await prisma.participant.findMany({
+        where: {
+          teamId: parseInt(teamId),
+          type: 'Team',
+          service: {
+            status: {
+              in: ['Programado', 'En_pausa']
+            }
+          }
+        },
+        include: {
+          service: {
+            select: {
+              id: true,
+              name: true,
+              status: true
+            }
+          }
+        }
+      });
+
+      const isAssigned = participants.length > 0;
+      
+      console.log('🔍 [REPO] Equipo asignado a eventos activos:', {
+        isAssigned,
+        count: participants.length,
+        events: participants.map(p => `${p.service.name} (${p.service.status})`)
+      });
+
+      return {
+        isAssigned,
+        count: participants.length,
+        events: participants.map(p => ({
+          id: p.service.id,
+          name: p.service.name,
+          status: p.service.status
+        }))
+      };
+    } catch (error) {
+      console.error('❌ [REPO] Error verificando asignación a eventos:', error);
       throw error;
     }
   }

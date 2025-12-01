@@ -203,14 +203,6 @@ export class ProvidersService {
         };
       }
 
-      if (providerToDelete.estado === "Activo") {
-        return {
-          success: false,
-          statusCode: 400,
-          message: `No se puede eliminar el proveedor "${providerToDelete.razonSocial}" porque está en estado "Activo". Primero cambie el estado a "Inactivo".`,
-        };
-      }
-
       const hasActivePurchases =
         await this.providersRepository.hasActivePurchases(id);
       if (hasActivePurchases) {
