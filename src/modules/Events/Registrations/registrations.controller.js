@@ -202,6 +202,69 @@ export class RegistrationsController {
       });
     }
   };
+
+  /**
+   * Obtener equipos disponibles para inscripción
+   */
+  getAvailableTeams = async (req, res) => {
+    try {
+      const { category } = req.query;
+
+      const result = await this.registrationsService.getAvailableTeams({ category });
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.total} equipos disponibles (${result.data.foundation.length} de fundación, ${result.data.temporary.length} temporales).`,
+      });
+    } catch (error) {
+      console.error('Error in getAvailableTeams controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al obtener equipos.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * Inscribir múltiples equipos a un evento
+   */
+  registerMultipleTeams = async (req, res) => {
+    try {
+      const { serviceId, teamIds, notes } = req.body;
+
+      if (!serviceId || !teamIds || !Array.isArray(teamIds) || teamIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Se requiere serviceId y un array de teamIds con al menos un equipo.',
+        });
+      }
+
+      const result = await this.registrationsService.registerMultipleTeams({
+        serviceId,
+        teamIds,
+        notes,
+      });
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json(result);
+      }
+
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error('Error in registerMultipleTeams controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al inscribir equipos.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
 }
 
 export default new RegistrationsController();

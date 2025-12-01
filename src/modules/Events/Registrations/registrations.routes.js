@@ -22,6 +22,24 @@ router.get('/stats', registrationsController.getRegistrationStats);
 
 /**
  * @swagger
+ * /api/registrations/teams/available:
+ *   get:
+ *     summary: Obtener equipos disponibles para inscripción (separados por tipo)
+ *     tags: [Registrations]
+ *     parameters:
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filtrar por categoría deportiva
+ *     responses:
+ *       200:
+ *         description: Lista de equipos disponibles separados por tipo (fundación y temporales)
+ */
+router.get('/teams/available', registrationsController.getAvailableTeams);
+
+/**
+ * @swagger
  * /api/registrations/event/{serviceId}:
  *   get:
  *     summary: Obtener inscripciones de un evento
@@ -97,6 +115,42 @@ router.get(
   registrationsValidators.getById,
   handleValidationErrors,
   registrationsController.getRegistrationById
+);
+
+/**
+ * @swagger
+ * /api/registrations/bulk:
+ *   post:
+ *     summary: Inscribir múltiples equipos a un evento
+ *     tags: [Registrations]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - serviceId
+ *               - teamIds
+ *             properties:
+ *               serviceId:
+ *                 type: integer
+ *                 description: ID del evento
+ *               teamIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: IDs de los equipos a inscribir
+ *               notes:
+ *                 type: string
+ *                 description: Notas adicionales (opcional)
+ *     responses:
+ *       201:
+ *         description: Equipos inscritos exitosamente
+ */
+router.post(
+  '/bulk',
+  registrationsController.registerMultipleTeams
 );
 
 /**
