@@ -46,6 +46,25 @@ export class RegistrationsRepository {
   }
 
   /**
+   * Crear inscripción simple (para inscripciones múltiples)
+   */
+  async createRegistration(data) {
+    return await prisma.participant.create({
+      data: {
+        type: 'Team',
+        serviceId: parseInt(data.serviceId),
+        teamId: parseInt(data.teamId),
+        sportsCategoryId: data.sportsCategoryId ? parseInt(data.sportsCategoryId) : null,
+        notes: data.notes || null,
+        status: data.status || 'Registered',
+      },
+      include: {
+        team: true,
+      },
+    });
+  }
+
+  /**
    * Verificar si un equipo ya está inscrito en un evento
    */
   async checkTeamRegistration(serviceId, teamId) {
@@ -71,7 +90,7 @@ export class RegistrationsRepository {
       where.status = filters.status;
     }
 
-    return await prisma.participant.findMany({
+    const registrations = await prisma.participant.findMany({
       where,
       include: {
         team: {
@@ -87,6 +106,18 @@ export class RegistrationsRepository {
         registrationDate: 'desc',
       },
     });
+
+    // Transformar para incluir campos compatibles con el frontend
+    return registrations.map(reg => ({
+      ...reg,
+      team: reg.team ? {
+        ...reg.team,
+        name: reg.team.name,
+        coach: reg.team.coach,
+        category: reg.team.category,
+        _count: reg.team._count,
+      } : null,
+    }));
   }
 
   /**
@@ -147,8 +178,8 @@ export class RegistrationsRepository {
         },
         service: {
           include: {
-            category: true,
-            type: true,
+            sportsCategory: true,
+            ServiceType: true,
           },
         },
         sportsCategory: true,
@@ -209,8 +240,59 @@ export class RegistrationsRepository {
         id: true,
         name: true,
         status: true,
+        teamType: true,
       },
     });
+  }
+
+  /**
+   * Obtener equipos disponibles para inscripción (separados por tipo)
+   */
+  async getAvailableTeams(filters = {}) {
+    const where = {
+      status: 'Active',
+    };
+
+    if (filters.teamType) {
+      where.teamType = filters.teamType;
+    }
+
+    if (filters.category) {
+      where.category = filters.category;
+    }
+
+    return await prisma.team.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        coach: true,
+        category: true,
+        teamType: true,
+        _count: {
+          select: { members: true },
+        },
+      },
+      orderBy: [
+        { teamType: 'asc' }, // Fundacion primero, luego Temporal
+        { name: 'asc' },
+      ],
+    });
+  }
+
+  /**
+   * Obtener equipos de la fundación
+   */
+  async getFoundationTeams(filters = {}) {
+    return await this.getAvailableTeams({ ...filters, teamType: 'Fundacion' });
+  }
+
+  /**
+   * Obtener equipos temporales
+   */
+  async getTemporaryTeams(filters = {}) {
+    return await this.getAvailableTeams({ ...filters, teamType: 'Temporal' });
   }
 
   /**

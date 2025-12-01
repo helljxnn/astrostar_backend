@@ -251,8 +251,8 @@ export class EventsService {
       errors.push('El teléfono de contacto es requerido');
     }
 
-    if (!data.categoryId) {
-      errors.push('La categoría del evento es requerida');
+    if (!data.categoryIds || !Array.isArray(data.categoryIds) || data.categoryIds.length === 0) {
+      errors.push('Debe seleccionar al menos una categoría para el evento');
     }
 
     if (!data.typeId) {
@@ -352,11 +352,18 @@ export class EventsService {
       }
     }
 
-    // Validar IDs
-    if (data.categoryId !== undefined && data.categoryId !== null) {
-      const catId = parseInt(data.categoryId);
-      if (isNaN(catId) || catId < 1) {
-        errors.push('La categoría debe ser un número válido');
+    // Validar IDs de categorías
+    if (data.categoryIds !== undefined && data.categoryIds !== null) {
+      if (!Array.isArray(data.categoryIds)) {
+        errors.push('Las categorías deben ser un array');
+      } else if (data.categoryIds.length > 0) {
+        const invalidIds = data.categoryIds.filter(id => {
+          const catId = parseInt(id);
+          return isNaN(catId) || catId < 1;
+        });
+        if (invalidIds.length > 0) {
+          errors.push('Todas las categorías deben ser números válidos');
+        }
       }
     }
 
@@ -394,8 +401,39 @@ export class EventsService {
       endDate = new Date(existingData.endDate);
     }
 
+    // Validar que la fecha de inicio sea al menos el día siguiente (solo al crear)
+    if (!existingData && startDate) {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      // Parsear la fecha de inicio sin problemas de zona horaria
+      // Si startDate es un Date object, extraer año, mes, día
+      // Si es un string, parsearlo correctamente
+      let startYear, startMonth, startDay;
+      
+      if (startDate instanceof Date) {
+        // Usar UTC para evitar problemas de zona horaria
+        startYear = startDate.getUTCFullYear();
+        startMonth = startDate.getUTCMonth();
+        startDay = startDate.getUTCDate();
+      } else {
+        // Si es string, parsearlo manualmente
+        const dateStr = startDate.toString();
+        const parts = dateStr.split('T')[0].split('-');
+        startYear = parseInt(parts[0]);
+        startMonth = parseInt(parts[1]) - 1; // Los meses en JS son 0-indexed
+        startDay = parseInt(parts[2]);
+      }
+      
+      const startDateOnly = new Date(startYear, startMonth, startDay);
+      
+      // Rechazar si la fecha de inicio es hoy o anterior (permitir desde mañana)
+      if (startDateOnly.getTime() <= today.getTime()) {
+        errors.push('El evento debe crearse con al menos un día de anticipación. La fecha de inicio debe ser a partir de mañana');
+      }
+    }
+
     // Validar que la fecha de finalización no sea en el pasado (solo al crear)
-    // Permitir eventos del día actual sin importar la hora
     if (!existingData && endDate) {
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -435,11 +473,13 @@ export class EventsService {
       }
     }
 
-    // Validar que categoryId y typeId existan (se validará en la BD)
-    if (data.categoryId !== undefined && data.categoryId !== null) {
-      const catId = parseInt(data.categoryId);
-      if (catId < 1) {
-        errors.push('El ID de categoría debe ser mayor a 0');
+    // Validar que categoryIds y typeId existan (se validará en la BD)
+    if (data.categoryIds !== undefined && data.categoryIds !== null) {
+      if (Array.isArray(data.categoryIds) && data.categoryIds.length > 0) {
+        const invalidIds = data.categoryIds.filter(id => parseInt(id) < 1);
+        if (invalidIds.length > 0) {
+          errors.push('Todos los IDs de categoría deben ser mayores a 0');
+        }
       }
     }
 
@@ -489,7 +529,16 @@ export class EventsService {
     if (frontendData.imageUrl !== undefined) backendData.imageUrl = frontendData.imageUrl || null;
     if (frontendData.scheduleFile !== undefined) backendData.scheduleFile = frontendData.scheduleFile || null;
     if (frontendData.publish !== undefined) backendData.publish = Boolean(frontendData.publish);
-    if (frontendData.categoryId) backendData.categoryId = parseInt(frontendData.categoryId);
+    if (frontendData.categoryIds !== undefined) {
+      backendData.categoryIds = Array.isArray(frontendData.categoryIds) 
+        ? frontendData.categoryIds.map(id => parseInt(id))
+        : [];
+    }
+    if (frontendData.sponsorNames !== undefined) {
+      backendData.sponsorNames = Array.isArray(frontendData.sponsorNames) 
+        ? frontendData.sponsorNames
+        : [];
+    }
     if (frontendData.typeId) backendData.typeId = parseInt(frontendData.typeId);
 
     return backendData;

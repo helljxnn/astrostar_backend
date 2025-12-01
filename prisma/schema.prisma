@@ -186,27 +186,27 @@ model Role {
 }
 
 model User {
-  id                      Int                       @id @default(autoincrement())
+  id                      Int                      @id @default(autoincrement())
   firstName               String
   middleName              String?
   lastName                String
   secondLastName          String?
-  email                   String                    @unique
+  email                   String                   @unique
   passwordHash            String
   phoneNumber             String
   address                 String
   birthDate               DateTime
-  identification          String                    @unique
-  status                  UserStatus                @default(Active)
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime                  @updatedAt
+  identification          String                   @unique
+  status                  UserStatus               @default(Active)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
   documentTypeId          Int
   roleId                  Int
   age                     Int?
   athlete                 Athlete?
   employee                Employee?
-  documentType            DocumentType              @relation(fields: [documentTypeId], references: [id])
-  role                    Role                      @relation(fields: [roleId], references: [id])
+  documentType            DocumentType             @relation(fields: [documentTypeId], references: [id])
+  role                    Role                     @relation(fields: [roleId], references: [id])
   passwordResets          PasswordResetToken[]
   emailVerificationTokens EmailVerificationToken[]
   refreshTokens           RefreshToken[]
@@ -335,18 +335,19 @@ model EmployeePermission {
 }
 
 model SportsCategory {
-  id           Int                  @id @default(autoincrement())
-  nombre       String               @db.VarChar(50)
-  edadMinima   Int
-  edadMaxima   Int
-  descripcion  String?              @db.VarChar(500)
-  archivo      String?
-  estado       SportsCategoryStatus @default(Activo)
-  publicar     Boolean              @default(false)
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  inscriptions Inscription[]
-  participants Participant[]
+  id              Int                  @id @default(autoincrement())
+  nombre          String               @db.VarChar(50)
+  edadMinima      Int
+  edadMaxima      Int
+  descripcion     String?              @db.VarChar(500)
+  archivo         String?
+  estado          SportsCategoryStatus @default(Activo)
+  publicar        Boolean              @default(false)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  inscriptions    Inscription[]
+  participants    Participant[]
+  ServiceCategory ServiceCategory[]
 
   @@map("sports_categories")
 }
@@ -357,7 +358,6 @@ model EventCategory {
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-  Service     Service[]
 
   @@map("event_categories")
 }
@@ -423,6 +423,7 @@ model Inscription {
   athlete                Athlete               @relation(fields: [athleteId], references: [id], onDelete: Cascade)
   sportsCategory         SportsCategory        @relation(fields: [sportsCategoryId], references: [id])
 
+  @@unique([athleteId, sportsCategoryId])
   @@index([athleteId])
   @@index([sportsCategoryId])
   @@index([status])
@@ -582,7 +583,7 @@ model PurchaseItem {
 }
 
 model Service {
-  id               Int              @id @default(autoincrement())
+  id               Int                @id @default(autoincrement())
   name             String
   description      String?
   startDate        DateTime
@@ -591,18 +592,27 @@ model Service {
   endTime          String
   location         String
   phone            String
-  status           EventStatus      @default(Programado)
+  status           EventStatus        @default(Programado)
   imageUrl         String?
   scheduleFile     String?
-  publish          Boolean          @default(false)
-  categoryId       Int
+  publish          Boolean            @default(false)
   typeId           Int
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime
-  event_categories EventCategory    @relation(fields: [categoryId], references: [id])
-  ServiceType      ServiceType      @relation(fields: [typeId], references: [id])
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  ServiceType      ServiceType        @relation(fields: [typeId], references: [id])
   ServiceSponsor   ServiceSponsor[]
+  ServiceCategory  ServiceCategory[]
   participants     Participant[]
+}
+
+model ServiceCategory {
+  id               Int            @id @default(autoincrement())
+  serviceId        Int
+  categoryId       Int
+  Service          Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  SportsCategory   SportsCategory @relation(fields: [categoryId], references: [id])
+
+  @@unique([serviceId, categoryId])
 }
 
 model ServiceSponsor {
@@ -616,11 +626,12 @@ model ServiceSponsor {
 }
 
 model ServiceType {
-  id        Int       @id @default(autoincrement())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime
-  Service   Service[]
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Service     Service[]
 }
 
 model Sponsor {
@@ -631,7 +642,7 @@ model Sponsor {
   phone          String?
   status         SponsorStatus    @default(Active)
   createdAt      DateTime         @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime         @updatedAt
   ServiceSponsor ServiceSponsor[]
 }
 
