@@ -220,8 +220,7 @@ export class TemporaryWorkersRepository {
       active,
       inactive,
       deportista: typeStats.deportista || 0,
-      entrenador: typeStats.entrenador || 0,
-      participante: typeStats.participante || 0
+      entrenador: typeStats.entrenador || 0
     };
   }
 

@@ -290,6 +290,11 @@ export class SportsCategoryService {
     try {
       const category = await prisma.sportsCategory.findUnique({
         where: { id: Number(id) },
+        include: {
+          inscriptions: true,
+          participants: true,
+          ServiceCategory: true,
+        },
       });
 
       if (!category) {
@@ -297,6 +302,33 @@ export class SportsCategoryService {
           success: false,
           statusCode: 404,
           message: `Categoría con ID ${id} no encontrada.`,
+        };
+      }
+
+      // Verificar si hay inscripciones activas
+      if (category.inscriptions && category.inscriptions.length > 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar la categoría porque tiene ${category.inscriptions.length} inscripción(es) asociada(s).`,
+        };
+      }
+
+      // Verificar si hay participantes
+      if (category.participants && category.participants.length > 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar la categoría porque tiene ${category.participants.length} participante(s) asociado(s).`,
+        };
+      }
+
+      // Verificar si hay servicios/eventos asociados
+      if (category.ServiceCategory && category.ServiceCategory.length > 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar la categoría porque está asociada a ${category.ServiceCategory.length} evento(s).`,
         };
       }
 
@@ -311,6 +343,16 @@ export class SportsCategoryService {
       };
     } catch (error) {
       console.error("Error en deleteSportsCategory:", error);
+      
+      // Manejar errores específicos de Prisma
+      if (error.code === 'P2003') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "No se puede eliminar la categoría porque tiene registros relacionados.",
+        };
+      }
+
       return {
         success: false,
         message: "Error al eliminar la categoría.",

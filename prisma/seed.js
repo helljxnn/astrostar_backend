@@ -228,27 +228,34 @@ async function main() {
 
   // TIPOS DE EVENTOS
   console.log("📅 Configurando tipos de eventos...");
-  await prisma.serviceType.createMany({
-    data: [
-      {
-        name: "Festival",
-        description: "Evento festivo con múltiples actividades - Inscripción: Equipos"
-      },
-      {
-        name: "Torneo",
-        description: "Competencia deportiva con múltiples participantes - Inscripción: Equipos"
-      },
-      {
-        name: "Clausura",
-        description: "Evento de cierre o finalización - Inscripción: Deportistas"
-      },
-      {
-        name: "Taller",
-        description: "Actividad formativa práctica - Inscripción: Deportistas"
-      }
-    ],
-    skipDuplicates: true
-  });
+  
+  const eventTypes = [
+    {
+      name: "Festival",
+      description: "Evento festivo con múltiples actividades - Inscripción: Equipos"
+    },
+    {
+      name: "Torneo",
+      description: "Competencia deportiva con múltiples participantes - Inscripción: Equipos"
+    },
+    {
+      name: "Clausura",
+      description: "Evento de cierre o finalización - Inscripción: Deportistas"
+    },
+    {
+      name: "Taller",
+      description: "Actividad formativa práctica - Inscripción: Deportistas"
+    }
+  ];
+
+  for (const eventType of eventTypes) {
+    await prisma.serviceType.upsert({
+      where: { name: eventType.name },
+      update: { description: eventType.description },
+      create: eventType
+    });
+  }
+  
   console.log("   ✓ Tipos de eventos configurados\n");
 
   // PATROCINADORES (DATOS QUEMADOS TEMPORALES)
@@ -295,6 +302,41 @@ async function main() {
   });
   console.log("   ✓ Patrocinadores temporales configurados\n");
 
+  console.log("DEBUG: Antes de categorías deportivas");
+  
+  // CATEGORÍAS DEPORTIVAS
+  console.log("🏅 Configurando categorías deportivas...");
+  await prisma.sportsCategory.createMany({
+    data: [
+      {
+        nombre: "Infantil",
+        edadMinima: 10,
+        edadMaxima: 12,
+        descripcion: "Categoría infantil para niños de 10 a 12 años",
+        estado: "Activo",
+        publicar: true
+      },
+      {
+        nombre: "PreJuvenil",
+        edadMinima: 13,
+        edadMaxima: 15,
+        descripcion: "Categoría prejuvenil para adolescentes de 13 a 15 años",
+        estado: "Activo",
+        publicar: true
+      },
+      {
+        nombre: "Juvenil",
+        edadMinima: 16,
+        edadMaxima: 18,
+        descripcion: "Categoría juvenil para jóvenes de 16 a 18 años",
+        estado: "Activo",
+        publicar: true
+      }
+    ],
+    skipDuplicates: true
+  });
+  console.log("   ✓ Categorías deportivas configuradas\n");
+
   console.log("🎉 Seed completado exitosamente!");
   console.log("📊 Resumen:");
   console.log("   • Tipos de documento: Configurados");
@@ -303,6 +345,7 @@ async function main() {
   console.log("   • Categorías de eventos: Configuradas");
   console.log("   • Tipos de eventos: Configurados");
   console.log("   • Patrocinadores temporales: Configurados");
+  console.log("   • Categorías deportivas: Configuradas (Infantil, PreJuvenil, Juvenil)");
   console.log("\n💡 Puedes iniciar sesión con:");
   console.log("   📧 Email: astrostar.java@gmail.com");
   console.log("   🔑 Contraseña: Admin123*");

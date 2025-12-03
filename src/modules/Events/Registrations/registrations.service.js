@@ -426,4 +426,298 @@ export class RegistrationsService {
       throw error;
     }
   }
+
+  // ============================================
+  // MÉTODOS PARA INSCRIPCIÓN DE DEPORTISTAS
+  // ============================================
+
+  /**
+   * Inscribir deportista individual a un evento
+   */
+  async registerAthleteToEvent(data) {
+    try {
+      // Validar que el evento existe
+      const event = await this.registrationsRepository.checkEventExists(data.serviceId);
+      if (!event) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'El evento no existe.',
+        };
+      }
+
+      // Validar que el evento no esté cancelado
+      if (event.status === 'Cancelado') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'No se puede inscribir a un evento cancelado.',
+        };
+      }
+
+      // Validar que el evento no haya finalizado
+      if (event.status === 'Finalizado') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'No se puede inscribir a un evento finalizado.',
+        };
+      }
+
+      // Validar que el deportista existe
+      const athlete = await this.registrationsRepository.checkAthleteExists(data.athleteId);
+      if (!athlete) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'El deportista no existe.',
+        };
+      }
+
+      // Validar que el deportista esté activo
+      if (athlete.status !== 'Active') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede inscribir un deportista con estado ${athlete.status}.`,
+        };
+      }
+
+      // Verificar si el deportista ya está inscrito
+      const existingRegistration = await this.registrationsRepository.checkAthleteRegistration(
+        data.serviceId,
+        data.athleteId
+      );
+
+      if (existingRegistration) {
+        const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
+        return {
+          success: false,
+          statusCode: 400,
+          message: `El deportista "${athleteName}" ya está inscrito en el evento "${event.name}".`,
+        };
+      }
+
+      // Crear la inscripción
+      const registration = await this.registrationsRepository.registerAthleteToEvent(data);
+
+      const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
+      return {
+        success: true,
+        data: registration,
+        message: `El deportista "${athleteName}" ha sido inscrito exitosamente al evento "${event.name}".`,
+      };
+    } catch (error) {
+      console.error('Error in registerAthleteToEvent service:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener inscripciones individuales de un evento
+   */
+  async getEventAthleteRegistrations(serviceId, filters = {}) {
+    try {
+      // Validar que el evento existe
+      const event = await this.registrationsRepository.checkEventExists(serviceId);
+      if (!event) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'El evento no existe.',
+        };
+      }
+
+      const registrations = await this.registrationsRepository.getEventAthleteRegistrations(
+        serviceId,
+        filters
+      );
+
+      return {
+        success: true,
+        data: {
+          event: {
+            id: event.id,
+            name: event.name,
+            status: event.status,
+          },
+          registrations,
+          total: registrations.length,
+        },
+      };
+    } catch (error) {
+      console.error('Error in getEventAthleteRegistrations service:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener inscripciones de un deportista
+   */
+  async getAthleteRegistrations(athleteId, filters = {}) {
+    try {
+      // Validar que el deportista existe
+      const athlete = await this.registrationsRepository.checkAthleteExists(athleteId);
+      if (!athlete) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'El deportista no existe.',
+        };
+      }
+
+      const registrations = await this.registrationsRepository.getAthleteRegistrations(
+        athleteId,
+        filters
+      );
+
+      const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
+      return {
+        success: true,
+        data: {
+          athlete: {
+            id: athlete.id,
+            name: athleteName,
+            status: athlete.status,
+          },
+          registrations,
+          total: registrations.length,
+        },
+      };
+    } catch (error) {
+      console.error('Error in getAthleteRegistrations service:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener deportistas disponibles para inscripción
+   */
+  async getAvailableAthletes(filters = {}) {
+    try {
+      const athletes = await this.registrationsRepository.getAvailableAthletes(filters);
+
+      return {
+        success: true,
+        data: {
+          athletes,
+          total: athletes.length,
+        },
+      };
+    } catch (error) {
+      console.error('Error in getAvailableAthletes service:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Inscribir múltiples deportistas a un evento
+   */
+  async registerMultipleAthletes(data) {
+    try {
+      const { serviceId, athleteIds, notes } = data;
+
+      // Validar que el evento existe
+      const event = await this.registrationsRepository.checkEventExists(serviceId);
+      if (!event) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'El evento no existe.',
+        };
+      }
+
+      // Validar que el evento no esté cancelado o finalizado
+      if (event.status === 'Cancelado') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'No se puede inscribir a un evento cancelado.',
+        };
+      }
+
+      if (event.status === 'Finalizado') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'No se puede inscribir a un evento finalizado.',
+        };
+      }
+
+      // Inscribir cada deportista
+      const results = [];
+      const errors = [];
+
+      for (const athleteId of athleteIds) {
+        try {
+          // Validar que el deportista existe
+          const athlete = await this.registrationsRepository.checkAthleteExists(athleteId);
+          if (!athlete) {
+            errors.push({
+              athleteId,
+              error: 'El deportista no existe.',
+            });
+            continue;
+          }
+
+          // Validar que el deportista esté activo
+          if (athlete.status !== 'Active') {
+            const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
+            errors.push({
+              athleteId,
+              athleteName,
+              error: `El deportista no está activo (estado: ${athlete.status}).`,
+            });
+            continue;
+          }
+
+          // Verificar si el deportista ya está inscrito
+          const existingRegistration = await this.registrationsRepository.checkAthleteRegistration(
+            serviceId,
+            athleteId
+          );
+
+          if (existingRegistration) {
+            const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
+            errors.push({
+              athleteId,
+              athleteName,
+              error: 'El deportista ya está inscrito en este evento.',
+            });
+            continue;
+          }
+
+          // Crear la inscripción
+          const registration = await this.registrationsRepository.createAthleteRegistration({
+            serviceId,
+            athleteId,
+            notes,
+            status: 'Registered',
+          });
+          results.push(registration);
+        } catch (error) {
+          console.error(`Error inscribiendo deportista ${athleteId}:`, error);
+          errors.push({
+            athleteId,
+            error: error.message,
+          });
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          registered: results,
+          errors: errors.length > 0 ? errors : undefined,
+          total: athleteIds.length,
+          successful: results.length,
+          failed: errors.length,
+        },
+        message: `Se inscribieron ${results.length} de ${athleteIds.length} deportistas exitosamente.`,
+      };
+    } catch (error) {
+      console.error('Error in registerMultipleAthletes service:', error);
+      throw error;
+    }
+  }
 }

@@ -252,4 +252,157 @@ router.delete(
   registrationsController.cancelRegistration
 );
 
+// ============================================
+// RUTAS PARA INSCRIPCIÓN DE DEPORTISTAS
+// ============================================
+
+/**
+ * @swagger
+ * /api/registrations/athletes/available:
+ *   get:
+ *     summary: Obtener deportistas disponibles para inscripción
+ *     tags: [Registrations]
+ *     parameters:
+ *       - in: query
+ *         name: sportsCategoryId
+ *         schema:
+ *           type: integer
+ *         description: Filtrar por categoría deportiva
+ *     responses:
+ *       200:
+ *         description: Lista de deportistas disponibles
+ */
+router.get('/athletes/available', registrationsController.getAvailableAthletes);
+
+/**
+ * @swagger
+ * /api/registrations/event/{serviceId}/athletes:
+ *   get:
+ *     summary: Obtener inscripciones individuales de un evento
+ *     tags: [Registrations]
+ *     parameters:
+ *       - in: path
+ *         name: serviceId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Registered, Confirmed, Cancelled, Attended]
+ *     responses:
+ *       200:
+ *         description: Lista de inscripciones individuales del evento
+ */
+router.get(
+  '/event/:serviceId/athletes',
+  registrationsValidators.getByEvent,
+  handleValidationErrors,
+  registrationsController.getEventAthleteRegistrations
+);
+
+/**
+ * @swagger
+ * /api/registrations/athlete/{athleteId}:
+ *   get:
+ *     summary: Obtener inscripciones de un deportista
+ *     tags: [Registrations]
+ *     parameters:
+ *       - in: path
+ *         name: athleteId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Registered, Confirmed, Cancelled, Attended]
+ *     responses:
+ *       200:
+ *         description: Lista de inscripciones del deportista
+ */
+router.get(
+  '/athlete/:athleteId',
+  registrationsValidators.getByAthlete,
+  handleValidationErrors,
+  registrationsController.getAthleteRegistrations
+);
+
+/**
+ * @swagger
+ * /api/registrations/athlete:
+ *   post:
+ *     summary: Inscribir deportista individual a un evento
+ *     tags: [Registrations]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - serviceId
+ *               - athleteId
+ *             properties:
+ *               serviceId:
+ *                 type: integer
+ *                 description: ID del evento
+ *               athleteId:
+ *                 type: integer
+ *                 description: ID del deportista
+ *               sportsCategoryId:
+ *                 type: integer
+ *                 description: ID de la categoría deportiva (opcional)
+ *               notes:
+ *                 type: string
+ *                 description: Notas adicionales (opcional)
+ *     responses:
+ *       201:
+ *         description: Deportista inscrito exitosamente
+ */
+router.post(
+  '/athlete',
+  registrationsValidators.registerAthlete,
+  handleValidationErrors,
+  registrationsController.registerAthleteToEvent
+);
+
+/**
+ * @swagger
+ * /api/registrations/athletes/bulk:
+ *   post:
+ *     summary: Inscribir múltiples deportistas a un evento
+ *     tags: [Registrations]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - serviceId
+ *               - athleteIds
+ *             properties:
+ *               serviceId:
+ *                 type: integer
+ *                 description: ID del evento
+ *               athleteIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: IDs de los deportistas a inscribir
+ *               notes:
+ *                 type: string
+ *                 description: Notas adicionales (opcional)
+ *     responses:
+ *       201:
+ *         description: Deportistas inscritos exitosamente
+ */
+router.post(
+  '/athletes/bulk',
+  registrationsController.registerMultipleAthletes
+);
+
 export default router;

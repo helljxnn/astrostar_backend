@@ -265,6 +265,161 @@ export class RegistrationsController {
       });
     }
   };
+
+  // ============================================
+  // CONTROLADORES PARA INSCRIPCIÓN DE DEPORTISTAS
+  // ============================================
+
+  /**
+   * Inscribir deportista individual a un evento
+   */
+  registerAthleteToEvent = async (req, res) => {
+    try {
+      const result = await this.registrationsService.registerAthleteToEvent(req.body);
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json(result);
+      }
+
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error('Error in registerAthleteToEvent controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al inscribir deportista.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * Obtener inscripciones individuales de un evento
+   */
+  getEventAthleteRegistrations = async (req, res) => {
+    try {
+      const { serviceId } = req.params;
+      const { status } = req.query;
+
+      const result = await this.registrationsService.getEventAthleteRegistrations(serviceId, {
+        status,
+      });
+
+      if (!result.success) {
+        return res.status(result.statusCode || 404).json(result);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.total} inscripciones individuales para el evento.`,
+      });
+    } catch (error) {
+      console.error('Error in getEventAthleteRegistrations controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al obtener inscripciones.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * Obtener inscripciones de un deportista
+   */
+  getAthleteRegistrations = async (req, res) => {
+    try {
+      const { athleteId } = req.params;
+      const { status } = req.query;
+
+      const result = await this.registrationsService.getAthleteRegistrations(athleteId, {
+        status,
+      });
+
+      if (!result.success) {
+        return res.status(result.statusCode || 404).json(result);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.total} inscripciones para el deportista.`,
+      });
+    } catch (error) {
+      console.error('Error in getAthleteRegistrations controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al obtener inscripciones.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * Obtener deportistas disponibles para inscripción
+   */
+  getAvailableAthletes = async (req, res) => {
+    try {
+      const { sportsCategoryId } = req.query;
+
+      const result = await this.registrationsService.getAvailableAthletes({ sportsCategoryId });
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.total} deportistas disponibles.`,
+      });
+    } catch (error) {
+      console.error('Error in getAvailableAthletes controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al obtener deportistas.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * Inscribir múltiples deportistas a un evento
+   */
+  registerMultipleAthletes = async (req, res) => {
+    try {
+      const { serviceId, athleteIds, notes } = req.body;
+
+      if (!serviceId || !athleteIds || !Array.isArray(athleteIds) || athleteIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Se requiere serviceId y un array de athleteIds con al menos un deportista.',
+        });
+      }
+
+      const result = await this.registrationsService.registerMultipleAthletes({
+        serviceId,
+        athleteIds,
+        notes,
+      });
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json(result);
+      }
+
+      res.status(201).json({
+        success: true,
+        data: result.data,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error('Error in registerMultipleAthletes controller:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al inscribir deportistas.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
 }
 
 export default new RegistrationsController();

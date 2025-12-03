@@ -86,7 +86,6 @@ enum TemporaryPersonStatus {
 enum TemporaryPersonType {
   Deportista
   Entrenador
-  Participante
 }
 
 enum TeamStatus {
@@ -446,7 +445,7 @@ model TemporaryPerson {
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   documentTypeId Int
-  personType     TemporaryPersonType   @default(Participante)
+  personType     TemporaryPersonType   @default(Deportista)
   category       String?
   team           String?
   middleName     String?
@@ -471,7 +470,6 @@ model Team {
   members      TeamMember[]
 
   @@index([status])
-  @@index([teamType])
   @@map("teams")
 }
 
@@ -619,7 +617,7 @@ model ServiceSponsor {
   id        Int     @id @default(autoincrement())
   serviceId Int
   sponsorId Int
-  Service   Service @relation(fields: [serviceId], references: [id])
+  Service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   Sponsor   Sponsor @relation(fields: [sponsorId], references: [id])
 
   @@unique([serviceId, sponsorId])
@@ -627,7 +625,7 @@ model ServiceSponsor {
 
 model ServiceType {
   id          Int       @id @default(autoincrement())
-  name        String
+  name        String    @unique
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -644,119 +642,4 @@ model Sponsor {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   ServiceSponsor ServiceSponsor[]
-}
-
-enum UserStatus {
-  Active
-  Inactive
-  Suspended
-}
-
-enum EmployeeStatus {
-  Activo
-  Licencia
-  Desvinculado
-  Fallecido
-}
-
-enum EventStatus {
-  Programado
-  Finalizado
-  Cancelado
-  En_pausa
-}
-
-enum SponsorStatus {
-  Active
-  Inactive
-}
-
-enum SportsCategoryStatus {
-  Activo
-  Inactivo
-}
-
-enum AthleteStatus {
-  Active
-  Inactive
-}
-
-enum InscriptionStatus {
-  Active
-  Suspended
-  Expired
-}
-
-enum InscriptionRecordType {
-  initial_inscription
-  renewal
-  status_change
-}
-
-enum GuardianRelationship {
-  Mother
-  Father
-  Grandparent
-  Uncle_Aunt
-  Sibling
-  Cousin
-  Legal_Guardian
-  Neighbor
-  Family_Friend
-  Other
-}
-
-enum TemporaryPersonStatus {
-  Active
-  Inactive
-}
-
-enum TemporaryPersonType {
-  Deportista
-  Entrenador
-  Participante
-}
-
-enum TeamStatus {
-  Active
-  Inactive
-  Disbanded
-}
-
-enum MemberType {
-  Athlete
-  Employee
-  TemporaryPerson
-}
-
-enum TeamType {
-  Fundacion
-  Temporal
-}
-
-enum ParticipantType {
-  Individual
-  Team
-}
-
-enum ProviderEntityType {
-  legal
-  natural
-}
-
-enum ProviderStatus {
-  Active
-  Inactive
-}
-
-enum PurchaseStatus {
-  Pending
-  Received
-  Partial
-  Cancelled
-}
-
-enum RoleStatus {
-  Active
-  Inactive
 }

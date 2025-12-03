@@ -405,11 +405,28 @@ export class EventsRepository {
   async delete(id) {
     try {
       const eventId = parseInt(id);
+      
+      // Prisma eliminará automáticamente en cascada:
+      // - ServiceCategory (onDelete: Cascade)
+      // - ServiceSponsor (onDelete: Cascade)
+      // - Participant (onDelete: Cascade)
       const deleted = await prisma.service.delete({
         where: { id: eventId }
       });
+      
       return deleted;
     } catch (error) {
+      console.error('Error deleting event in repository:', error);
+      
+      // Proporcionar mensajes de error más específicos
+      if (error.code === 'P2003') {
+        throw new Error('No se puede eliminar el evento debido a restricciones de clave foránea. Verifica que no tenga relaciones activas.');
+      }
+      
+      if (error.code === 'P2025') {
+        throw new Error('El evento no existe o ya fue eliminado.');
+      }
+      
       throw error;
     }
   }
