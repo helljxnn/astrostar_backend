@@ -9,13 +9,20 @@ export class GuardiansRepository {
       id: guardian.id,
       nombreCompleto: `${guardian.firstName} ${guardian.lastName}`,
       tipoDocumento: guardian.documentType?.name || '',
+      documentTypeId: guardian.documentTypeId,
       identificacion: guardian.identification,
       correo: guardian.email,
       telefono: guardian.phone,
-      fechaNacimiento: null, // Guardian no tiene fecha de nacimiento en el modelo actual
-      estado: 'Activo', // Guardian no tiene estado en el modelo actual
+      fechaNacimiento: guardian.birthDate ? guardian.birthDate.toISOString().split('T')[0] : null,
+      estado: 'Activo',
       createdAt: guardian.createdAt,
       updatedAt: guardian.updatedAt,
+      firstName: guardian.firstName,
+      lastName: guardian.lastName,
+      email: guardian.email,
+      phoneNumber: guardian.phone,
+      identification: guardian.identification,
+      birthDate: guardian.birthDate,
     };
   }
 
@@ -31,14 +38,17 @@ export class GuardiansRepository {
       phone: guardianData.phoneNumber?.trim(),
       address: guardianData.address || 'N/A',
       occupation: guardianData.occupation || null,
+      birthDate: guardianData.birthDate ? new Date(guardianData.birthDate) : null,
     };
   }
 
   async create(guardianData) {
     try {
+      console.log('📥 Repository create - datos recibidos:', guardianData);
+      
       const transformed = this.transformToBackend(guardianData);
+      console.log('🔄 Datos transformados:', transformed);
 
-      // Validar que el tipo de documento existe
       const documentType = await prisma.documentType.findUnique({
         where: { id: parseInt(guardianData.documentTypeId) }
       });
@@ -57,7 +67,11 @@ export class GuardiansRepository {
         }
       });
 
-      return this.transformToFrontend(newGuardian);
+      console.log('✅ Guardian creado:', newGuardian);
+      const result = this.transformToFrontend(newGuardian);
+      console.log('📤 Datos para frontend:', result);
+      
+      return result;
     } catch (error) {
       console.error('❌ Error en create():', error.message);
       throw error;
@@ -66,11 +80,23 @@ export class GuardiansRepository {
 
   async update(id, guardianData) {
     try {
+      console.log('📥 Repository update - ID:', id, 'Datos:', guardianData);
+      
       const transformed = this.transformToBackend(guardianData);
+      console.log('🔄 Datos transformados:', transformed);
 
-      // Si se actualiza el tipo de documento, buscar el ID
       let documentTypeId;
-      if (guardianData.tipoDocumento) {
+      if (guardianData.documentTypeId) {
+        documentTypeId = parseInt(guardianData.documentTypeId);
+        
+        const documentType = await prisma.documentType.findUnique({
+          where: { id: documentTypeId }
+        });
+        
+        if (!documentType) {
+          throw new Error(`Tipo de documento con ID "${documentTypeId}" no encontrado`);
+        }
+      } else if (guardianData.tipoDocumento) {
         const documentType = await prisma.documentType.findFirst({
           where: { name: guardianData.tipoDocumento }
         });
@@ -84,6 +110,8 @@ export class GuardiansRepository {
         updateData.documentTypeId = documentTypeId;
       }
 
+      console.log('💾 Actualizando en BD:', updateData);
+
       const updatedGuardian = await prisma.guardian.update({
         where: { id: parseInt(id) },
         data: updateData,
@@ -92,9 +120,13 @@ export class GuardiansRepository {
         }
       });
 
-      return this.transformToFrontend(updatedGuardian);
+      console.log('✅ Guardian actualizado:', updatedGuardian);
+      const result = this.transformToFrontend(updatedGuardian);
+      console.log('📤 Datos para frontend:', result);
+
+      return result;
     } catch (error) {
-      console.error('Error en update():', error);
+      console.error('❌ Error en update():', error.message);
       throw error;
     }
   }
@@ -109,7 +141,7 @@ export class GuardiansRepository {
         nombreCompleto: `${deletedGuardian.firstName} ${deletedGuardian.lastName}`,
       };
     } catch (error) {
-      console.error('Error en delete():', error);
+      console.error('❌ Error en delete():', error);
       throw error;
     }
   }
@@ -126,8 +158,6 @@ export class GuardiansRepository {
         { email: { contains: search, mode: 'insensitive' } },
       ];
     }
-
-    // Guardian no tiene campo de estado en el modelo actual
 
     const [guardians, total] = await Promise.all([
       prisma.guardian.findMany({
@@ -184,7 +214,6 @@ export class GuardiansRepository {
   async getStats() {
     const total = await prisma.guardian.count();
 
-    // Guardian no tiene estado, así que todos se consideran activos
     return {
       total,
       activos: total,

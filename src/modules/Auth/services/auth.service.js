@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { AuthRepository } from '../repository/auth.repository.js';
-import emailService from '../../../services/email.service.js';
+import emailService from '../../../services/emailService.js';
 
 export class AuthService {
   constructor() {

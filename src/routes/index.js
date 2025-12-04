@@ -31,7 +31,7 @@ router.use("/sports-categories", sportsCategoryRoutes);
 router.use("/teams", teamsRoutes);
 router.use("/trainers", trainersRoutes);
 router.use("/teams-athletes", athletesRoutes); // Atletas de equipos (temporal)
-router.use("/deportistas", deportistasRoutes); // Módulo principal de deportistas
+router.use("/athletes", deportistasRoutes); // Módulo principal de deportistas
 router.use("/guardians", guardiansRoutes);
 router.use("/events", eventsRoutes);
 router.use("/registrations", registrationsRoutes);

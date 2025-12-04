@@ -196,6 +196,7 @@ model Guardian {
   phone          String       @db.VarChar(20)
   address        String?      @db.VarChar(200)
   occupation     String?      @db.VarChar(100)
+  birthDate      DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
   documentTypeId Int

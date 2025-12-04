@@ -230,6 +230,172 @@ Este es un email automático del sistema AstroStar.
   }
 
   /**
+   * Enviar email de bienvenida a nuevo deportista
+   */
+  async sendAthleteWelcomeEmail(athleteData, credentials) {
+    try {
+      const { email, firstName, lastName } = athleteData;
+      const { email: loginEmail, temporaryPassword } = credentials;
+
+      const mailOptions = {
+        from: {
+          name: 'AstroStar - Sistema de Gestión',
+          address: process.env.EMAIL_USER || 'astrostar.system@gmail.com'
+        },
+        to: email,
+        subject: '🎉 Bienvenido a AstroStar - Credenciales de Acceso',
+        html: this.generateAthleteWelcomeEmailTemplate(firstName, lastName, loginEmail, temporaryPassword),
+        text: this.generateAthleteWelcomeEmailText(firstName, lastName, loginEmail, temporaryPassword)
+      };
+
+      // Si no hay transporter configurado, simular envío
+      if (!this.transporter) {
+        return { success: true, messageId: 'simulated-' + Date.now() };
+      }
+
+      const result = await this.transporter.sendMail(mailOptions);
+      
+      return { 
+        success: true, 
+        messageId: result.messageId,
+        message: 'Email enviado exitosamente'
+      };
+    } catch (error) {
+      return { 
+        success: false, 
+        error: error.message,
+        message: 'Error enviando email'
+      };
+    }
+  }
+
+  /**
+   * Generar template HTML para email de bienvenida de deportista
+   */
+  generateAthleteWelcomeEmailTemplate(firstName, lastName, email, password) {
+    return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Bienvenido a AstroStar</title>
+        <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+            .credentials-box { background: white; border: 2px solid #667eea; border-radius: 8px; padding: 20px; margin: 20px 0; }
+            .credential-item { margin: 10px 0; padding: 10px; background: #f0f4ff; border-radius: 5px; }
+            .warning { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 5px; margin: 20px 0; }
+            .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+            .button { display: inline-block; background: #667eea; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; margin: 15px 0; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>🌟 ¡Bienvenido a AstroStar!</h1>
+                <p>Sistema de Gestión Deportiva</p>
+            </div>
+            
+            <div class="content">
+                <h2>Hola ${firstName} ${lastName},</h2>
+                
+                <p>¡Nos complace darte la bienvenida a AstroStar! Tu cuenta de deportista ha sido creada exitosamente.</p>
+                
+                <div class="credentials-box">
+                    <h3>🔐 Tus Credenciales de Acceso</h3>
+                    <div class="credential-item">
+                        <strong>📧 Usuario:</strong> ${email}
+                    </div>
+                    <div class="credential-item">
+                        <strong>🔑 Contraseña Temporal:</strong> <code>${password}</code>
+                    </div>
+                </div>
+                
+                <div class="warning">
+                    <strong>⚠️ Importante:</strong>
+                    <ul>
+                        <li>Esta es una contraseña temporal generada automáticamente</li>
+                        <li>Debes cambiarla en tu primer inicio de sesión</li>
+                        <li>No compartas estas credenciales con nadie</li>
+                        <li>Si tienes problemas para acceder, contacta al administrador</li>
+                    </ul>
+                </div>
+                
+                <div style="text-align: center;">
+                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" class="button">
+                        🚀 Acceder al Sistema
+                    </a>
+                </div>
+                
+                <h3>📋 Próximos Pasos:</h3>
+                <ol>
+                    <li>Inicia sesión con las credenciales proporcionadas</li>
+                    <li>Cambia tu contraseña por una segura</li>
+                    <li>Completa tu perfil si es necesario</li>
+                    <li>Revisa tu información deportiva y categoría</li>
+                </ol>
+                
+                <p>Si tienes alguna pregunta o necesitas ayuda, no dudes en contactar al equipo de soporte.</p>
+                
+                <p>¡Esperamos que tengas una excelente experiencia deportiva con AstroStar!</p>
+                
+                <p>Saludos cordiales,<br>
+                <strong>Equipo AstroStar</strong></p>
+            </div>
+            
+            <div class="footer">
+                <p>Este es un email automático del sistema AstroStar. Por favor no respondas a este mensaje.</p>
+                <p>© ${new Date().getFullYear()} AstroStar - Sistema de Gestión Deportiva</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    `;
+  }
+
+  /**
+   * Generar texto plano para email de bienvenida de deportista
+   */
+  generateAthleteWelcomeEmailText(firstName, lastName, email, password) {
+    return `
+¡Bienvenido a AstroStar!
+
+Hola ${firstName} ${lastName},
+
+Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido creada exitosamente.
+
+CREDENCIALES DE ACCESO:
+- Usuario: ${email}
+- Contraseña Temporal: ${password}
+
+IMPORTANTE:
+- Esta es una contraseña temporal que debes cambiar en tu primer inicio de sesión
+- No compartas estas credenciales con nadie
+- Si tienes problemas para acceder, contacta al administrador
+
+PRÓXIMOS PASOS:
+1. Inicia sesión con las credenciales proporcionadas
+2. Cambia tu contraseña por una segura
+3. Completa tu perfil si es necesario
+4. Revisa tu información deportiva y categoría
+
+Accede al sistema en: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+
+¡Esperamos que tengas una excelente experiencia deportiva con AstroStar!
+
+Saludos cordiales,
+Equipo AstroStar
+
+---
+Este es un email automático del sistema AstroStar.
+© ${new Date().getFullYear()} AstroStar - Sistema de Gestión Deportiva
+    `;
+  }
+
+  /**
    * Enviar email de recuperación de contraseña
    */
   async sendPasswordResetEmail(email, resetToken) {
