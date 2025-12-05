@@ -5,6 +5,7 @@ import employeeRoutes from "../modules/Services/Employees/routes/employees.route
 import usersRoutes from "../modules/Users/routes/users.routes.js";
 import providerRoutes from "../modules/Providers/routes/providers.routes.js";
 import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/routes/temporaryworkers.routes.js";
+import temporaryWorkersRoutes from "../modules/Services/Employees/routes/employees.routes.js";
 import documentTypesRoutes from "./documentTypes.routes.js";
 import sportsCategoryRoutes from "../modules/Athletes/SportsCategory/routes/sportsCategory.routes.js";
 import teamsRoutes from "../modules/Teams/routes/teams.routes.js";
@@ -16,6 +17,7 @@ import eventsRoutes from "../modules/Events/events.routes.js";
 import registrationsRoutes from "../modules/Events/Registrations/registrations.routes.js";
 import uploadRoutes from "../shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
+import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
 
 const router = Router();
 
@@ -35,10 +37,9 @@ router.use("/athletes", deportistasRoutes); // Módulo principal de deportistas
 router.use("/guardians", guardiansRoutes);
 router.use("/events", eventsRoutes);
 router.use("/registrations", registrationsRoutes);
+router.use("/schedules", scheduleRoutes);
 
 router.use("/upload", uploadRoutes);
-
-// Test routes (only in development)
 if (process.env.NODE_ENV === "development") {
   router.use("/test", testEmailRoutes);
 }
@@ -63,7 +64,8 @@ router.get("/health", (req, res) => {
       "Athletes", // Módulo principal de deportistas
       "Guardians",
       "Events",
-      "Registrations"
+      "Registrations",
+      "EmployeeSchedules" 
     ],
   });
 });

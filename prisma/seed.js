@@ -4,12 +4,15 @@
  * Este archivo carga los datos esenciales que el sistema necesita para funcionar:
  * - Tipos de documento (obligatorios para usuarios)
  * - Rol de Administrador (crítico para acceso inicial)
+ * - Usuario Administrador por defecto
  *
  * Estos datos son considerados "maestros" y no deben ser modificados por usuarios finales.
  * Se ejecuta automáticamente en la inicialización de la base de datos.
  */
 
 import { PrismaClient } from "../generated/prisma/index.js";
+import bcrypt from "bcrypt";
+
 const prisma = new PrismaClient();
 
 async function main() {
@@ -151,6 +154,49 @@ async function main() {
 
   console.log(`   ✓ ${adminRole.name} configurado correctamente\n`);
 
+  // USUARIO ADMINISTRADOR POR DEFECTO
+  console.log("👤 Configurando usuario administrador por defecto...");
+  
+  // Verificar si ya existe el usuario
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: "astrostar.java@gmail.com" }
+  });
+
+  if (!existingAdmin) {
+    // Obtener el tipo de documento "Cédula de Ciudadanía"
+    const documentType = await prisma.documentType.findFirst({
+      where: { name: "Cédula de Ciudadanía" }
+    });
+
+    // Hash de la contraseña
+    const hashedPassword = await bcrypt.hash("Admin123*", 10);
+
+    await prisma.user.create({
+      data: {
+        firstName: "Administrador",
+        middleName: "del",
+        lastName: "Sistema",
+        secondLastName: "Astrostar",
+        identification: "1000000000",
+        documentTypeId: documentType.id,
+        email: "astrostar.java@gmail.com",
+        passwordHash: hashedPassword,
+        phoneNumber: "+57 300 0000000",
+        address: "Sede Principal Astrostar",
+        birthDate: new Date("1990-01-01"),
+        age: 34,
+        roleId: adminRole.id,
+        status: "Active"
+      }
+    });
+
+    console.log("   ✓ Usuario administrador creado exitosamente");
+    console.log("   📧 Email: astrostar.java@gmail.com");
+    console.log("   🔑 Contraseña: Admin123*\n");
+  } else {
+    console.log("   ℹ️  Usuario administrador ya existe\n");
+  }
+
   // CATEGORÍAS DE EVENTOS
   console.log("🏆 Configurando categorías de eventos...");
   await prisma.eventCategory.createMany({
@@ -214,7 +260,6 @@ async function main() {
         description: "Tienda especializada en artículos deportivos",
         contactEmail: "contacto@deportesxyz.com",
         phone: "+57 300 1234567",
-        website: "https://deportesxyz.com",
         status: "Active"
       },
       {
@@ -222,7 +267,6 @@ async function main() {
         description: "Entidad financiera comprometida con el deporte",
         contactEmail: "patrocinios@banconacional.com",
         phone: "+57 300 7654321",
-        website: "https://banconacional.com",
         status: "Active"
       },
       {
@@ -230,7 +274,6 @@ async function main() {
         description: "Marca líder en bebidas deportivas",
         contactEmail: "marketing@power.com",
         phone: "+57 301 1112233",
-        website: "https://power.com",
         status: "Active"
       },
       {
@@ -238,7 +281,6 @@ async function main() {
         description: "Fabricante de indumentaria deportiva de alta calidad",
         contactEmail: "ventas@elite.com",
         phone: "+57 302 4445566",
-        website: "https://elite.com",
         status: "Active"
       },
       {
@@ -257,12 +299,13 @@ async function main() {
   console.log("📊 Resumen:");
   console.log("   • Tipos de documento: Configurados");
   console.log("   • Rol Administrador: Listo para usar");
+  console.log("   • Usuario Administrador: Creado");
   console.log("   • Categorías de eventos: Configuradas");
   console.log("   • Tipos de eventos: Configurados");
   console.log("   • Patrocinadores temporales: Configurados");
-  console.log(
-    "\n💡 El sistema está listo para crear el primer usuario administrador."
-  );
+  console.log("\n💡 Puedes iniciar sesión con:");
+  console.log("   📧 Email: astrostar.java@gmail.com");
+  console.log("   🔑 Contraseña: Admin123*");
 }
 
 main()

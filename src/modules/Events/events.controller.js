@@ -434,6 +434,7 @@ export class EventsController {
   createEvent = async (req, res) => {
     try {
       const eventData = req.body;
+      console.log('📝 Datos recibidos para crear evento:', JSON.stringify(eventData, null, 2));
       
       const result = await this.eventsService.createEvent(eventData);
 
@@ -443,7 +444,8 @@ export class EventsController {
         message: result.message
       });
     } catch (error) {
-      console.error('Error creating event:', error);
+      console.error('❌ Error creating event:', error.message);
+      console.error('Stack:', error.stack);
       
       res.status(400).json({
         success: false,
