@@ -106,13 +106,6 @@ enum ParticipantType {
   Team
 }
 
-enum ParticipantStatus {
-  Registered
-  Confirmed
-  Cancelled
-  Attended
-}
-
 enum ProviderEntityType {
   legal
   natural
@@ -470,8 +463,6 @@ model Team {
   participants Participant[]
   members      TeamMember[]
 
-  @@index([status])
-  @@index([teamType])
   @@map("teams")
 }
 
@@ -536,9 +527,6 @@ model Provider {
   documentType     DocumentType?      @relation(fields: [documentTypeId], references: [id])
   purchases        Purchase[]
 
-  @@index([status])
-  @@index([entityType])
-  @@index([businessName])
   @@map("providers")
 }
 
@@ -558,10 +546,6 @@ model Purchase {
   employee       Employee?      @relation(fields: [employeeId], references: [id])
   provider       Provider       @relation(fields: [providerId], references: [id])
 
-  @@index([providerId])
-  @@index([employeeId])
-  @@index([status])
-  @@index([purchaseDate])
   @@map("purchases")
 }
 
@@ -577,8 +561,6 @@ model PurchaseItem {
   purchaseId  Int
   purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
 
-  @@index([purchaseId])
-  
   @@map("purchase_items")
 }
 
@@ -644,119 +626,4 @@ model Sponsor {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   ServiceSponsor ServiceSponsor[]
-}
-
-enum UserStatus {
-  Active
-  Inactive
-  Suspended
-}
-
-enum EmployeeStatus {
-  Activo
-  Licencia
-  Desvinculado
-  Fallecido
-}
-
-enum EventStatus {
-  Programado
-  Finalizado
-  Cancelado
-  En_pausa
-}
-
-enum SponsorStatus {
-  Active
-  Inactive
-}
-
-enum SportsCategoryStatus {
-  Activo
-  Inactivo
-}
-
-enum AthleteStatus {
-  Active
-  Inactive
-}
-
-enum InscriptionStatus {
-  Active
-  Suspended
-  Expired
-}
-
-enum InscriptionRecordType {
-  initial_inscription
-  renewal
-  status_change
-}
-
-enum GuardianRelationship {
-  Mother
-  Father
-  Grandparent
-  Uncle_Aunt
-  Sibling
-  Cousin
-  Legal_Guardian
-  Neighbor
-  Family_Friend
-  Other
-}
-
-enum TemporaryPersonStatus {
-  Active
-  Inactive
-}
-
-enum TemporaryPersonType {
-  Deportista
-  Entrenador
-  Participante
-}
-
-enum TeamStatus {
-  Active
-  Inactive
-  Disbanded
-}
-
-enum MemberType {
-  Athlete
-  Employee
-  TemporaryPerson
-}
-
-enum TeamType {
-  Fundacion
-  Temporal
-}
-
-enum ParticipantType {
-  Individual
-  Team
-}
-
-enum ProviderEntityType {
-  legal
-  natural
-}
-
-enum ProviderStatus {
-  Active
-  Inactive
-}
-
-enum PurchaseStatus {
-  Pending
-  Received
-  Partial
-  Cancelled
-}
-
-enum RoleStatus {
-  Active
-  Inactive
 }
