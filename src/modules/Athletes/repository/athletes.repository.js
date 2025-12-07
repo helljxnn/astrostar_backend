@@ -664,3 +664,6 @@ export class AthletesRepository {
     }
   }
 }
+
+// Exportar instancia para compatibilidad
+export const athletesRepository = new AthletesRepository();

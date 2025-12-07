@@ -496,6 +496,148 @@ Este es un email automático del sistema AstroStar.
   }
 
   /**
+   * Enviar correo de confirmación de pre-inscripción
+   */
+  async sendPreRegistrationEmail(preRegistrationData) {
+    try {
+      const { nombres, apellidos, fechaNacimiento, telefono, correo } = preRegistrationData;
+      
+      const mailOptions = {
+        from: {
+          name: 'Fundación Manuela Vanegas',
+          address: process.env.EMAIL_USER || 'fundacion@example.com'
+        },
+        to: correo,
+        subject: '¡Bienvenida a la Fundación Manuela Vanegas! - Próximos Pasos',
+        html: this.generatePreRegistrationTemplate(nombres, apellidos, fechaNacimiento, telefono, correo),
+      };
+
+      if (!this.transporter) {
+        console.log('⚠️  Transporter no configurado, simulando envío');
+        return { success: true, messageId: 'simulated-prereg-' + Date.now() };
+      }
+
+      const result = await this.transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error('❌ Error enviando email de pre-inscripción:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Generar template para pre-inscripción
+   */
+  generatePreRegistrationTemplate(nombres, apellidos, fechaNacimiento, telefono, correo) {
+    const formatDate = (date) => {
+      return new Date(date).toLocaleDateString('es-CO', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    };
+
+    return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Confirmación de Pre-inscripción</title>
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f5f5f5;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+        <tr>
+          <td align="center">
+            <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+              
+              <!-- Header -->
+              <tr>
+                <td style="background: linear-gradient(135deg, #B595FF 0%, #9BE9FF 100%); padding: 40px 30px; text-align: center;">
+                  <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">¡Bienvenida!</h1>
+                  <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Fundación Manuela Vanegas</p>
+                </td>
+              </tr>
+              
+              <!-- Body -->
+              <tr>
+                <td style="padding: 40px 30px;">
+                  <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 22px;">Hola ${nombres},</h2>
+                  
+                  <p style="color: #666666; line-height: 1.6; margin: 0 0 20px 0; font-size: 16px;">
+                    ¡Gracias por tu interés en formar parte de nuestra fundación! Hemos recibido tu pre-inscripción exitosamente.
+                  </p>
+                  
+                  <div style="background-color: #f8f9fa; border-left: 4px solid #B595FF; padding: 20px; margin: 20px 0; border-radius: 5px;">
+                    <h3 style="color: #B595FF; margin: 0 0 15px 0; font-size: 18px;">📋 Tus Datos Registrados:</h3>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Nombre:</strong> ${nombres} ${apellidos}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Fecha de Nacimiento:</strong> ${formatDate(fechaNacimiento)}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${telefono}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Correo:</strong> ${correo}</p>
+                  </div>
+                  
+                  <h3 style="color: #333333; margin: 30px 0 15px 0; font-size: 20px;">🎯 Próximo Paso: Completar tu Matrícula</h3>
+                  
+                  <p style="color: #666666; line-height: 1.6; margin: 0 0 20px 0; font-size: 16px;">
+                    Para continuar con el proceso de matrícula, te invitamos a visitarnos en:
+                  </p>
+                  
+                  <div style="background-color: #B595FF; color: #ffffff; padding: 25px; border-radius: 8px; margin: 20px 0;">
+                    <h4 style="margin: 0 0 15px 0; font-size: 18px;">📍 Unidad Deportiva Cristo Rey</h4>
+                    <p style="margin: 5px 0; font-size: 14px;"><strong>Dirección:</strong> Copacabana, Antioquia</p>
+                    <p style="margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${process.env.CONTACT_PHONE || '(604) 123-4567'}</p>
+                    <p style="margin: 5px 0; font-size: 14px;"><strong>Email:</strong> ${process.env.CONTACT_EMAIL || 'contacto@fundacionmv.com'}</p>
+                    <p style="margin: 5px 0; font-size: 14px;"><strong>Horario:</strong> Lunes a Viernes, 8:00 AM - 5:00 PM</p>
+                  </div>
+                  
+                  <h3 style="color: #333333; margin: 30px 0 15px 0; font-size: 18px;">📄 Documentos que debes traer:</h3>
+                  <ul style="color: #666666; line-height: 1.8; font-size: 15px; padding-left: 20px;">
+                    <li>Documento de identidad (original y copia)</li>
+                    <li>Registro civil de nacimiento</li>
+                    <li>Certificado médico</li>
+                    <li>2 fotos tamaño cédula</li>
+                    <li>Documento de identidad del acudiente (si es menor de edad)</li>
+                  </ul>
+                  
+                  <div style="background-color: #e3f2fd; border-left: 4px solid #2196F3; padding: 15px; margin: 25px 0; border-radius: 5px;">
+                    <p style="color: #1976D2; margin: 0; font-size: 14px;">
+                      💡 <strong>Importante:</strong> Nuestro equipo revisará tu información y te contactaremos pronto para coordinar tu visita.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+              
+              <!-- Social Media -->
+              <tr>
+                <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e0e0e0;">
+                  <h4 style="color: #333333; margin: 0 0 15px 0; font-size: 16px;">Síguenos en Redes Sociales</h4>
+                  <p style="margin: 10px 0; color: #666666; font-size: 14px;">
+                    Facebook | Instagram | Twitter
+                  </p>
+                </td>
+              </tr>
+              
+              <!-- Footer -->
+              <tr>
+                <td style="background-color: #333333; padding: 20px; text-align: center;">
+                  <p style="color: #ffffff; margin: 0; font-size: 12px;">
+                    © ${new Date().getFullYear()} Fundación Manuela Vanegas. Todos los derechos reservados.
+                  </p>
+                  <p style="color: #999999; margin: 10px 0 0 0; font-size: 11px;">
+                    Este correo fue enviado a ${correo} porque te pre-inscribiste en nuestra fundación.
+                  </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    `;
+  }
+
+  /**
    * Enviar código de verificación para cambio de email
    */
   async sendEmailVerificationCode(email, verificationCode, firstName) {
