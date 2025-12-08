@@ -80,7 +80,6 @@ export class RegistrationsService {
         message: `El equipo "${team.name}" ha sido inscrito exitosamente al evento "${event.name}".`,
       };
     } catch (error) {
-      console.error('Error in registerTeamToEvent service:', error);
       throw error;
     }
   }
@@ -118,7 +117,6 @@ export class RegistrationsService {
         },
       };
     } catch (error) {
-      console.error('Error in getEventRegistrations service:', error);
       throw error;
     }
   }
@@ -156,7 +154,6 @@ export class RegistrationsService {
         },
       };
     } catch (error) {
-      console.error('Error in getTeamRegistrations service:', error);
       throw error;
     }
   }
@@ -181,7 +178,6 @@ export class RegistrationsService {
         data: registration,
       };
     } catch (error) {
-      console.error('Error in getRegistrationById service:', error);
       throw error;
     }
   }
@@ -223,7 +219,6 @@ export class RegistrationsService {
         message: `Estado de inscripción actualizado a "${status}".`,
       };
     } catch (error) {
-      console.error('Error in updateRegistrationStatus service:', error);
       throw error;
     }
   }
@@ -255,7 +250,6 @@ export class RegistrationsService {
         message: `La inscripción del equipo "${teamName}" al evento "${eventName}" ha sido cancelada.`,
       };
     } catch (error) {
-      console.error('Error in cancelRegistration service:', error);
       throw error;
     }
   }
@@ -288,7 +282,6 @@ export class RegistrationsService {
         },
       };
     } catch (error) {
-      console.error('Error in getRegistrationStats service:', error);
       throw error;
     }
   }
@@ -313,7 +306,6 @@ export class RegistrationsService {
         },
       };
     } catch (error) {
-      console.error('Error in getAvailableTeams service:', error);
       throw error;
     }
   }
@@ -402,7 +394,6 @@ export class RegistrationsService {
           });
           results.push(registration);
         } catch (error) {
-          console.error(`Error inscribiendo equipo ${teamId}:`, error);
           errors.push({
             teamId,
             error: error.message,
@@ -422,7 +413,6 @@ export class RegistrationsService {
         message: `Se inscribieron ${results.length} de ${teamIds.length} equipos exitosamente.`,
       };
     } catch (error) {
-      console.error('Error in registerMultipleTeams service:', error);
       throw error;
     }
   }
@@ -508,7 +498,6 @@ export class RegistrationsService {
         message: `El deportista "${athleteName}" ha sido inscrito exitosamente al evento "${event.name}".`,
       };
     } catch (error) {
-      console.error('Error in registerAthleteToEvent service:', error);
       throw error;
     }
   }
@@ -546,7 +535,6 @@ export class RegistrationsService {
         },
       };
     } catch (error) {
-      console.error('Error in getEventAthleteRegistrations service:', error);
       throw error;
     }
   }
@@ -585,7 +573,6 @@ export class RegistrationsService {
         },
       };
     } catch (error) {
-      console.error('Error in getAthleteRegistrations service:', error);
       throw error;
     }
   }
@@ -605,7 +592,6 @@ export class RegistrationsService {
         },
       };
     } catch (error) {
-      console.error('Error in getAvailableAthletes service:', error);
       throw error;
     }
   }
@@ -696,7 +682,6 @@ export class RegistrationsService {
           });
           results.push(registration);
         } catch (error) {
-          console.error(`Error inscribiendo deportista ${athleteId}:`, error);
           errors.push({
             athleteId,
             error: error.message,
@@ -716,7 +701,6 @@ export class RegistrationsService {
         message: `Se inscribieron ${results.length} de ${athleteIds.length} deportistas exitosamente.`,
       };
     } catch (error) {
-      console.error('Error in registerMultipleAthletes service:', error);
       throw error;
     }
   }

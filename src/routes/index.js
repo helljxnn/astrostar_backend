@@ -14,7 +14,7 @@ import deportistasRoutes from "../modules/Athletes/routes/athletes.routes.js";
 import guardiansRoutes from "../modules/Athletes/Guardians/routes/guardians.routes.js";
 import eventsRoutes from "../modules/Events/events.routes.js";
 import registrationsRoutes from "../modules/Events/Registrations/registrations.routes.js";
-import uploadRoutes from "../shared/routes/upload.routes.js";
+import uploadRoutes from "../services/shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
 import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
 

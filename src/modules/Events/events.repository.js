@@ -97,7 +97,6 @@ export class EventsRepository {
         }
       };
     } catch (error) {
-      console.error('Error in findAll repository:', error);
       throw error;
     }
   }
@@ -260,8 +259,6 @@ export class EventsRepository {
         }
       });
     } catch (error) {
-      console.error('Error creating event:', error);
-      
       // Manejar errores específicos de Prisma
       if (error.code === 'P2003') {
         // Foreign key constraint failed
@@ -416,8 +413,6 @@ export class EventsRepository {
       
       return deleted;
     } catch (error) {
-      console.error('Error deleting event in repository:', error);
-      
       // Proporcionar mensajes de error más específicos
       if (error.code === 'P2003') {
         throw new Error('No se puede eliminar el evento debido a restricciones de clave foránea. Verifica que no tenga relaciones activas.');
@@ -558,7 +553,6 @@ export class EventsRepository {
 
       return eventsToFinalize;
     } catch (error) {
-      console.error('Error finding events to finalize:', error);
       throw error;
     }
   }
@@ -579,7 +573,6 @@ export class EventsRepository {
         }
       });
     } catch (error) {
-      console.error('Error updating multiple statuses:', error);
       throw error;
     }
   }

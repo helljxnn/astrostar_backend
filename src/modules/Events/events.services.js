@@ -16,7 +16,6 @@ export class EventsService {
       const result = await this.eventsRepository.findAll(filters);
       return result;
     } catch (error) {
-      console.error('Error in getAllEvents service:', error);
       throw error;
     }
   }
@@ -41,7 +40,6 @@ export class EventsService {
         data: event
       };
     } catch (error) {
-      console.error('Error in getEventById service:', error);
       throw error;
     }
   }
@@ -74,7 +72,6 @@ export class EventsService {
         message: `Evento '${event.name}' creado exitosamente.`
       };
     } catch (error) {
-      console.error('Error in createEvent service:', error);
       throw error;
     }
   }
@@ -125,7 +122,6 @@ export class EventsService {
         message: `Evento '${updatedEvent.name}' actualizado exitosamente.`
       };
     } catch (error) {
-      console.error('Error in updateEvent service:', error);
       throw error;
     }
   }
@@ -159,8 +155,6 @@ export class EventsService {
         message
       };
     } catch (error) {
-      console.error('Error al eliminar evento:', error);
-      
       // Manejar errores específicos de Prisma
       if (error.code === 'P2003') {
         throw new Error('No se puede eliminar el evento porque tiene relaciones activas.');
@@ -185,7 +179,6 @@ export class EventsService {
         data: stats
       };
     } catch (error) {
-      console.error('Error in getEventStats service:', error);
       throw error;
     }
   }
@@ -201,7 +194,6 @@ export class EventsService {
         data
       };
     } catch (error) {
-      console.error('Error in getReferenceData service:', error);
       throw error;
     }
   }
@@ -566,7 +558,6 @@ export class EventsService {
 
       return eventsToUpdate.length;
     } catch (error) {
-      console.error('Error actualizando estados de eventos:', error);
       return 0;
     }
   }
