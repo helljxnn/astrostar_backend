@@ -66,6 +66,7 @@ model User {
   documentTypeId          Int
   roleId                  Int
   age                     Int?
+  avatarColorIndex        Int?                     @default(0)
   athlete                 Athlete?
   emailVerificationTokens EmailVerificationToken[]
   employee                Employee?
@@ -223,6 +224,7 @@ model Athlete {
   id                       Int                   @id @default(autoincrement())
   userId                   Int                   @unique
   status                   AthleteStatus         @default(Active)
+  inactivityReason         String?               @db.VarChar(200)
   guardianId               Int?
   relationship             GuardianRelationship?
   otherRelationship        String?               @db.VarChar(100)
@@ -243,19 +245,22 @@ model Athlete {
 }
 
 model Enrollment {
-  id               Int      @id @default(autoincrement())
+  id               Int              @id @default(autoincrement())
   athleteId        Int
-  fechaMatricula   DateTime @default(now())
+  fechaInicio      DateTime         @default(now())
+  fechaVencimiento DateTime
+  fechaMatricula   DateTime         @default(now())
   estado           EnrollmentStatus @default(Vigente)
-  observaciones    String?  @db.Text
-  comprobantePago  String?  @db.VarChar(500)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  athlete          Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  observaciones    String?          @db.Text
+  comprobantePago  String?          @db.VarChar(500)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  athlete          Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@index([athleteId])
   @@index([estado])
   @@index([fechaMatricula])
+  @@index([fechaVencimiento])
   @@map("enrollments")
 }
 
@@ -390,9 +395,6 @@ model Provider {
   documentType     DocumentType?      @relation(fields: [documentTypeId], references: [id])
   purchases        Purchase[]
 
-  @@index([status])
-  @@index([entityType])
-  @@index([businessName])
   @@map("providers")
 }
 
@@ -431,10 +433,6 @@ model Purchase {
   employee       Employee?      @relation(fields: [employeeId], references: [id])
   provider       Provider       @relation(fields: [providerId], references: [id])
 
-  @@index([providerId])
-  @@index([employeeId])
-  @@index([status])
-  @@index([purchaseDate])
   @@map("purchases")
 }
 
@@ -497,14 +495,20 @@ model ServiceType {
 }
 
 model Sponsor {
-  id             Int              @id @default(autoincrement())
-  name           String           @unique
+  id             Int                       @id @default(autoincrement())
+  name           String                    @unique
+  type           DonorSponsorType          @default(Donor)
+  personType     DonorSponsorPersonType    @default(Natural)
+  documentType   String?                   @db.VarChar(50)
+  identification String                    @unique @db.VarChar(100)
+  contactName    String?                   @db.VarChar(150)
   description    String?
-  contactEmail   String?
-  phone          String?
-  status         SponsorStatus    @default(Active)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  contactEmail   String?                   @db.VarChar(150)
+  phone          String?                   @db.VarChar(30)
+  address        String?                   @db.VarChar(200)
+  status         SponsorStatus             @default(Active)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
   ServiceSponsor ServiceSponsor[]
 }
 

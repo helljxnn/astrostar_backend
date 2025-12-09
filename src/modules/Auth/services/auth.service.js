@@ -94,6 +94,7 @@ export class AuthService {
         age: user.age,
         identification: user.identification,
         status: user.status,
+        avatarColorIndex: user.avatarColorIndex || 0,
         documentType: user.documentType,
         role: user.role,
         employee: user.employee,
@@ -353,6 +354,7 @@ export class AuthService {
         age: user.age,
         identification: user.identification,
         status: user.status,
+        avatarColorIndex: user.avatarColorIndex || 0,
         documentType: user.documentType,
         role: user.role,
         employee: user.employee,
@@ -465,6 +467,7 @@ export class AuthService {
         age: updatedUser.age,
         identification: updatedUser.identification,
         status: updatedUser.status,
+        avatarColorIndex: updatedUser.avatarColorIndex || 0,
         documentType: updatedUser.documentType,
         role: updatedUser.role,
         employee: updatedUser.employee,
@@ -501,8 +504,22 @@ export class AuthService {
       // 2. Preparar datos para actualizar (solo campos permitidos, sin email)
       const allowedFields = {
         phoneNumber: updateData.phoneNumber,
-        address: updateData.address
+        address: updateData.address,
+        avatarColorIndex: updateData.avatarColorIndex
       };
+
+      // Validar avatarColorIndex si se proporciona
+      if (updateData.avatarColorIndex !== undefined) {
+        const colorIndex = parseInt(updateData.avatarColorIndex);
+        if (isNaN(colorIndex) || colorIndex < 0 || colorIndex > 5) {
+          return {
+            success: false,
+            statusCode: 400,
+            message: 'El índice de color debe estar entre 0 y 5'
+          };
+        }
+        allowedFields.avatarColorIndex = colorIndex;
+      }
 
       // Filtrar campos undefined
       const dataToUpdate = Object.fromEntries(
@@ -535,6 +552,7 @@ export class AuthService {
         age: updatedUser.age,
         identification: updatedUser.identification,
         status: updatedUser.status,
+        avatarColorIndex: updatedUser.avatarColorIndex || 0,
         documentType: updatedUser.documentType,
         role: updatedUser.role,
         employee: updatedUser.employee,

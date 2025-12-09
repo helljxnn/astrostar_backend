@@ -12,7 +12,9 @@ export const preRegistrationSchemas = {
         errors.push({ field: 'apellidos', message: 'Apellidos son requeridos (mínimo 2 caracteres)' });
       }
 
-      // numeroDocumento es opcional, no requiere validación adicional
+      if (!data.numeroDocumento || data.numeroDocumento.length < 6) {
+        errors.push({ field: 'numeroDocumento', message: 'Número de documento es requerido (mínimo 6 caracteres)' });
+      }
       
       if (!data.fechaNacimiento) {
         errors.push({ field: 'fechaNacimiento', message: 'Fecha de nacimiento es requerida' });

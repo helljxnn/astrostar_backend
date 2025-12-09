@@ -35,6 +35,8 @@ export const enrollmentsRepository = {
         select: {
           id: true,
           athleteId: true,
+          fechaInicio: true,
+          fechaVencimiento: true,
           fechaMatricula: true,
           estado: true,
           observaciones: true,
@@ -44,9 +46,16 @@ export const enrollmentsRepository = {
           athlete: {
             select: {
               id: true,
-              firstName: true,
-              lastName: true,
-              identification: true,
+              status: true,
+              inactivityReason: true,
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  identification: true,
+                },
+              },
             },
           },
         },
