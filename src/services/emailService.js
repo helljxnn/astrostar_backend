@@ -500,7 +500,7 @@ Este es un email automático del sistema AstroStar.
    */
   async sendPreRegistrationEmail(preRegistrationData) {
     try {
-      const { nombres, apellidos, fechaNacimiento, telefono, correo } = preRegistrationData;
+      const { nombres, apellidos, numeroDocumento, fechaNacimiento, telefono, correo } = preRegistrationData;
       
       const mailOptions = {
         from: {
@@ -509,7 +509,7 @@ Este es un email automático del sistema AstroStar.
         },
         to: correo,
         subject: '¡Bienvenida a la Fundación Manuela Vanegas! - Próximos Pasos',
-        html: this.generatePreRegistrationTemplate(nombres, apellidos, fechaNacimiento, telefono, correo),
+        html: this.generatePreRegistrationTemplate(nombres, apellidos, numeroDocumento, fechaNacimiento, telefono, correo),
       };
 
       if (!this.transporter) {
@@ -528,7 +528,7 @@ Este es un email automático del sistema AstroStar.
   /**
    * Generar template para pre-inscripción
    */
-  generatePreRegistrationTemplate(nombres, apellidos, fechaNacimiento, telefono, correo) {
+  generatePreRegistrationTemplate(nombres, apellidos, numeroDocumento, fechaNacimiento, telefono, correo) {
     const formatDate = (date) => {
       return new Date(date).toLocaleDateString('es-CO', { 
         year: 'numeric', 
@@ -571,6 +571,7 @@ Este es un email automático del sistema AstroStar.
                   <div style="background-color: #f8f9fa; border-left: 4px solid #B595FF; padding: 20px; margin: 20px 0; border-radius: 5px;">
                     <h3 style="color: #B595FF; margin: 0 0 15px 0; font-size: 18px;">📋 Tus Datos Registrados:</h3>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Nombre:</strong> ${nombres} ${apellidos}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Número de Documento:</strong> ${numeroDocumento}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Fecha de Nacimiento:</strong> ${formatDate(fechaNacimiento)}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${telefono}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Correo:</strong> ${correo}</p>
@@ -611,8 +612,11 @@ Este es un email automático del sistema AstroStar.
               <tr>
                 <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e0e0e0;">
                   <h4 style="color: #333333; margin: 0 0 15px 0; font-size: 16px;">Síguenos en Redes Sociales</h4>
-                  <p style="margin: 10px 0; color: #666666; font-size: 14px;">
-                    Facebook | Instagram | Twitter
+                  <p style="margin: 10px 0;">
+                    <a href="https://www.instagram.com/fundacionmv.co" target="_blank" style="color: #B595FF; text-decoration: none; margin: 0 10px;">Instagram</a> |
+                    <a href="https://wa.me/573245721322" target="_blank" style="color: #B595FF; text-decoration: none; margin: 0 10px;">WhatsApp</a> |
+                    <a href="mailto:fundacionmanuelavanuelvanegas@gmail.com" style="color: #B595FF; text-decoration: none; margin: 0 10px;">Email</a> |
+                    <a href="https://www.youtube.com/@FundacionManuelaVanegas" target="_blank" style="color: #B595FF; text-decoration: none; margin: 0 10px;">YouTube</a>
                   </p>
                 </td>
               </tr>

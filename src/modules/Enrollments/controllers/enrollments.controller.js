@@ -125,4 +125,51 @@ export const enrollmentsController = {
       });
     }
   },
+
+  /**
+   * Procesar matrículas vencidas manualmente
+   * POST /api/enrollments/process-expired
+   */
+  async processExpired(req, res) {
+    try {
+      const result = await enrollmentsService.processExpiredEnrollments();
+
+      return res.json({
+        success: true,
+        message: `Procesadas ${result.processed} matrículas vencidas`,
+        data: result,
+      });
+    } catch (error) {
+      console.error('Error procesando matrículas vencidas:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  /**
+   * Renovar matrícula de un deportista
+   * POST /api/enrollments/renew/:athleteId
+   */
+  async renew(req, res) {
+    try {
+      const { athleteId } = req.params;
+      const enrollmentData = req.body;
+
+      const result = await enrollmentsService.renewEnrollment(athleteId, enrollmentData);
+
+      return res.status(201).json({
+        success: true,
+        message: "Matrícula renovada exitosamente. Deportista reactivado.",
+        data: result,
+      });
+    } catch (error) {
+      console.error('Error renovando matrícula:', error);
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
 };

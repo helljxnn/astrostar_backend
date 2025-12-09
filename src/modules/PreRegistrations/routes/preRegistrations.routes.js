@@ -8,19 +8,20 @@ const router = Router();
 // Rate limiter para endpoint público (prevenir spam)
 const createLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 10, // máximo 10 pre-inscripciones por IP cada 15 minutos
+  max: 3, // máximo 3 pre-inscripciones por IP cada 15 minutos
   message: {
     success: false,
     message: "Demasiadas solicitudes. Por favor intenta más tarde.",
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: false, // Contar todas las requests, incluso exitosas
 });
 
 // Rate limiter para reenvío de correo
 const resendLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: 10, // máximo 10 reenvíos por IP cada hora
+  max: 3, // máximo 3 reenvíos por IP cada hora
   message: {
     success: false,
     message: "Demasiados intentos de reenvío. Por favor intenta más tarde.",
