@@ -62,6 +62,7 @@ router.get("/health", (req, res) => {
       "Users",
       "Providers",
       "TemporaryWorkers",
+      "DonorsSponsors",
       "DocumentTypes",
       "SportsCategories",
       "Teams",

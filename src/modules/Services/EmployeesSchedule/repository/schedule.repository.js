@@ -204,7 +204,12 @@ export class ScheduleRepository {
             lastName: true,
             secondLastName: true,
             email: true,
-            identification: true
+            identification: true,
+            role: {
+              select: {
+                name: true
+              }
+            }
           }
         }
       },
