@@ -72,6 +72,8 @@ export class GuardiansController {
   createGuardian = async (req, res) => {
     try {
       console.log("📥 Datos recibidos en createGuardian:", req.body);
+      console.log("📋 Tipo de documentTypeId:", typeof req.body.documentTypeId);
+      console.log("📋 Valor de documentTypeId:", req.body.documentTypeId);
 
       const result = await this.guardiansService.createGuardian(req.body);
 
