@@ -12,44 +12,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: function (origin, callback) {
-    // Permitir requests sin origin (como mobile apps, curl, Postman)
-    if (!origin) return callback(null, true);
-    
-    // En desarrollo, permitir cualquier localhost o IP local
-    if (process.env.NODE_ENV === 'development') {
-      // Permitir localhost en cualquier puerto
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-        return callback(null, true);
-      }
-      // Permitir IPs locales (192.168.x.x, 10.x.x.x, etc.)
-      if (origin.match(/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/)) {
-        return callback(null, true);
-      }
-    }
-    
-    // Lista de orígenes permitidos para producción
-    const allowedOrigins = [
-      'http://localhost:5173',      // React/Vite dev
-      'http://localhost:3000',      // React dev alternativo
-      'http://localhost:50243',     // Flutter Web
-      'http://localhost:51251',     // Flutter Web (puerto alternativo)
-      process.env.FRONTEND_URL,     // URL del .env
-    ].filter(Boolean); // Eliminar undefined/null
-    
-    // Verificar si el origin está permitido
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      // En desarrollo, permitir de todas formas (para debugging)
-      if (process.env.NODE_ENV === 'development') {
-        console.warn(`⚠️ CORS: Permitiendo origin no listado en desarrollo: ${origin}`);
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    }
-  },
+  origin: true, // Permitir todas las conexiones en desarrollo
   credentials: true // Permitir envío de cookies
 }));
 app.use(cookieParser());

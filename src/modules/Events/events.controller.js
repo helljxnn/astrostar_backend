@@ -152,7 +152,7 @@ export class EventsController {
    */
   getAllEvents = async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '', status = '', categoryId = '', typeId = '' } = req.query;
+      const { page = 1, limit = 10, search = '', status = '', categoryId = '', typeId = '', publish = '' } = req.query;
 
       const result = await this.eventsService.getAllEvents({
         page: parseInt(page),
@@ -160,7 +160,8 @@ export class EventsController {
         search,
         status,
         categoryId,
-        typeId
+        typeId,
+        publish
       });
 
       res.json({
@@ -170,7 +171,6 @@ export class EventsController {
         message: `Se encontraron ${result.pagination.total} eventos.`
       });
     } catch (error) {
-      console.error('Error fetching events:', error);
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al obtener eventos.',
@@ -283,7 +283,6 @@ export class EventsController {
         message: 'Evento encontrado exitosamente.'
       });
     } catch (error) {
-      console.error('Error fetching event by ID:', error);
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al obtener el evento.',
@@ -434,7 +433,6 @@ export class EventsController {
   createEvent = async (req, res) => {
     try {
       const eventData = req.body;
-      console.log('📝 Datos recibidos para crear evento:', JSON.stringify(eventData, null, 2));
       
       const result = await this.eventsService.createEvent(eventData);
 
@@ -444,8 +442,6 @@ export class EventsController {
         message: result.message
       });
     } catch (error) {
-      console.error('❌ Error creating event:', error.message);
-      console.error('Stack:', error.stack);
       
       res.status(400).json({
         success: false,
@@ -560,8 +556,6 @@ export class EventsController {
         message: result.message
       });
     } catch (error) {
-      console.error('Error updating event:', error);
-      
       res.status(400).json({
         success: false,
         message: error.message || 'Error al actualizar el evento.',
@@ -643,8 +637,6 @@ export class EventsController {
         message: result.message
       });
     } catch (error) {
-      console.error('Error deleting event:', error);
-      
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al eliminar el evento.',
@@ -723,7 +715,6 @@ export class EventsController {
         message: 'Estadísticas obtenidas exitosamente.'
       });
     } catch (error) {
-      console.error('Error fetching event stats:', error);
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al obtener estadísticas.',
@@ -799,7 +790,6 @@ export class EventsController {
         message: 'Datos de referencia obtenidos exitosamente.'
       });
     } catch (error) {
-      console.error('Error fetching reference data:', error);
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al obtener datos de referencia.',
@@ -870,7 +860,6 @@ export class EventsController {
           : `Ya existe un evento con el nombre "${name}".`
       });
     } catch (error) {
-      console.error('Error checking event name:', error);
       res.status(500).json({
         success: false,
         message: 'Error al verificar el nombre del evento.',

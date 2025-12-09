@@ -44,8 +44,8 @@ export const createTemporaryWorkerValidation = [
   body('personType')
     .notEmpty()
     .withMessage('El tipo de persona es requerido')
-    .isIn(['Deportista', 'Entrenador', 'Participante'])
-    .withMessage('El tipo de persona debe ser: Deportista, Entrenador o Participante'),
+    .isIn(['Deportista', 'Entrenador'])
+    .withMessage('El tipo de persona debe ser: Deportista o Entrenador'),
 
   // Identificación - Requerido
   body('identification')
@@ -181,8 +181,8 @@ export const updateTemporaryWorkerValidation = [
 
   body('personType')
     .optional()
-    .isIn(['Deportista', 'Entrenador', 'Participante'])
-    .withMessage('El tipo de persona debe ser: Deportista, Entrenador o Participante'),
+    .isIn(['Deportista', 'Entrenador'])
+    .withMessage('El tipo de persona debe ser: Deportista o Entrenador'),
 
   body('identification')
     .optional({ nullable: true, checkFalsy: true })
@@ -299,8 +299,8 @@ export const queryValidation = [
 
   query('personType')
     .optional()
-    .isIn(['Deportista', 'Entrenador', 'Participante'])
-    .withMessage('El tipo de persona debe ser Deportista, Entrenador o Participante'),
+    .isIn(['Deportista', 'Entrenador'])
+    .withMessage('El tipo de persona debe ser Deportista o Entrenador'),
 ];
 
 // Validaciones para verificar disponibilidad de identificación

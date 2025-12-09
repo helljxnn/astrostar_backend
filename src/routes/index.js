@@ -17,7 +17,7 @@ import enrollmentsRoutes from "../modules/Enrollments/routes/enrollments.routes.
 import referenceRoutes from "./reference.routes.js";
 import eventsRoutes from "../modules/Events/events.routes.js";
 import registrationsRoutes from "../modules/Events/Registrations/registrations.routes.js";
-import uploadRoutes from "../shared/routes/upload.routes.js";
+import uploadRoutes from "../services/shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
 import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
 

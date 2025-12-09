@@ -4,9 +4,61 @@ const prisma = new PrismaClient();
 
 export class EventsRepository {
   /**
+   * Transformar evento del backend al formato esperado por el frontend móvil
+   */
+  transformEventForMobile(service) {
+    // Obtener la primera categoría si existe (para compatibilidad móvil)
+    const firstCategory = service.ServiceCategory && service.ServiceCategory.length > 0
+      ? service.ServiceCategory[0].SportsCategory
+      : null;
+
+    return {
+      id: service.id,
+      name: service.name,
+      description: service.description,
+      startDate: service.startDate,
+      endDate: service.endDate,
+      startTime: service.startTime,
+      endTime: service.endTime,
+      location: service.location,
+      phone: service.phone,
+      status: service.status,
+      imageUrl: service.imageUrl,
+      scheduleFile: service.scheduleFile,
+      publish: service.publish,
+      categoryId: firstCategory ? firstCategory.id : null,
+      typeId: service.typeId,
+      category: firstCategory ? {
+        id: firstCategory.id,
+        name: firstCategory.nombre,
+        description: firstCategory.descripcion || null
+      } : null,
+      type: service.ServiceType ? {
+        id: service.ServiceType.id,
+        name: service.ServiceType.name,
+        description: service.ServiceType.description || null
+      } : null,
+      // Para compatibilidad móvil
+      sponsors: service.ServiceSponsor ? service.ServiceSponsor.map(ss => ({
+        id: ss.id,
+        sponsor: {
+          id: ss.Sponsor.id,
+          name: ss.Sponsor.name,
+          logoUrl: null
+        }
+      })) : [],
+      // Para el frontend web - incluir datos completos
+      ServiceCategory: service.ServiceCategory || [],
+      ServiceType: service.ServiceType || null,
+      ServiceSponsor: service.ServiceSponsor || [],
+      _count: service._count || { participants: 0 }
+    };
+  }
+
+  /**
    * Obtener todos los eventos con paginación y filtros
    */
-  async findAll({ page = 1, limit = 10, search = '', status = '', categoryId = '', typeId = '' }) {
+  async findAll({ page = 1, limit = 10, search = '', status = '', categoryId = '', typeId = '', publish = '' }) {
     try {
       const skip = (page - 1) * limit;
     
@@ -35,6 +87,10 @@ export class EventsRepository {
 
       if (typeId) {
         where.typeId = parseInt(typeId);
+      }
+
+      if (publish !== '') {
+        where.publish = publish === 'true';
       }
 
       // Obtener datos con paginación
@@ -85,8 +141,11 @@ export class EventsRepository {
         prisma.service.count({ where })
       ]);
 
+      // Transformar eventos para el formato móvil
+      const transformedEvents = services.map(service => this.transformEventForMobile(service));
+
       return {
-        events: services,
+        events: transformedEvents,
         pagination: {
           page,
           limit,
@@ -97,7 +156,6 @@ export class EventsRepository {
         }
       };
     } catch (error) {
-      console.error('Error in findAll repository:', error);
       throw error;
     }
   }
@@ -106,7 +164,7 @@ export class EventsRepository {
    * Obtener evento por ID
    */
   async findById(id) {
-    return await prisma.service.findUnique({
+    const service = await prisma.service.findUnique({
       where: { id: parseInt(id) },
       include: {
         ServiceCategory: {
@@ -115,6 +173,7 @@ export class EventsRepository {
               select: {
                 id: true,
                 nombre: true,
+                descripcion: true,
                 edadMinima: true,
                 edadMaxima: true
               }
@@ -124,7 +183,8 @@ export class EventsRepository {
         ServiceType: {
           select: {
             id: true,
-            name: true
+            name: true,
+            description: true
           }
         },
         ServiceSponsor: {
@@ -162,6 +222,13 @@ export class EventsRepository {
         }
       }
     });
+
+    if (!service) {
+      return null;
+    }
+
+    // Transformar para el formato móvil
+    return this.transformEventForMobile(service);
   }
 
   /**
@@ -260,8 +327,6 @@ export class EventsRepository {
         }
       });
     } catch (error) {
-      console.error('Error creating event:', error);
-      
       // Manejar errores específicos de Prisma
       if (error.code === 'P2003') {
         // Foreign key constraint failed
@@ -293,36 +358,38 @@ export class EventsRepository {
       // Extraer categoryIds y sponsorNames si existen
       const { categoryIds, sponsorNames, ...eventData } = data;
       
-      // Preparar datos para actualizar
-      const updateData = {
-        ...eventData,
-      };
+      // Primero actualizar los datos básicos del evento
+      const updatedEvent = await prisma.service.update({
+        where: { id: eventId },
+        data: eventData
+      });
 
-      // Si hay categorías, actualizarlas
+      // Actualizar categorías si se proporcionaron
       if (categoryIds !== undefined) {
-        // Primero eliminar las categorías existentes
+        // Eliminar las categorías existentes
         await prisma.serviceCategory.deleteMany({
           where: { serviceId: eventId }
         });
 
-        // Luego crear las nuevas categorías
+        // Crear las nuevas categorías
         if (categoryIds.length > 0) {
-          updateData.ServiceCategory = {
-            create: categoryIds.map(catId => ({
+          await prisma.serviceCategory.createMany({
+            data: categoryIds.map(catId => ({
+              serviceId: eventId,
               categoryId: parseInt(catId)
             }))
-          };
+          });
         }
       }
 
-      // Si hay patrocinadores, actualizarlos
+      // Actualizar patrocinadores si se proporcionaron
       if (sponsorNames !== undefined) {
-        // Primero eliminar los patrocinadores existentes
+        // Eliminar los patrocinadores existentes
         await prisma.serviceSponsor.deleteMany({
           where: { serviceId: eventId }
         });
 
-        // Luego crear los nuevos patrocinadores
+        // Crear los nuevos patrocinadores
         if (sponsorNames.length > 0) {
           const sponsors = await prisma.sponsor.findMany({
             where: {
@@ -331,23 +398,25 @@ export class EventsRepository {
               }
             },
             select: {
-              id: true
+              id: true,
+              name: true
             }
           });
 
           if (sponsors.length > 0) {
-            updateData.ServiceSponsor = {
-              create: sponsors.map(sponsor => ({
+            await prisma.serviceSponsor.createMany({
+              data: sponsors.map(sponsor => ({
+                serviceId: eventId,
                 sponsorId: sponsor.id
               }))
-            };
+            });
           }
         }
       }
 
-      return await prisma.service.update({
+      // Retornar el evento actualizado con todas las relaciones
+      return await prisma.service.findUnique({
         where: { id: eventId },
-        data: updateData,
         include: {
           ServiceCategory: {
             include: {
@@ -405,11 +474,26 @@ export class EventsRepository {
   async delete(id) {
     try {
       const eventId = parseInt(id);
+      
+      // Prisma eliminará automáticamente en cascada:
+      // - ServiceCategory (onDelete: Cascade)
+      // - ServiceSponsor (onDelete: Cascade)
+      // - Participant (onDelete: Cascade)
       const deleted = await prisma.service.delete({
         where: { id: eventId }
       });
+      
       return deleted;
     } catch (error) {
+      // Proporcionar mensajes de error más específicos
+      if (error.code === 'P2003') {
+        throw new Error('No se puede eliminar el evento debido a restricciones de clave foránea. Verifica que no tenga relaciones activas.');
+      }
+      
+      if (error.code === 'P2025') {
+        throw new Error('El evento no existe o ya fue eliminado.');
+      }
+      
       throw error;
     }
   }
@@ -541,7 +625,6 @@ export class EventsRepository {
 
       return eventsToFinalize;
     } catch (error) {
-      console.error('Error finding events to finalize:', error);
       throw error;
     }
   }
@@ -562,7 +645,6 @@ export class EventsRepository {
         }
       });
     } catch (error) {
-      console.error('Error updating multiple statuses:', error);
       throw error;
     }
   }

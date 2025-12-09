@@ -36,14 +36,7 @@ export const validateTemporaryPersonBusinessLogic = (req, res, next) => {
     }
   }
 
-  // Validar que participantes no tengan restricciones específicas
-  if (personType === 'Participante') {
-    // Los participantes pueden tener cualquier edad válida (5+)
-    const personAge = age || (birthDate ? calculateAge(birthDate) : null);
-    if (personAge && personAge < 5) {
-      errors.push('Los participantes deben tener al menos 5 años de edad');
-    }
-  }
+
 
   // Validar que si se proporciona identificación, sea coherente con la edad
   if (identification && birthDate) {

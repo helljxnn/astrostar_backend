@@ -1,5 +1,5 @@
 import { SportsCategoryService } from "../services/sportsCategory.service.js";
-import { uploadToCloudinary } from "../../../../shared/cloudinary.service.js";
+import { uploadToCloudinary } from "../../../../services/shared/cloudinary.service.js";
 
 export class SportsCategoryController {
   constructor() {

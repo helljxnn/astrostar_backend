@@ -313,9 +313,9 @@ export class TemporaryWorkersService {
 
     // Validar tipo de persona
     if (data.personType !== undefined) {
-      const validTypes = ['Deportista', 'Entrenador', 'Participante'];
+      const validTypes = ['Deportista', 'Entrenador'];
       if (!validTypes.includes(data.personType)) {
-        errors.push('El tipo de persona debe ser: Deportista, Entrenador o Participante');
+        errors.push('El tipo de persona debe ser: Deportista o Entrenador');
       }
     }
 
@@ -506,8 +506,7 @@ export class TemporaryWorkersService {
       // Mapear tipos del frontend al backend
       const typeMap = {
         'Deportista': 'Deportista',
-        'Entrenador': 'Entrenador', 
-        'Participante': 'Participante'
+        'Entrenador': 'Entrenador'
       };
       backendData.personType = typeMap[frontendData.tipoPersona] || frontendData.tipoPersona;
     }

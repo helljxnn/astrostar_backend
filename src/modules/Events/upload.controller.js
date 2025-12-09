@@ -92,7 +92,6 @@ export class UploadController {
         message: 'Imagen subida exitosamente'
       });
     } catch (error) {
-      console.error('Error uploading image:', error);
       res.status(500).json({
         success: false,
         message: 'Error al subir la imagen',
@@ -185,7 +184,6 @@ export class UploadController {
         message: 'Cronograma subido exitosamente'
       });
     } catch (error) {
-      console.error('Error uploading schedule:', error);
       res.status(500).json({
         success: false,
         message: 'Error al subir el cronograma',
@@ -270,7 +268,6 @@ export class UploadController {
         message: 'Archivo eliminado exitosamente'
       });
     } catch (error) {
-      console.error('Error deleting file:', error);
       res.status(500).json({
         success: false,
         message: 'Error al eliminar el archivo',
