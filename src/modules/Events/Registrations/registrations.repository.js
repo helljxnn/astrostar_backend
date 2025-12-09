@@ -94,7 +94,13 @@ export class RegistrationsRepository {
       where,
       include: {
         team: {
-          include: {
+          select: {
+            id: true,
+            name: true,
+            coach: true,
+            category: true,
+            phone: true, // Contiene el marcador TIPO:Fundacion o TIPO:Temporal
+            status: true,
             _count: {
               select: { members: true },
             },
@@ -108,16 +114,25 @@ export class RegistrationsRepository {
     });
 
     // Transformar para incluir campos compatibles con el frontend
-    return registrations.map(reg => ({
-      ...reg,
-      team: reg.team ? {
-        ...reg.team,
-        name: reg.team.name,
-        coach: reg.team.coach,
-        category: reg.team.category,
-        _count: reg.team._count,
-      } : null,
-    }));
+    return registrations.map(reg => {
+      // Determinar teamType desde el campo phone
+      let teamType = 'Temporal';
+      if (reg.team?.phone && reg.team.phone.startsWith('TIPO:')) {
+        teamType = reg.team.phone.replace('TIPO:', '');
+      }
+
+      return {
+        ...reg,
+        team: reg.team ? {
+          ...reg.team,
+          name: reg.team.name,
+          coach: reg.team.coach,
+          category: reg.team.category,
+          teamType: teamType, // Agregar teamType transformado
+          _count: reg.team._count,
+        } : null,
+      };
+    });
   }
 
   /**
@@ -178,8 +193,12 @@ export class RegistrationsRepository {
         },
         service: {
           include: {
-            sportsCategory: true,
             ServiceType: true,
+            ServiceCategory: {
+              include: {
+                SportsCategory: true,
+              },
+            },
           },
         },
         sportsCategory: true,
@@ -240,7 +259,7 @@ export class RegistrationsRepository {
         id: true,
         name: true,
         status: true,
-        teamType: true,
+        phone: true, // Contiene el marcador TIPO:Fundacion o TIPO:Temporal
       },
     });
   }
@@ -322,5 +341,253 @@ export class RegistrationsRepository {
     ]);
 
     return { total, byStatus, byEvent };
+  }
+
+  // ============================================
+  // MÉTODOS PARA INSCRIPCIÓN DE DEPORTISTAS
+  // ============================================
+
+  /**
+   * Inscribir deportista individual a un evento
+   */
+  async registerAthleteToEvent(data) {
+    return await prisma.participant.create({
+      data: {
+        type: 'Individual',
+        serviceId: data.serviceId,
+        athleteId: data.athleteId,
+        sportsCategoryId: data.sportsCategoryId || null,
+        notes: data.notes || null,
+        status: 'Registered',
+      },
+      include: {
+        athlete: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                middleName: true,
+                lastName: true,
+                secondLastName: true,
+                email: true,
+                phoneNumber: true,
+                birthDate: true,
+                age: true,
+                identification: true,
+              },
+            },
+          },
+        },
+        service: {
+          include: {
+            ServiceType: true,
+          },
+        },
+        sportsCategory: true,
+      },
+    });
+  }
+
+  /**
+   * Verificar si un deportista ya está inscrito en un evento
+   */
+  async checkAthleteRegistration(serviceId, athleteId) {
+    return await prisma.participant.findFirst({
+      where: {
+        serviceId: parseInt(serviceId),
+        athleteId: parseInt(athleteId),
+        type: 'Individual',
+      },
+    });
+  }
+
+  /**
+   * Obtener inscripciones individuales de un evento
+   */
+  async getEventAthleteRegistrations(serviceId, filters = {}) {
+    const where = {
+      serviceId: parseInt(serviceId),
+      type: 'Individual',
+    };
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    return await prisma.participant.findMany({
+      where,
+      include: {
+        athlete: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                middleName: true,
+                lastName: true,
+                secondLastName: true,
+                email: true,
+                phoneNumber: true,
+                birthDate: true,
+                age: true,
+                identification: true,
+              },
+            },
+            inscriptions: {
+              where: {
+                status: 'Active',
+              },
+              include: {
+                sportsCategory: true,
+              },
+            },
+          },
+        },
+        sportsCategory: true,
+      },
+      orderBy: {
+        registrationDate: 'desc',
+      },
+    });
+  }
+
+  /**
+   * Obtener inscripciones de un deportista
+   */
+  async getAthleteRegistrations(athleteId, filters = {}) {
+    const where = {
+      athleteId: parseInt(athleteId),
+      type: 'Individual',
+    };
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    return await prisma.participant.findMany({
+      where,
+      include: {
+        service: {
+          include: {
+            ServiceType: true,
+          },
+        },
+        sportsCategory: true,
+      },
+      orderBy: {
+        registrationDate: 'desc',
+      },
+    });
+  }
+
+  /**
+   * Verificar si el deportista existe
+   */
+  async checkAthleteExists(athleteId) {
+    return await prisma.athlete.findUnique({
+      where: { id: parseInt(athleteId) },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            middleName: true,
+            lastName: true,
+            secondLastName: true,
+            email: true,
+            phoneNumber: true,
+            birthDate: true,
+            age: true,
+            identification: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Obtener deportistas disponibles para inscripción
+   */
+  async getAvailableAthletes(filters = {}) {
+    const where = {
+      status: 'Active',
+    };
+
+    if (filters.sportsCategoryId) {
+      where.inscriptions = {
+        some: {
+          sportsCategoryId: parseInt(filters.sportsCategoryId),
+          status: 'Active',
+        },
+      };
+    }
+
+    return await prisma.athlete.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            middleName: true,
+            lastName: true,
+            secondLastName: true,
+            email: true,
+            phoneNumber: true,
+            birthDate: true,
+            age: true,
+            identification: true,
+          },
+        },
+        inscriptions: {
+          where: {
+            status: 'Active',
+          },
+          include: {
+            sportsCategory: true,
+          },
+        },
+      },
+      orderBy: {
+        user: {
+          firstName: 'asc',
+        },
+      },
+    });
+  }
+
+  /**
+   * Inscribir múltiples deportistas a un evento
+   */
+  async createAthleteRegistration(data) {
+    return await prisma.participant.create({
+      data: {
+        type: 'Individual',
+        serviceId: parseInt(data.serviceId),
+        athleteId: parseInt(data.athleteId),
+        sportsCategoryId: data.sportsCategoryId ? parseInt(data.sportsCategoryId) : null,
+        notes: data.notes || null,
+        status: data.status || 'Registered',
+      },
+      include: {
+        athlete: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Cancelar inscripción (eliminar)
+   */
+  async cancelRegistration(id) {
+    return await prisma.participant.delete({
+      where: {
+        id: parseInt(id),
+      },
+    });
   }
 }

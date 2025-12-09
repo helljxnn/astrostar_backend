@@ -197,6 +197,46 @@ async function main() {
     console.log("   ℹ️  Usuario administrador ya existe\n");
   }
 
+  // USUARIO PARA MOBILE
+  console.log("📱 Configurando usuario para aplicación móvil...");
+  
+  const existingMobileUser = await prisma.user.findUnique({
+    where: { email: "astrostarmovil@gmail.com" }
+  });
+
+  if (!existingMobileUser) {
+    const documentType = await prisma.documentType.findFirst({
+      where: { name: "Cédula de Ciudadanía" }
+    });
+
+    const hashedPasswordMobile = await bcrypt.hash("Astrostar123!", 10);
+
+    await prisma.user.create({
+      data: {
+        firstName: "Usuario",
+        middleName: "Móvil",
+        lastName: "Astrostar",
+        secondLastName: "App",
+        identification: "1000000001",
+        documentTypeId: documentType.id,
+        email: "astrostarmovil@gmail.com",
+        passwordHash: hashedPasswordMobile,
+        phoneNumber: "+57 300 0000001",
+        address: "App Móvil Astrostar",
+        birthDate: new Date("1995-01-01"),
+        age: 29,
+        roleId: adminRole.id,
+        status: "Active"
+      }
+    });
+
+    console.log("   ✓ Usuario móvil creado exitosamente");
+    console.log("   📧 Email: astrostarmovil@gmail.com");
+    console.log("   🔑 Contraseña: Astrostar123!\n");
+  } else {
+    console.log("   ℹ️  Usuario móvil ya existe\n");
+  }
+
   // CATEGORÍAS DE EVENTOS
   console.log("🏆 Configurando categorías de eventos...");
   await prisma.eventCategory.createMany({
@@ -228,27 +268,34 @@ async function main() {
 
   // TIPOS DE EVENTOS
   console.log("📅 Configurando tipos de eventos...");
-  await prisma.serviceType.createMany({
-    data: [
-      {
-        name: "Festival",
-        description: "Evento festivo con múltiples actividades - Inscripción: Equipos"
-      },
-      {
-        name: "Torneo",
-        description: "Competencia deportiva con múltiples participantes - Inscripción: Equipos"
-      },
-      {
-        name: "Clausura",
-        description: "Evento de cierre o finalización - Inscripción: Deportistas"
-      },
-      {
-        name: "Taller",
-        description: "Actividad formativa práctica - Inscripción: Deportistas"
-      }
-    ],
-    skipDuplicates: true
-  });
+  
+  const eventTypes = [
+    {
+      name: "Festival",
+      description: "Evento festivo con múltiples actividades - Inscripción: Equipos"
+    },
+    {
+      name: "Torneo",
+      description: "Competencia deportiva con múltiples participantes - Inscripción: Equipos"
+    },
+    {
+      name: "Clausura",
+      description: "Evento de cierre o finalización - Inscripción: Deportistas"
+    },
+    {
+      name: "Taller",
+      description: "Actividad formativa práctica - Inscripción: Deportistas"
+    }
+  ];
+
+  for (const eventType of eventTypes) {
+    await prisma.serviceType.upsert({
+      where: { name: eventType.name },
+      update: { description: eventType.description },
+      create: eventType
+    });
+  }
+  
   console.log("   ✓ Tipos de eventos configurados\n");
 
   // PATROCINADORES (DATOS QUEMADOS TEMPORALES)
@@ -256,44 +303,72 @@ async function main() {
   await prisma.sponsor.createMany({
     data: [
       {
-        name: "Deportes XYZ",
-        description: "Tienda especializada en artículos deportivos",
-        contactEmail: "contacto@deportesxyz.com",
+        name: "Natipan",
+        description: "Empresa de productos alimenticios",
+        contactEmail: "contacto@natipan.com",
         phone: "+57 300 1234567",
         status: "Active"
       },
       {
-        name: "Banco Nacional",
-        description: "Entidad financiera comprometida con el deporte",
-        contactEmail: "patrocinios@banconacional.com",
+        name: "Ponymalta",
+        description: "Bebida maltada nutritiva",
+        contactEmail: "patrocinios@ponymalta.com",
         phone: "+57 300 7654321",
         status: "Active"
       },
       {
-        name: "Bebidas Energéticas Power",
-        description: "Marca líder en bebidas deportivas",
-        contactEmail: "marketing@power.com",
+        name: "NovaSport",
+        description: "Marca de artículos deportivos",
+        contactEmail: "marketing@novasport.com",
         phone: "+57 301 1112233",
         status: "Active"
       },
       {
-        name: "Ropa Deportiva Elite",
-        description: "Fabricante de indumentaria deportiva de alta calidad",
-        contactEmail: "ventas@elite.com",
+        name: "Adidas",
+        description: "Marca internacional de ropa y calzado deportivo",
+        contactEmail: "ventas@adidas.com",
         phone: "+57 302 4445566",
-        status: "Active"
-      },
-      {
-        name: "Alcaldía Municipal",
-        description: "Gobierno local apoyando el deporte comunitario",
-        contactEmail: "deportes@alcaldia.gov.co",
-        phone: "+57 303 7778899",
         status: "Active"
       }
     ],
     skipDuplicates: true
   });
   console.log("   ✓ Patrocinadores temporales configurados\n");
+
+  console.log("DEBUG: Antes de categorías deportivas");
+  
+  // CATEGORÍAS DEPORTIVAS
+  console.log("🏅 Configurando categorías deportivas...");
+  await prisma.sportsCategory.createMany({
+    data: [
+      {
+        nombre: "Infantil",
+        edadMinima: 10,
+        edadMaxima: 12,
+        descripcion: "Categoría infantil para niños de 10 a 12 años",
+        estado: "Activo",
+        publicar: true
+      },
+      {
+        nombre: "PreJuvenil",
+        edadMinima: 13,
+        edadMaxima: 15,
+        descripcion: "Categoría prejuvenil para adolescentes de 13 a 15 años",
+        estado: "Activo",
+        publicar: true
+      },
+      {
+        nombre: "Juvenil",
+        edadMinima: 16,
+        edadMaxima: 18,
+        descripcion: "Categoría juvenil para jóvenes de 16 a 18 años",
+        estado: "Activo",
+        publicar: true
+      }
+    ],
+    skipDuplicates: true
+  });
+  console.log("   ✓ Categorías deportivas configuradas\n");
 
   console.log("🎉 Seed completado exitosamente!");
   console.log("📊 Resumen:");
@@ -303,6 +378,7 @@ async function main() {
   console.log("   • Categorías de eventos: Configuradas");
   console.log("   • Tipos de eventos: Configurados");
   console.log("   • Patrocinadores temporales: Configurados");
+  console.log("   • Categorías deportivas: Configuradas (Infantil, PreJuvenil, Juvenil)");
   console.log("\n💡 Puedes iniciar sesión con:");
   console.log("   📧 Email: astrostar.java@gmail.com");
   console.log("   🔑 Contraseña: Admin123*");
