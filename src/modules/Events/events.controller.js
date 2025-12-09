@@ -152,7 +152,7 @@ export class EventsController {
    */
   getAllEvents = async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '', status = '', categoryId = '', typeId = '' } = req.query;
+      const { page = 1, limit = 10, search = '', status = '', categoryId = '', typeId = '', publish = '' } = req.query;
 
       const result = await this.eventsService.getAllEvents({
         page: parseInt(page),
@@ -160,7 +160,8 @@ export class EventsController {
         search,
         status,
         categoryId,
-        typeId
+        typeId,
+        publish
       });
 
       res.json({

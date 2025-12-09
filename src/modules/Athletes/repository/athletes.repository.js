@@ -33,6 +33,16 @@ export class AthletesRepository {
       return age;
     };
 
+    // Formatear fecha para input type="date"
+    const formatDateForInput = (date) => {
+      if (!date) return null;
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     return {
       id: athlete.id,
       firstName: athlete.user?.firstName || '',
@@ -44,7 +54,7 @@ export class AthletesRepository {
       identification: athlete.user?.identification || '',
       email: athlete.user?.email || '',
       phoneNumber: athlete.user?.phoneNumber || '',
-      birthDate: athlete.user?.birthDate,
+      birthDate: formatDateForInput(athlete.user?.birthDate),
       age: athlete.user?.age || calculateAge(athlete.user?.birthDate),
       address: athlete.user?.address || '',
       categoria: currentInscription?.sportsCategory?.nombre || '',
@@ -113,6 +123,7 @@ export class AthletesRepository {
       email: athleteData.email?.trim(),
       phoneNumber: athleteData.phoneNumber?.trim(),
       identification: athleteData.identification?.trim(),
+      documentTypeId: athleteData.documentTypeId ? parseInt(athleteData.documentTypeId) : null,
       birthDate: athleteData.birthDate ? new Date(athleteData.birthDate) : null,
       age: athleteData.birthDate ? calculateAge(athleteData.birthDate) : null,
       address: athleteData.address || 'N/A',
@@ -134,8 +145,18 @@ export class AthletesRepository {
       console.log('📥 Datos recibidos en repository:', JSON.stringify(athleteData, null, 2));
 
       const { userData, athleteSpecificData } = this.transformToBackend(athleteData);
+      
+      // Si hay contraseña temporal, hashearla
+      if (athleteData.temporaryPassword) {
+        const bcrypt = await import('bcrypt');
+        userData.passwordHash = await bcrypt.default.hash(athleteData.temporaryPassword, 10);
+      }
+      
+      console.log('🔄 userData transformado:', JSON.stringify(userData, null, 2));
+      console.log('🔄 athleteSpecificData transformado:', JSON.stringify(athleteSpecificData, null, 2));
 
       // Validar que el tipo de documento existe
+      console.log('🔍 Validando documentTypeId:', athleteData.documentTypeId);
       const documentType = await prisma.documentType.findUnique({
         where: { id: parseInt(athleteData.documentTypeId) }
       });
@@ -143,6 +164,7 @@ export class AthletesRepository {
       if (!documentType) {
         throw new Error(`Tipo de documento con ID "${athleteData.documentTypeId}" no encontrado`);
       }
+      console.log('✅ Tipo de documento encontrado:', documentType.name);
 
       // Buscar la categoría deportiva
       const sportsCategory = await prisma.sportsCategory.findFirst({
@@ -173,7 +195,6 @@ export class AthletesRepository {
         const newUser = await tx.user.create({
           data: {
             ...userData,
-            documentTypeId: parseInt(athleteData.documentTypeId),
             roleId: athleteRole.id,
           },
         });
@@ -643,3 +664,6 @@ export class AthletesRepository {
     }
   }
 }
+
+// Exportar instancia para compatibilidad
+export const athletesRepository = new AthletesRepository();

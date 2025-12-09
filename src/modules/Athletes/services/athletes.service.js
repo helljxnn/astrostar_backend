@@ -1,4 +1,6 @@
+import bcrypt from 'bcrypt';
 import { AthletesRepository } from "../repository/athletes.repository.js";
+import emailService from "../../../services/emailService.js";
 
 export class AthletesService {
   constructor() {
@@ -84,13 +86,22 @@ export class AthletesService {
         }
       }
 
+      // Generar contraseña temporal
+      const temporaryPassword = this.generateTemporaryPassword();
+      dataWithDefaults.temporaryPassword = temporaryPassword;
+
       console.log('🔍 [SERVICE] Creando deportista en repositorio...');
       const newAthlete = await this.athletesRepository.create(dataWithDefaults);
+
+      // Enviar email de bienvenida con credenciales
+      const emailResult = await this.sendWelcomeEmail(newAthlete, temporaryPassword);
 
       return {
         success: true,
         data: newAthlete,
-        message: `Deportista "${dataWithDefaults.firstName} ${dataWithDefaults.lastName}" creado exitosamente con estado Activo.`,
+        temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined,
+        emailSent: emailResult.success,
+        message: `Deportista "${dataWithDefaults.firstName} ${dataWithDefaults.lastName}" creado exitosamente con estado Activo. ${emailResult.success ? 'Credenciales enviadas por email.' : 'Error enviando credenciales por email.'}`,
       };
     } catch (error) {
       console.error('❌ [SERVICE] Error en createAthlete:', error);
@@ -242,5 +253,58 @@ export class AthletesService {
       age--;
     }
     return age;
+  }
+
+  /**
+   * Generar contraseña temporal segura
+   */
+  generateTemporaryPassword() {
+    // Caracteres seguros (sin caracteres ambiguos como 0, O, l, I)
+    const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijkmnpqrstuvwxyz';
+    const numbers = '23456789';
+    const symbols = '!@#$%&*';
+    
+    let password = '';
+    
+    // Asegurar al menos un carácter de cada tipo
+    password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+    password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+    password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+    
+    // Completar con caracteres aleatorios
+    const allChars = uppercase + lowercase + numbers + symbols;
+    for (let i = 4; i < 12; i++) {
+      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+    }
+    
+    // Mezclar la contraseña
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  }
+
+  /**
+   * Enviar email de bienvenida con credenciales
+   */
+  async sendWelcomeEmail(athleteData, temporaryPassword) {
+    try {
+      const athleteInfo = {
+        email: athleteData.email,
+        firstName: athleteData.firstName,
+        lastName: athleteData.lastName
+      };
+
+      const credentials = {
+        email: athleteData.email,
+        temporaryPassword
+      };
+
+      const result = await emailService.sendAthleteWelcomeEmail(athleteInfo, credentials);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Error enviando email de bienvenida:', error);
+      return { success: false, error: error.message };
+    }
   }
 }

@@ -3,10 +3,17 @@ import { body, param, query, validationResult } from "express-validator";
 export const guardiansValidators = {
   create: [
     body("documentTypeId")
-      .notEmpty()
-      .withMessage("El tipo de documento es obligatorio.")
-      .isInt({ min: 1 })
-      .withMessage("El tipo de documento debe ser un ID válido."),
+      .custom((value) => {
+        if (!value && value !== 0) {
+          throw new Error("El tipo de documento es obligatorio.");
+        }
+        const numValue = parseInt(value);
+        if (isNaN(numValue) || numValue < 1) {
+          throw new Error("El tipo de documento debe ser un ID válido.");
+        }
+        return true;
+      })
+      .customSanitizer((value) => parseInt(value)),
 
     body("identification")
       .notEmpty()
@@ -86,8 +93,18 @@ export const guardiansValidators = {
 
     body("documentTypeId")
       .optional()
-      .isInt({ min: 1 })
-      .withMessage("El tipo de documento debe ser un ID válido."),
+      .custom((value) => {
+        if (value === undefined || value === null || value === '') return true;
+        const numValue = parseInt(value);
+        if (isNaN(numValue) || numValue < 1) {
+          throw new Error("El tipo de documento debe ser un ID válido.");
+        }
+        return true;
+      })
+      .customSanitizer((value) => {
+        if (value === undefined || value === null || value === '') return value;
+        return parseInt(value);
+      }),
 
     body("identification")
       .optional()

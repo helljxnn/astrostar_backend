@@ -526,9 +526,14 @@ export class EventsService {
         ? frontendData.categoryIds.map(id => parseInt(id))
         : [];
     }
+    // Manejar patrocinadores (puede venir como sponsorNames o patrocinador)
     if (frontendData.sponsorNames !== undefined) {
       backendData.sponsorNames = Array.isArray(frontendData.sponsorNames) 
         ? frontendData.sponsorNames
+        : [];
+    } else if (frontendData.patrocinador !== undefined) {
+      backendData.sponsorNames = Array.isArray(frontendData.patrocinador) 
+        ? frontendData.patrocinador
         : [];
     }
     if (frontendData.typeId) backendData.typeId = parseInt(frontendData.typeId);
