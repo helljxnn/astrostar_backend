@@ -120,6 +120,10 @@ export class AthletesService {
         };
       }
 
+      // Detectar si el email cambió
+      const emailChanged = updateData.email && updateData.email !== existingAthlete.email;
+      const oldEmail = existingAthlete.email;
+
       // Validar documento único si se está actualizando
       if (updateData.identification && updateData.identification !== existingAthlete.identification) {
         const existingByDocument = await this.athletesRepository.findByDocument(
@@ -129,6 +133,19 @@ export class AthletesService {
         if (existingByDocument) {
           throw new Error(
             `El documento "${updateData.identification}" ya está registrado por otro deportista.`
+          );
+        }
+      }
+
+      // Validar email único si se está actualizando
+      if (emailChanged) {
+        const existingByEmail = await this.athletesRepository.findByEmail(
+          updateData.email,
+          existingAthlete.userId
+        );
+        if (existingByEmail) {
+          throw new Error(
+            `El email "${updateData.email}" ya está registrado por otro usuario.`
           );
         }
       }
@@ -151,10 +168,26 @@ export class AthletesService {
 
       const updatedAthlete = await this.athletesRepository.update(id, updateData);
 
+      // Si el email cambió, enviar correo de verificación al nuevo email
+      let emailSent = false;
+      if (emailChanged) {
+        console.log(`📧 Email cambió de ${oldEmail} a ${updateData.email}, enviando correo de verificación...`);
+        const emailResult = await this.sendWelcomeEmail(
+          {
+            email: updateData.email,
+            firstName: updatedAthlete.firstName,
+            lastName: updatedAthlete.lastName
+          },
+          existingAthlete.identification // Usar el documento como contraseña
+        );
+        emailSent = emailResult.success;
+      }
+
       return {
         success: true,
         data: updatedAthlete,
-        message: `Deportista "${updatedAthlete.firstName} ${updatedAthlete.lastName}" actualizado exitosamente.`,
+        emailSent,
+        message: `Deportista "${updatedAthlete.firstName} ${updatedAthlete.lastName}" actualizado exitosamente.${emailChanged ? (emailSent ? ' Credenciales enviadas al nuevo email.' : ' Error enviando credenciales al nuevo email.') : ''}`,
       };
     } catch (error) {
       console.error('Error en updateAthlete:', error);

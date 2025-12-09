@@ -4,6 +4,9 @@ import { enrollmentSchemas } from "../validators/enrollments.validator.js";
 export const enrollmentsController = {
   async create(req, res) {
     try {
+      console.log('📥 [ENROLLMENT CONTROLLER] Body recibido:', JSON.stringify(req.body, null, 2));
+      console.log('📥 [ENROLLMENT CONTROLLER] preRegistrationId:', req.body.preRegistrationId);
+      
       const { error, value } = enrollmentSchemas.create.validate(req.body);
       if (error) {
         return res.status(400).json({
@@ -12,6 +15,7 @@ export const enrollmentsController = {
         });
       }
 
+      console.log('✅ [ENROLLMENT CONTROLLER] Validación exitosa, value:', JSON.stringify(value, null, 2));
       const result = await enrollmentsService.create(value);
 
       return res.status(201).json({

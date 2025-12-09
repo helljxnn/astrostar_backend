@@ -158,7 +158,28 @@ export const enrollmentsService = {
         });
         console.log('✅ [ENROLLMENT SERVICE] Pre-inscripción actualizada exitosamente');
       } else {
-        console.log('⚠️  [ENROLLMENT SERVICE] No se recibió preRegistrationId, no se actualizará la pre-inscripción');
+        // Si no viene preRegistrationId, buscar por email
+        console.log('⚠️  [ENROLLMENT SERVICE] No se recibió preRegistrationId, buscando por email...');
+        const preRegistration = await tx.preRegistration.findFirst({
+          where: {
+            correo: cleanEmail,
+            estado: "Pendiente"
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        });
+
+        if (preRegistration) {
+          console.log('✅ [ENROLLMENT SERVICE] Pre-inscripción encontrada por email:', preRegistration.id);
+          await tx.preRegistration.update({
+            where: { id: preRegistration.id },
+            data: { estado: "Procesada" },
+          });
+          console.log('✅ [ENROLLMENT SERVICE] Pre-inscripción actualizada exitosamente');
+        } else {
+          console.log('⚠️  [ENROLLMENT SERVICE] No se encontró pre-inscripción pendiente con ese email');
+        }
       }
 
       // 11. REGLA DE NEGOCIO: Enviar credenciales por email
