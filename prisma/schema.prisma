@@ -43,6 +43,16 @@ enum SponsorStatus {
   Inactive
 }
 
+enum DonorSponsorType {
+  Donor
+  Sponsor
+}
+
+enum DonorSponsorPersonType {
+  Natural
+  Juridica
+}
+
 enum SportsCategoryStatus {
   Activo
   Inactivo
@@ -617,13 +627,22 @@ model ServiceType {
 }
 
 model Sponsor {
-  id             Int              @id @default(autoincrement())
-  name           String           @unique
+  id             Int                       @id @default(autoincrement())
+  name           String                    @unique
+  type           DonorSponsorType          @default(Donor)
+  personType     DonorSponsorPersonType    @default(Natural)
+  documentType   String?                   @db.VarChar(50)
+  identification String                    @unique @db.VarChar(100)
+  contactName    String?                   @db.VarChar(150)
   description    String?
-  contactEmail   String?
-  phone          String?
-  status         SponsorStatus    @default(Active)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  contactEmail   String?                   @db.VarChar(150)
+  phone          String?                   @db.VarChar(30)
+  address        String?                   @db.VarChar(200)
+  status         SponsorStatus             @default(Active)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
   ServiceSponsor ServiceSponsor[]
+
+  @@index([status])
+  @@index([type])
 }
