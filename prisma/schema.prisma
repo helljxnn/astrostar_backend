@@ -395,9 +395,6 @@ model Provider {
   documentType     DocumentType?      @relation(fields: [documentTypeId], references: [id])
   purchases        Purchase[]
 
-  @@index([status])
-  @@index([entityType])
-  @@index([businessName])
   @@map("providers")
 }
 
@@ -436,10 +433,6 @@ model Purchase {
   employee       Employee?      @relation(fields: [employeeId], references: [id])
   provider       Provider       @relation(fields: [providerId], references: [id])
 
-  @@index([providerId])
-  @@index([employeeId])
-  @@index([status])
-  @@index([purchaseDate])
   @@map("purchases")
 }
 
@@ -502,14 +495,20 @@ model ServiceType {
 }
 
 model Sponsor {
-  id             Int              @id @default(autoincrement())
-  name           String           @unique
+  id             Int                       @id @default(autoincrement())
+  name           String                    @unique
+  type           DonorSponsorType          @default(Donor)
+  personType     DonorSponsorPersonType    @default(Natural)
+  documentType   String?                   @db.VarChar(50)
+  identification String                    @unique @db.VarChar(100)
+  contactName    String?                   @db.VarChar(150)
   description    String?
-  contactEmail   String?
-  phone          String?
-  status         SponsorStatus    @default(Active)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  contactEmail   String?                   @db.VarChar(150)
+  phone          String?                   @db.VarChar(30)
+  address        String?                   @db.VarChar(200)
+  status         SponsorStatus             @default(Active)
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
   ServiceSponsor ServiceSponsor[]
 }
 
