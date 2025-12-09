@@ -16,8 +16,10 @@ export const enrollmentsController = {
 
       return res.status(201).json({
         success: true,
-        message: "Deportista matriculada exitosamente",
+        message: "Deportista matriculada exitosamente. Credenciales enviadas por email.",
         data: result,
+        emailSent: result.emailSent,
+        temporaryPassword: result.temporaryPassword
       });
     } catch (error) {
       return res.status(500).json({

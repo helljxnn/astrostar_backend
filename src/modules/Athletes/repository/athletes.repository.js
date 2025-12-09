@@ -487,6 +487,28 @@ export class AthletesRepository {
     });
   }
 
+  async findByEmail(email, excludeUserId = null) {
+    const where = {
+      email: email
+    };
+    if (excludeUserId) where.id = { not: parseInt(excludeUserId) };
+    return await prisma.user.findFirst({ 
+      where,
+      include: { athlete: true }
+    });
+  }
+
+  async findByIdentification(identification, excludeUserId = null) {
+    const where = {
+      identification: identification
+    };
+    if (excludeUserId) where.id = { not: parseInt(excludeUserId) };
+    return await prisma.user.findFirst({ 
+      where,
+      include: { athlete: true }
+    });
+  }
+
   async changeStatus(id, status) {
     try {
       const updatedAthlete = await prisma.athlete.update({

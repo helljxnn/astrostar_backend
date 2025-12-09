@@ -258,6 +258,28 @@ export class UsersRepository {
       };
     });
   }
+
+  /**
+   * Buscar usuario por email
+   */
+  async findByEmail(email, excludeUserId = null) {
+    const where = { email: email };
+    if (excludeUserId) {
+      where.id = { not: parseInt(excludeUserId) };
+    }
+    return await prisma.user.findFirst({ where });
+  }
+
+  /**
+   * Buscar usuario por identificación
+   */
+  async findByIdentification(identification, excludeUserId = null) {
+    const where = { identification: identification };
+    if (excludeUserId) {
+      where.id = { not: parseInt(excludeUserId) };
+    }
+    return await prisma.user.findFirst({ where });
+  }
 }
 
 export default new UsersRepository();

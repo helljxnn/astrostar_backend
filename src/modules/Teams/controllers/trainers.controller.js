@@ -3,7 +3,9 @@ import prisma from "../../../config/database.js";
 export class TrainersController {
   async getTrainers(req, res) {
     try {
-      console.log('🔍 Buscando entrenadores...');
+      console.log('🔍 [TrainersController] Iniciando búsqueda de entrenadores...');
+      console.log('📋 [TrainersController] Headers:', req.headers);
+      console.log('🔐 [TrainersController] Usuario autenticado:', req.user ? 'Sí' : 'No');
       
       // 1. Entrenadores de la fundación (empleados)
       const employees = await prisma.employee.findMany({

@@ -15,6 +15,8 @@ const guardiansController = new GuardiansController();
  *   description: Gestión de acudientes de deportistas
  */
 
+router.get("/check-email", guardiansController.checkEmailAvailability);
+router.get("/check-identification", guardiansController.checkIdentificationAvailability);
 router.get("/stats", guardiansController.getGuardianStats);
 router.get("/", guardiansValidators.getAll, handleValidationErrors, guardiansController.getAllGuardians);
 router.get("/:id", guardiansValidators.getById, handleValidationErrors, guardiansController.getGuardianById);

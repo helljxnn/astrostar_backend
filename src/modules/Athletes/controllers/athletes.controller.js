@@ -318,6 +318,46 @@ export class AthletesController {
       });
     }
   };
+
+  checkEmailAvailability = async (req, res) => {
+    try {
+      const { email, excludeUserId } = req.query;
+      const result = await this.athletesService.checkEmailAvailability(email, excludeUserId);
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.available ? 'Email disponible.' : result.message
+      });
+    } catch (error) {
+      console.error('Error checking email availability:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al verificar email.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  };
+
+  checkIdentificationAvailability = async (req, res) => {
+    try {
+      const { identification, excludeUserId } = req.query;
+      const result = await this.athletesService.checkIdentificationAvailability(identification, excludeUserId);
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.available ? 'Identificación disponible.' : result.message
+      });
+    } catch (error) {
+      console.error('Error checking identification availability:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al verificar identificación.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  };
 }
 
 export default new AthletesController();

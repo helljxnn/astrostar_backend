@@ -86,8 +86,8 @@ export class AthletesService {
         }
       }
 
-      // Generar contraseña temporal
-      const temporaryPassword = this.generateTemporaryPassword();
+      // REGLA DE NEGOCIO: Usar documento de identidad como contraseña inicial
+      const temporaryPassword = dataWithDefaults.identification?.trim();
       dataWithDefaults.temporaryPassword = temporaryPassword;
 
       console.log('🔍 [SERVICE] Creando deportista en repositorio...');
@@ -305,6 +305,56 @@ export class AthletesService {
     } catch (error) {
       console.error('❌ Error enviando email de bienvenida:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Verificar disponibilidad de email
+   */
+  async checkEmailAvailability(email, excludeUserId = null) {
+    try {
+      const existingUser = await this.athletesRepository.findByEmail(email, excludeUserId);
+      
+      if (!existingUser) {
+        return { available: true };
+      }
+
+      if (excludeUserId && existingUser.id === parseInt(excludeUserId)) {
+        return { available: true };
+      }
+
+      return { 
+        available: false, 
+        message: `El email "${email}" ya está en uso.` 
+      };
+    } catch (error) {
+      console.error('Service error - checkEmailAvailability:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar disponibilidad de identificación
+   */
+  async checkIdentificationAvailability(identification, excludeUserId = null) {
+    try {
+      const existingUser = await this.athletesRepository.findByIdentification(identification, excludeUserId);
+      
+      if (!existingUser) {
+        return { available: true };
+      }
+
+      if (excludeUserId && existingUser.id === parseInt(excludeUserId)) {
+        return { available: true };
+      }
+
+      return { 
+        available: false, 
+        message: `La identificación "${identification}" ya está en uso.` 
+      };
+    } catch (error) {
+      console.error('Service error - checkIdentificationAvailability:', error);
+      throw error;
     }
   }
 }

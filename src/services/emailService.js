@@ -307,7 +307,7 @@ Este es un email automático del sistema AstroStar.
             <div class="content">
                 <h2>Hola ${firstName} ${lastName},</h2>
                 
-                <p>¡Nos complace darte la bienvenida a AstroStar! Tu cuenta de deportista ha sido creada exitosamente.</p>
+                <p>¡Nos complace darte la bienvenida a AstroStar! Tu cuenta de <strong>deportista</strong> ha sido creada exitosamente.</p>
                 
                 <div class="credentials-box">
                     <h3>🔐 Tus Credenciales de Acceso</h3>
@@ -315,16 +315,16 @@ Este es un email automático del sistema AstroStar.
                         <strong>📧 Usuario:</strong> ${email}
                     </div>
                     <div class="credential-item">
-                        <strong>🔑 Contraseña Temporal:</strong> <code>${password}</code>
+                        <strong>🔑 Contraseña:</strong> Tu documento de identidad
                     </div>
                 </div>
                 
                 <div class="warning">
-                    <strong>⚠️ Importante:</strong>
+                    <strong>⚠️ Importante - Seguridad:</strong>
                     <ul>
-                        <li>Esta es una contraseña temporal generada automáticamente</li>
-                        <li>Debes cambiarla en tu primer inicio de sesión</li>
-                        <li>No compartas estas credenciales con nadie</li>
+                        <li>Por razones de seguridad, es recomendable cambiar tu contraseña después de tu primer inicio de sesión</li>
+                        <li>Elige una contraseña segura que incluya letras, números y símbolos</li>
+                        <li>No compartas tus credenciales con nadie</li>
                         <li>Si tienes problemas para acceder, contacta al administrador</li>
                     </ul>
                 </div>
@@ -337,8 +337,8 @@ Este es un email automático del sistema AstroStar.
                 
                 <h3>📋 Próximos Pasos:</h3>
                 <ol>
-                    <li>Inicia sesión con las credenciales proporcionadas</li>
-                    <li>Cambia tu contraseña por una segura</li>
+                    <li>Inicia sesión con tu correo y tu documento de identidad como contraseña</li>
+                    <li><strong>Cambia tu contraseña inmediatamente</strong> por una segura y personal</li>
                     <li>Completa tu perfil si es necesario</li>
                     <li>Revisa tu información deportiva y categoría</li>
                 </ol>
@@ -374,16 +374,18 @@ Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido cr
 
 CREDENCIALES DE ACCESO:
 - Usuario: ${email}
-- Contraseña Temporal: ${password}
+- Contraseña: Tu documento de identidad
 
-IMPORTANTE:
-- Esta es una contraseña temporal que debes cambiar en tu primer inicio de sesión
-- No compartas estas credenciales con nadie
+IMPORTANTE - SEGURIDAD:
+- Tu contraseña inicial es tu número de documento de identidad
+- Por razones de seguridad, DEBES CAMBIARLA INMEDIATAMENTE después de tu primer inicio de sesión
+- Elige una contraseña segura que incluya letras, números y símbolos
+- No compartas tus credenciales con nadie
 - Si tienes problemas para acceder, contacta al administrador
 
 PRÓXIMOS PASOS:
-1. Inicia sesión con las credenciales proporcionadas
-2. Cambia tu contraseña por una segura
+1. Inicia sesión con tu correo y tu documento de identidad como contraseña
+2. CAMBIA TU CONTRASEÑA INMEDIATAMENTE por una segura y personal
 3. Completa tu perfil si es necesario
 4. Revisa tu información deportiva y categoría
 
