@@ -691,6 +691,29 @@ export class AthletesRepository {
       throw error;
     }
   }
+
+  /**
+   * Remover acudiente de un atleta (solo actualiza el atleta, no el usuario)
+   */
+  async removeGuardianFromAthlete(athleteId) {
+    try {
+      // Actualizar solo el atleta, sin tocar el usuario
+      await prisma.athlete.update({
+        where: { id: parseInt(athleteId) },
+        data: {
+          guardianId: null,
+          relationship: null,
+          otherRelationship: null
+        }
+      });
+
+      // Retornar el atleta actualizado con todas las relaciones
+      return await this.findById(athleteId);
+    } catch (error) {
+      console.error('Error en removeGuardianFromAthlete():', error);
+      throw error;
+    }
+  }
 }
 
 // Exportar instancia para compatibilidad
