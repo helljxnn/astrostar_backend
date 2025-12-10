@@ -68,6 +68,74 @@ export class UsersService {
   }
 
   /**
+   * Verificar disponibilidad de email
+   */
+  async checkEmailAvailability(email, excludeUserId = null) {
+    try {
+      const existingUser = await usersRepository.findByEmail(email, excludeUserId);
+      
+      if (!existingUser) {
+        return {
+          success: true,
+          available: true,
+          message: "",
+        };
+      }
+
+      if (excludeUserId && existingUser.id === parseInt(excludeUserId)) {
+        return {
+          success: true,
+          available: true,
+          message: "",
+        };
+      }
+
+      return {
+        success: true,
+        available: false,
+        message: `El email "${email}" ya está en uso.`,
+      };
+    } catch (error) {
+      console.error("Error in checkEmailAvailability service:", error);
+      throw new Error(`Error verificando email: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verificar disponibilidad de identificación
+   */
+  async checkIdentificationAvailability(identification, excludeUserId = null) {
+    try {
+      const existingUser = await usersRepository.findByIdentification(identification, excludeUserId);
+      
+      if (!existingUser) {
+        return {
+          success: true,
+          available: true,
+          message: "",
+        };
+      }
+
+      if (excludeUserId && existingUser.id === parseInt(excludeUserId)) {
+        return {
+          success: true,
+          available: true,
+          message: "",
+        };
+      }
+
+      return {
+        success: true,
+        available: false,
+        message: `La identificación "${identification}" ya está en uso.`,
+      };
+    } catch (error) {
+      console.error("Error in checkIdentificationAvailability service:", error);
+      throw new Error(`Error verificando identificación: ${error.message}`);
+    }
+  }
+
+  /**
    * Formatear respuesta del usuario (eliminar datos sensibles)
    */
   formatUserResponse(user) {

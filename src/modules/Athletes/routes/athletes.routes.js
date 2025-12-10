@@ -115,6 +115,95 @@ const athletesController = new AthletesController();
 
 /**
  * @swagger
+ * /api/athletes/check-email:
+ *   get:
+ *     summary: Verificar disponibilidad de email
+ *     tags: [Athletes]
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: Email a verificar
+ *       - in: query
+ *         name: excludeUserId
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: ID de usuario a excluir de la verificación (para edición)
+ *     responses:
+ *       200:
+ *         description: Verificación completada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 available:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Email disponible."
+ *       400:
+ *         description: Parámetros inválidos
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get("/check-email", athletesController.checkEmailAvailability);
+
+/**
+ * @swagger
+ * /api/athletes/check-identification:
+ *   get:
+ *     summary: Verificar disponibilidad de identificación
+ *     tags: [Athletes]
+ *     parameters:
+ *       - in: query
+ *         name: identification
+ *         required: true
+ *         schema:
+ *           type: string
+ *           minLength: 6
+ *           maxLength: 50
+ *         description: Identificación a verificar
+ *       - in: query
+ *         name: excludeUserId
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: ID de usuario a excluir de la verificación (para edición)
+ *     responses:
+ *       200:
+ *         description: Verificación completada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 available:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Identificación disponible."
+ *       400:
+ *         description: Parámetros inválidos
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get("/check-identification", athletesController.checkIdentificationAvailability);
+
+/**
+ * @swagger
  * /api/athletes/document-types:
  *   get:
  *     summary: Obtener tipos de documento válidos para deportistas

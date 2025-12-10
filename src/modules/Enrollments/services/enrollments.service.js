@@ -2,6 +2,7 @@ import prisma from "../../../config/database.js";
 import { enrollmentsRepository } from "../repository/enrollments.repository.js";
 import { athletesRepository } from "../../Athletes/repository/athletes.repository.js";
 import { preRegistrationsRepository } from "../../PreRegistrations/repository/preRegistrations.repository.js";
+import emailService from "../../../services/emailService.js";
 
 const calculateAge = (birthDate) => {
   const today = new Date();
@@ -16,6 +17,8 @@ const calculateAge = (birthDate) => {
 
 export const enrollmentsService = {
   async create({ preRegistrationId, athlete, enrollment }) {
+    console.log('📝 [ENROLLMENT SERVICE] preRegistrationId recibido:', preRegistrationId);
+    
     return await prisma.$transaction(async (tx) => {
       // 1. Verificar que el documento no exista
       const existingUser = await tx.user.findUnique({
@@ -61,25 +64,27 @@ export const enrollmentsService = {
         });
       }
 
-      // 6. Generar contraseña temporal
+      // 6. REGLA DE NEGOCIO: Usar documento de identidad como contraseña inicial
       const bcrypt = await import('bcrypt');
-      const tempPassword = Math.random().toString(36).slice(-8);
+      const tempPassword = athlete.identification?.trim();
       const passwordHash = await bcrypt.default.hash(tempPassword, 10);
 
       // 7. Crear usuario
+      const cleanEmail = athlete.email?.trim().toLowerCase();
+      
       const newUser = await tx.user.create({
         data: {
-          firstName: athlete.firstName,
-          middleName: athlete.middleName || null,
-          lastName: athlete.lastName,
-          secondLastName: athlete.secondLastName || null,
+          firstName: athlete.firstName?.trim(),
+          middleName: athlete.middleName?.trim() || null,
+          lastName: athlete.lastName?.trim(),
+          secondLastName: athlete.secondLastName?.trim() || null,
           documentTypeId: parseInt(athlete.documentTypeId),
-          identification: athlete.identification,
-          email: athlete.email,
-          phoneNumber: athlete.phoneNumber,
+          identification: athlete.identification?.trim(),
+          email: cleanEmail,
+          phoneNumber: athlete.phoneNumber?.trim(),
           birthDate: new Date(athlete.birthDate),
           age: age,
-          address: athlete.address || 'N/A',
+          address: athlete.address?.trim() || 'N/A',
           passwordHash: passwordHash,
           roleId: athleteRole.id,
           status: 'Active'
@@ -146,15 +151,61 @@ export const enrollmentsService = {
 
       // 10. Si viene de inscripción del landing, marcarla como procesada
       if (preRegistrationId) {
+        console.log('✅ [ENROLLMENT SERVICE] Marcando pre-inscripción como procesada:', preRegistrationId);
         await tx.preRegistration.update({
           where: { id: preRegistrationId },
           data: { estado: "Procesada" },
         });
+        console.log('✅ [ENROLLMENT SERVICE] Pre-inscripción actualizada exitosamente');
+      } else {
+        // Si no viene preRegistrationId, buscar por email
+        console.log('⚠️  [ENROLLMENT SERVICE] No se recibió preRegistrationId, buscando por email...');
+        const preRegistration = await tx.preRegistration.findFirst({
+          where: {
+            correo: cleanEmail,
+            estado: "Pendiente"
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
+        });
+
+        if (preRegistration) {
+          console.log('✅ [ENROLLMENT SERVICE] Pre-inscripción encontrada por email:', preRegistration.id);
+          await tx.preRegistration.update({
+            where: { id: preRegistration.id },
+            data: { estado: "Procesada" },
+          });
+          console.log('✅ [ENROLLMENT SERVICE] Pre-inscripción actualizada exitosamente');
+        } else {
+          console.log('⚠️  [ENROLLMENT SERVICE] No se encontró pre-inscripción pendiente con ese email');
+        }
+      }
+
+      // 11. REGLA DE NEGOCIO: Enviar credenciales por email
+      try {
+        const athleteInfo = {
+          email: newUser.email,
+          firstName: newUser.firstName,
+          lastName: newUser.lastName
+        };
+
+        const credentials = {
+          email: newUser.email,
+          temporaryPassword: tempPassword
+        };
+
+        await emailService.sendAthleteWelcomeEmail(athleteInfo, credentials);
+      } catch (emailError) {
+        console.error('Error enviando email de bienvenida:', emailError);
+        // No fallar la transacción si el email falla
       }
 
       return {
         athlete: newAthlete,
         enrollment: newEnrollment,
+        temporaryPassword: process.env.NODE_ENV === 'development' ? tempPassword : undefined,
+        emailSent: true
       };
     });
   },

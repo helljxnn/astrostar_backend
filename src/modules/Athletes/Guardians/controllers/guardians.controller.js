@@ -197,6 +197,46 @@ export class GuardiansController {
       });
     }
   };
+
+  checkEmailAvailability = async (req, res) => {
+    try {
+      const { email, excludeId } = req.query;
+      const result = await this.guardiansService.checkEmailAvailability(email, excludeId);
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.available ? 'Email disponible.' : result.message
+      });
+    } catch (error) {
+      console.error('Error checking email availability:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al verificar email.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  };
+
+  checkIdentificationAvailability = async (req, res) => {
+    try {
+      const { identification, excludeId } = req.query;
+      const result = await this.guardiansService.checkIdentificationAvailability(identification, excludeId);
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.available ? 'Identificación disponible.' : result.message
+      });
+    } catch (error) {
+      console.error('Error checking identification availability:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al verificar identificación.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  };
 }
 
 export default new GuardiansController();
