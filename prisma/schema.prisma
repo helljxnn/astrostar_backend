@@ -157,6 +157,27 @@ enum TeamMemberRole {
   Captain
 }
 
+enum DonationType {
+  ECONOMICA
+  ESPECIE
+  ALIMENTOS
+}
+
+enum DonationStatus {
+  Recibida
+  EnProceso
+  Verificada
+  Ejecutada
+  Anulada
+}
+
+enum DonationFileType {
+  comprobante
+  soporte
+  factura
+  evidencia
+}
+
 // ============================================
 // MODELOS
 // ============================================
@@ -634,6 +655,8 @@ model Sponsor {
   documentType   String?                   @db.VarChar(50)
   identification String                    @unique @db.VarChar(100)
   contactName    String?                   @db.VarChar(150)
+  city           String?                   @db.VarChar(120)
+  country        String?                   @db.VarChar(120)
   description    String?
   contactEmail   String?                   @db.VarChar(150)
   phone          String?                   @db.VarChar(30)
@@ -642,7 +665,78 @@ model Sponsor {
   createdAt      DateTime                  @default(now())
   updatedAt      DateTime                  @updatedAt
   ServiceSponsor ServiceSponsor[]
+  donations      Donation[]
 
   @@index([status])
   @@index([type])
+}
+
+model Donation {
+  id             Int             @id @default(autoincrement())
+  code           String          @unique
+  donorSponsorId Int?
+  anonymous      Boolean         @default(false)
+  type           DonationType
+  status         DonationStatus  @default(Recibida)
+  program        String?
+  donationAt     DateTime
+  notes          String?
+  cancelReason   String?
+  cancelAt       DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  deletedAt      DateTime?
+  donorSponsor   Sponsor?        @relation(fields: [donorSponsorId], references: [id])
+  details        DonationDetail[]
+  transactions   DonationTransaction[]
+  files          DonationFile[]
+
+  @@index([status, type, donationAt])
+  @@index([donorSponsorId])
+}
+
+model DonationDetail {
+  id             Int           @id @default(autoincrement())
+  donationId     Int
+  kind           DonationType
+  recordType     String
+  description    String?
+  quantity       Decimal?      @db.Decimal(10, 2)
+  amount         Decimal?      @db.Decimal(12, 2)
+  channel        String?
+  classification String?
+  expiresAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  donation       Donation      @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  files          DonationFile[]
+}
+
+model DonationTransaction {
+  id         Int            @id @default(autoincrement())
+  donationId Int
+  fromStatus DonationStatus?
+  toStatus   DonationStatus
+  reason     String?
+  createdAt  DateTime       @default(now())
+  donation   Donation       @relation(fields: [donationId], references: [id], onDelete: Cascade)
+
+  @@index([donationId, createdAt])
+}
+
+model DonationFile {
+  id           Int              @id @default(autoincrement())
+  donationId   Int
+  detailId     Int?
+  fileType     DonationFileType
+  url          String
+  publicId     String
+  mimeType     String
+  size         Int
+  originalName String
+  createdAt    DateTime         @default(now())
+  donation     Donation         @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  detail       DonationDetail?  @relation(fields: [detailId], references: [id], onDelete: Cascade)
+
+  @@index([donationId])
 }

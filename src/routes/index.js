@@ -6,6 +6,7 @@ import usersRoutes from "../modules/Users/routes/users.routes.js";
 import providerRoutes from "../modules/Providers/routes/providers.routes.js";
 import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/routes/temporaryworkers.routes.js";
 import donorsSponsorsRoutes from "../modules/Donations/DonorsSponsors/routes/donorsSponsors.routes.js";
+import donationsRoutes from "../modules/Donations/Donations/routes/donations.routes.js";
 
 import documentTypesRoutes from "./documentTypes.routes.js";
 import sportsCategoryRoutes from "../modules/Athletes/SportsCategory/routes/sportsCategory.routes.js";
@@ -30,6 +31,7 @@ router.use("/users", usersRoutes);
 router.use("/providers", providerRoutes);
 router.use("/temporary-workers", temporaryWorkersRoutes);
 router.use("/donors-sponsors", donorsSponsorsRoutes);
+router.use("/donations", donationsRoutes);
 router.use("/document-types", documentTypesRoutes);
 router.use("/sports-categories", sportsCategoryRoutes);
 router.use("/teams", teamsRoutes);
@@ -60,6 +62,7 @@ router.get("/health", (req, res) => {
       "Providers",
       "TemporaryWorkers",
       "DonorsSponsors",
+      "Donations",
       "DocumentTypes",
       "SportsCategories",
       "Teams",
