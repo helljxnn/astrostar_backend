@@ -47,9 +47,12 @@ export class DonorsSponsorsRepository {
       numeroDocumento: tipoPersona === "Natural" ? identificacion : null,
       nit: tipoPersona === "Juridica" ? identificacion : null,
       personaContacto: record.contactName,
+      representanteLegal: record.contactName,
       telefono: record.phone,
       correo: record.contactEmail,
       direccion: record.address,
+      ciudad: record.city,
+      pais: record.country,
       descripcion: record.description,
       estado: this.mapStatusFromDb(record.status),
       createdAt: record.createdAt,
@@ -72,11 +75,16 @@ export class DonorsSponsorsRepository {
       personType: this.mapPersonTypeToDb(payload.tipoPersona) || "Natural",
       documentType: payload.tipoDocumento || null,
       identification: identification.trim(),
-      contactName: payload.personaContacto || null,
-      description: payload.descripcion || null,
+      contactName:
+        payload.personaContacto?.trim() ||
+        payload.representanteLegal?.trim() ||
+        null,
+      description: payload.descripcion ? payload.descripcion.trim() : null,
       contactEmail: payload.correo ? payload.correo.toLowerCase().trim() : null,
-      phone: payload.telefono || null,
-      address: payload.direccion || null,
+      phone: payload.telefono ? payload.telefono.trim() : null,
+      address: payload.direccion ? payload.direccion.trim() : null,
+      city: payload.ciudad ? payload.ciudad.trim() : null,
+      country: payload.pais ? payload.pais.trim() : null,
       status: this.mapStatusToDb(payload.estado || payload.status) || "Active",
     };
   }
@@ -116,12 +124,20 @@ export class DonorsSponsorsRepository {
       updateData.identification = identification.trim();
     }
 
-    if (payload.personaContacto !== undefined) {
-      updateData.contactName = payload.personaContacto || null;
+    if (
+      payload.personaContacto !== undefined ||
+      payload.representanteLegal !== undefined
+    ) {
+      updateData.contactName =
+        payload.personaContacto?.trim() ||
+        payload.representanteLegal?.trim() ||
+        null;
     }
 
     if (payload.descripcion !== undefined) {
-      updateData.description = payload.descripcion || null;
+      updateData.description = payload.descripcion
+        ? payload.descripcion.trim()
+        : null;
     }
 
     if (payload.correo !== undefined) {
@@ -131,11 +147,19 @@ export class DonorsSponsorsRepository {
     }
 
     if (payload.telefono !== undefined) {
-      updateData.phone = payload.telefono || null;
+      updateData.phone = payload.telefono ? payload.telefono.trim() : null;
     }
 
     if (payload.direccion !== undefined) {
-      updateData.address = payload.direccion || null;
+      updateData.address = payload.direccion ? payload.direccion.trim() : null;
+    }
+
+    if (payload.ciudad !== undefined) {
+      updateData.city = payload.ciudad ? payload.ciudad.trim() : null;
+    }
+
+    if (payload.pais !== undefined) {
+      updateData.country = payload.pais ? payload.pais.trim() : null;
     }
 
     if (payload.estado !== undefined || payload.status !== undefined) {
@@ -158,6 +182,8 @@ export class DonorsSponsorsRepository {
         { contactEmail: { contains: search, mode: "insensitive" } },
         { contactName: { contains: search, mode: "insensitive" } },
         { phone: { contains: search, mode: "insensitive" } },
+        { city: { contains: search, mode: "insensitive" } },
+        { country: { contains: search, mode: "insensitive" } },
       ];
     }
 

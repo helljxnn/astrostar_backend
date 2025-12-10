@@ -85,9 +85,9 @@ export const donorsSponsorsValidators = {
     body("personaContacto")
       .if(body("tipoPersona").equals("Juridica"))
       .notEmpty()
-      .withMessage("La persona de contacto es obligatoria.")
+      .withMessage("El representante legal es obligatorio.")
       .isLength({ min: 2, max: 150 })
-      .withMessage("La persona de contacto debe tener entre 2 y 150 caracteres.")
+      .withMessage("El representante legal debe tener entre 2 y 150 caracteres.")
       .trim(),
 
     body("telefono")
@@ -108,7 +108,24 @@ export const donorsSponsorsValidators = {
       .trim()
       .normalizeEmail(),
 
-    body("direccion").optional().isLength({ max: 200 }).trim(),
+    body("direccion")
+      .notEmpty()
+      .withMessage("La direcci\u00f3n es obligatoria.")
+      .isLength({ min: 4, max: 200 })
+      .withMessage("La direcci\u00f3n debe tener entre 4 y 200 caracteres.")
+      .trim(),
+    body("ciudad")
+      .notEmpty()
+      .withMessage("La ciudad es obligatoria.")
+      .isLength({ min: 2, max: 120 })
+      .withMessage("La ciudad debe tener entre 2 y 120 caracteres.")
+      .trim(),
+    body("pais")
+      .notEmpty()
+      .withMessage("El pa\u00eds es obligatorio.")
+      .isLength({ min: 2, max: 120 })
+      .withMessage("El pa\u00eds debe tener entre 2 y 120 caracteres.")
+      .trim(),
     body("descripcion").optional().isLength({ max: 500 }).trim(),
     body("estado").optional().isIn(["Activo", "Inactivo"]),
   ],
@@ -151,7 +168,7 @@ export const donorsSponsorsValidators = {
     body("personaContacto")
       .optional()
       .isLength({ min: 2, max: 150 })
-      .withMessage("La persona de contacto debe tener entre 2 y 150 caracteres.")
+      .withMessage("El representante legal debe tener entre 2 y 150 caracteres.")
       .trim(),
 
     body("telefono")
@@ -170,7 +187,27 @@ export const donorsSponsorsValidators = {
       .trim()
       .normalizeEmail(),
 
-    body("direccion").optional().isLength({ max: 200 }).trim(),
+    body("direccion")
+      .optional()
+      .notEmpty()
+      .withMessage("La direcci\u00f3n no puede estar vac\u00eda.")
+      .isLength({ min: 4, max: 200 })
+      .withMessage("La direcci\u00f3n debe tener entre 4 y 200 caracteres.")
+      .trim(),
+    body("ciudad")
+      .optional()
+      .notEmpty()
+      .withMessage("La ciudad no puede estar vac\u00eda.")
+      .isLength({ min: 2, max: 120 })
+      .withMessage("La ciudad debe tener entre 2 y 120 caracteres.")
+      .trim(),
+    body("pais")
+      .optional()
+      .notEmpty()
+      .withMessage("El pa\u00eds no puede estar vac\u00edo.")
+      .isLength({ min: 2, max: 120 })
+      .withMessage("El pa\u00eds debe tener entre 2 y 120 caracteres.")
+      .trim(),
     body("descripcion").optional().isLength({ max: 500 }).trim(),
     body("estado").optional().isIn(["Activo", "Inactivo"]),
   ],
