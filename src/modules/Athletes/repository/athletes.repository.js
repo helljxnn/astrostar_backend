@@ -81,6 +81,7 @@ export class AthletesRepository {
       })),
       createdAt: athlete.createdAt,
       updatedAt: athlete.updatedAt,
+      statusAssignedAt: athlete.statusAssignedAt,
     };
   }
 
@@ -207,6 +208,7 @@ export class AthletesRepository {
             userId: newUser.id,
             ...athleteSpecificData,
             currentInscriptionStatus: athleteData.estado === "Inactivo" ? "Suspended" : "Active",
+            statusAssignedAt: new Date(),
           },
         });
 
@@ -282,12 +284,16 @@ export class AthletesRepository {
           data: userData,
         });
 
+        // Verificar si cambió el estado
+        const statusChanged = athleteSpecificData.status && athleteSpecificData.status !== currentAthlete.status;
+
         // Actualizar atleta
         const updatedAthlete = await tx.athlete.update({
           where: { id: parseInt(id) },
           data: {
             ...athleteSpecificData,
             currentInscriptionStatus: athleteData.estado === "Inactivo" ? "Suspended" : athleteSpecificData.status === 'Active' ? 'Active' : currentAthlete.currentInscriptionStatus,
+            ...(statusChanged && { statusAssignedAt: new Date() }),
           },
         });
 

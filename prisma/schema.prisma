@@ -8,19 +8,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum PreRegistrationStatus {
-  Pendiente
-  Procesada
-  Rechazada
-}
-
-enum EnrollmentStatus {
-  Vigente
-  Suspendida
-  Vencida
-  Cancelada
-}
-
 model DocumentType {
   id               Int               @id @default(autoincrement())
   name             String            @unique
@@ -202,20 +189,21 @@ model EventCategory {
 }
 
 model Guardian {
-  id             Int          @id @default(autoincrement())
-  firstName      String       @db.VarChar(100)
-  lastName       String       @db.VarChar(100)
-  identification String       @unique @db.VarChar(50)
-  email          String       @unique @db.VarChar(150)
-  phone          String       @db.VarChar(20)
-  address        String?      @db.VarChar(200)
-  occupation     String?      @db.VarChar(100)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  documentTypeId Int
-  birthDate      DateTime?
-  athletes       Athlete[]
-  documentType   DocumentType @relation(fields: [documentTypeId], references: [id])
+  id               Int          @id @default(autoincrement())
+  firstName        String       @db.VarChar(100)
+  lastName         String       @db.VarChar(100)
+  identification   String       @unique @db.VarChar(50)
+  email            String       @unique @db.VarChar(150)
+  phone            String       @db.VarChar(20)
+  address          String?      @db.VarChar(200)
+  occupation       String?      @db.VarChar(100)
+  statusAssignedAt DateTime     @default(now())
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  documentTypeId   Int
+  birthDate        DateTime?
+  athletes         Athlete[]
+  documentType     DocumentType @relation(fields: [documentTypeId], references: [id])
 
   @@map("guardians")
 }
@@ -224,13 +212,14 @@ model Athlete {
   id                       Int                   @id @default(autoincrement())
   userId                   Int                   @unique
   status                   AthleteStatus         @default(Active)
-  inactivityReason         String?               @db.VarChar(200)
+  statusAssignedAt         DateTime              @default(now())
   guardianId               Int?
   relationship             GuardianRelationship?
   otherRelationship        String?               @db.VarChar(100)
   currentInscriptionStatus InscriptionStatus?
   createdAt                DateTime              @default(now())
   updatedAt                DateTime              @updatedAt
+  inactivityReason         String?               @db.VarChar(200)
   guardian                 Guardian?             @relation(fields: [guardianId], references: [id])
   user                     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   enrollments              Enrollment[]
@@ -247,14 +236,14 @@ model Athlete {
 model Enrollment {
   id               Int              @id @default(autoincrement())
   athleteId        Int
-  fechaInicio      DateTime         @default(now())
-  fechaVencimiento DateTime
   fechaMatricula   DateTime         @default(now())
   estado           EnrollmentStatus @default(Vigente)
-  observaciones    String?          @db.Text
+  observaciones    String?
   comprobantePago  String?          @db.VarChar(500)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
+  fechaInicio      DateTime         @default(now())
+  fechaVencimiento DateTime
   athlete          Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@index([athleteId])
@@ -307,7 +296,7 @@ model TemporaryPerson {
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   documentTypeId Int
-  personType     TemporaryPersonType   @default(Deportista)
+  personType     TemporaryPersonType   @default(Participante)
   category       String?
   team           String?
   middleName     String?
@@ -395,6 +384,9 @@ model Provider {
   documentType     DocumentType?      @relation(fields: [documentTypeId], references: [id])
   purchases        Purchase[]
 
+  @@index([businessName])
+  @@index([entityType])
+  @@index([status])
   @@map("providers")
 }
 
@@ -402,13 +394,13 @@ model PreRegistration {
   id              Int                   @id @default(autoincrement())
   nombres         String                @db.VarChar(100)
   apellidos       String                @db.VarChar(100)
-  numeroDocumento String?               @db.VarChar(50)
   fechaNacimiento DateTime
   telefono        String                @db.VarChar(20)
   correo          String                @db.VarChar(100)
   estado          PreRegistrationStatus @default(Pendiente)
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
+  numeroDocumento String?               @db.VarChar(50)
 
   @@index([estado])
   @@index([createdAt])
@@ -433,6 +425,10 @@ model Purchase {
   employee       Employee?      @relation(fields: [employeeId], references: [id])
   provider       Provider       @relation(fields: [providerId], references: [id])
 
+  @@index([employeeId])
+  @@index([providerId])
+  @@index([purchaseDate])
+  @@index([status])
   @@map("purchases")
 }
 
@@ -480,7 +476,7 @@ model ServiceSponsor {
   id        Int     @id @default(autoincrement())
   serviceId Int
   sponsorId Int
-  Service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  Service   Service @relation(fields: [serviceId], references: [id])
   Sponsor   Sponsor @relation(fields: [sponsorId], references: [id])
 
   @@unique([serviceId, sponsorId])
@@ -495,21 +491,28 @@ model ServiceType {
 }
 
 model Sponsor {
-  id             Int                       @id @default(autoincrement())
-  name           String                    @unique
-  type           DonorSponsorType          @default(Donor)
-  personType     DonorSponsorPersonType    @default(Natural)
-  documentType   String?                   @db.VarChar(50)
-  identification String                    @unique @db.VarChar(100)
-  contactName    String?                   @db.VarChar(150)
+  id             Int              @id @default(autoincrement())
+  name           String           @unique
   description    String?
-  contactEmail   String?                   @db.VarChar(150)
-  phone          String?                   @db.VarChar(30)
-  address        String?                   @db.VarChar(200)
-  status         SponsorStatus             @default(Active)
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  contactEmail   String?
+  phone          String?
+  status         SponsorStatus    @default(Active)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
   ServiceSponsor ServiceSponsor[]
+}
+
+enum PreRegistrationStatus {
+  Pendiente
+  Procesada
+  Rechazada
+}
+
+enum EnrollmentStatus {
+  Vigente
+  Suspendida
+  Vencida
+  Cancelada
 }
 
 enum RoleStatus {
