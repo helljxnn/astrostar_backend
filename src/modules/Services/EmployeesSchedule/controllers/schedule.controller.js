@@ -176,19 +176,19 @@ export class ScheduleController {
   };
 
   /**
-   * Cancelar horario con motivo
+   * Registrar novedad en un horario
    */
-  cancelSchedule = async (req, res) => {
+  registerNovelty = async (req, res) => {
     try {
       const { id } = req.params;
       const { motivoCancelacion } = req.body;
       if (!motivoCancelacion || !motivoCancelacion.trim()) {
         return res.status(400).json({
           success: false,
-          message: 'El motivo de cancelación es obligatorio.'
+          message: 'El motivo de la novedad es obligatorio.'
         });
       }
-      const result = await this.scheduleService.cancelSchedule(id, motivoCancelacion);
+      const result = await this.scheduleService.registerNovelty(id, motivoCancelacion);
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
@@ -201,10 +201,10 @@ export class ScheduleController {
         message: result.message
       });
     } catch (error) {
-      console.error('Error canceling schedule:', error);
+      console.error('Error registering novelty:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al cancelar el horario.',
+        message: 'Error interno del servidor al registrar la novedad.',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
