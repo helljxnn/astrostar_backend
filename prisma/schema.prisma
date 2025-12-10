@@ -130,6 +130,7 @@ model Employee {
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
+  classes             Class[]
 
   @@map("employees")
 }
@@ -235,6 +236,7 @@ model Athlete {
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
+  classes                  ClassAthlete[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])
@@ -243,15 +245,15 @@ model Athlete {
 }
 
 model Enrollment {
-  id               Int      @id @default(autoincrement())
-  athleteId        Int
-  fechaMatricula   DateTime @default(now())
-  estado           EnrollmentStatus @default(Vigente)
-  observaciones    String?  @db.Text
-  comprobantePago  String?  @db.VarChar(500)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  athlete          Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  id              Int              @id @default(autoincrement())
+  athleteId       Int
+  fechaMatricula  DateTime         @default(now())
+  estado          EnrollmentStatus @default(Vigente)
+  observaciones   String?          @db.Text
+  comprobantePago String?          @db.VarChar(500)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  athlete         Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@index([athleteId])
   @@index([estado])
@@ -489,11 +491,12 @@ model ServiceSponsor {
 }
 
 model ServiceType {
-  id        Int       @id @default(autoincrement())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  Service   Service[]
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Service     Service[]
 }
 
 model Sponsor {
@@ -506,6 +509,48 @@ model Sponsor {
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   ServiceSponsor ServiceSponsor[]
+}
+
+model Class {
+  id          Int            @id @default(autoincrement())
+  title       String         @db.VarChar(200)
+  description String?        @db.Text
+  classDate   DateTime
+  startTime   String         @db.VarChar(10)
+  endTime     String         @db.VarChar(10)
+  location    String?        @db.VarChar(200)
+  maxCapacity Int?
+  status      ClassStatus    @default(Programada)
+  notes       String?        @db.Text
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  employeeId  Int
+  employee    Employee       @relation(fields: [employeeId], references: [id])
+  athletes    ClassAthlete[]
+
+  @@index([employeeId])
+  @@index([classDate])
+  @@index([status])
+  @@map("classes")
+}
+
+model ClassAthlete {
+  id               Int                   @id @default(autoincrement())
+  classId          Int
+  athleteId        Int
+  attendanceStatus ClassAttendanceStatus @default(Pendiente)
+  confirmedAt      DateTime?
+  notes            String?               @db.Text
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  class            Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
+  athlete          Athlete               @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, athleteId])
+  @@index([classId])
+  @@index([athleteId])
+  @@index([attendanceStatus])
+  @@map("class_athletes")
 }
 
 enum RoleStatus {
@@ -621,4 +666,19 @@ enum PurchaseStatus {
 enum TeamType {
   Fundacion
   Temporal
+}
+
+enum ClassStatus {
+  Programada
+  En_curso
+  Finalizada
+  Cancelada
+}
+
+enum ClassAttendanceStatus {
+  Pendiente
+  Confirmada
+  Asistio
+  No_asistio
+  Cancelada
 }

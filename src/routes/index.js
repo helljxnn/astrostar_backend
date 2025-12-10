@@ -1,4 +1,4 @@
-import { Router } from "express"; 
+import { Router } from "express";
 import authRoutes from "../modules/Auth/routes/auth.routes.js";
 import roleRoutes from "../modules/Roles/routes/roles.routes.js";
 import employeeRoutes from "../modules/Services/Employees/routes/employees.routes.js";
@@ -17,6 +17,7 @@ import enrollmentsRoutes from "../modules/Enrollments/routes/enrollments.routes.
 import referenceRoutes from "./reference.routes.js";
 import eventsRoutes from "../modules/Events/events.routes.js";
 import registrationsRoutes from "../modules/Events/Registrations/registrations.routes.js";
+import classesRoutes from "../modules/Classes/classes.routes.js";
 import uploadRoutes from "../services/shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
 import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
@@ -42,6 +43,7 @@ router.use("/enrollments", enrollmentsRoutes);
 router.use("/reference", referenceRoutes);
 router.use("/events", eventsRoutes);
 router.use("/registrations", registrationsRoutes);
+router.use("/classes", classesRoutes);
 router.use("/schedules", scheduleRoutes);
 
 router.use("/upload", uploadRoutes);
@@ -72,7 +74,7 @@ router.get("/health", (req, res) => {
       "Enrollments",
       "Events",
       "Registrations",
-      "EmployeeSchedules" 
+      "EmployeeSchedules",
     ],
   });
 });
