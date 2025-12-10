@@ -71,6 +71,50 @@ export class UsersController {
       });
     }
   }
+
+  async checkEmailAvailability(req, res) {
+    try {
+      const { email, excludeUserId } = req.query;
+      
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "El email es requerido",
+        });
+      }
+
+      const result = await usersService.checkEmailAvailability(email, excludeUserId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error in checkEmailAvailability controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al verificar email",
+      });
+    }
+  }
+
+  async checkIdentificationAvailability(req, res) {
+    try {
+      const { identification, excludeUserId } = req.query;
+      
+      if (!identification) {
+        return res.status(400).json({
+          success: false,
+          message: "La identificación es requerida",
+        });
+      }
+
+      const result = await usersService.checkIdentificationAvailability(identification, excludeUserId);
+      res.json(result);
+    } catch (error) {
+      console.error("Error in checkIdentificationAvailability controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al verificar identificación",
+      });
+    }
+  }
 }
 
 export default new UsersController();

@@ -72,6 +72,8 @@ export class GuardiansController {
   createGuardian = async (req, res) => {
     try {
       console.log("📥 Datos recibidos en createGuardian:", req.body);
+      console.log("📋 Tipo de documentTypeId:", typeof req.body.documentTypeId);
+      console.log("📋 Valor de documentTypeId:", req.body.documentTypeId);
 
       const result = await this.guardiansService.createGuardian(req.body);
 
@@ -192,6 +194,46 @@ export class GuardiansController {
         success: false,
         message: "Error interno del servidor al obtener estadísticas",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  checkEmailAvailability = async (req, res) => {
+    try {
+      const { email, excludeId } = req.query;
+      const result = await this.guardiansService.checkEmailAvailability(email, excludeId);
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.available ? 'Email disponible.' : result.message
+      });
+    } catch (error) {
+      console.error('Error checking email availability:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al verificar email.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  };
+
+  checkIdentificationAvailability = async (req, res) => {
+    try {
+      const { identification, excludeId } = req.query;
+      const result = await this.guardiansService.checkIdentificationAvailability(identification, excludeId);
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.available ? 'Identificación disponible.' : result.message
+      });
+    } catch (error) {
+      console.error('Error checking identification availability:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al verificar identificación.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   };

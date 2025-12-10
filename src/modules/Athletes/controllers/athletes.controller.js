@@ -86,17 +86,37 @@ export class AthletesController {
       res.status(201).json({
         success: true,
         data: result.data,
+        temporaryPassword: process.env.NODE_ENV === 'development' ? result.temporaryPassword : undefined,
+        emailSent: result.emailSent,
         message: result.message,
       });
     } catch (error) {
       console.error("Error in createAthlete controller:", error);
 
+      // Manejar errores de validación
       if (error.message.includes('ya está registrado') ||
           error.message.includes('debe tener un acudiente') ||
           error.message.includes('no existe')) {
         return res.status(400).json({
           success: false,
           message: error.message,
+        });
+      }
+
+      // Manejar errores de Prisma (duplicados)
+      if (error.code === 'P2002') {
+        const field = error.meta?.target?.[0];
+        let message = 'Ya existe un registro con estos datos.';
+        
+        if (field === 'email') {
+          message = `El correo electrónico "${req.body.email}" ya está registrado.`;
+        } else if (field === 'identification') {
+          message = `El documento "${req.body.identification}" ya está registrado.`;
+        }
+        
+        return res.status(400).json({
+          success: false,
+          message: message,
         });
       }
 
@@ -138,12 +158,30 @@ export class AthletesController {
     } catch (error) {
       console.error("Error in updateAthlete controller:", error);
 
+      // Manejar errores de validación
       if (error.message.includes('ya está registrado') ||
           error.message.includes('debe tener un acudiente') ||
           error.message.includes('no existe')) {
         return res.status(400).json({
           success: false,
           message: error.message,
+        });
+      }
+
+      // Manejar errores de Prisma (duplicados)
+      if (error.code === 'P2002') {
+        const field = error.meta?.target?.[0];
+        let message = 'Ya existe un registro con estos datos.';
+        
+        if (field === 'email') {
+          message = `El correo electrónico "${req.body.email}" ya está registrado por otro deportista.`;
+        } else if (field === 'identification') {
+          message = `El documento "${req.body.identification}" ya está registrado por otro deportista.`;
+        }
+        
+        return res.status(400).json({
+          success: false,
+          message: message,
         });
       }
 
@@ -277,6 +315,46 @@ export class AthletesController {
         success: false,
         message: "Error interno del servidor al obtener tipos de documento",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  checkEmailAvailability = async (req, res) => {
+    try {
+      const { email, excludeUserId } = req.query;
+      const result = await this.athletesService.checkEmailAvailability(email, excludeUserId);
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.available ? 'Email disponible.' : result.message
+      });
+    } catch (error) {
+      console.error('Error checking email availability:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al verificar email.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  };
+
+  checkIdentificationAvailability = async (req, res) => {
+    try {
+      const { identification, excludeUserId } = req.query;
+      const result = await this.athletesService.checkIdentificationAvailability(identification, excludeUserId);
+
+      res.json({
+        success: true,
+        available: result.available,
+        message: result.available ? 'Identificación disponible.' : result.message
+      });
+    } catch (error) {
+      console.error('Error checking identification availability:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al verificar identificación.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   };

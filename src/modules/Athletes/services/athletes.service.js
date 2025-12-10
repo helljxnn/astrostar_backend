@@ -1,4 +1,6 @@
+import bcrypt from 'bcrypt';
 import { AthletesRepository } from "../repository/athletes.repository.js";
+import emailService from "../../../services/emailService.js";
 
 export class AthletesService {
   constructor() {
@@ -84,13 +86,22 @@ export class AthletesService {
         }
       }
 
+      // REGLA DE NEGOCIO: Usar documento de identidad como contraseña inicial
+      const temporaryPassword = dataWithDefaults.identification?.trim();
+      dataWithDefaults.temporaryPassword = temporaryPassword;
+
       console.log('🔍 [SERVICE] Creando deportista en repositorio...');
       const newAthlete = await this.athletesRepository.create(dataWithDefaults);
+
+      // Enviar email de bienvenida con credenciales
+      const emailResult = await this.sendWelcomeEmail(newAthlete, temporaryPassword);
 
       return {
         success: true,
         data: newAthlete,
-        message: `Deportista "${dataWithDefaults.firstName} ${dataWithDefaults.lastName}" creado exitosamente con estado Activo.`,
+        temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined,
+        emailSent: emailResult.success,
+        message: `Deportista "${dataWithDefaults.firstName} ${dataWithDefaults.lastName}" creado exitosamente con estado Activo. ${emailResult.success ? 'Credenciales enviadas por email.' : 'Error enviando credenciales por email.'}`,
       };
     } catch (error) {
       console.error('❌ [SERVICE] Error en createAthlete:', error);
@@ -109,6 +120,10 @@ export class AthletesService {
         };
       }
 
+      // Detectar si el email cambió
+      const emailChanged = updateData.email && updateData.email !== existingAthlete.email;
+      const oldEmail = existingAthlete.email;
+
       // Validar documento único si se está actualizando
       if (updateData.identification && updateData.identification !== existingAthlete.identification) {
         const existingByDocument = await this.athletesRepository.findByDocument(
@@ -118,6 +133,19 @@ export class AthletesService {
         if (existingByDocument) {
           throw new Error(
             `El documento "${updateData.identification}" ya está registrado por otro deportista.`
+          );
+        }
+      }
+
+      // Validar email único si se está actualizando
+      if (emailChanged) {
+        const existingByEmail = await this.athletesRepository.findByEmail(
+          updateData.email,
+          existingAthlete.userId
+        );
+        if (existingByEmail) {
+          throw new Error(
+            `El email "${updateData.email}" ya está registrado por otro usuario.`
           );
         }
       }
@@ -140,10 +168,26 @@ export class AthletesService {
 
       const updatedAthlete = await this.athletesRepository.update(id, updateData);
 
+      // Si el email cambió, enviar correo de verificación al nuevo email
+      let emailSent = false;
+      if (emailChanged) {
+        console.log(`📧 Email cambió de ${oldEmail} a ${updateData.email}, enviando correo de verificación...`);
+        const emailResult = await this.sendWelcomeEmail(
+          {
+            email: updateData.email,
+            firstName: updatedAthlete.firstName,
+            lastName: updatedAthlete.lastName
+          },
+          existingAthlete.identification // Usar el documento como contraseña
+        );
+        emailSent = emailResult.success;
+      }
+
       return {
         success: true,
         data: updatedAthlete,
-        message: `Deportista "${updatedAthlete.firstName} ${updatedAthlete.lastName}" actualizado exitosamente.`,
+        emailSent,
+        message: `Deportista "${updatedAthlete.firstName} ${updatedAthlete.lastName}" actualizado exitosamente.${emailChanged ? (emailSent ? ' Credenciales enviadas al nuevo email.' : ' Error enviando credenciales al nuevo email.') : ''}`,
       };
     } catch (error) {
       console.error('Error en updateAthlete:', error);
@@ -242,5 +286,108 @@ export class AthletesService {
       age--;
     }
     return age;
+  }
+
+  /**
+   * Generar contraseña temporal segura
+   */
+  generateTemporaryPassword() {
+    // Caracteres seguros (sin caracteres ambiguos como 0, O, l, I)
+    const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijkmnpqrstuvwxyz';
+    const numbers = '23456789';
+    const symbols = '!@#$%&*';
+    
+    let password = '';
+    
+    // Asegurar al menos un carácter de cada tipo
+    password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+    password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+    password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+    password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+    
+    // Completar con caracteres aleatorios
+    const allChars = uppercase + lowercase + numbers + symbols;
+    for (let i = 4; i < 12; i++) {
+      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+    }
+    
+    // Mezclar la contraseña
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  }
+
+  /**
+   * Enviar email de bienvenida con credenciales
+   */
+  async sendWelcomeEmail(athleteData, temporaryPassword) {
+    try {
+      const athleteInfo = {
+        email: athleteData.email,
+        firstName: athleteData.firstName,
+        lastName: athleteData.lastName
+      };
+
+      const credentials = {
+        email: athleteData.email,
+        temporaryPassword
+      };
+
+      const result = await emailService.sendAthleteWelcomeEmail(athleteInfo, credentials);
+      
+      return result;
+    } catch (error) {
+      console.error('❌ Error enviando email de bienvenida:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Verificar disponibilidad de email
+   */
+  async checkEmailAvailability(email, excludeUserId = null) {
+    try {
+      const existingUser = await this.athletesRepository.findByEmail(email, excludeUserId);
+      
+      if (!existingUser) {
+        return { available: true };
+      }
+
+      if (excludeUserId && existingUser.id === parseInt(excludeUserId)) {
+        return { available: true };
+      }
+
+      return { 
+        available: false, 
+        message: `El email "${email}" ya está en uso.` 
+      };
+    } catch (error) {
+      console.error('Service error - checkEmailAvailability:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar disponibilidad de identificación
+   */
+  async checkIdentificationAvailability(identification, excludeUserId = null) {
+    try {
+      const existingUser = await this.athletesRepository.findByIdentification(identification, excludeUserId);
+      
+      if (!existingUser) {
+        return { available: true };
+      }
+
+      if (excludeUserId && existingUser.id === parseInt(excludeUserId)) {
+        return { available: true };
+      }
+
+      return { 
+        available: false, 
+        message: `La identificación "${identification}" ya está en uso.` 
+      };
+    } catch (error) {
+      console.error('Service error - checkIdentificationAvailability:', error);
+      throw error;
+    }
   }
 }

@@ -4,15 +4,21 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { swaggerUi, specs } from './config/swagger.js';
 import routes from './routes/index.js';
+import { requestLogger } from './middlewares/requestLogger.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 
+// Request logger (solo en desarrollo)
+if (process.env.NODE_ENV === 'development') {
+  app.use(requestLogger);
+}
+
 // Middleware
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: true, // Permitir todas las conexiones en desarrollo
   credentials: true // Permitir envío de cookies
 }));
 app.use(cookieParser());
