@@ -41,7 +41,7 @@ router.use("/sports-categories", sportsCategoryRoutes);
 router.use("/teams", teamsRoutes);
 router.use("/trainers", trainersRoutes);
 router.use("/teams-athletes", athletesRoutes); 
-router.use("/deportistas", deportistasRoutes); 
+router.use("/athletes", deportistasRoutes); 
 router.use("/guardians", guardiansRoutes);
 router.use("/pre-registrations", preRegistrationsRoutes);
 router.use("/enrollments", enrollmentsRoutes);

@@ -23,6 +23,8 @@ export class GuardiansRepository {
       phoneNumber: guardian.phone,
       identification: guardian.identification,
       birthDate: guardian.birthDate,
+      address: guardian.address || '',
+      statusAssignedAt: guardian.statusAssignedAt,
     };
   }
 
@@ -61,6 +63,7 @@ export class GuardiansRepository {
         data: {
           ...transformed,
           documentTypeId: parseInt(guardianData.documentTypeId),
+          statusAssignedAt: new Date(),
         },
         include: {
           documentType: true

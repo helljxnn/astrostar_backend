@@ -1,5 +1,5 @@
 import DonationsRepository from "../repository/donations.repository.js";
-import cloudinary from "../../../../shared/cloudinary.js";
+import cloudinary from "../../../../services/shared/cloudinary.service.js";
 
 const ALLOWED_MIME = [
   "application/pdf",

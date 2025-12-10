@@ -673,6 +673,43 @@ router.patch(
 
 /**
  * @swagger
+ * /api/athletes/{id}/remove-guardian:
+ *   put:
+ *     summary: Remover acudiente de un deportista
+ *     description: Desasocia el acudiente de un deportista específico sin eliminar el acudiente de la base de datos
+ *     tags: [Athletes]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del deportista
+ *     responses:
+ *       200:
+ *         description: Acudiente removido exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   $ref: '#/components/schemas/Athlete'
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: El deportista no tiene acudiente asignado
+ *       404:
+ *         description: Deportista no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.put("/:id/remove-guardian", athletesController.removeGuardian);
+
+/**
+ * @swagger
  * /api/athletes/{id}:
  *   delete:
  *     summary: Eliminar deportista
