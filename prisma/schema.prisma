@@ -275,6 +275,7 @@ model Employee {
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
+  classes             Class[]
 
   @@map("employees")
 }
@@ -381,6 +382,7 @@ model Athlete {
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
+  classes                  ClassAthlete[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])
@@ -631,32 +633,33 @@ model ServiceSponsor {
 }
 
 model ServiceType {
-  id        Int       @id @default(autoincrement())
-  name      String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  Service   Service[]
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Service     Service[]
 }
 
 model Sponsor {
-  id             Int                       @id @default(autoincrement())
-  name           String                    @unique
-  type           DonorSponsorType          @default(Donor)
-  personType     DonorSponsorPersonType    @default(Natural)
-  documentType   String?                   @db.VarChar(50)
-  identification String                    @unique @db.VarChar(100)
-  contactName    String?                   @db.VarChar(150)
-  city           String?                   @db.VarChar(120)
-  country        String?                   @db.VarChar(120)
+  id             Int                    @id @default(autoincrement())
+  name           String                 @unique
+  type           DonorSponsorType       @default(Donor)
+  personType     DonorSponsorPersonType @default(Natural)
+  documentType   String?                @db.VarChar(50)
+  identification String                 @unique @db.VarChar(100)
+  contactName    String?                @db.VarChar(150)
+  city           String?                @db.VarChar(120)
+  country        String?                @db.VarChar(120)
   description    String?
-  contactEmail   String?                   @db.VarChar(150)
-  phone          String?                   @db.VarChar(30)
-  address        String?                   @db.VarChar(200)
-  status         SponsorStatus             @default(Active)
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
+  contactEmail   String?                @db.VarChar(150)
+  phone          String?                @db.VarChar(30)
+  address        String?                @db.VarChar(200)
+  status         SponsorStatus          @default(Active)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
   ServiceSponsor ServiceSponsor[]
-  donations      Donation[]
+}
 
 enum RoleStatus {
   Active
@@ -774,21 +777,21 @@ enum TeamType {
 }
 
 model Donation {
-  id             Int             @id @default(autoincrement())
-  code           String          @unique
+  id             Int                   @id @default(autoincrement())
+  code           String                @unique
   donorSponsorId Int?
-  anonymous      Boolean         @default(false)
+  anonymous      Boolean               @default(false)
   type           DonationType
-  status         DonationStatus  @default(Recibida)
+  status         DonationStatus        @default(Recibida)
   program        String?
   donationAt     DateTime
   notes          String?
   cancelReason   String?
   cancelAt       DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
   deletedAt      DateTime?
-  donorSponsor   Sponsor?        @relation(fields: [donorSponsorId], references: [id])
+  donorSponsor   Sponsor?              @relation(fields: [donorSponsorId], references: [id])
   details        DonationDetail[]
   transactions   DonationTransaction[]
   files          DonationFile[]
@@ -798,30 +801,30 @@ model Donation {
 }
 
 model DonationDetail {
-  id             Int           @id @default(autoincrement())
+  id             Int            @id @default(autoincrement())
   donationId     Int
   kind           DonationType
   recordType     String
   description    String?
-  quantity       Decimal?      @db.Decimal(10, 2)
-  amount         Decimal?      @db.Decimal(12, 2)
+  quantity       Decimal?       @db.Decimal(10, 2)
+  amount         Decimal?       @db.Decimal(12, 2)
   channel        String?
   classification String?
   expiresAt      DateTime?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  donation       Donation      @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  donation       Donation       @relation(fields: [donationId], references: [id], onDelete: Cascade)
   files          DonationFile[]
 }
 
 model DonationTransaction {
-  id         Int            @id @default(autoincrement())
+  id         Int             @id @default(autoincrement())
   donationId Int
   fromStatus DonationStatus?
   toStatus   DonationStatus
   reason     String?
-  createdAt  DateTime       @default(now())
-  donation   Donation       @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  createdAt  DateTime        @default(now())
+  donation   Donation        @relation(fields: [donationId], references: [id], onDelete: Cascade)
 
   @@index([donationId, createdAt])
 }
