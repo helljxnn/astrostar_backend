@@ -21,6 +21,150 @@ enum EnrollmentStatus {
   Cancelada
 }
 
+enum SponsorStatus {
+  Active
+  Inactive
+}
+
+enum DonorSponsorType {
+  Donor
+  Sponsor
+}
+
+enum DonorSponsorPersonType {
+  Natural
+  Juridica
+}
+
+enum SportsCategoryStatus {
+  Activo
+  Inactivo
+}
+
+enum AthleteStatus {
+  Active
+  Inactive
+}
+
+enum InscriptionStatus {
+  Active
+  Suspended
+  Expired
+}
+
+enum InscriptionRecordType {
+  initial_inscription
+  renewal
+  status_change
+}
+
+enum GuardianRelationship {
+  Mother
+  Father
+  Grandparent
+  Uncle_Aunt
+  Sibling
+  Cousin
+  Legal_Guardian
+  Neighbor
+  Family_Friend
+  Other
+}
+
+enum TemporaryPersonStatus {
+  Active
+  Inactive
+}
+
+enum TemporaryPersonType {
+  Deportista
+  Entrenador
+  Participante
+}
+
+enum TeamStatus {
+  Active
+  Inactive
+  Disbanded
+}
+
+enum MemberType {
+  Athlete
+  Employee
+  TemporaryPerson
+}
+
+enum ParticipantType {
+  Individual
+  Team
+}
+
+enum ProviderEntityType {
+  legal
+  natural
+}
+
+enum ProviderStatus {
+  Active
+  Inactive
+}
+
+enum PurchaseStatus {
+  Pending
+  Received
+  Partial
+  Cancelled
+}
+
+enum ScheduleRecurrence {
+  no
+  dia
+  semana
+  mes
+  anio
+  laboral
+  personalizado
+}
+
+enum ScheduleStatus {
+  Programado
+  Completado
+  Cancelado
+}
+
+enum TeamMemberRole {
+  Player
+  Coach
+  Assistant
+  Manager
+  Captain
+}
+
+enum DonationType {
+  ECONOMICA
+  ESPECIE
+  ALIMENTOS
+}
+
+enum DonationStatus {
+  Recibida
+  EnProceso
+  Verificada
+  Ejecutada
+  Anulada
+}
+
+enum DonationFileType {
+  comprobante
+  soporte
+  factura
+  evidencia
+}
+
+// ============================================
+// MODELOS
+// ============================================
+
 model DocumentType {
   id               Int               @id @default(autoincrement())
   name             String            @unique
@@ -66,6 +210,7 @@ model User {
   documentTypeId          Int
   roleId                  Int
   age                     Int?
+  avatarColorIndex        Int?                     @default(0)
   athlete                 Athlete?
   emailVerificationTokens EmailVerificationToken[]
   employee                Employee?
@@ -224,6 +369,7 @@ model Athlete {
   id                       Int                   @id @default(autoincrement())
   userId                   Int                   @unique
   status                   AthleteStatus         @default(Active)
+  inactivityReason         String?               @db.VarChar(200)
   guardianId               Int?
   relationship             GuardianRelationship?
   otherRelationship        String?               @db.VarChar(100)
@@ -245,19 +391,22 @@ model Athlete {
 }
 
 model Enrollment {
-  id              Int              @id @default(autoincrement())
-  athleteId       Int
-  fechaMatricula  DateTime         @default(now())
-  estado          EnrollmentStatus @default(Vigente)
-  observaciones   String?          @db.Text
-  comprobantePago String?          @db.VarChar(500)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  athlete         Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  id               Int              @id @default(autoincrement())
+  athleteId        Int
+  fechaInicio      DateTime         @default(now())
+  fechaVencimiento DateTime
+  fechaMatricula   DateTime         @default(now())
+  estado           EnrollmentStatus @default(Vigente)
+  observaciones    String?          @db.Text
+  comprobantePago  String?          @db.VarChar(500)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  athlete          Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@index([athleteId])
   @@index([estado])
   @@index([fechaMatricula])
+  @@index([fechaVencimiento])
   @@map("enrollments")
 }
 
@@ -392,9 +541,6 @@ model Provider {
   documentType     DocumentType?      @relation(fields: [documentTypeId], references: [id])
   purchases        Purchase[]
 
-  @@index([status])
-  @@index([entityType])
-  @@index([businessName])
   @@map("providers")
 }
 
@@ -433,10 +579,6 @@ model Purchase {
   employee       Employee?      @relation(fields: [employeeId], references: [id])
   provider       Provider       @relation(fields: [providerId], references: [id])
 
-  @@index([providerId])
-  @@index([employeeId])
-  @@index([status])
-  @@index([purchaseDate])
   @@map("purchases")
 }
 
@@ -500,57 +642,23 @@ model ServiceType {
 }
 
 model Sponsor {
-  id             Int              @id @default(autoincrement())
-  name           String           @unique
+  id             Int                    @id @default(autoincrement())
+  name           String                 @unique
+  type           DonorSponsorType       @default(Donor)
+  personType     DonorSponsorPersonType @default(Natural)
+  documentType   String?                @db.VarChar(50)
+  identification String                 @unique @db.VarChar(100)
+  contactName    String?                @db.VarChar(150)
+  city           String?                @db.VarChar(120)
+  country        String?                @db.VarChar(120)
   description    String?
-  contactEmail   String?
-  phone          String?
-  status         SponsorStatus    @default(Active)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  contactEmail   String?                @db.VarChar(150)
+  phone          String?                @db.VarChar(30)
+  address        String?                @db.VarChar(200)
+  status         SponsorStatus          @default(Active)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
   ServiceSponsor ServiceSponsor[]
-}
-
-model Class {
-  id          Int            @id @default(autoincrement())
-  title       String         @db.VarChar(200)
-  description String?        @db.Text
-  classDate   DateTime
-  startTime   String         @db.VarChar(10)
-  endTime     String         @db.VarChar(10)
-  location    String?        @db.VarChar(200)
-  maxCapacity Int?
-  status      ClassStatus    @default(Programada)
-  notes       String?        @db.Text
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  employeeId  Int
-  employee    Employee       @relation(fields: [employeeId], references: [id])
-  athletes    ClassAthlete[]
-
-  @@index([employeeId])
-  @@index([classDate])
-  @@index([status])
-  @@map("classes")
-}
-
-model ClassAthlete {
-  id               Int                   @id @default(autoincrement())
-  classId          Int
-  athleteId        Int
-  attendanceStatus ClassAttendanceStatus @default(Pendiente)
-  confirmedAt      DateTime?
-  notes            String?               @db.Text
-  createdAt        DateTime              @default(now())
-  updatedAt        DateTime              @updatedAt
-  class            Class                 @relation(fields: [classId], references: [id], onDelete: Cascade)
-  athlete          Athlete               @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-
-  @@unique([classId, athleteId])
-  @@index([classId])
-  @@index([athleteId])
-  @@index([attendanceStatus])
-  @@map("class_athletes")
 }
 
 enum RoleStatus {
@@ -668,17 +776,72 @@ enum TeamType {
   Temporal
 }
 
-enum ClassStatus {
-  Programada
-  En_curso
-  Finalizada
-  Cancelada
+model Donation {
+  id             Int                   @id @default(autoincrement())
+  code           String                @unique
+  donorSponsorId Int?
+  anonymous      Boolean               @default(false)
+  type           DonationType
+  status         DonationStatus        @default(Recibida)
+  program        String?
+  donationAt     DateTime
+  notes          String?
+  cancelReason   String?
+  cancelAt       DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  deletedAt      DateTime?
+  donorSponsor   Sponsor?              @relation(fields: [donorSponsorId], references: [id])
+  details        DonationDetail[]
+  transactions   DonationTransaction[]
+  files          DonationFile[]
+
+  @@index([status, type, donationAt])
+  @@index([donorSponsorId])
 }
 
-enum ClassAttendanceStatus {
-  Pendiente
-  Confirmada
-  Asistio
-  No_asistio
-  Cancelada
+model DonationDetail {
+  id             Int            @id @default(autoincrement())
+  donationId     Int
+  kind           DonationType
+  recordType     String
+  description    String?
+  quantity       Decimal?       @db.Decimal(10, 2)
+  amount         Decimal?       @db.Decimal(12, 2)
+  channel        String?
+  classification String?
+  expiresAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  donation       Donation       @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  files          DonationFile[]
+}
+
+model DonationTransaction {
+  id         Int             @id @default(autoincrement())
+  donationId Int
+  fromStatus DonationStatus?
+  toStatus   DonationStatus
+  reason     String?
+  createdAt  DateTime        @default(now())
+  donation   Donation        @relation(fields: [donationId], references: [id], onDelete: Cascade)
+
+  @@index([donationId, createdAt])
+}
+
+model DonationFile {
+  id           Int              @id @default(autoincrement())
+  donationId   Int
+  detailId     Int?
+  fileType     DonationFileType
+  url          String
+  publicId     String
+  mimeType     String
+  size         Int
+  originalName String
+  createdAt    DateTime         @default(now())
+  donation     Donation         @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  detail       DonationDetail?  @relation(fields: [detailId], references: [id], onDelete: Cascade)
+
+  @@index([donationId])
 }

@@ -258,6 +258,59 @@ export class UsersRepository {
       };
     });
   }
+
+  /**
+   * Normalizar email (para Gmail, remover puntos antes del @)
+   */
+  normalizeEmail(email) {
+    if (!email) return email;
+    
+    const [localPart, domain] = email.toLowerCase().split('@');
+    
+    // Para Gmail, remover puntos del local part
+    if (domain === 'gmail.com' || domain === 'googlemail.com') {
+      return localPart.replace(/\./g, '') + '@' + domain;
+    }
+    
+    return email.toLowerCase();
+  }
+
+  /**
+   * Buscar usuario por email (con normalización para Gmail)
+   */
+  async findByEmail(email, excludeUserId = null) {
+    const normalizedEmail = this.normalizeEmail(email);
+    
+    // Buscar por email normalizado
+    const where = { email: normalizedEmail };
+    if (excludeUserId) {
+      where.id = { not: parseInt(excludeUserId) };
+    }
+    
+    let user = await prisma.user.findFirst({ where });
+    
+    // Si no se encuentra con email normalizado, buscar con email original
+    if (!user && normalizedEmail !== email.toLowerCase()) {
+      const whereOriginal = { email: email.toLowerCase() };
+      if (excludeUserId) {
+        whereOriginal.id = { not: parseInt(excludeUserId) };
+      }
+      user = await prisma.user.findFirst({ where: whereOriginal });
+    }
+    
+    return user;
+  }
+
+  /**
+   * Buscar usuario por identificación
+   */
+  async findByIdentification(identification, excludeUserId = null) {
+    const where = { identification: identification };
+    if (excludeUserId) {
+      where.id = { not: parseInt(excludeUserId) };
+    }
+    return await prisma.user.findFirst({ where });
+  }
 }
 
 export default new UsersRepository();

@@ -307,7 +307,7 @@ Este es un email automático del sistema AstroStar.
             <div class="content">
                 <h2>Hola ${firstName} ${lastName},</h2>
                 
-                <p>¡Nos complace darte la bienvenida a AstroStar! Tu cuenta de deportista ha sido creada exitosamente.</p>
+                <p>¡Nos complace darte la bienvenida a AstroStar! Tu cuenta de <strong>deportista</strong> ha sido creada exitosamente.</p>
                 
                 <div class="credentials-box">
                     <h3>🔐 Tus Credenciales de Acceso</h3>
@@ -315,16 +315,16 @@ Este es un email automático del sistema AstroStar.
                         <strong>📧 Usuario:</strong> ${email}
                     </div>
                     <div class="credential-item">
-                        <strong>🔑 Contraseña Temporal:</strong> <code>${password}</code>
+                        <strong>🔑 Contraseña:</strong> Tu documento de identidad
                     </div>
                 </div>
                 
                 <div class="warning">
-                    <strong>⚠️ Importante:</strong>
+                    <strong>⚠️ Importante - Seguridad:</strong>
                     <ul>
-                        <li>Esta es una contraseña temporal generada automáticamente</li>
-                        <li>Debes cambiarla en tu primer inicio de sesión</li>
-                        <li>No compartas estas credenciales con nadie</li>
+                        <li>Por razones de seguridad, es recomendable cambiar tu contraseña después de tu primer inicio de sesión</li>
+                        <li>Elige una contraseña segura que incluya letras, números y símbolos</li>
+                        <li>No compartas tus credenciales con nadie</li>
                         <li>Si tienes problemas para acceder, contacta al administrador</li>
                     </ul>
                 </div>
@@ -337,8 +337,8 @@ Este es un email automático del sistema AstroStar.
                 
                 <h3>📋 Próximos Pasos:</h3>
                 <ol>
-                    <li>Inicia sesión con las credenciales proporcionadas</li>
-                    <li>Cambia tu contraseña por una segura</li>
+                    <li>Inicia sesión con tu correo y tu documento de identidad como contraseña</li>
+                    <li><strong>Cambia tu contraseña inmediatamente</strong> por una segura y personal</li>
                     <li>Completa tu perfil si es necesario</li>
                     <li>Revisa tu información deportiva y categoría</li>
                 </ol>
@@ -374,16 +374,18 @@ Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido cr
 
 CREDENCIALES DE ACCESO:
 - Usuario: ${email}
-- Contraseña Temporal: ${password}
+- Contraseña: Tu documento de identidad
 
-IMPORTANTE:
-- Esta es una contraseña temporal que debes cambiar en tu primer inicio de sesión
-- No compartas estas credenciales con nadie
+IMPORTANTE - SEGURIDAD:
+- Tu contraseña inicial es tu número de documento de identidad
+- Por razones de seguridad, DEBES CAMBIARLA INMEDIATAMENTE después de tu primer inicio de sesión
+- Elige una contraseña segura que incluya letras, números y símbolos
+- No compartas tus credenciales con nadie
 - Si tienes problemas para acceder, contacta al administrador
 
 PRÓXIMOS PASOS:
-1. Inicia sesión con las credenciales proporcionadas
-2. Cambia tu contraseña por una segura
+1. Inicia sesión con tu correo y tu documento de identidad como contraseña
+2. CAMBIA TU CONTRASEÑA INMEDIATAMENTE por una segura y personal
 3. Completa tu perfil si es necesario
 4. Revisa tu información deportiva y categoría
 
@@ -500,7 +502,7 @@ Este es un email automático del sistema AstroStar.
    */
   async sendPreRegistrationEmail(preRegistrationData) {
     try {
-      const { nombres, apellidos, fechaNacimiento, telefono, correo } = preRegistrationData;
+      const { nombres, apellidos, numeroDocumento, fechaNacimiento, telefono, correo } = preRegistrationData;
       
       const mailOptions = {
         from: {
@@ -509,7 +511,7 @@ Este es un email automático del sistema AstroStar.
         },
         to: correo,
         subject: '¡Bienvenida a la Fundación Manuela Vanegas! - Próximos Pasos',
-        html: this.generatePreRegistrationTemplate(nombres, apellidos, fechaNacimiento, telefono, correo),
+        html: this.generatePreRegistrationTemplate(nombres, apellidos, numeroDocumento, fechaNacimiento, telefono, correo),
       };
 
       if (!this.transporter) {
@@ -528,7 +530,7 @@ Este es un email automático del sistema AstroStar.
   /**
    * Generar template para pre-inscripción
    */
-  generatePreRegistrationTemplate(nombres, apellidos, fechaNacimiento, telefono, correo) {
+  generatePreRegistrationTemplate(nombres, apellidos, numeroDocumento, fechaNacimiento, telefono, correo) {
     const formatDate = (date) => {
       return new Date(date).toLocaleDateString('es-CO', { 
         year: 'numeric', 
@@ -571,6 +573,7 @@ Este es un email automático del sistema AstroStar.
                   <div style="background-color: #f8f9fa; border-left: 4px solid #B595FF; padding: 20px; margin: 20px 0; border-radius: 5px;">
                     <h3 style="color: #B595FF; margin: 0 0 15px 0; font-size: 18px;">📋 Tus Datos Registrados:</h3>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Nombre:</strong> ${nombres} ${apellidos}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Número de Documento:</strong> ${numeroDocumento}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Fecha de Nacimiento:</strong> ${formatDate(fechaNacimiento)}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${telefono}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Correo:</strong> ${correo}</p>
@@ -611,8 +614,11 @@ Este es un email automático del sistema AstroStar.
               <tr>
                 <td style="background-color: #f8f9fa; padding: 30px; text-align: center; border-top: 1px solid #e0e0e0;">
                   <h4 style="color: #333333; margin: 0 0 15px 0; font-size: 16px;">Síguenos en Redes Sociales</h4>
-                  <p style="margin: 10px 0; color: #666666; font-size: 14px;">
-                    Facebook | Instagram | Twitter
+                  <p style="margin: 10px 0;">
+                    <a href="https://www.instagram.com/fundacionmv.co" target="_blank" style="color: #B595FF; text-decoration: none; margin: 0 10px;">Instagram</a> |
+                    <a href="https://wa.me/573245721322" target="_blank" style="color: #B595FF; text-decoration: none; margin: 0 10px;">WhatsApp</a> |
+                    <a href="mailto:fundacionmanuelavanuelvanegas@gmail.com" style="color: #B595FF; text-decoration: none; margin: 0 10px;">Email</a> |
+                    <a href="https://www.youtube.com/@FundacionManuelaVanegas" target="_blank" style="color: #B595FF; text-decoration: none; margin: 0 10px;">YouTube</a>
                   </p>
                 </td>
               </tr>

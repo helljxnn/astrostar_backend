@@ -3,17 +3,37 @@ import emailService from "../../../services/emailService.js";
 
 export const preRegistrationsService = {
   async create(data) {
-    // Convertir fechaNacimiento a Date si viene como string
+    // 1. Verificar si ya existe una pre-inscripción pendiente con el mismo correo o documento
+    const existing = await preRegistrationsRepository.findAll({
+      search: data.correo,
+      estado: "Pendiente",
+      page: 1,
+      limit: 1,
+    });
+
+    if (existing.data && existing.data.length > 0) {
+      const existingReg = existing.data[0];
+      
+      // Verificar si es el mismo correo o documento
+      if (existingReg.correo === data.correo || existingReg.numeroDocumento === data.numeroDocumento) {
+        throw new Error(
+          "Ya existe una pre-inscripción pendiente con este correo o documento. " +
+          "Si no recibiste el correo, usa la opción de reenviar."
+        );
+      }
+    }
+
+    // 2. Convertir fechaNacimiento a Date si viene como string
     const dataToCreate = {
       ...data,
       fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : new Date(),
       estado: "Pendiente",
     };
 
-    // Crear pre-inscripción
+    // 3. Crear pre-inscripción
     const preRegistration = await preRegistrationsRepository.create(dataToCreate);
 
-    // Enviar correo de confirmación (no bloqueante)
+    // 4. Enviar correo de confirmación (no bloqueante)
     emailService.sendPreRegistrationEmail(preRegistration).catch((error) => {
       console.error("Error enviando correo de pre-inscripción:", error);
     });

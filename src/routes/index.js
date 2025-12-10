@@ -5,6 +5,9 @@ import employeeRoutes from "../modules/Services/Employees/routes/employees.route
 import usersRoutes from "../modules/Users/routes/users.routes.js";
 import providerRoutes from "../modules/Providers/routes/providers.routes.js";
 import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/routes/temporaryworkers.routes.js";
+import donorsSponsorsRoutes from "../modules/Donations/DonorsSponsors/routes/donorsSponsors.routes.js";
+import donationsRoutes from "../modules/Donations/Donations/routes/donations.routes.js";
+
 import documentTypesRoutes from "./documentTypes.routes.js";
 import sportsCategoryRoutes from "../modules/Athletes/SportsCategory/routes/sportsCategory.routes.js";
 import teamsRoutes from "../modules/Teams/routes/teams.routes.js";
@@ -31,12 +34,14 @@ router.use("/employees", employeeRoutes);
 router.use("/users", usersRoutes);
 router.use("/providers", providerRoutes);
 router.use("/temporary-workers", temporaryWorkersRoutes);
+router.use("/donors-sponsors", donorsSponsorsRoutes);
+router.use("/donations", donationsRoutes);
 router.use("/document-types", documentTypesRoutes);
 router.use("/sports-categories", sportsCategoryRoutes);
 router.use("/teams", teamsRoutes);
 router.use("/trainers", trainersRoutes);
-router.use("/teams-athletes", athletesRoutes); // Atletas de equipos (temporal)
-router.use("/athletes", deportistasRoutes); // Módulo principal de deportistas
+router.use("/teams-athletes", athletesRoutes); 
+router.use("/deportistas", deportistasRoutes); 
 router.use("/guardians", guardiansRoutes);
 router.use("/pre-registrations", preRegistrationsRoutes);
 router.use("/enrollments", enrollmentsRoutes);
@@ -64,6 +69,8 @@ router.get("/health", (req, res) => {
       "Users",
       "Providers",
       "TemporaryWorkers",
+      "DonorsSponsors",
+      "Donations",
       "DocumentTypes",
       "SportsCategories",
       "Teams",

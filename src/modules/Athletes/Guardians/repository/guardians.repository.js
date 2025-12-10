@@ -220,4 +220,16 @@ export class GuardiansRepository {
       inactivos: 0,
     };
   }
+
+  async findByEmail(email, excludeId = null) {
+    const where = { email: email };
+    if (excludeId) where.id = { not: parseInt(excludeId) };
+    return await prisma.guardian.findFirst({ where });
+  }
+
+  async findByIdentification(identification, excludeId = null) {
+    const where = { identification: identification };
+    if (excludeId) where.id = { not: parseInt(excludeId) };
+    return await prisma.guardian.findFirst({ where });
+  }
 }

@@ -7,10 +7,19 @@ export class ScheduleService {
   }
 
   /**
+   * Normalizar fecha (YYYY-MM-DD) a Date con hora local 00:00:00
+   */
+  normalizeDateOnly(fecha) {
+    if (!fecha) return null;
+    if (fecha instanceof Date) return fecha;
+    return new Date(`${fecha}T00:00:00`);
+  }
+
+  /**
    * Mapear días de semana español -> inglés para Prisma
    */
   mapDayOfWeek(fecha) {
-    const date = new Date(fecha);
+    const date = this.normalizeDateOnly(fecha);
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     return days[date.getDay()];
   }
@@ -86,7 +95,7 @@ export class ScheduleService {
       }
 
       // 2. REGLA DE NEGOCIO: Validar que la fecha no sea pasada
-      const scheduleDate = new Date(scheduleData.fecha);
+      const scheduleDate = this.normalizeDateOnly(scheduleData.fecha);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (scheduleDate < today) {
@@ -99,12 +108,12 @@ export class ScheduleService {
       }
 
       // 4. REGLA DE NEGOCIO: Verificar conflictos de horario
-      const conflict = await this.scheduleRepository.checkScheduleConflict(
-        scheduleData.empleadoId,
-        scheduleData.fecha,
-        scheduleData.horaInicio,
-        scheduleData.horaFin
-      );
+        const conflict = await this.scheduleRepository.checkScheduleConflict(
+          scheduleData.empleadoId,
+          scheduleDate,
+          scheduleData.horaInicio,
+          scheduleData.horaFin
+        );
       if (conflict) {
         const conflictDate = new Date(conflict.scheduleDate).toLocaleDateString('es-CO');
         throw new Error(
@@ -118,7 +127,7 @@ export class ScheduleService {
       // 6. Preparar datos para la base de datos
       const scheduleDataForDB = {
         employeeId: parseInt(scheduleData.empleadoId),
-        scheduleDate: new Date(scheduleData.fecha),
+        scheduleDate,
         dayOfWeek: dayOfWeek,
         startTime: scheduleData.horaInicio,
         endTime: scheduleData.horaFin,
@@ -168,7 +177,8 @@ export class ScheduleService {
 
       // 3. Si se actualiza fecha u horario, verificar conflictos
       if (updateData.fecha || updateData.horaInicio || updateData.horaFin) {
-        const scheduleDate = updateData.fecha || existingSchedule.scheduleDate;
+        const scheduleDate =
+          this.normalizeDateOnly(updateData.fecha) || existingSchedule.scheduleDate;
         const startTime = updateData.horaInicio || existingSchedule.startTime;
         const endTime = updateData.horaFin || existingSchedule.endTime;
 
@@ -196,7 +206,7 @@ export class ScheduleService {
       // 4. Preparar datos actualizados
       const scheduleDataForDB = {};
       if (updateData.fecha) {
-        scheduleDataForDB.scheduleDate = new Date(updateData.fecha);
+        scheduleDataForDB.scheduleDate = this.normalizeDateOnly(updateData.fecha);
         scheduleDataForDB.dayOfWeek = this.mapDayOfWeek(updateData.fecha);
       }
       if (updateData.horaInicio) scheduleDataForDB.startTime = updateData.horaInicio;
@@ -316,6 +326,7 @@ export class ScheduleService {
         id: emp.id,
         empleadoId: emp.id,
         nombre: `${emp.user.firstName} ${emp.user.middleName || ''} ${emp.user.lastName} ${emp.user.secondLastName || ''}`.replace(/\s+/g, ' ').trim(),
+        cargo: emp.user.role?.name || 'Empleado',
         email: emp.user.email,
         identification: emp.user.identification
       }));

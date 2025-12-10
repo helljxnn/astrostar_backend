@@ -148,4 +148,54 @@ export class GuardiansService {
       throw error;
     }
   }
+
+  /**
+   * Verificar disponibilidad de email
+   */
+  async checkEmailAvailability(email, excludeId = null) {
+    try {
+      const existingGuardian = await this.guardiansRepository.findByEmail(email, excludeId);
+      
+      if (!existingGuardian) {
+        return { available: true };
+      }
+
+      if (excludeId && existingGuardian.id === parseInt(excludeId)) {
+        return { available: true };
+      }
+
+      return { 
+        available: false, 
+        message: `El email "${email}" ya está en uso.` 
+      };
+    } catch (error) {
+      console.error('Service error - checkEmailAvailability:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar disponibilidad de identificación
+   */
+  async checkIdentificationAvailability(identification, excludeId = null) {
+    try {
+      const existingGuardian = await this.guardiansRepository.findByIdentification(identification, excludeId);
+      
+      if (!existingGuardian) {
+        return { available: true };
+      }
+
+      if (excludeId && existingGuardian.id === parseInt(excludeId)) {
+        return { available: true };
+      }
+
+      return { 
+        available: false, 
+        message: `La identificación "${identification}" ya está en uso.` 
+      };
+    } catch (error) {
+      console.error('Service error - checkIdentificationAvailability:', error);
+      throw error;
+    }
+  }
 }

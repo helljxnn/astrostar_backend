@@ -88,13 +88,15 @@ export const scheduleValidators = {
       .isISO8601()
       .withMessage('La fecha debe tener formato válido (YYYY-MM-DD).')
       .custom((value) => {
-        const scheduleDate = new Date(value);
+        // Parsear en horario local para evitar desfases por zona horaria
+        const scheduleDate = new Date(`${value}T00:00:00`);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (scheduleDate < today) {
           throw new Error('No se puede crear un horario en una fecha pasada.');
         }
         const oneYearFromNow = new Date();
+        oneYearFromNow.setHours(0, 0, 0, 0);
         oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
         if (scheduleDate > oneYearFromNow) {
           throw new Error('La fecha no puede ser mayor a 1 año en el futuro.');
@@ -154,7 +156,7 @@ export const scheduleValidators = {
       .isISO8601()
       .withMessage('La fecha debe tener formato válido (YYYY-MM-DD).')
       .custom((value) => {
-        const scheduleDate = new Date(value);
+        const scheduleDate = new Date(`${value}T00:00:00`);
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         if (scheduleDate < today) {
