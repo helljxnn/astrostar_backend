@@ -301,9 +301,9 @@ router.put('/:id',
 
 /**
  * @swagger
- * /api/schedules/{id}/cancel:
+ * /api/schedules/{id}/novedad:
  *   patch:
- *     summary: Cancelar horario con motivo
+ *     summary: Registrar una novedad para un horario
  *     tags: [Employee Schedules]
  *     parameters:
  *       - in: path
@@ -323,16 +323,16 @@ router.put('/:id',
  *               motivoCancelacion:
  *                 type: string
  *                 minLength: 10
- *                 example: "Empleado enfermo, reprogramar para la próxima semana"
+ *                 example: "Novedad parcial (08:00 - 10:00): se reagendó la sesión"
  *     responses:
  *       200:
- *         description: Horario cancelado exitosamente
+ *         description: Novedad registrada exitosamente
  */
-router.patch('/:id/cancel',
+router.patch('/:id/novedad',
   authenticateToken,
-  scheduleValidators.cancel,
+  scheduleValidators.novelty,
   handleValidationErrors,
-  scheduleController.cancelSchedule
+  scheduleController.registerNovelty
 );
 
 /**

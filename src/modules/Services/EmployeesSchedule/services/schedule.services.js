@@ -272,9 +272,9 @@ export class ScheduleService {
   }
 
   /**
-   * Cancelar horario con motivo
+   * Registrar una novedad en un horario
    */
-  async cancelSchedule(id, motivoCancelacion) {
+  async registerNovelty(id, motivoCancelacion) {
     try {
       const schedule = await this.scheduleRepository.findById(id);
       if (!schedule) {
@@ -285,33 +285,24 @@ export class ScheduleService {
         };
       }
 
-      if (schedule.status === 'Cancelado') {
-        return {
-          success: false,
-          statusCode: 400,
-          message: 'Este horario ya está cancelado.'
-        };
-      }
-
       if (schedule.status === 'Completado') {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede cancelar un horario que ya fue completado.'
+          message: 'No se puede registrar una novedad en un horario ya completado.'
         };
       }
 
       const updatedSchedule = await this.scheduleRepository.update(id, {
-        status: 'Cancelado',
         cancellationReason: motivoCancelacion.trim()
       });
       return {
         success: true,
         data: updatedSchedule,
-        message: 'Horario cancelado exitosamente.'
+        message: 'Novedad registrada exitosamente.'
       };
     } catch (error) {
-      console.error('Service error - cancelSchedule:', error);
+      console.error('Service error - registerNovelty:', error);
       throw error;
     }
   }

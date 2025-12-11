@@ -196,18 +196,18 @@ export const scheduleValidators = {
   ],
 
   /**
-   * Validación para cancelar horario
+   * Validación para registrar novedad
    */
-  cancel: [
+  novelty: [
     param('id')
       .isInt({ min: 1 })
       .withMessage('El ID del horario debe ser un número entero válido mayor a 0.')
       .toInt(),
     body('motivoCancelacion')
       .notEmpty()
-      .withMessage('El motivo de cancelación es obligatorio.')
+      .withMessage('El motivo de la novedad es obligatorio.')
       .isLength({ min: 10, max: 500 })
-      .withMessage('El motivo de cancelación debe tener entre 10 y 500 caracteres.')
+      .withMessage('El motivo de la novedad debe tener entre 10 y 500 caracteres.')
       .trim()
       .custom((value) => {
         if (!/[a-zA-Z0-9]/.test(value)) {
@@ -215,9 +215,9 @@ export const scheduleValidators = {
         }
         const repeated = /(.)\1{9,}/.test(value);
         if (repeated) {
-          throw new Error('El motivo de cancelación debe ser descriptivo.');
+          throw new Error('El motivo de la novedad debe ser descriptivo.');
         }
- 
+
         return true;
       })
   ],
