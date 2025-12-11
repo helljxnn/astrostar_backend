@@ -121,7 +121,14 @@ export class SportsCategoryController {
    */
   createSportsCategory = async (req, res) => {
     try {
-      const { name, description, minAge, maxAge, status = "Activo", publicar = false } = req.body;
+      const {
+        name,
+        description,
+        minAge,
+        maxAge,
+        status = "Activo",
+        publicar = false,
+      } = req.body;
 
       // Validaciones básicas
       if (!name || !name.trim()) {
@@ -160,7 +167,8 @@ export class SportsCategoryController {
         console.error("Error al subir a Cloudinary:", uploadError);
         return res.status(500).json({
           success: false,
-          message: "Error al subir la imagen. Verifica tus credenciales de Cloudinary.",
+          message:
+            "Error al subir la imagen. Verifica tus credenciales de Cloudinary.",
           statusCode: 500,
         });
       }
@@ -177,7 +185,9 @@ export class SportsCategoryController {
       };
 
       // Crear categoría
-      const result = await this.sportsCategoryService.createSportsCategory(categoryData);
+      const result = await this.sportsCategoryService.createSportsCategory(
+        categoryData
+      );
       res.status(result.statusCode || 201).json(result);
     } catch (error) {
       console.error("Error en createSportsCategory:", error);
@@ -214,14 +224,18 @@ export class SportsCategoryController {
       if (minAge !== undefined) updateData.edadMinima = Number(minAge);
       if (maxAge !== undefined) updateData.edadMaxima = Number(maxAge);
       if (status !== undefined) updateData.estado = status;
-      if (publicar !== undefined) updateData.publicar = publicar === "true" || publicar === true;
+      if (publicar !== undefined)
+        updateData.publicar = publicar === "true" || publicar === true;
 
       // Si se proporciona nueva imagen, subirla a Cloudinary
       if (req.file) {
         try {
           const imageUrl = await uploadToCloudinary(
             req.file.buffer,
-            `sports-category-${(name || "update").trim().replace(/\s+/g, "-").toLowerCase()}`,
+            `sports-category-${(name || "update")
+              .trim()
+              .replace(/\s+/g, "-")
+              .toLowerCase()}`,
             { folder: "astrostar/sports-categories" }
           );
           updateData.archivo = imageUrl;
@@ -235,8 +249,16 @@ export class SportsCategoryController {
         }
       }
 
+      // Si se debe eliminar la imagen existente
+      if (req.body.removeImage === "true") {
+        updateData.archivo = null;
+      }
+
       // Actualizar categoría
-      const result = await this.sportsCategoryService.updateSportsCategory(id, updateData);
+      const result = await this.sportsCategoryService.updateSportsCategory(
+        id,
+        updateData
+      );
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
       console.error("Error en updateSportsCategory:", error);
@@ -254,6 +276,7 @@ export class SportsCategoryController {
   deleteSportsCategory = async (req, res) => {
     try {
       const { id } = req.params;
+      console.log(`Attempting to delete sports category with ID: ${id}`);
 
       if (!id) {
         return res.status(400).json({
@@ -264,12 +287,13 @@ export class SportsCategoryController {
       }
 
       const result = await this.sportsCategoryService.deleteSportsCategory(id);
+      console.log(`Delete result:`, result);
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en deleteSportsCategory:", error);
+      console.error("Error en deleteSportsCategory controller:", error);
       res.status(500).json({
         success: false,
-        message: "Error al eliminar la categoría.",
+        message: error.message || "Error al eliminar la categoría.",
         statusCode: 500,
       });
     }
