@@ -57,8 +57,6 @@ async function main() {
     skipDuplicates: true,
   });
 
-
-
   // ROL DE ADMINISTRADOR (CRÍTICO PARA EL SISTEMA)
   console.log("👑 Configurando rol de Administrador...");
   const adminRole = await prisma.role.upsert({
@@ -156,16 +154,16 @@ async function main() {
 
   // USUARIO ADMINISTRADOR POR DEFECTO
   console.log("👤 Configurando usuario administrador por defecto...");
-  
+
   // Verificar si ya existe el usuario
   const existingAdmin = await prisma.user.findUnique({
-    where: { email: "astrostar.java@gmail.com" }
+    where: { email: "astrostar.java@gmail.com" },
   });
 
   if (!existingAdmin) {
     // Obtener el tipo de documento "Cédula de Ciudadanía"
     const documentType = await prisma.documentType.findFirst({
-      where: { name: "Cédula de Ciudadanía" }
+      where: { name: "Cédula de Ciudadanía" },
     });
 
     // Hash de la contraseña
@@ -186,8 +184,8 @@ async function main() {
         birthDate: new Date("1990-01-01"),
         age: 34,
         roleId: adminRole.id,
-        status: "Active"
-      }
+        status: "Active",
+      },
     });
 
     console.log("   ✓ Usuario administrador creado exitosamente");
@@ -199,14 +197,14 @@ async function main() {
 
   // USUARIO PARA MOBILE
   console.log("📱 Configurando usuario para aplicación móvil...");
-  
+
   const existingMobileUser = await prisma.user.findUnique({
-    where: { email: "astrostarmovil@gmail.com" }
+    where: { email: "astrostarmovil@gmail.com" },
   });
 
   if (!existingMobileUser) {
     const documentType = await prisma.documentType.findFirst({
-      where: { name: "Cédula de Ciudadanía" }
+      where: { name: "Cédula de Ciudadanía" },
     });
 
     const hashedPasswordMobile = await bcrypt.hash("Astrostar123!", 10);
@@ -226,8 +224,8 @@ async function main() {
         birthDate: new Date("1995-01-01"),
         age: 29,
         roleId: adminRole.id,
-        status: "Active"
-      }
+        status: "Active",
+      },
     });
 
     console.log("   ✓ Usuario móvil creado exitosamente");
@@ -243,59 +241,62 @@ async function main() {
     data: [
       {
         name: "Deportivo",
-        description: "Eventos relacionados con actividades deportivas y competencias"
+        description:
+          "Eventos relacionados con actividades deportivas y competencias",
       },
       {
         name: "Cultural",
-        description: "Eventos culturales y artísticos"
+        description: "Eventos culturales y artísticos",
       },
       {
         name: "Recreativo",
-        description: "Actividades recreativas y de esparcimiento"
+        description: "Actividades recreativas y de esparcimiento",
       },
       {
         name: "Formativo",
-        description: "Talleres, capacitaciones y eventos educativos"
+        description: "Talleres, capacitaciones y eventos educativos",
       },
       {
         name: "Social",
-        description: "Eventos sociales y comunitarios"
-      }
+        description: "Eventos sociales y comunitarios",
+      },
     ],
-    skipDuplicates: true
+    skipDuplicates: true,
   });
   console.log("   ✓ Categorías de eventos configuradas\n");
 
   // TIPOS DE EVENTOS
   console.log("📅 Configurando tipos de eventos...");
-  
+
   const eventTypes = [
     {
       name: "Festival",
-      description: "Evento festivo con múltiples actividades - Inscripción: Equipos"
+      description:
+        "Evento festivo con múltiples actividades - Inscripción: Equipos",
     },
     {
       name: "Torneo",
-      description: "Competencia deportiva con múltiples participantes - Inscripción: Equipos"
+      description:
+        "Competencia deportiva con múltiples participantes - Inscripción: Equipos",
     },
     {
       name: "Clausura",
-      description: "Evento de cierre o finalización - Inscripción: Deportistas"
+      description: "Evento de cierre o finalización - Inscripción: Deportistas",
     },
     {
       name: "Taller",
-      description: "Actividad formativa práctica - Inscripción: Deportistas"
-    }
+      description: "Actividad formativa práctica - Inscripción: Deportistas",
+    },
   ];
 
   for (const eventType of eventTypes) {
     await prisma.serviceType.upsert({
       where: { name: eventType.name },
       update: { description: eventType.description },
-      create: eventType
+      create: eventType,
     });
   }
-  
+
   console.log("   ✓ Tipos de eventos configurados\n");
 
   // PATROCINADORES (DATOS QUEMADOS TEMPORALES)
@@ -304,39 +305,43 @@ async function main() {
     data: [
       {
         name: "Natipan",
+        identification: "900123456-1",
         description: "Empresa de productos alimenticios",
         contactEmail: "contacto@natipan.com",
         phone: "+57 300 1234567",
-        status: "Active"
+        status: "Active",
       },
       {
         name: "Ponymalta",
+        identification: "900234567-2",
         description: "Bebida maltada nutritiva",
         contactEmail: "patrocinios@ponymalta.com",
         phone: "+57 300 7654321",
-        status: "Active"
+        status: "Active",
       },
       {
         name: "NovaSport",
+        identification: "900345678-3",
         description: "Marca de artículos deportivos",
         contactEmail: "marketing@novasport.com",
         phone: "+57 301 1112233",
-        status: "Active"
+        status: "Active",
       },
       {
         name: "Adidas",
+        identification: "900456789-4",
         description: "Marca internacional de ropa y calzado deportivo",
         contactEmail: "ventas@adidas.com",
         phone: "+57 302 4445566",
-        status: "Active"
-      }
+        status: "Active",
+      },
     ],
-    skipDuplicates: true
+    skipDuplicates: true,
   });
   console.log("   ✓ Patrocinadores temporales configurados\n");
 
   console.log("DEBUG: Antes de categorías deportivas");
-  
+
   // CATEGORÍAS DEPORTIVAS
   console.log("🏅 Configurando categorías deportivas...");
   await prisma.sportsCategory.createMany({
@@ -347,7 +352,7 @@ async function main() {
         edadMaxima: 12,
         descripcion: "Categoría infantil para niños de 10 a 12 años",
         estado: "Activo",
-        publicar: true
+        publicar: true,
       },
       {
         nombre: "PreJuvenil",
@@ -355,7 +360,7 @@ async function main() {
         edadMaxima: 15,
         descripcion: "Categoría prejuvenil para adolescentes de 13 a 15 años",
         estado: "Activo",
-        publicar: true
+        publicar: true,
       },
       {
         nombre: "Juvenil",
@@ -363,10 +368,10 @@ async function main() {
         edadMaxima: 18,
         descripcion: "Categoría juvenil para jóvenes de 16 a 18 años",
         estado: "Activo",
-        publicar: true
-      }
+        publicar: true,
+      },
     ],
-    skipDuplicates: true
+    skipDuplicates: true,
   });
   console.log("   ✓ Categorías deportivas configuradas\n");
 
@@ -378,7 +383,9 @@ async function main() {
   console.log("   • Categorías de eventos: Configuradas");
   console.log("   • Tipos de eventos: Configurados");
   console.log("   • Patrocinadores temporales: Configurados");
-  console.log("   • Categorías deportivas: Configuradas (Infantil, PreJuvenil, Juvenil)");
+  console.log(
+    "   • Categorías deportivas: Configuradas (Infantil, PreJuvenil, Juvenil)"
+  );
   console.log("\n💡 Puedes iniciar sesión con:");
   console.log("   📧 Email: astrostar.java@gmail.com");
   console.log("   🔑 Contraseña: Admin123*");

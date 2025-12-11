@@ -8,6 +8,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// ENUMS
+// ============================================
+
 enum PreRegistrationStatus {
   Pendiente
   Procesada
@@ -161,6 +165,36 @@ enum DonationFileType {
   evidencia
 }
 
+enum RoleStatus {
+  Active
+  Inactive
+}
+
+enum UserStatus {
+  Active
+  Inactive
+  Suspended
+}
+
+enum EmployeeStatus {
+  Activo
+  Licencia
+  Desvinculado
+  Fallecido
+}
+
+enum EventStatus {
+  Programado
+  Finalizado
+  Cancelado
+  En_pausa
+}
+
+enum TeamType {
+  Fundacion
+  Temporal
+}
+
 // ============================================
 // MODELOS
 // ============================================
@@ -275,7 +309,6 @@ model Employee {
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
-  classes             Class[]
 
   @@map("employees")
 }
@@ -319,18 +352,19 @@ model EmployeePermission {
 }
 
 model SportsCategory {
-  id           Int                  @id @default(autoincrement())
-  nombre       String               @db.VarChar(50)
-  edadMinima   Int
-  edadMaxima   Int
-  descripcion  String?              @db.VarChar(500)
-  archivo      String?
-  estado       SportsCategoryStatus @default(Activo)
-  publicar     Boolean              @default(false)
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  inscriptions Inscription[]
-  participants Participant[]
+  id                      Int                     @id @default(autoincrement())
+  nombre                  String                  @db.VarChar(50)
+  edadMinima              Int
+  edadMaxima              Int
+  descripcion             String?                 @db.VarChar(500)
+  archivo                 String?
+  estado                  SportsCategoryStatus    @default(Activo)
+  publicar                Boolean                 @default(false)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  inscriptions            Inscription[]
+  participants            Participant[]
+  serviceSportsCategories ServiceSportsCategory[]
 
   @@map("sports_categories")
 }
@@ -382,7 +416,6 @@ model Athlete {
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
-  classes                  ClassAthlete[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])
@@ -599,27 +632,28 @@ model PurchaseItem {
 }
 
 model Service {
-  id               Int              @id @default(autoincrement())
-  name             String
-  description      String?
-  startDate        DateTime
-  endDate          DateTime
-  startTime        String
-  endTime          String
-  location         String
-  phone            String
-  status           EventStatus      @default(Programado)
-  imageUrl         String?
-  scheduleFile     String?
-  publish          Boolean          @default(false)
-  categoryId       Int
-  typeId           Int
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
-  event_categories EventCategory    @relation(fields: [categoryId], references: [id])
-  ServiceType      ServiceType      @relation(fields: [typeId], references: [id])
-  ServiceSponsor   ServiceSponsor[]
-  participants     Participant[]
+  id                      Int                     @id @default(autoincrement())
+  name                    String
+  description             String?
+  startDate               DateTime
+  endDate                 DateTime
+  startTime               String
+  endTime                 String
+  location                String
+  phone                   String
+  status                  EventStatus             @default(Programado)
+  imageUrl                String?
+  scheduleFile            String?
+  publish                 Boolean                 @default(false)
+  categoryId              Int?
+  typeId                  Int
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  event_categories        EventCategory?          @relation(fields: [categoryId], references: [id])
+  ServiceType             ServiceType             @relation(fields: [typeId], references: [id])
+  ServiceSponsor          ServiceSponsor[]
+  participants            Participant[]
+  serviceSportsCategories ServiceSportsCategory[]
 }
 
 model ServiceSponsor {
@@ -630,6 +664,18 @@ model ServiceSponsor {
   Sponsor   Sponsor @relation(fields: [sponsorId], references: [id])
 
   @@unique([serviceId, sponsorId])
+}
+
+model ServiceSportsCategory {
+  id               Int            @id @default(autoincrement())
+  serviceId        Int
+  sportsCategoryId Int
+  createdAt        DateTime       @default(now())
+  service          Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  sportsCategory   SportsCategory @relation(fields: [sportsCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, sportsCategoryId])
+  @@map("service_sports_categories")
 }
 
 model ServiceType {
@@ -659,121 +705,7 @@ model Sponsor {
   createdAt      DateTime               @default(now())
   updatedAt      DateTime               @updatedAt
   ServiceSponsor ServiceSponsor[]
-}
-
-enum RoleStatus {
-  Active
-  Inactive
-}
-
-enum UserStatus {
-  Active
-  Inactive
-  Suspended
-}
-
-enum EmployeeStatus {
-  Activo
-  Licencia
-  Desvinculado
-  Fallecido
-}
-
-enum EventStatus {
-  Programado
-  Finalizado
-  Cancelado
-  En_pausa
-}
-
-enum SponsorStatus {
-  Active
-  Inactive
-}
-
-enum SportsCategoryStatus {
-  Activo
-  Inactivo
-}
-
-enum AthleteStatus {
-  Active
-  Inactive
-}
-
-enum InscriptionStatus {
-  Active
-  Suspended
-  Expired
-}
-
-enum InscriptionRecordType {
-  initial_inscription
-  renewal
-  status_change
-}
-
-enum GuardianRelationship {
-  Mother
-  Father
-  Grandparent
-  Uncle_Aunt
-  Sibling
-  Cousin
-  Legal_Guardian
-  Neighbor
-  Family_Friend
-  Other
-}
-
-enum TemporaryPersonStatus {
-  Active
-  Inactive
-}
-
-enum TemporaryPersonType {
-  Deportista
-  Entrenador
-  Participante
-}
-
-enum TeamStatus {
-  Active
-  Inactive
-  Disbanded
-}
-
-enum MemberType {
-  Athlete
-  Employee
-  TemporaryPerson
-}
-
-enum ParticipantType {
-  Individual
-  Team
-}
-
-enum ProviderEntityType {
-  legal
-  natural
-}
-
-enum ProviderStatus {
-  Active
-  Inactive
-}
-
-enum PurchaseStatus {
-  Pending
-  Received
-  Partial
-  Cancelled
-}
-
-enum TeamType {
-  Fundacion
-  Temporal
+  donations      Donation[]
 }
 
 model Donation {
