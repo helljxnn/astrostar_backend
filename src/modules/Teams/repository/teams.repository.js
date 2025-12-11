@@ -289,11 +289,9 @@ export class TeamsRepository {
         }
       }
 
-      // Determinar teamType desde el campo phone (workaround)
-      let teamType = 'Temporal';
-      if (team.phone && team.phone.startsWith('TIPO:')) {
-        teamType = team.phone.replace('TIPO:', '');
-      } else if (team.members && team.members.length > 0) {
+      // Determinar teamType desde el campo teamType
+      let teamType = team.teamType || 'Temporal';
+      if (team.members && team.members.length > 0 && !team.teamType) {
         // Fallback: determinar por miembros si no está en phone
         const hasAthletes = team.members.some(m => m.athleteId);
         const hasTemporary = team.members.some(m => m.temporaryPersonId);
@@ -341,17 +339,13 @@ export class TeamsRepository {
 
       const transformed = this.transformToBackend(teamData);
       const { deportistasIds = [], entrenadorId, segundoEntrenadorId } = transformed;
-
-      // Guardar teamType en el campo phone temporalmente como workaround
-      // Formato: "TIPO:Fundacion" o "TIPO:Temporal"
-      const teamTypeMarker = `TIPO:${transformed.teamType}`;
       
       const teamInfo = {
         name: transformed.name,
         description: transformed.description,
         coach: transformed.coach,
         category: transformed.category,
-        phone: teamTypeMarker, // Usar phone para guardar el tipo
+        teamType: transformed.teamType,
         status: 'Active'
       };
 
@@ -483,16 +477,13 @@ export class TeamsRepository {
     try {
       const transformed = this.transformToBackend(teamData);
       const { deportistasIds = [], entrenadorId, segundoEntrenadorId } = transformed;
-
-      // Guardar teamType en el campo phone
-      const teamTypeMarker = `TIPO:${transformed.teamType || 'Temporal'}`;
       
       const teamInfo = {
         name: transformed.name,
         description: transformed.description,
         coach: transformed.coach,
         category: transformed.category,
-        phone: teamTypeMarker,
+        teamType: transformed.teamType || 'Temporal',
         status: transformed.status
       };
 
