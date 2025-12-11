@@ -582,10 +582,28 @@ export class EventsService {
       backendData.description = frontendData.description
         ? frontendData.description.trim()
         : null;
-    if (frontendData.startDate)
-      backendData.startDate = new Date(frontendData.startDate);
-    if (frontendData.endDate)
-      backendData.endDate = new Date(frontendData.endDate);
+    if (frontendData.startDate) {
+      // Crear fecha sin problemas de zona horaria
+      const startDateStr = frontendData.startDate.toString();
+      if (startDateStr.includes("T")) {
+        // Si viene con hora (ISO string), usar directamente
+        backendData.startDate = new Date(frontendData.startDate);
+      } else {
+        // Si viene solo la fecha (YYYY-MM-DD), agregar hora local para evitar cambios de zona horaria
+        backendData.startDate = new Date(startDateStr + "T12:00:00");
+      }
+    }
+    if (frontendData.endDate) {
+      // Crear fecha sin problemas de zona horaria
+      const endDateStr = frontendData.endDate.toString();
+      if (endDateStr.includes("T")) {
+        // Si viene con hora (ISO string), usar directamente
+        backendData.endDate = new Date(frontendData.endDate);
+      } else {
+        // Si viene solo la fecha (YYYY-MM-DD), agregar hora local para evitar cambios de zona horaria
+        backendData.endDate = new Date(endDateStr + "T12:00:00");
+      }
+    }
     if (frontendData.startTime) backendData.startTime = frontendData.startTime;
     if (frontendData.endTime) backendData.endTime = frontendData.endTime;
     if (frontendData.location)
@@ -624,9 +642,22 @@ export class EventsService {
    */
   async updateFinishedEventsStatus() {
     try {
+      // Usar la zona horaria de Bogotá, Colombia
       const now = new Date();
-      const today = now.toISOString().split("T")[0]; // YYYY-MM-DD
-      const currentTime = now.toTimeString().split(" ")[0].substring(0, 5); // HH:MM
+      const bogotaTime = new Date(
+        now.toLocaleString("en-US", { timeZone: "America/Bogota" })
+      );
+
+      const today =
+        bogotaTime.getFullYear() +
+        "-" +
+        String(bogotaTime.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(bogotaTime.getDate()).padStart(2, "0");
+      const currentTime =
+        String(bogotaTime.getHours()).padStart(2, "0") +
+        ":" +
+        String(bogotaTime.getMinutes()).padStart(2, "0");
 
       // Buscar eventos que deberían estar finalizados pero no lo están
       const eventsToUpdate = await this.eventsRepository.findEventsToFinalize(
@@ -644,6 +675,75 @@ export class EventsService {
       return eventsToUpdate.length;
     } catch (error) {
       return 0;
+    }
+  }
+
+  /**
+   * Obtener deportistas disponibles para inscribir en un evento
+   */
+  async getAvailableAthletes(eventId, filters) {
+    try {
+      // Verificar que el evento existe
+      const event = await this.eventsRepository.findById(eventId);
+      if (!event) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Evento no encontrado.",
+        };
+      }
+
+      const result = await this.eventsRepository.getAvailableAthletes(
+        eventId,
+        filters
+      );
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Inscribir deportista en un evento
+   */
+  async enrollAthlete(eventId, athleteId, data = {}) {
+    try {
+      const result = await this.eventsRepository.enrollAthlete(
+        eventId,
+        athleteId,
+        data
+      );
+
+      return {
+        success: true,
+        data: result,
+        message: `Deportista ${result.athlete.fullName} inscrita exitosamente en el evento.`,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Desinscribir deportista de un evento
+   */
+  async unenrollAthlete(eventId, athleteId) {
+    try {
+      const result = await this.eventsRepository.unenrollAthlete(
+        eventId,
+        athleteId
+      );
+
+      return {
+        success: true,
+        message: `${result.athleteName} ha sido desinscrita del evento exitosamente.`,
+      };
+    } catch (error) {
+      throw error;
     }
   }
 }

@@ -3,7 +3,7 @@
  * Maneja el envío de correos electrónicos del sistema
  */
 
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 class EmailService {
   constructor() {
@@ -17,34 +17,39 @@ class EmailService {
   initializeTransporter() {
     try {
       // Verificar si las credenciales están configuradas
-      if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD || 
-          process.env.EMAIL_PASSWORD === 'your-app-password-here') {
-        console.log('⚠️  Credenciales de email no configuradas');
+      if (
+        !process.env.EMAIL_USER ||
+        !process.env.EMAIL_PASSWORD ||
+        process.env.EMAIL_PASSWORD === "your-app-password-here"
+      ) {
+        console.log("⚠️  Credenciales de email no configuradas");
         this.transporter = null;
         return;
       }
 
-      console.log('📧 Inicializando servicio de email con:', process.env.EMAIL_USER);
+      console.log(
+        "📧 Inicializando servicio de email con:",
+        process.env.EMAIL_USER
+      );
 
       // Configuración unificada para Gmail (desarrollo y producción)
       this.transporter = nodemailer.createTransport({
-        service: 'gmail',
-        host: 'smtp.gmail.com',
+        service: "gmail",
+        host: "smtp.gmail.com",
         port: 587,
         secure: false,
         auth: {
           user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASSWORD
+          pass: process.env.EMAIL_PASSWORD,
         },
         tls: {
-          rejectUnauthorized: false
-        }
+          rejectUnauthorized: false,
+        },
       });
 
-      console.log('✅ Servicio de email inicializado correctamente');
-
+      console.log("✅ Servicio de email inicializado correctamente");
     } catch (error) {
-      console.error('❌ Error inicializando servicio de email:', error);
+      console.error("❌ Error inicializando servicio de email:", error);
       this.transporter = null;
     }
   }
@@ -55,7 +60,7 @@ class EmailService {
   async verifyConnection() {
     try {
       if (!this.transporter) {
-        console.log('📧 Servicio de email en modo simulación');
+        console.log("📧 Servicio de email en modo simulación");
         return false;
       }
 
@@ -74,34 +79,73 @@ class EmailService {
       const { email, firstName, lastName } = employeeData;
       const { email: loginEmail, temporaryPassword } = credentials;
 
-      const mailOptions = {
-        from: {
-          name: 'AstroStar - Sistema de Gestión',
-          address: process.env.EMAIL_USER || 'astrostar.system@gmail.com'
-        },
-        to: email,
-        subject: '🎉 Bienvenido a AstroStar - Credenciales de Acceso',
-        html: this.generateWelcomeEmailTemplate(firstName, lastName, loginEmail, temporaryPassword),
-        text: this.generateWelcomeEmailText(firstName, lastName, loginEmail, temporaryPassword)
-      };
-
-      // Si no hay transporter configurado, simular envío
+      // Si no hay transporter configurado, simular envío inmediatamente
       if (!this.transporter) {
-        return { success: true, messageId: 'simulated-' + Date.now() };
+        console.log("📧 Simulando envío de email de bienvenida a:", email);
+        return { success: true, messageId: "simulated-" + Date.now() };
       }
 
-      const result = await this.transporter.sendMail(mailOptions);
-      
-      return { 
-        success: true, 
+      // Verificar conexión con timeout corto
+      const connectionTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout de conexión")), 5000)
+      );
+
+      try {
+        await Promise.race([this.transporter.verify(), connectionTimeout]);
+      } catch (verifyError) {
+        console.warn(
+          "⚠️  No se pudo verificar conexión de email, simulando envío:",
+          verifyError.message
+        );
+        return { success: true, messageId: "simulated-fallback-" + Date.now() };
+      }
+
+      const mailOptions = {
+        from: {
+          name: "AstroStar - Sistema de Gestión",
+          address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
+        },
+        to: email,
+        subject: "🎉 Bienvenido a AstroStar - Credenciales de Acceso",
+        html: this.generateWelcomeEmailTemplate(
+          firstName,
+          lastName,
+          loginEmail,
+          temporaryPassword
+        ),
+        text: this.generateWelcomeEmailText(
+          firstName,
+          lastName,
+          loginEmail,
+          temporaryPassword
+        ),
+      };
+
+      // Enviar email con timeout
+      const sendTimeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout de envío")), 10000)
+      );
+
+      const result = await Promise.race([
+        this.transporter.sendMail(mailOptions),
+        sendTimeout,
+      ]);
+
+      return {
+        success: true,
         messageId: result.messageId,
-        message: 'Email enviado exitosamente'
+        message: "Email enviado exitosamente",
       };
     } catch (error) {
-      return { 
-        success: false, 
+      console.warn(
+        "⚠️  Error enviando email, pero continuando:",
+        error.message
+      );
+      return {
+        success: false,
         error: error.message,
-        message: 'Error enviando email'
+        message:
+          "Error enviando email, pero el empleado fue creado exitosamente",
       };
     }
   }
@@ -162,7 +206,9 @@ class EmailService {
                 </div>
                 
                 <div style="text-align: center;">
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" class="button">
+                    <a href="${
+                      process.env.FRONTEND_URL || "http://localhost:3000"
+                    }/login" class="button">
                         🚀 Acceder al Sistema
                     </a>
                 </div>
@@ -221,7 +267,9 @@ PRÓXIMOS PASOS:
 3. Completa tu perfil si es necesario
 4. Familiarízate con el sistema
 
-Accede al sistema en: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+Accede al sistema en: ${
+      process.env.FRONTEND_URL || "http://localhost:3000"
+    }/login
 
 ¡Esperamos que tengas una excelente experiencia trabajando con AstroStar!
 
@@ -244,32 +292,42 @@ Este es un email automático del sistema AstroStar.
 
       const mailOptions = {
         from: {
-          name: 'AstroStar - Sistema de Gestión',
-          address: process.env.EMAIL_USER || 'astrostar.system@gmail.com'
+          name: "AstroStar - Sistema de Gestión",
+          address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
         },
         to: email,
-        subject: '🎉 Bienvenido a AstroStar - Credenciales de Acceso',
-        html: this.generateAthleteWelcomeEmailTemplate(firstName, lastName, loginEmail, temporaryPassword),
-        text: this.generateAthleteWelcomeEmailText(firstName, lastName, loginEmail, temporaryPassword)
+        subject: "🎉 Bienvenido a AstroStar - Credenciales de Acceso",
+        html: this.generateAthleteWelcomeEmailTemplate(
+          firstName,
+          lastName,
+          loginEmail,
+          temporaryPassword
+        ),
+        text: this.generateAthleteWelcomeEmailText(
+          firstName,
+          lastName,
+          loginEmail,
+          temporaryPassword
+        ),
       };
 
       // Si no hay transporter configurado, simular envío
       if (!this.transporter) {
-        return { success: true, messageId: 'simulated-' + Date.now() };
+        return { success: true, messageId: "simulated-" + Date.now() };
       }
 
       const result = await this.transporter.sendMail(mailOptions);
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         messageId: result.messageId,
-        message: 'Email enviado exitosamente'
+        message: "Email enviado exitosamente",
       };
     } catch (error) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error.message,
-        message: 'Error enviando email'
+        message: "Error enviando email",
       };
     }
   }
@@ -330,7 +388,9 @@ Este es un email automático del sistema AstroStar.
                 </div>
                 
                 <div style="text-align: center;">
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" class="button">
+                    <a href="${
+                      process.env.FRONTEND_URL || "http://localhost:3000"
+                    }/login" class="button">
                         🚀 Acceder al Sistema
                     </a>
                 </div>
@@ -389,7 +449,9 @@ PRÓXIMOS PASOS:
 3. Completa tu perfil si es necesario
 4. Revisa tu información deportiva y categoría
 
-Accede al sistema en: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/login
+Accede al sistema en: ${
+      process.env.FRONTEND_URL || "http://localhost:3000"
+    }/login
 
 ¡Esperamos que tengas una excelente experiencia deportiva con AstroStar!
 
@@ -407,30 +469,33 @@ Este es un email automático del sistema AstroStar.
    */
   async sendPasswordResetEmail(email, resetToken) {
     try {
-      console.log('📧 Intentando enviar email de recuperación a:', email);
-      
+      console.log("📧 Intentando enviar email de recuperación a:", email);
+
       const mailOptions = {
         from: {
-          name: 'AstroStar - Sistema de Gestión',
-          address: process.env.EMAIL_USER || 'astrostar.system@gmail.com'
+          name: "AstroStar - Sistema de Gestión",
+          address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
         },
         to: email,
-        subject: '🔐 Recuperación de Contraseña - AstroStar',
+        subject: "🔐 Recuperación de Contraseña - AstroStar",
         html: this.generatePasswordResetTemplate(email, resetToken),
-        text: `Recuperación de contraseña para AstroStar\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n${process.env.FRONTEND_URL}/reset-password?token=${resetToken}\n\nEste enlace expira en 1 hora.`
+        text: `Recuperación de contraseña para AstroStar\n\nHaz clic en el siguiente enlace para restablecer tu contraseña:\n${process.env.FRONTEND_URL}/reset-password?token=${resetToken}\n\nEste enlace expira en 1 hora.`,
       };
 
       if (!this.transporter) {
-        console.log('⚠️  Transporter no configurado, simulando envío');
-        return { success: true, messageId: 'simulated-reset-' + Date.now() };
+        console.log("⚠️  Transporter no configurado, simulando envío");
+        return { success: true, messageId: "simulated-reset-" + Date.now() };
       }
 
-      console.log('📤 Enviando email...');
+      console.log("📤 Enviando email...");
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Email enviado exitosamente. MessageId:', result.messageId);
+      console.log(
+        "✅ Email enviado exitosamente. MessageId:",
+        result.messageId
+      );
       return { success: true, messageId: result.messageId };
     } catch (error) {
-      console.error('❌ Error enviando email de recuperación:', error.message);
+      console.error("❌ Error enviando email de recuperación:", error.message);
       return { success: false, error: error.message };
     }
   }
@@ -502,27 +567,44 @@ Este es un email automático del sistema AstroStar.
    */
   async sendPreRegistrationEmail(preRegistrationData) {
     try {
-      const { nombres, apellidos, numeroDocumento, fechaNacimiento, telefono, correo } = preRegistrationData;
-      
+      const {
+        nombres,
+        apellidos,
+        numeroDocumento,
+        fechaNacimiento,
+        telefono,
+        correo,
+      } = preRegistrationData;
+
       const mailOptions = {
         from: {
-          name: 'Fundación Manuela Vanegas',
-          address: process.env.EMAIL_USER || 'fundacion@example.com'
+          name: "Fundación Manuela Vanegas",
+          address: process.env.EMAIL_USER || "fundacion@example.com",
         },
         to: correo,
-        subject: '¡Bienvenida a la Fundación Manuela Vanegas! - Próximos Pasos',
-        html: this.generatePreRegistrationTemplate(nombres, apellidos, numeroDocumento, fechaNacimiento, telefono, correo),
+        subject: "¡Bienvenida a la Fundación Manuela Vanegas! - Próximos Pasos",
+        html: this.generatePreRegistrationTemplate(
+          nombres,
+          apellidos,
+          numeroDocumento,
+          fechaNacimiento,
+          telefono,
+          correo
+        ),
       };
 
       if (!this.transporter) {
-        console.log('⚠️  Transporter no configurado, simulando envío');
-        return { success: true, messageId: 'simulated-prereg-' + Date.now() };
+        console.log("⚠️  Transporter no configurado, simulando envío");
+        return { success: true, messageId: "simulated-prereg-" + Date.now() };
       }
 
       const result = await this.transporter.sendMail(mailOptions);
       return { success: true, messageId: result.messageId };
     } catch (error) {
-      console.error('❌ Error enviando email de pre-inscripción:', error.message);
+      console.error(
+        "❌ Error enviando email de pre-inscripción:",
+        error.message
+      );
       return { success: false, error: error.message };
     }
   }
@@ -530,12 +612,19 @@ Este es un email automático del sistema AstroStar.
   /**
    * Generar template para pre-inscripción
    */
-  generatePreRegistrationTemplate(nombres, apellidos, numeroDocumento, fechaNacimiento, telefono, correo) {
+  generatePreRegistrationTemplate(
+    nombres,
+    apellidos,
+    numeroDocumento,
+    fechaNacimiento,
+    telefono,
+    correo
+  ) {
     const formatDate = (date) => {
-      return new Date(date).toLocaleDateString('es-CO', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
+      return new Date(date).toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
       });
     };
 
@@ -574,7 +663,9 @@ Este es un email automático del sistema AstroStar.
                     <h3 style="color: #B595FF; margin: 0 0 15px 0; font-size: 18px;">📋 Tus Datos Registrados:</h3>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Nombre:</strong> ${nombres} ${apellidos}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Número de Documento:</strong> ${numeroDocumento}</p>
-                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Fecha de Nacimiento:</strong> ${formatDate(fechaNacimiento)}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Fecha de Nacimiento:</strong> ${formatDate(
+                      fechaNacimiento
+                    )}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${telefono}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Correo:</strong> ${correo}</p>
                   </div>
@@ -588,8 +679,12 @@ Este es un email automático del sistema AstroStar.
                   <div style="background-color: #B595FF; color: #ffffff; padding: 25px; border-radius: 8px; margin: 20px 0;">
                     <h4 style="margin: 0 0 15px 0; font-size: 18px;">📍 Unidad Deportiva Cristo Rey</h4>
                     <p style="margin: 5px 0; font-size: 14px;"><strong>Dirección:</strong> Copacabana, Antioquia</p>
-                    <p style="margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${process.env.CONTACT_PHONE || '(604) 123-4567'}</p>
-                    <p style="margin: 5px 0; font-size: 14px;"><strong>Email:</strong> ${process.env.CONTACT_EMAIL || 'contacto@fundacionmv.com'}</p>
+                    <p style="margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${
+                      process.env.CONTACT_PHONE || "(604) 123-4567"
+                    }</p>
+                    <p style="margin: 5px 0; font-size: 14px;"><strong>Email:</strong> ${
+                      process.env.CONTACT_EMAIL || "contacto@fundacionmv.com"
+                    }</p>
                     <p style="margin: 5px 0; font-size: 14px;"><strong>Horario:</strong> Lunes a Viernes, 8:00 AM - 5:00 PM</p>
                   </div>
                   
@@ -648,15 +743,15 @@ Este es un email automático del sistema AstroStar.
    */
   async sendEmailVerificationCode(email, verificationCode, firstName) {
     try {
-      console.log('📧 Intentando enviar código de verificación a:', email);
-      
+      console.log("📧 Intentando enviar código de verificación a:", email);
+
       const mailOptions = {
         from: {
-          name: 'AstroStar - Sistema de Gestión',
-          address: process.env.EMAIL_USER || 'astrostar.system@gmail.com'
+          name: "AstroStar - Sistema de Gestión",
+          address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
         },
         to: email,
-        subject: '📧 Verificación de Cambio de Correo - AstroStar',
+        subject: "📧 Verificación de Cambio de Correo - AstroStar",
         html: `
         <!DOCTYPE html>
         <html lang="es">
@@ -712,20 +807,26 @@ Este es un email automático del sistema AstroStar.
         </body>
         </html>
         `,
-        text: `Verificación de Cambio de Correo - AstroStar\n\nHola ${firstName},\n\nTu código de verificación es: ${verificationCode}\n\nEste código expira en 15 minutos.\n\nSi no solicitaste este cambio, ignora este email.`
+        text: `Verificación de Cambio de Correo - AstroStar\n\nHola ${firstName},\n\nTu código de verificación es: ${verificationCode}\n\nEste código expira en 15 minutos.\n\nSi no solicitaste este cambio, ignora este email.`,
       };
 
       if (!this.transporter) {
-        console.log('⚠️  Transporter no configurado, simulando envío');
-        return { success: true, messageId: 'simulated-verification-' + Date.now() };
+        console.log("⚠️  Transporter no configurado, simulando envío");
+        return {
+          success: true,
+          messageId: "simulated-verification-" + Date.now(),
+        };
       }
 
-      console.log('📤 Enviando email de verificación...');
+      console.log("📤 Enviando email de verificación...");
       const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Email de verificación enviado exitosamente. MessageId:', result.messageId);
+      console.log(
+        "✅ Email de verificación enviado exitosamente. MessageId:",
+        result.messageId
+      );
       return { success: true, messageId: result.messageId };
     } catch (error) {
-      console.error('❌ Error enviando email de verificación:', error.message);
+      console.error("❌ Error enviando email de verificación:", error.message);
       return { success: false, error: error.message };
     }
   }

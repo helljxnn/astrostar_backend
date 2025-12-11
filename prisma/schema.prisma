@@ -306,6 +306,7 @@ model Employee {
   updatedAt           DateTime             @updatedAt
   userId              Int                  @unique
   employeePermissions EmployeePermission[]
+  employeeSchedules   EmployeeSchedule[]
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
@@ -349,6 +350,25 @@ model EmployeePermission {
 
   @@unique([employeeId, permissionId])
   @@map("employee_permissions")
+}
+
+model EmployeeSchedule {
+  id                 Int                @id @default(autoincrement())
+  employeeId         Int
+  scheduleDate       DateTime
+  dayOfWeek          String
+  startTime          String
+  endTime            String
+  recurrence         ScheduleRecurrence @default(no)
+  customRecurrence   String?
+  description        String?
+  status             ScheduleStatus     @default(Programado)
+  cancellationReason String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("employee_schedules")
 }
 
 model SportsCategory {

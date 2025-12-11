@@ -1,4 +1,4 @@
-import prisma from '../../../config/database.js';
+import prisma from "../../../config/database.js";
 
 export class RegistrationsRepository {
   /**
@@ -7,12 +7,12 @@ export class RegistrationsRepository {
   async registerTeamToEvent(data) {
     return await prisma.participant.create({
       data: {
-        type: 'Team',
+        type: "Team",
         serviceId: data.serviceId,
         teamId: data.teamId,
         sportsCategoryId: data.sportsCategoryId || null,
         notes: data.notes || null,
-        status: 'Registered',
+        status: "Registered",
       },
       include: {
         team: {
@@ -51,12 +51,14 @@ export class RegistrationsRepository {
   async createRegistration(data) {
     return await prisma.participant.create({
       data: {
-        type: 'Team',
+        type: "Team",
         serviceId: parseInt(data.serviceId),
         teamId: parseInt(data.teamId),
-        sportsCategoryId: data.sportsCategoryId ? parseInt(data.sportsCategoryId) : null,
+        sportsCategoryId: data.sportsCategoryId
+          ? parseInt(data.sportsCategoryId)
+          : null,
         notes: data.notes || null,
-        status: data.status || 'Registered',
+        status: data.status || "Registered",
       },
       include: {
         team: true,
@@ -72,7 +74,7 @@ export class RegistrationsRepository {
       where: {
         serviceId: parseInt(serviceId),
         teamId: parseInt(teamId),
-        type: 'Team',
+        type: "Team",
       },
     });
   }
@@ -83,7 +85,7 @@ export class RegistrationsRepository {
   async getEventRegistrations(serviceId, filters = {}) {
     const where = {
       serviceId: parseInt(serviceId),
-      type: 'Team',
+      type: "Team",
     };
 
     if (filters.status) {
@@ -99,7 +101,7 @@ export class RegistrationsRepository {
             name: true,
             coach: true,
             category: true,
-            phone: true, // Contiene el marcador TIPO:Fundacion o TIPO:Temporal
+            teamType: true, // Use teamType instead of phone
             status: true,
             _count: {
               select: { members: true },
@@ -109,28 +111,24 @@ export class RegistrationsRepository {
         sportsCategory: true,
       },
       orderBy: {
-        registrationDate: 'desc',
+        registrationDate: "desc",
       },
     });
 
     // Transformar para incluir campos compatibles con el frontend
-    return registrations.map(reg => {
-      // Determinar teamType desde el campo phone
-      let teamType = 'Temporal';
-      if (reg.team?.phone && reg.team.phone.startsWith('TIPO:')) {
-        teamType = reg.team.phone.replace('TIPO:', '');
-      }
-
+    return registrations.map((reg) => {
       return {
         ...reg,
-        team: reg.team ? {
-          ...reg.team,
-          name: reg.team.name,
-          coach: reg.team.coach,
-          category: reg.team.category,
-          teamType: teamType, // Agregar teamType transformado
-          _count: reg.team._count,
-        } : null,
+        team: reg.team
+          ? {
+              ...reg.team,
+              name: reg.team.name,
+              coach: reg.team.coach,
+              category: reg.team.category,
+              teamType: reg.team.teamType, // Use the teamType field directly from the database
+              _count: reg.team._count,
+            }
+          : null,
       };
     });
   }
@@ -141,7 +139,7 @@ export class RegistrationsRepository {
   async getTeamRegistrations(teamId, filters = {}) {
     const where = {
       teamId: parseInt(teamId),
-      type: 'Team',
+      type: "Team",
     };
 
     if (filters.status) {
@@ -160,7 +158,7 @@ export class RegistrationsRepository {
         sportsCategory: true,
       },
       orderBy: {
-        registrationDate: 'desc',
+        registrationDate: "desc",
       },
     });
   }
@@ -269,7 +267,7 @@ export class RegistrationsRepository {
    */
   async getAvailableTeams(filters = {}) {
     const where = {
-      status: 'Active',
+      status: "Active",
     };
 
     if (filters.teamType) {
@@ -294,8 +292,8 @@ export class RegistrationsRepository {
         },
       },
       orderBy: [
-        { teamType: 'asc' }, // Fundacion primero, luego Temporal
-        { name: 'asc' },
+        { teamType: "asc" }, // Fundacion primero, luego Temporal
+        { name: "asc" },
       ],
     });
   }
@@ -304,14 +302,14 @@ export class RegistrationsRepository {
    * Obtener equipos de la fundación
    */
   async getFoundationTeams(filters = {}) {
-    return await this.getAvailableTeams({ ...filters, teamType: 'Fundacion' });
+    return await this.getAvailableTeams({ ...filters, teamType: "Fundacion" });
   }
 
   /**
    * Obtener equipos temporales
    */
   async getTemporaryTeams(filters = {}) {
-    return await this.getAvailableTeams({ ...filters, teamType: 'Temporal' });
+    return await this.getAvailableTeams({ ...filters, teamType: "Temporal" });
   }
 
   /**
@@ -320,20 +318,20 @@ export class RegistrationsRepository {
   async getRegistrationStats() {
     const [total, byStatus, byEvent] = await Promise.all([
       prisma.participant.count({
-        where: { type: 'Team' },
+        where: { type: "Team" },
       }),
       prisma.participant.groupBy({
-        by: ['status'],
-        where: { type: 'Team' },
+        by: ["status"],
+        where: { type: "Team" },
         _count: true,
       }),
       prisma.participant.groupBy({
-        by: ['serviceId'],
-        where: { type: 'Team' },
+        by: ["serviceId"],
+        where: { type: "Team" },
         _count: true,
         orderBy: {
           _count: {
-            serviceId: 'desc',
+            serviceId: "desc",
           },
         },
         take: 5,
@@ -353,12 +351,12 @@ export class RegistrationsRepository {
   async registerAthleteToEvent(data) {
     return await prisma.participant.create({
       data: {
-        type: 'Individual',
+        type: "Individual",
         serviceId: data.serviceId,
         athleteId: data.athleteId,
         sportsCategoryId: data.sportsCategoryId || null,
         notes: data.notes || null,
-        status: 'Registered',
+        status: "Registered",
       },
       include: {
         athlete: {
@@ -397,7 +395,7 @@ export class RegistrationsRepository {
       where: {
         serviceId: parseInt(serviceId),
         athleteId: parseInt(athleteId),
-        type: 'Individual',
+        type: "Individual",
       },
     });
   }
@@ -408,7 +406,7 @@ export class RegistrationsRepository {
   async getEventAthleteRegistrations(serviceId, filters = {}) {
     const where = {
       serviceId: parseInt(serviceId),
-      type: 'Individual',
+      type: "Individual",
     };
 
     if (filters.status) {
@@ -436,7 +434,7 @@ export class RegistrationsRepository {
             },
             inscriptions: {
               where: {
-                status: 'Active',
+                status: "Active",
               },
               include: {
                 sportsCategory: true,
@@ -447,7 +445,7 @@ export class RegistrationsRepository {
         sportsCategory: true,
       },
       orderBy: {
-        registrationDate: 'desc',
+        registrationDate: "desc",
       },
     });
   }
@@ -458,7 +456,7 @@ export class RegistrationsRepository {
   async getAthleteRegistrations(athleteId, filters = {}) {
     const where = {
       athleteId: parseInt(athleteId),
-      type: 'Individual',
+      type: "Individual",
     };
 
     if (filters.status) {
@@ -476,7 +474,7 @@ export class RegistrationsRepository {
         sportsCategory: true,
       },
       orderBy: {
-        registrationDate: 'desc',
+        registrationDate: "desc",
       },
     });
   }
@@ -511,14 +509,14 @@ export class RegistrationsRepository {
    */
   async getAvailableAthletes(filters = {}) {
     const where = {
-      status: 'Active',
+      status: "Active",
     };
 
     if (filters.sportsCategoryId) {
       where.inscriptions = {
         some: {
           sportsCategoryId: parseInt(filters.sportsCategoryId),
-          status: 'Active',
+          status: "Active",
         },
       };
     }
@@ -542,7 +540,7 @@ export class RegistrationsRepository {
         },
         inscriptions: {
           where: {
-            status: 'Active',
+            status: "Active",
           },
           include: {
             sportsCategory: true,
@@ -551,7 +549,7 @@ export class RegistrationsRepository {
       },
       orderBy: {
         user: {
-          firstName: 'asc',
+          firstName: "asc",
         },
       },
     });
@@ -563,12 +561,14 @@ export class RegistrationsRepository {
   async createAthleteRegistration(data) {
     return await prisma.participant.create({
       data: {
-        type: 'Individual',
+        type: "Individual",
         serviceId: parseInt(data.serviceId),
         athleteId: parseInt(data.athleteId),
-        sportsCategoryId: data.sportsCategoryId ? parseInt(data.sportsCategoryId) : null,
+        sportsCategoryId: data.sportsCategoryId
+          ? parseInt(data.sportsCategoryId)
+          : null,
         notes: data.notes || null,
-        status: data.status || 'Registered',
+        status: data.status || "Registered",
       },
       include: {
         athlete: {

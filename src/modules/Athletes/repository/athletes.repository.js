@@ -1,21 +1,23 @@
 import prisma from "../../../config/database.js";
 
 export class AthletesRepository {
-  
   transformToFrontend(athlete) {
     if (!athlete) return null;
 
     // Obtener la inscripción más reciente
-    const currentInscription = athlete.inscriptions && athlete.inscriptions.length > 0
-      ? athlete.inscriptions.sort((a, b) => new Date(b.inscriptionDate) - new Date(a.inscriptionDate))[0]
-      : null;
+    const currentInscription =
+      athlete.inscriptions && athlete.inscriptions.length > 0
+        ? athlete.inscriptions.sort(
+            (a, b) => new Date(b.inscriptionDate) - new Date(a.inscriptionDate)
+          )[0]
+        : null;
 
     // Mapear el estado de inscripción
     const mapInscriptionStatus = (status) => {
       const statusMap = {
-        'Active': 'Vigente',
-        'Suspended': 'Suspendida',
-        'Expired': 'Vencida'
+        Active: "Vigente",
+        Suspended: "Suspendida",
+        Expired: "Vencida",
       };
       return statusMap[status] || status;
     };
@@ -27,7 +29,10 @@ export class AthletesRepository {
       const birth = new Date(birthDate);
       let age = today.getFullYear() - birth.getFullYear();
       const monthDiff = today.getMonth() - birth.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birth.getDate())
+      ) {
         age--;
       }
       return age;
@@ -38,46 +43,52 @@ export class AthletesRepository {
       if (!date) return null;
       const d = new Date(date);
       const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     };
 
     return {
       id: athlete.id,
-      firstName: athlete.user?.firstName || '',
-      middleName: athlete.user?.middleName || '',
-      lastName: athlete.user?.lastName || '',
-      secondLastName: athlete.user?.secondLastName || '',
+      firstName: athlete.user?.firstName || "",
+      middleName: athlete.user?.middleName || "",
+      lastName: athlete.user?.lastName || "",
+      secondLastName: athlete.user?.secondLastName || "",
       documentTypeId: athlete.user?.documentTypeId,
-      documentTypeName: athlete.user?.documentType?.name || '',
-      identification: athlete.user?.identification || '',
-      email: athlete.user?.email || '',
-      phoneNumber: athlete.user?.phoneNumber || '',
+      documentTypeName: athlete.user?.documentType?.name || "",
+      identification: athlete.user?.identification || "",
+      email: athlete.user?.email || "",
+      phoneNumber: athlete.user?.phoneNumber || "",
       birthDate: formatDateForInput(athlete.user?.birthDate),
       age: athlete.user?.age || calculateAge(athlete.user?.birthDate),
-      address: athlete.user?.address || '',
-      categoria: currentInscription?.sportsCategory?.nombre || '',
-      estado: athlete.status === 'Active' ? 'Activo' : 'Inactivo',
+      address: athlete.user?.address || "",
+      categoria: currentInscription?.sportsCategory?.nombre || "",
+      estado: athlete.status === "Active" ? "Activo" : "Inactivo",
       acudiente: athlete.guardianId,
       parentesco: athlete.relationship || athlete.otherRelationship,
-      estadoInscripcion: currentInscription ? mapInscriptionStatus(currentInscription.status) : "Sin inscripción",
-      inscripciones: (athlete.inscriptions || []).map(ins => ({
+      estadoInscripcion: currentInscription
+        ? mapInscriptionStatus(currentInscription.status)
+        : "Sin inscripción",
+      inscripciones: (athlete.inscriptions || []).map((ins) => ({
         id: ins.id,
         fechaInscripcion: ins.inscriptionDate,
         estado: mapInscriptionStatus(ins.status),
-        estadoAnterior: ins.previousStatus ? mapInscriptionStatus(ins.previousStatus) : null,
-        categoria: ins.sportsCategory?.nombre || '',
+        estadoAnterior: ins.previousStatus
+          ? mapInscriptionStatus(ins.previousStatus)
+          : null,
+        categoria: ins.sportsCategory?.nombre || "",
         concepto: ins.concept,
         fechaConcepto: ins.conceptDate,
         tipo: ins.type,
-        comprobantePago: ins.paymentProofUrl ? {
-          url: ins.paymentProofUrl,
-          nombreArchivo: ins.paymentProofName,
-          fechaSubida: ins.paymentProofUploadedAt,
-          tipo: ins.paymentProofType,
-          tamaño: 0
-        } : null
+        comprobantePago: ins.paymentProofUrl
+          ? {
+              url: ins.paymentProofUrl,
+              nombreArchivo: ins.paymentProofName,
+              fechaSubida: ins.paymentProofUploadedAt,
+              tipo: ins.paymentProofType,
+              tamaño: 0,
+            }
+          : null,
       })),
       createdAt: athlete.createdAt,
       updatedAt: athlete.updatedAt,
@@ -89,16 +100,16 @@ export class AthletesRepository {
     // Mapear el parentesco
     const mapRelationship = (parentesco) => {
       const relationshipMap = {
-        'Madre': 'Mother',
-        'Padre': 'Father',
-        'Abuelo/a': 'Grandparent',
-        'Tío/a': 'Uncle_Aunt',
-        'Hermano/a': 'Sibling',
-        'Primo/a': 'Cousin',
-        'Tutor/a Legal': 'Legal_Guardian',
-        'Vecino/a': 'Neighbor',
-        'Amigo/a de la familia': 'Family_Friend',
-        'Otro': 'Other'
+        Madre: "Mother",
+        Padre: "Father",
+        "Abuelo/a": "Grandparent",
+        "Tío/a": "Uncle_Aunt",
+        "Hermano/a": "Sibling",
+        "Primo/a": "Cousin",
+        "Tutor/a Legal": "Legal_Guardian",
+        "Vecino/a": "Neighbor",
+        "Amigo/a de la familia": "Family_Friend",
+        Otro: "Other",
       };
       return relationshipMap[parentesco] || null;
     };
@@ -110,7 +121,10 @@ export class AthletesRepository {
       const birth = new Date(birthDate);
       let age = today.getFullYear() - birth.getFullYear();
       const monthDiff = today.getMonth() - birth.getMonth();
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birth.getDate())
+      ) {
         age--;
       }
       return age;
@@ -124,70 +138,98 @@ export class AthletesRepository {
       email: athleteData.email?.trim(),
       phoneNumber: athleteData.phoneNumber?.trim(),
       identification: athleteData.identification?.trim(),
-      documentTypeId: athleteData.documentTypeId ? parseInt(athleteData.documentTypeId) : null,
+      documentTypeId: athleteData.documentTypeId
+        ? parseInt(athleteData.documentTypeId)
+        : null,
       birthDate: athleteData.birthDate ? new Date(athleteData.birthDate) : null,
       age: athleteData.birthDate ? calculateAge(athleteData.birthDate) : null,
-      address: athleteData.address || 'N/A',
-      passwordHash: 'temp_password_hash', // Se debe generar un hash real
+      address: athleteData.address || "N/A",
+      passwordHash: "temp_password_hash", // Se debe generar un hash real
     };
 
     const athleteSpecificData = {
-      status: athleteData.estado === 'Activo' ? 'Active' : 'Inactive',
-      guardianId: athleteData.acudiente ? parseInt(athleteData.acudiente) : null,
+      status: athleteData.estado === "Activo" ? "Active" : "Inactive",
       relationship: mapRelationship(athleteData.parentesco),
-      otherRelationship: athleteData.parentesco && !mapRelationship(athleteData.parentesco) ? athleteData.parentesco : null,
+      otherRelationship:
+        athleteData.parentesco && !mapRelationship(athleteData.parentesco)
+          ? athleteData.parentesco
+          : null,
     };
+
+    // Manejar guardianId por separado
+    if (athleteData.acudiente !== undefined) {
+      athleteSpecificData.guardianId = athleteData.acudiente
+        ? parseInt(athleteData.acudiente)
+        : null;
+    }
 
     return { userData, athleteSpecificData };
   }
 
   async create(athleteData) {
     try {
-      console.log('📥 Datos recibidos en repository:', JSON.stringify(athleteData, null, 2));
+      console.log(
+        "📥 Datos recibidos en repository:",
+        JSON.stringify(athleteData, null, 2)
+      );
 
-      const { userData, athleteSpecificData } = this.transformToBackend(athleteData);
-      
+      const { userData, athleteSpecificData } =
+        this.transformToBackend(athleteData);
+
       // Si hay contraseña temporal, hashearla
       if (athleteData.temporaryPassword) {
-        const bcrypt = await import('bcrypt');
-        userData.passwordHash = await bcrypt.default.hash(athleteData.temporaryPassword, 10);
+        const bcrypt = await import("bcrypt");
+        userData.passwordHash = await bcrypt.default.hash(
+          athleteData.temporaryPassword,
+          10
+        );
       }
-      
-      console.log('🔄 userData transformado:', JSON.stringify(userData, null, 2));
-      console.log('🔄 athleteSpecificData transformado:', JSON.stringify(athleteSpecificData, null, 2));
+
+      console.log(
+        "🔄 userData transformado:",
+        JSON.stringify(userData, null, 2)
+      );
+      console.log(
+        "🔄 athleteSpecificData transformado:",
+        JSON.stringify(athleteSpecificData, null, 2)
+      );
 
       // Validar que el tipo de documento existe
-      console.log('🔍 Validando documentTypeId:', athleteData.documentTypeId);
+      console.log("🔍 Validando documentTypeId:", athleteData.documentTypeId);
       const documentType = await prisma.documentType.findUnique({
-        where: { id: parseInt(athleteData.documentTypeId) }
+        where: { id: parseInt(athleteData.documentTypeId) },
       });
 
       if (!documentType) {
-        throw new Error(`Tipo de documento con ID "${athleteData.documentTypeId}" no encontrado`);
+        throw new Error(
+          `Tipo de documento con ID "${athleteData.documentTypeId}" no encontrado`
+        );
       }
-      console.log('✅ Tipo de documento encontrado:', documentType.name);
+      console.log("✅ Tipo de documento encontrado:", documentType.name);
 
       // Buscar la categoría deportiva
       const sportsCategory = await prisma.sportsCategory.findFirst({
-        where: { nombre: athleteData.categoria }
+        where: { nombre: athleteData.categoria },
       });
 
       if (!sportsCategory) {
-        throw new Error(`Categoría deportiva "${athleteData.categoria}" no encontrada`);
+        throw new Error(
+          `Categoría deportiva "${athleteData.categoria}" no encontrada`
+        );
       }
 
       // Buscar o crear rol de atleta
       let athleteRole = await prisma.role.findFirst({
-        where: { name: 'Athlete' }
+        where: { name: "Athlete" },
       });
 
       if (!athleteRole) {
         athleteRole = await prisma.role.create({
           data: {
-            name: 'Athlete',
-            description: 'Rol de deportista',
-            status: 'Active'
-          }
+            name: "Athlete",
+            description: "Rol de deportista",
+            status: "Active",
+          },
         });
       }
 
@@ -200,25 +242,28 @@ export class AthletesRepository {
           },
         });
 
-        console.log('✅ Usuario creado con ID:', newUser.id);
+        console.log("✅ Usuario creado con ID:", newUser.id);
 
         // Crear atleta
         const newAthlete = await tx.athlete.create({
           data: {
             userId: newUser.id,
             ...athleteSpecificData,
-            currentInscriptionStatus: athleteData.estado === "Inactivo" ? "Suspended" : "Active",
+            currentInscriptionStatus:
+              athleteData.estado === "Inactivo" ? "Suspended" : "Active",
             statusAssignedAt: new Date(),
           },
         });
 
-        console.log('✅ Atleta creado con ID:', newAthlete.id);
+        console.log("✅ Atleta creado con ID:", newAthlete.id);
 
         // Crear inscripción inicial
-        const inscriptionStatus = athleteData.estado === "Inactivo" ? "Suspended" : "Active";
-        const inscriptionConcept = athleteData.estado === "Inactivo"
-          ? "Inscripción inicial suspendida - Deportista inactivo"
-          : "Inscripción inicial";
+        const inscriptionStatus =
+          athleteData.estado === "Inactivo" ? "Suspended" : "Active";
+        const inscriptionConcept =
+          athleteData.estado === "Inactivo"
+            ? "Inscripción inicial suspendida - Deportista inactivo"
+            : "Inscripción inicial";
 
         const expirationDate = new Date();
         expirationDate.setFullYear(expirationDate.getFullYear() + 1);
@@ -242,15 +287,15 @@ export class AthletesRepository {
           include: {
             user: {
               include: {
-                documentType: true
-              }
+                documentType: true,
+              },
             },
             guardian: true,
             inscriptions: {
               include: {
-                sportsCategory: true
+                sportsCategory: true,
               },
-              orderBy: { inscriptionDate: 'desc' }
+              orderBy: { inscriptionDate: "desc" },
             },
           },
         });
@@ -258,24 +303,28 @@ export class AthletesRepository {
         return this.transformToFrontend(createdAthlete);
       });
     } catch (error) {
-      console.error('❌ Error en create():', error.message);
+      console.error("❌ Error en create():", error.message);
       throw error;
     }
   }
 
   async update(id, athleteData) {
     try {
-      const { userData, athleteSpecificData } = this.transformToBackend(athleteData);
+      const { userData, athleteSpecificData } =
+        this.transformToBackend(athleteData);
 
       return await prisma.$transaction(async (tx) => {
         // Obtener el atleta actual
         const currentAthlete = await tx.athlete.findUnique({
           where: { id: parseInt(id) },
-          include: { user: true, inscriptions: { orderBy: { inscriptionDate: 'desc' } } }
+          include: {
+            user: true,
+            inscriptions: { orderBy: { inscriptionDate: "desc" } },
+          },
         });
 
         if (!currentAthlete) {
-          throw new Error('Atleta no encontrado');
+          throw new Error("Atleta no encontrado");
         }
 
         // Actualizar usuario
@@ -285,20 +334,40 @@ export class AthletesRepository {
         });
 
         // Verificar si cambió el estado
-        const statusChanged = athleteSpecificData.status && athleteSpecificData.status !== currentAthlete.status;
+        const statusChanged =
+          athleteSpecificData.status &&
+          athleteSpecificData.status !== currentAthlete.status;
+
+        // Preparar datos de actualización del atleta
+        const updateData = {
+          status: athleteSpecificData.status,
+          relationship: athleteSpecificData.relationship,
+          otherRelationship: athleteSpecificData.otherRelationship,
+          currentInscriptionStatus:
+            athleteData.estado === "Inactivo"
+              ? "Suspended"
+              : athleteSpecificData.status === "Active"
+              ? "Active"
+              : currentAthlete.currentInscriptionStatus,
+          ...(statusChanged && { statusAssignedAt: new Date() }),
+        };
+
+        // Solo incluir guardianId si está definido en athleteSpecificData
+        if ("guardianId" in athleteSpecificData) {
+          updateData.guardianId = athleteSpecificData.guardianId;
+        }
 
         // Actualizar atleta
         const updatedAthlete = await tx.athlete.update({
           where: { id: parseInt(id) },
-          data: {
-            ...athleteSpecificData,
-            currentInscriptionStatus: athleteData.estado === "Inactivo" ? "Suspended" : athleteSpecificData.status === 'Active' ? 'Active' : currentAthlete.currentInscriptionStatus,
-            ...(statusChanged && { statusAssignedAt: new Date() }),
-          },
+          data: updateData,
         });
 
         // Si se cambió el estado a Inactivo, actualizar inscripción
-        if (athleteData.shouldUpdateInscription && athleteData.estado === "Inactivo") {
+        if (
+          athleteData.shouldUpdateInscription &&
+          athleteData.estado === "Inactivo"
+        ) {
           const currentInscription = currentAthlete.inscriptions[0];
 
           if (currentInscription && currentInscription.status === "Active") {
@@ -313,14 +382,15 @@ export class AthletesRepository {
                 inscriptionDate: currentInscription.inscriptionDate,
                 conceptDate: new Date(),
                 expirationDate: currentInscription.expirationDate,
-                concept: "Suspensión automática - Deportista marcado como Inactivo",
+                concept:
+                  "Suspensión automática - Deportista marcado como Inactivo",
               },
             });
 
             // Actualizar estado actual de inscripción
             await tx.athlete.update({
               where: { id: parseInt(id) },
-              data: { currentInscriptionStatus: "Suspended" }
+              data: { currentInscriptionStatus: "Suspended" },
             });
           }
         }
@@ -331,15 +401,15 @@ export class AthletesRepository {
           include: {
             user: {
               include: {
-                documentType: true
-              }
+                documentType: true,
+              },
             },
             guardian: true,
             inscriptions: {
               include: {
-                sportsCategory: true
+                sportsCategory: true,
               },
-              orderBy: { inscriptionDate: 'desc' }
+              orderBy: { inscriptionDate: "desc" },
             },
           },
         });
@@ -347,7 +417,7 @@ export class AthletesRepository {
         return this.transformToFrontend(finalAthlete);
       });
     } catch (error) {
-      console.error('Error en update():', error);
+      console.error("Error en update():", error);
       throw error;
     }
   }
@@ -358,11 +428,11 @@ export class AthletesRepository {
         // Obtener atleta con usuario
         const athlete = await tx.athlete.findUnique({
           where: { id: parseInt(id) },
-          include: { user: true }
+          include: { user: true },
         });
 
         if (!athlete) {
-          throw new Error('Atleta no encontrado');
+          throw new Error("Atleta no encontrado");
         }
 
         // Las inscripciones se eliminan automáticamente por onDelete: Cascade
@@ -377,35 +447,42 @@ export class AthletesRepository {
         };
       });
     } catch (error) {
-      console.error('Error en delete():', error);
+      console.error("Error en delete():", error);
       throw error;
     }
   }
 
-  async findAll({ page = 1, limit = 10, search = '', status = '', categoria = '', estadoInscripcion = '' }) {
+  async findAll({
+    page = 1,
+    limit = 10,
+    search = "",
+    status = "",
+    categoria = "",
+    estadoInscripcion = "",
+  }) {
     const skip = (page - 1) * limit;
     const where = {};
 
     if (search) {
       where.user = {
         OR: [
-          { firstName: { contains: search, mode: 'insensitive' } },
-          { lastName: { contains: search, mode: 'insensitive' } },
-          { identification: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-        ]
+          { firstName: { contains: search, mode: "insensitive" } },
+          { lastName: { contains: search, mode: "insensitive" } },
+          { identification: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
       };
     }
 
     if (status) {
-      where.status = status === 'Activo' ? 'Active' : 'Inactive';
+      where.status = status === "Activo" ? "Active" : "Inactive";
     }
 
     if (estadoInscripcion) {
       const statusMap = {
-        'Vigente': 'Active',
-        'Suspendida': 'Suspended',
-        'Vencida': 'Expired'
+        Vigente: "Active",
+        Suspendida: "Suspended",
+        Vencida: "Expired",
       };
       where.currentInscriptionStatus = statusMap[estadoInscripcion];
     }
@@ -418,32 +495,34 @@ export class AthletesRepository {
         include: {
           user: {
             include: {
-              documentType: true
-            }
+              documentType: true,
+            },
           },
           guardian: true,
           inscriptions: {
             include: {
-              sportsCategory: true
+              sportsCategory: true,
             },
-            orderBy: { inscriptionDate: 'desc' }
+            orderBy: { inscriptionDate: "desc" },
           },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       }),
-      prisma.athlete.count({ where })
+      prisma.athlete.count({ where }),
     ]);
 
     // Filtrar por categoría si se proporciona
     let filteredAthletes = athletes;
     if (categoria) {
-      filteredAthletes = athletes.filter(athlete => {
+      filteredAthletes = athletes.filter((athlete) => {
         const currentInscription = athlete.inscriptions[0];
         return currentInscription?.sportsCategory?.nombre === categoria;
       });
     }
 
-    const transformedAthletes = filteredAthletes.map(athlete => this.transformToFrontend(athlete));
+    const transformedAthletes = filteredAthletes.map((athlete) =>
+      this.transformToFrontend(athlete)
+    );
 
     return {
       athletes: transformedAthletes,
@@ -451,10 +530,14 @@ export class AthletesRepository {
         page: parseInt(page),
         limit: parseInt(limit),
         total: categoria ? filteredAthletes.length : total,
-        totalPages: Math.ceil((categoria ? filteredAthletes.length : total) / limit),
-        hasNext: page < Math.ceil((categoria ? filteredAthletes.length : total) / limit),
-        hasPrev: page > 1
-      }
+        totalPages: Math.ceil(
+          (categoria ? filteredAthletes.length : total) / limit
+        ),
+        hasNext:
+          page <
+          Math.ceil((categoria ? filteredAthletes.length : total) / limit),
+        hasPrev: page > 1,
+      },
     };
   }
 
@@ -464,17 +547,17 @@ export class AthletesRepository {
       include: {
         user: {
           include: {
-            documentType: true
-          }
+            documentType: true,
+          },
         },
         guardian: true,
         inscriptions: {
           include: {
-            sportsCategory: true
+            sportsCategory: true,
           },
-          orderBy: { inscriptionDate: 'desc' }
+          orderBy: { inscriptionDate: "desc" },
         },
-      }
+      },
     });
 
     return athlete ? this.transformToFrontend(athlete) : null;
@@ -483,35 +566,35 @@ export class AthletesRepository {
   async findByDocument(identification, excludeId = null) {
     const where = {
       user: {
-        identification: identification
-      }
+        identification: identification,
+      },
     };
     if (excludeId) where.id = { not: parseInt(excludeId) };
-    return await prisma.athlete.findFirst({ 
+    return await prisma.athlete.findFirst({
       where,
-      include: { user: true }
+      include: { user: true },
     });
   }
 
   async findByEmail(email, excludeUserId = null) {
     const where = {
-      email: email
+      email: email,
     };
     if (excludeUserId) where.id = { not: parseInt(excludeUserId) };
-    return await prisma.user.findFirst({ 
+    return await prisma.user.findFirst({
       where,
-      include: { athlete: true }
+      include: { athlete: true },
     });
   }
 
   async findByIdentification(identification, excludeUserId = null) {
     const where = {
-      identification: identification
+      identification: identification,
     };
     if (excludeUserId) where.id = { not: parseInt(excludeUserId) };
-    return await prisma.user.findFirst({ 
+    return await prisma.user.findFirst({
       where,
-      include: { athlete: true }
+      include: { athlete: true },
     });
   }
 
@@ -519,28 +602,28 @@ export class AthletesRepository {
     try {
       const updatedAthlete = await prisma.athlete.update({
         where: { id: parseInt(id) },
-        data: { 
-          status: status === 'Activo' ? 'Active' : 'Inactive'
+        data: {
+          status: status === "Activo" ? "Active" : "Inactive",
         },
         include: {
           user: {
             include: {
-              documentType: true
-            }
+              documentType: true,
+            },
           },
           guardian: true,
           inscriptions: {
             include: {
-              sportsCategory: true
+              sportsCategory: true,
             },
-            orderBy: { inscriptionDate: 'desc' }
+            orderBy: { inscriptionDate: "desc" },
           },
-        }
+        },
       });
 
       return this.transformToFrontend(updatedAthlete);
     } catch (error) {
-      console.error('Error en changeStatus():', error);
+      console.error("Error en changeStatus():", error);
       throw error;
     }
   }
@@ -548,38 +631,38 @@ export class AthletesRepository {
   async getStats() {
     const [total, activos, inactivos] = await Promise.all([
       prisma.athlete.count(),
-      prisma.athlete.count({ where: { status: 'Active' } }),
-      prisma.athlete.count({ where: { status: 'Inactive' } }),
+      prisma.athlete.count({ where: { status: "Active" } }),
+      prisma.athlete.count({ where: { status: "Inactive" } }),
     ]);
 
     // Estadísticas por categoría
     const inscriptionsWithCategory = await prisma.inscription.findMany({
-      distinct: ['athleteId'],
+      distinct: ["athleteId"],
       include: {
-        sportsCategory: true
+        sportsCategory: true,
       },
-      orderBy: { inscriptionDate: 'desc' }
+      orderBy: { inscriptionDate: "desc" },
     });
 
     const categoriaStats = inscriptionsWithCategory.reduce((acc, ins) => {
-      const categoria = ins.sportsCategory?.nombre || 'Sin categoría';
+      const categoria = ins.sportsCategory?.nombre || "Sin categoría";
       acc[categoria] = (acc[categoria] || 0) + 1;
       return acc;
     }, {});
 
     // Estadísticas por estado de inscripción
     const byInscripcion = await prisma.athlete.groupBy({
-      by: ['currentInscriptionStatus'],
-      _count: { id: true }
+      by: ["currentInscriptionStatus"],
+      _count: { id: true },
     });
 
     const inscripcionStats = byInscripcion.reduce((acc, item) => {
       const statusMap = {
-        'Active': 'vigente',
-        'Suspended': 'suspendida',
-        'Expired': 'vencida'
+        Active: "vigente",
+        Suspended: "suspendida",
+        Expired: "vencida",
       };
-      const key = statusMap[item.currentInscriptionStatus] || 'sin_estado';
+      const key = statusMap[item.currentInscriptionStatus] || "sin_estado";
       acc[key] = item._count.id;
       return acc;
     }, {});
@@ -595,7 +678,7 @@ export class AthletesRepository {
 
   async validateGuardian(guardianId) {
     const guardian = await prisma.guardian.findUnique({
-      where: { id: parseInt(guardianId) }
+      where: { id: parseInt(guardianId) },
     });
     return !!guardian;
   }
@@ -606,44 +689,44 @@ export class AthletesRepository {
         select: {
           id: true,
           name: true,
-          description: true
+          description: true,
         },
         orderBy: {
-          name: 'asc'
-        }
+          name: "asc",
+        },
       });
 
       const sportsCategories = await prisma.sportsCategory.findMany({
         where: {
-          estado: 'Activo'
+          estado: "Activo",
         },
         select: {
           id: true,
           nombre: true,
           edadMinima: true,
           edadMaxima: true,
-          descripcion: true
+          descripcion: true,
         },
         orderBy: {
-          edadMinima: 'asc'
-        }
+          edadMinima: "asc",
+        },
       });
 
       // Transformar al formato esperado por el frontend
-      const formattedCategories = sportsCategories.map(cat => ({
+      const formattedCategories = sportsCategories.map((cat) => ({
         id: cat.id,
         name: cat.nombre,
         minAge: cat.edadMinima,
         maxAge: cat.edadMaxima,
-        description: cat.descripcion
+        description: cat.descripcion,
       }));
 
       return {
         documentTypes,
-        sportsCategories: formattedCategories
+        sportsCategories: formattedCategories,
       };
     } catch (error) {
-      console.error('Error en getReferenceData():', error);
+      console.error("Error en getReferenceData():", error);
       throw error;
     }
   }
@@ -652,42 +735,42 @@ export class AthletesRepository {
     try {
       // Tipos de documento permitidos para deportistas
       const allowedDocumentTypes = [
-        'Registro Civil',
-        'Tarjeta de Identidad',
-        'Cédula de Ciudadanía',
-        'Cédula de Extranjería',
-        'Permiso de Permanencia'
+        "Registro Civil",
+        "Tarjeta de Identidad",
+        "Cédula de Ciudadanía",
+        "Cédula de Extranjería",
+        "Permiso de Permanencia",
       ];
 
       // Obtener tipos de documento filtrados
       const documentTypes = await prisma.documentType.findMany({
         where: {
           name: {
-            in: allowedDocumentTypes
-          }
+            in: allowedDocumentTypes,
+          },
         },
         select: {
           id: true,
           name: true,
-          description: true
-        }
+          description: true,
+        },
       });
 
       // Ordenar en el orden lógico de uso (por edad)
       const orderedDocumentTypes = documentTypes.sort((a, b) => {
         const order = {
-          'Registro Civil': 1,           // 0-6 años
-          'Tarjeta de Identidad': 2,     // 7-17 años
-          'Cédula de Ciudadanía': 3,     // 18+ años
-          'Cédula de Extranjería': 4,    // Extranjeros
-          'Permiso de Permanencia': 5    // Casos especiales
+          "Registro Civil": 1, // 0-6 años
+          "Tarjeta de Identidad": 2, // 7-17 años
+          "Cédula de Ciudadanía": 3, // 18+ años
+          "Cédula de Extranjería": 4, // Extranjeros
+          "Permiso de Permanencia": 5, // Casos especiales
         };
         return (order[a.name] || 999) - (order[b.name] || 999);
       });
 
       return orderedDocumentTypes;
     } catch (error) {
-      console.error('Error en getDocumentTypes():', error);
+      console.error("Error en getDocumentTypes():", error);
       throw error;
     }
   }
@@ -703,14 +786,14 @@ export class AthletesRepository {
         data: {
           guardianId: null,
           relationship: null,
-          otherRelationship: null
-        }
+          otherRelationship: null,
+        },
       });
 
       // Retornar el atleta actualizado con todas las relaciones
       return await this.findById(athleteId);
     } catch (error) {
-      console.error('Error en removeGuardianFromAthlete():', error);
+      console.error("Error en removeGuardianFromAthlete():", error);
       throw error;
     }
   }
