@@ -21,9 +21,26 @@ export class EventsRepository {
       imageUrl: service.imageUrl,
       scheduleFile: service.scheduleFile,
       publish: service.publish,
-      categoryId: service.categoryId,
       typeId: service.typeId,
-      category: service.event_categories
+      // Mapear categorías deportivas
+      categories: service.serviceSportsCategories
+        ? service.serviceSportsCategories.map((ssc) => ({
+            id: ssc.sportsCategory.id,
+            name: ssc.sportsCategory.nombre,
+            description:
+              ssc.sportsCategory.descripcion ||
+              `Categoría ${ssc.sportsCategory.nombre} (${ssc.sportsCategory.edadMinima}-${ssc.sportsCategory.edadMaxima} años)`,
+            ageRange: `${ssc.sportsCategory.edadMinima}-${ssc.sportsCategory.edadMaxima} años`,
+          }))
+        : [],
+      // Para compatibilidad - primera categoría como categoryId
+      categoryId:
+        service.serviceSportsCategories &&
+        service.serviceSportsCategories.length > 0
+          ? service.serviceSportsCategories[0].sportsCategory.id
+          : service.categoryId, // fallback al categoryId directo
+      // Categoría del evento (EventCategory)
+      eventCategory: service.event_categories
         ? {
             id: service.event_categories.id,
             name: service.event_categories.name,
@@ -49,6 +66,7 @@ export class EventsRepository {
           }))
         : [],
       // Para el frontend web - incluir datos completos
+      serviceSportsCategories: service.serviceSportsCategories || [],
       event_categories: service.event_categories || null,
       ServiceType: service.ServiceType || null,
       ServiceSponsor: service.ServiceSponsor || [],
@@ -87,7 +105,12 @@ export class EventsRepository {
       }
 
       if (categoryId) {
-        where.categoryId = parseInt(categoryId);
+        // Filtrar por categoría deportiva a través de la relación muchos a muchos
+        where.serviceSportsCategories = {
+          some: {
+            sportsCategoryId: parseInt(categoryId),
+          },
+        };
       }
 
       if (typeId) {
@@ -105,6 +128,19 @@ export class EventsRepository {
           skip,
           take: limit,
           include: {
+            serviceSportsCategories: {
+              include: {
+                sportsCategory: {
+                  select: {
+                    id: true,
+                    nombre: true,
+                    descripcion: true,
+                    edadMinima: true,
+                    edadMaxima: true,
+                  },
+                },
+              },
+            },
             event_categories: {
               select: {
                 id: true,
@@ -170,6 +206,19 @@ export class EventsRepository {
     const service = await prisma.service.findUnique({
       where: { id: parseInt(id) },
       include: {
+        serviceSportsCategories: {
+          include: {
+            sportsCategory: {
+              select: {
+                id: true,
+                nombre: true,
+                descripcion: true,
+                edadMinima: true,
+                edadMaxima: true,
+              },
+            },
+          },
+        },
         event_categories: {
           select: {
             id: true,
@@ -251,13 +300,22 @@ export class EventsRepository {
    */
   async create(data) {
     try {
-      // Extraer sponsorNames si existen
-      const { sponsorNames, ...eventData } = data;
+      // Extraer sponsorNames y categoryIds si existen
+      const { sponsorNames, categoryIds, ...eventData } = data;
 
       // Preparar datos para crear el evento
       const createData = {
         ...eventData,
       };
+
+      // Si hay categorías deportivas, agregarlas
+      if (categoryIds && categoryIds.length > 0) {
+        createData.serviceSportsCategories = {
+          create: categoryIds.map((categoryId) => ({
+            sportsCategoryId: parseInt(categoryId),
+          })),
+        };
+      }
 
       // Si hay patrocinadores, buscar sus IDs y agregarlos
       if (sponsorNames && sponsorNames.length > 0) {
@@ -284,6 +342,19 @@ export class EventsRepository {
       return await prisma.service.create({
         data: createData,
         include: {
+          serviceSportsCategories: {
+            include: {
+              sportsCategory: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  descripcion: true,
+                  edadMinima: true,
+                  edadMaxima: true,
+                },
+              },
+            },
+          },
           event_categories: {
             select: {
               id: true,
@@ -314,8 +385,11 @@ export class EventsRepository {
       // Manejar errores específicos de Prisma
       if (error.code === "P2003") {
         // Foreign key constraint failed
+        if (error.meta?.field_name?.includes("sportsCategoryId")) {
+          throw new Error("Una de las categorías seleccionadas no existe");
+        }
         if (error.meta?.field_name?.includes("categoryId")) {
-          throw new Error("La categoría seleccionada no existe");
+          throw new Error("La categoría del evento seleccionada no existe");
         }
         if (error.meta?.field_name?.includes("typeId")) {
           throw new Error("El tipo de evento seleccionado no existe");
@@ -341,14 +415,32 @@ export class EventsRepository {
     try {
       const eventId = parseInt(id);
 
-      // Extraer sponsorNames si existen
-      const { sponsorNames, ...eventData } = data;
+      // Extraer sponsorNames y categoryIds si existen
+      const { sponsorNames, categoryIds, ...eventData } = data;
 
       // Primero actualizar los datos básicos del evento
       const updatedEvent = await prisma.service.update({
         where: { id: eventId },
         data: eventData,
       });
+
+      // Actualizar categorías deportivas si se proporcionaron
+      if (categoryIds !== undefined) {
+        // Eliminar las categorías existentes
+        await prisma.serviceSportsCategory.deleteMany({
+          where: { serviceId: eventId },
+        });
+
+        // Crear las nuevas categorías
+        if (categoryIds.length > 0) {
+          await prisma.serviceSportsCategory.createMany({
+            data: categoryIds.map((categoryId) => ({
+              serviceId: eventId,
+              sportsCategoryId: parseInt(categoryId),
+            })),
+          });
+        }
+      }
 
       // Actualizar patrocinadores si se proporcionaron
       if (sponsorNames !== undefined) {
@@ -386,6 +478,19 @@ export class EventsRepository {
       return await prisma.service.findUnique({
         where: { id: eventId },
         include: {
+          serviceSportsCategories: {
+            include: {
+              sportsCategory: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  descripcion: true,
+                  edadMinima: true,
+                  edadMaxima: true,
+                },
+              },
+            },
+          },
           event_categories: {
             select: {
               id: true,
@@ -419,8 +524,11 @@ export class EventsRepository {
 
       if (error.code === "P2003") {
         // Foreign key constraint failed
+        if (error.meta?.field_name?.includes("sportsCategoryId")) {
+          throw new Error("Una de las categorías seleccionadas no existe");
+        }
         if (error.meta?.field_name?.includes("categoryId")) {
-          throw new Error("La categoría seleccionada no existe");
+          throw new Error("La categoría del evento seleccionada no existe");
         }
         if (error.meta?.field_name?.includes("typeId")) {
           throw new Error("El tipo de evento seleccionado no existe");
@@ -498,7 +606,26 @@ export class EventsRepository {
    * Obtener datos de referencia
    */
   async getReferenceData() {
-    const [categories, types] = await Promise.all([
+    const [sportsCategories, eventCategories, types] = await Promise.all([
+      // Obtener categorías deportivas específicas del módulo de eventos
+      prisma.sportsCategory.findMany({
+        select: {
+          id: true,
+          nombre: true,
+          descripcion: true,
+          edadMinima: true,
+          edadMaxima: true,
+          estado: true,
+        },
+        where: {
+          estado: "Activo",
+          publicar: true,
+        },
+        orderBy: {
+          nombre: "asc",
+        },
+      }),
+      // Obtener categorías de eventos
       prisma.eventCategory.findMany({
         select: {
           id: true,
@@ -521,7 +648,20 @@ export class EventsRepository {
       }),
     ]);
 
-    return { categories, types };
+    // Mapear las categorías deportivas al formato esperado por el frontend
+    const mappedSportsCategories = sportsCategories.map((category) => ({
+      id: category.id,
+      name: category.nombre,
+      description:
+        category.descripcion ||
+        `Categoría ${category.nombre} (${category.edadMinima}-${category.edadMaxima} años)`,
+    }));
+
+    return {
+      sportsCategories: mappedSportsCategories,
+      eventCategories: eventCategories,
+      types,
+    };
   }
 
   /**

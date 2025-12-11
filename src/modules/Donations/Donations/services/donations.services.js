@@ -1,11 +1,7 @@
 import DonationsRepository from "../repository/donations.repository.js";
-import cloudinary from "../../../../services/shared/cloudinary.service.js";
+import cloudinary from "../../../../services/shared/cloudinary.js";
 
-const ALLOWED_MIME = [
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-];
+const ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 const ALLOWED_FILE_TYPES = ["comprobante", "soporte", "factura", "evidencia"];
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
@@ -17,7 +13,11 @@ export class DonationsService {
   async getById(id) {
     const data = await DonationsRepository.findById(id);
     if (!data) {
-      return { success: false, statusCode: 404, message: "Donacion no encontrada" };
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Donacion no encontrada",
+      };
     }
     return { success: true, data };
   }
@@ -57,10 +57,11 @@ export class DonationsService {
     for (const file of files) {
       this.validateFile(file);
 
-      const resolvedType =
-        file.fileType || fileTypeDefault || "soporte";
+      const resolvedType = file.fileType || fileTypeDefault || "soporte";
       if (!ALLOWED_FILE_TYPES.includes(resolvedType)) {
-        throw new Error("fileType invalido. Use comprobante, soporte, factura o evidencia.");
+        throw new Error(
+          "fileType invalido. Use comprobante, soporte, factura o evidencia."
+        );
       }
 
       const result = await new Promise((resolve, reject) => {
