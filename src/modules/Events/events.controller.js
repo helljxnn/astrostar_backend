@@ -885,4 +885,307 @@ export class EventsController {
       });
     }
   };
+
+  /**
+   * @swagger
+   * /api/events/{id}/available-athletes:
+   *   get:
+   *     summary: Obtener deportistas disponibles para inscribir en un evento
+   *     description: Obtiene una lista paginada de deportistas activas que pueden inscribirse en el evento especificado
+   *     tags: [Events]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           default: 1
+   *         description: Número de página
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 100
+   *           default: 10
+   *         description: Cantidad de deportistas por página
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *         description: Búsqueda por nombre, identificación o email
+   *       - in: query
+   *         name: categoryId
+   *         schema:
+   *           type: integer
+   *         description: Filtrar por categoría deportiva
+   *     responses:
+   *       200:
+   *         description: Lista de deportistas disponibles obtenida exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     athletes:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: integer
+   *                           fullName:
+   *                             type: string
+   *                           identification:
+   *                             type: string
+   *                           email:
+   *                             type: string
+   *                           age:
+   *                             type: integer
+   *                           category:
+   *                             type: object
+   *                             properties:
+   *                               id:
+   *                                 type: integer
+   *                               name:
+   *                                 type: string
+   *                               ageRange:
+   *                                 type: string
+   *                     pagination:
+   *                       type: object
+   *                       properties:
+   *                         page:
+   *                           type: integer
+   *                         limit:
+   *                           type: integer
+   *                         total:
+   *                           type: integer
+   *                         totalPages:
+   *                           type: integer
+   *                         hasNext:
+   *                           type: boolean
+   *                         hasPrev:
+   *                           type: boolean
+   *       404:
+   *         description: Evento no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  getAvailableAthletes = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { page = 1, limit = 10, search = "", categoryId = "" } = req.query;
+
+      const result = await this.eventsService.getAvailableAthletes(id, {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        categoryId,
+      });
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.pagination.total} deportistas disponibles.`,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message:
+          "Error interno del servidor al obtener deportistas disponibles.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/events/{id}/enroll-athlete:
+   *   post:
+   *     summary: Inscribir deportista en un evento
+   *     description: Inscribe una deportista específica en el evento
+   *     tags: [Events]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - athleteId
+   *             properties:
+   *               athleteId:
+   *                 type: integer
+   *                 description: ID de la deportista a inscribir
+   *                 example: 1
+   *               sportsCategoryId:
+   *                 type: integer
+   *                 description: ID de la categoría deportiva (opcional, usa la de la inscripción activa si no se especifica)
+   *                 example: 2
+   *               notes:
+   *                 type: string
+   *                 description: Notas adicionales sobre la inscripción
+   *                 example: "Inscripción especial por invitación"
+   *     responses:
+   *       200:
+   *         description: Deportista inscrita exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     id:
+   *                       type: integer
+   *                     athlete:
+   *                       type: object
+   *                       properties:
+   *                         id:
+   *                           type: integer
+   *                         fullName:
+   *                           type: string
+   *                         identification:
+   *                           type: string
+   *                     category:
+   *                       type: object
+   *                     registrationDate:
+   *                       type: string
+   *                       format: date-time
+   *                     status:
+   *                       type: string
+   *                 message:
+   *                   type: string
+   *       400:
+   *         description: Error en los datos o reglas de negocio
+   *       404:
+   *         description: Evento o deportista no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  enrollAthlete = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { athleteId, sportsCategoryId, notes } = req.body;
+
+      if (!athleteId) {
+        return res.status(400).json({
+          success: false,
+          message: "El ID de la deportista es requerido.",
+        });
+      }
+
+      const result = await this.eventsService.enrollAthlete(id, athleteId, {
+        sportsCategoryId,
+        notes,
+      });
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: result.message,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message:
+          error.message || "Error al inscribir la deportista en el evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/events/{id}/unenroll-athlete/{athleteId}:
+   *   delete:
+   *     summary: Desinscribir deportista de un evento
+   *     description: Remueve la inscripción de una deportista del evento
+   *     tags: [Events]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *       - in: path
+   *         name: athleteId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID de la deportista a desinscribir
+   *     responses:
+   *       200:
+   *         description: Deportista desinscrita exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "María García ha sido desinscrita del evento exitosamente."
+   *       400:
+   *         description: Error en los datos o reglas de negocio
+   *       404:
+   *         description: Evento o deportista no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  unenrollAthlete = async (req, res) => {
+    try {
+      const { id, athleteId } = req.params;
+
+      const result = await this.eventsService.unenrollAthlete(id, athleteId);
+
+      res.json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message:
+          error.message || "Error al desinscribir la deportista del evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 }

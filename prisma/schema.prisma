@@ -306,6 +306,7 @@ model Employee {
   updatedAt           DateTime             @updatedAt
   userId              Int                  @unique
   employeePermissions EmployeePermission[]
+  employeeSchedules   EmployeeSchedule[]
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
@@ -349,6 +350,25 @@ model EmployeePermission {
 
   @@unique([employeeId, permissionId])
   @@map("employee_permissions")
+}
+
+model EmployeeSchedule {
+  id                 Int                @id @default(autoincrement())
+  employeeId         Int
+  scheduleDate       DateTime
+  dayOfWeek          String
+  startTime          String
+  endTime            String
+  recurrence         ScheduleRecurrence @default(no)
+  customRecurrence   String?
+  description        String?
+  status             ScheduleStatus     @default(Programado)
+  cancellationReason String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("employee_schedules")
 }
 
 model SportsCategory {
@@ -715,134 +735,6 @@ model Sponsor {
   updatedAt      DateTime               @updatedAt
   ServiceSponsor ServiceSponsor[]
   donations      Donation[]
-}
-
-enum PreRegistrationStatus {
-  Pendiente
-  Procesada
-  Rechazada
-}
-
-enum EnrollmentStatus {
-  Vigente
-  Suspendida
-  Vencida
-  Cancelada
-}
-
-enum RoleStatus {
-  Active
-  Inactive
-}
-
-enum UserStatus {
-  Active
-  Inactive
-  Suspended
-}
-
-enum EmployeeStatus {
-  Activo
-  Licencia
-  Desvinculado
-  Fallecido
-}
-
-enum EventStatus {
-  Programado
-  Finalizado
-  Cancelado
-  En_pausa
-}
-
-enum SponsorStatus {
-  Active
-  Inactive
-}
-
-enum SportsCategoryStatus {
-  Activo
-  Inactivo
-}
-
-enum AthleteStatus {
-  Active
-  Inactive
-}
-
-enum InscriptionStatus {
-  Active
-  Suspended
-  Expired
-}
-
-enum InscriptionRecordType {
-  initial_inscription
-  renewal
-  status_change
-}
-
-enum GuardianRelationship {
-  Mother
-  Father
-  Grandparent
-  Uncle_Aunt
-  Sibling
-  Cousin
-  Legal_Guardian
-  Neighbor
-  Family_Friend
-  Other
-}
-
-enum TemporaryPersonStatus {
-  Active
-  Inactive
-}
-
-enum TemporaryPersonType {
-  Deportista
-  Entrenador
-  Participante
-}
-
-enum TeamStatus {
-  Active
-  Inactive
-  Disbanded
-}
-
-enum MemberType {
-  Athlete
-  Employee
-  TemporaryPerson
-}
-
-enum ParticipantType {
-  Individual
-  Team
-}
-
-enum ProviderEntityType {
-  legal
-  natural
-}
-
-enum ProviderStatus {
-  Active
-  Inactive
-}
-
-enum PurchaseStatus {
-  Pending
-  Received
-  Partial
-  Cancelled
-}
-
-enum TeamType {
-  Fundacion
-  Temporal
 }
 
 model Donation {
