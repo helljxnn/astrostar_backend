@@ -81,6 +81,7 @@ export class AthletesRepository {
       })),
       createdAt: athlete.createdAt,
       updatedAt: athlete.updatedAt,
+      statusAssignedAt: athlete.statusAssignedAt,
     };
   }
 
@@ -207,6 +208,7 @@ export class AthletesRepository {
             userId: newUser.id,
             ...athleteSpecificData,
             currentInscriptionStatus: athleteData.estado === "Inactivo" ? "Suspended" : "Active",
+            statusAssignedAt: new Date(),
           },
         });
 
@@ -282,12 +284,16 @@ export class AthletesRepository {
           data: userData,
         });
 
+        // Verificar si cambió el estado
+        const statusChanged = athleteSpecificData.status && athleteSpecificData.status !== currentAthlete.status;
+
         // Actualizar atleta
         const updatedAthlete = await tx.athlete.update({
           where: { id: parseInt(id) },
           data: {
             ...athleteSpecificData,
             currentInscriptionStatus: athleteData.estado === "Inactivo" ? "Suspended" : athleteSpecificData.status === 'Active' ? 'Active' : currentAthlete.currentInscriptionStatus,
+            ...(statusChanged && { statusAssignedAt: new Date() }),
           },
         });
 
@@ -682,6 +688,29 @@ export class AthletesRepository {
       return orderedDocumentTypes;
     } catch (error) {
       console.error('Error en getDocumentTypes():', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Remover acudiente de un atleta (solo actualiza el atleta, no el usuario)
+   */
+  async removeGuardianFromAthlete(athleteId) {
+    try {
+      // Actualizar solo el atleta, sin tocar el usuario
+      await prisma.athlete.update({
+        where: { id: parseInt(athleteId) },
+        data: {
+          guardianId: null,
+          relationship: null,
+          otherRelationship: null
+        }
+      });
+
+      // Retornar el atleta actualizado con todas las relaciones
+      return await this.findById(athleteId);
+    } catch (error) {
+      console.error('Error en removeGuardianFromAthlete():', error);
       throw error;
     }
   }

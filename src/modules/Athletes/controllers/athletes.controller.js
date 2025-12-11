@@ -358,6 +358,41 @@ export class AthletesController {
       });
     }
   };
+
+  removeGuardian = async (req, res) => {
+    try {
+      const athleteId = parseInt(req.params.id);
+
+      if (isNaN(athleteId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de deportista inválido.',
+        });
+      }
+
+      const result = await this.athletesService.removeGuardian(athleteId);
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error('Error removing guardian:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al remover acudiente.',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
 }
 
 export default new AthletesController();

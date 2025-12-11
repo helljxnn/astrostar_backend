@@ -390,4 +390,41 @@ export class AthletesService {
       throw error;
     }
   }
+
+  /**
+   * Remover acudiente de un deportista
+   */
+  async removeGuardian(athleteId) {
+    try {
+      const athlete = await this.athletesRepository.findById(athleteId);
+      
+      if (!athlete) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: `No se encontró el deportista con ID ${athleteId}.`,
+        };
+      }
+
+      if (!athlete.acudiente) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'El deportista no tiene un acudiente asignado.',
+        };
+      }
+
+      // Remover el acudiente usando Prisma directamente (solo actualizar el atleta, no el usuario)
+      const updatedAthlete = await this.athletesRepository.removeGuardianFromAthlete(athleteId);
+
+      return {
+        success: true,
+        data: updatedAthlete,
+        message: 'Acudiente removido correctamente del deportista.',
+      };
+    } catch (error) {
+      console.error('Error removiendo acudiente:', error);
+      throw error;
+    }
+  }
 }
