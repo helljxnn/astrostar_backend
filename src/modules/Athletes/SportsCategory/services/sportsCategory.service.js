@@ -1,11 +1,15 @@
 import prisma from "../../../../config/database.js";
 
 export class SportsCategoryService {
-
   /**
    * Obtener todas las categorías con paginación y filtros
    */
-  async getAllSportsCategories({ page = 1, limit = 10, search = "", status = "" }) {
+  async getAllSportsCategories({
+    page = 1,
+    limit = 10,
+    search = "",
+    status = "",
+  }) {
     try {
       const skip = (page - 1) * limit;
       const where = {};
@@ -21,10 +25,10 @@ export class SportsCategoryService {
       // Filtrar por estado
       if (status && status.trim()) {
         const statusMap = {
-          "Active": "Activo",
-          "Inactive": "Inactivo",
-          "Activo": "Activo",
-          "Inactivo": "Inactivo"
+          Active: "Activo",
+          Inactive: "Inactivo",
+          Activo: "Activo",
+          Inactivo: "Inactivo",
         };
         where.estado = statusMap[status] || status;
       }
@@ -218,9 +222,13 @@ export class SportsCategoryService {
 
       // Validar edades si se proporcionan
       if (data.edadMinima || data.edadMaxima) {
-        const minAge = data.edadMinima ? Number(data.edadMinima) : category.edadMinima;
-        const maxAge = data.edadMaxima ? Number(data.edadMaxima) : category.edadMaxima;
-        
+        const minAge = data.edadMinima
+          ? Number(data.edadMinima)
+          : category.edadMinima;
+        const maxAge = data.edadMaxima
+          ? Number(data.edadMaxima)
+          : category.edadMaxima;
+
         if (minAge >= maxAge) {
           return {
             success: false,
@@ -254,11 +262,16 @@ export class SportsCategoryService {
       // Preparar datos para actualizar
       const updateData = {};
       if (data.nombre !== undefined) updateData.nombre = data.nombre.trim();
-      if (data.descripcion !== undefined) updateData.descripcion = data.descripcion;
-      if (data.edadMinima !== undefined) updateData.edadMinima = Number(data.edadMinima);
-      if (data.edadMaxima !== undefined) updateData.edadMaxima = Number(data.edadMaxima);
+      if (data.descripcion !== undefined)
+        updateData.descripcion = data.descripcion;
+      if (data.edadMinima !== undefined)
+        updateData.edadMinima = Number(data.edadMinima);
+      if (data.edadMaxima !== undefined)
+        updateData.edadMaxima = Number(data.edadMaxima);
       if (data.estado !== undefined) updateData.estado = data.estado;
-      if (data.publicar !== undefined) updateData.publicar = data.publicar === true || data.publicar === "true";
+      if (data.publicar !== undefined)
+        updateData.publicar =
+          data.publicar === true || data.publicar === "true";
       if (data.archivo !== undefined) updateData.archivo = data.archivo; // URL de Cloudinary
 
       // Actualizar
@@ -293,7 +306,7 @@ export class SportsCategoryService {
         include: {
           inscriptions: true,
           participants: true,
-          ServiceCategory: true,
+          serviceSportsCategories: true,
         },
       });
 
@@ -324,11 +337,14 @@ export class SportsCategoryService {
       }
 
       // Verificar si hay servicios/eventos asociados
-      if (category.ServiceCategory && category.ServiceCategory.length > 0) {
+      if (
+        category.serviceSportsCategories &&
+        category.serviceSportsCategories.length > 0
+      ) {
         return {
           success: false,
           statusCode: 400,
-          message: `No se puede eliminar la categoría porque está asociada a ${category.ServiceCategory.length} evento(s).`,
+          message: `No se puede eliminar la categoría porque está asociada a ${category.serviceSportsCategories.length} evento(s).`,
         };
       }
 
@@ -343,19 +359,33 @@ export class SportsCategoryService {
       };
     } catch (error) {
       console.error("Error en deleteSportsCategory:", error);
-      
+      console.error("Error details:", {
+        code: error.code,
+        message: error.message,
+        meta: error.meta,
+      });
+
       // Manejar errores específicos de Prisma
-      if (error.code === 'P2003') {
+      if (error.code === "P2003") {
         return {
           success: false,
           statusCode: 400,
-          message: "No se puede eliminar la categoría porque tiene registros relacionados.",
+          message:
+            "No se puede eliminar la categoría porque tiene registros relacionados.",
+        };
+      }
+
+      if (error.code === "P2025") {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "La categoría no existe o ya fue eliminada.",
         };
       }
 
       return {
         success: false,
-        message: "Error al eliminar la categoría.",
+        message: `Error al eliminar la categoría: ${error.message}`,
         statusCode: 500,
       };
     }
