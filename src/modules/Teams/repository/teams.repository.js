@@ -344,14 +344,13 @@ export class TeamsRepository {
         }
       }
 
-      // Usar el campo teamType directamente
-      let teamType = team.teamType || "Temporal";
-
-      // Fallback: determinar por miembros si no está definido
-      if (!team.teamType && team.members && team.members.length > 0) {
-        const hasAthletes = team.members.some((m) => m.athleteId);
-        const hasTemporary = team.members.some((m) => m.temporaryPersonId);
-
+      // Determinar teamType desde el campo teamType
+      let teamType = team.teamType || 'Temporal';
+      if (team.members && team.members.length > 0 && !team.teamType) {
+        // Fallback: determinar por miembros si no está en phone
+        const hasAthletes = team.members.some(m => m.athleteId);
+        const hasTemporary = team.members.some(m => m.temporaryPersonId);
+        
         if (hasAthletes && !hasTemporary) {
           teamType = "Fundacion";
         } else if (hasTemporary) {
@@ -397,23 +396,15 @@ export class TeamsRepository {
       );
 
       const transformed = this.transformToBackend(teamData);
-      const {
-        deportistasIds = [],
-        entrenadorId,
-        segundoEntrenadorId,
-      } = transformed;
-
-      // Guardar teamType en el campo phone temporalmente como workaround
-      // Formato: "TIPO:Fundacion" o "TIPO:Temporal"
-      const teamTypeMarker = `TIPO:${transformed.teamType}`;
-
+      const { deportistasIds = [], entrenadorId, segundoEntrenadorId } = transformed;
+      
       const teamInfo = {
         name: transformed.name,
         description: transformed.description,
         coach: transformed.coach,
         category: transformed.category,
-        status: "Active",
-        teamType: transformed.teamType || "Temporal",
+        teamType: transformed.teamType,
+        status: 'Active'
       };
 
       console.log("🔧 Team Info transformado:", teamInfo);
@@ -558,19 +549,15 @@ export class TeamsRepository {
   async update(id, teamData) {
     try {
       const transformed = this.transformToBackend(teamData);
-      const {
-        deportistasIds = [],
-        entrenadorId,
-        segundoEntrenadorId,
-      } = transformed;
-
+      const { deportistasIds = [], entrenadorId, segundoEntrenadorId } = transformed;
+      
       const teamInfo = {
         name: transformed.name,
         description: transformed.description,
         coach: transformed.coach,
         category: transformed.category,
-        teamType: transformed.teamType || "Temporal",
-        status: transformed.status,
+        teamType: transformed.teamType || 'Temporal',
+        status: transformed.status
       };
 
       const currentTeam = await this.findById(id);

@@ -11,7 +11,7 @@ export class AthletesController {
         page = 1,
         limit = 10,
         search = "",
-        status,
+        status = "Activo", // Por defecto solo deportistas activas
         categoria,
         estadoInscripcion,
       } = req.query;
