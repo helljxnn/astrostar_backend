@@ -266,6 +266,11 @@ export class EventsRepository {
             },
           },
         },
+        _count: {
+          select: {
+            participants: true,
+          },
+        },
       },
     });
 
@@ -1148,6 +1153,30 @@ export class EventsRepository {
       return {
         athleteName: `${participant.athlete.user.firstName} ${participant.athlete.user.lastName}`,
         message: "Deportista desinscrita exitosamente",
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Limpiar todas las inscripciones de un evento
+   */
+  async clearEventRegistrations(eventId) {
+    try {
+      const parsedEventId = parseInt(eventId);
+
+      // Eliminar todas las inscripciones (participantes) del evento
+      const deletedCount = await prisma.participant.deleteMany({
+        where: {
+          serviceId: parsedEventId,
+        },
+      });
+
+      return {
+        success: true,
+        deletedCount: deletedCount.count,
+        message: `Se eliminaron ${deletedCount.count} inscripciones del evento`,
       };
     } catch (error) {
       throw error;
