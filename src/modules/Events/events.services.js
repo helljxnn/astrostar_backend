@@ -359,16 +359,9 @@ export class EventsService {
 
     // Validar estado
     if (data.status !== undefined) {
-      const validStatuses = [
-        "Programado",
-        "Finalizado",
-        "Cancelado",
-        "En_pausa",
-      ];
+      const validStatuses = ["Programado", "Finalizado", "Cancelado"];
       if (!validStatuses.includes(data.status)) {
-        errors.push(
-          "El estado debe ser: Programado, Finalizado, Cancelado o En_pausa"
-        );
+        errors.push("El estado debe ser: Programado, Finalizado o Cancelado");
       }
     }
 

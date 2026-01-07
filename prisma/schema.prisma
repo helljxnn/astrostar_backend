@@ -187,7 +187,6 @@ enum EventStatus {
   Programado
   Finalizado
   Cancelado
-  En_pausa
 }
 
 enum TeamType {

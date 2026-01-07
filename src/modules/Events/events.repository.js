@@ -586,13 +586,12 @@ export class EventsRepository {
    * Obtener estadísticas de eventos
    */
   async getStats() {
-    const [total, programado, finalizado, cancelado, pausado, byCategory] =
+    const [total, programado, finalizado, cancelado, byCategory] =
       await Promise.all([
         prisma.service.count(),
         prisma.service.count({ where: { status: "Programado" } }),
         prisma.service.count({ where: { status: "Finalizado" } }),
         prisma.service.count({ where: { status: "Cancelado" } }),
-        prisma.service.count({ where: { status: "Pausado" } }),
         prisma.service.groupBy({
           by: ["categoryId"],
           _count: {
@@ -606,7 +605,6 @@ export class EventsRepository {
       programado,
       finalizado,
       cancelado,
-      pausado,
       byCategory,
     };
   }

@@ -44,7 +44,7 @@ export class EventsController {
    *         name: status
    *         schema:
    *           type: string
-   *           enum: [Programado, Finalizado, Cancelado, Pausado]
+   *           enum: [Programado, Finalizado, Cancelado]
    *         description: Filtrar por estado
    *       - in: query
    *         name: categoryId
@@ -94,7 +94,7 @@ export class EventsController {
    *                         type: string
    *                       status:
    *                         type: string
-   *                         enum: [Programado, Finalizado, Cancelado, Pausado]
+   *                         enum: [Programado, Finalizado, Cancelado]
    *                       imageUrl:
    *                         type: string
    *                       scheduleFile:
@@ -368,7 +368,7 @@ export class EventsController {
    *                 example: "+57 300 1234567"
    *               status:
    *                 type: string
-   *                 enum: [Programado, Finalizado, Cancelado, Pausado]
+   *                 enum: [Programado, Finalizado, Cancelado]
    *                 default: Programado
    *                 description: Estado del evento
    *               imageUrl:
@@ -392,7 +392,7 @@ export class EventsController {
    *               typeId:
    *                 type: integer
    *                 description: ID del tipo de evento
-   *                 example: 2
+
    *           example:
    *             name: "Festival Deportivo 2025"
    *             description: "Festival anual de deportes con múltiples disciplinas"
@@ -517,7 +517,7 @@ export class EventsController {
    *                 example: "+57 300 1234567"
    *               status:
    *                 type: string
-   *                 enum: [Programado, Finalizado, Cancelado, Pausado]
+   *                 enum: [Programado, Finalizado, Cancelado]
    *                 default: Programado
    *               imageUrl:
    *                 type: string
@@ -535,7 +535,7 @@ export class EventsController {
    *                 example: 1
    *               typeId:
    *                 type: integer
-   *                 example: 2
+
    *     responses:
    *       200:
    *         description: Evento actualizado exitosamente
@@ -685,7 +685,7 @@ export class EventsController {
    *                     programado:
    *                       type: integer
    *                       description: Eventos programados
-   *                       example: 20
+
    *                     finalizado:
    *                       type: integer
    *                       description: Eventos finalizados
@@ -694,10 +694,10 @@ export class EventsController {
    *                       type: integer
    *                       description: Eventos cancelados
    *                       example: 5
-   *                     pausado:
+   *                     
    *                       type: integer
-   *                       description: Eventos pausados
-   *                       example: 2
+
+
    *                     byCategory:
    *                       type: array
    *                       description: Eventos agrupados por categoría
@@ -1048,7 +1048,7 @@ export class EventsController {
    *               sportsCategoryId:
    *                 type: integer
    *                 description: ID de la categoría deportiva (opcional, usa la de la inscripción activa si no se especifica)
-   *                 example: 2
+
    *               notes:
    *                 type: string
    *                 description: Notas adicionales sobre la inscripción
