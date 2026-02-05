@@ -115,6 +115,11 @@ export class EventsService {
       // Validar lógica de negocio
       this.validateBusinessRules(data, existing);
 
+      // Si se solicita limpiar inscripciones, hacerlo antes de actualizar
+      if (data.clearRegistrations === true) {
+        await this.eventsRepository.clearEventRegistrations(id);
+      }
+
       // Mapear campos del frontend al backend
       const mappedData = this.mapFrontendToBackend(data);
 
