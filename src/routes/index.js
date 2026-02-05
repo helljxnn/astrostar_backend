@@ -24,6 +24,7 @@ import classesRoutes from "../modules/Classes/classes.routes.js";
 import uploadRoutes from "../services/shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
 import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
+import purchasesRoutes from "../modules/Purchases/routes/purchases.routes.js";
 
 const router = Router();
 
@@ -33,6 +34,7 @@ router.use("/roles", roleRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/users", usersRoutes);
 router.use("/providers", providerRoutes);
+router.use("/purchases", purchasesRoutes);
 router.use("/temporary-workers", temporaryWorkersRoutes);
 router.use("/donors-sponsors", donorsSponsorsRoutes);
 router.use("/donations", donationsRoutes);
@@ -68,6 +70,7 @@ router.get("/health", (req, res) => {
       "Employees",
       "Users",
       "Providers",
+      "Purchases",
       "TemporaryWorkers",
       "DonorsSponsors",
       "Donations",

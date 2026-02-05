@@ -603,21 +603,23 @@ model Provider {
 }
 
 model PreRegistration {
-  id              Int                   @id @default(autoincrement())
-  nombres         String                @db.VarChar(100)
-  apellidos       String                @db.VarChar(100)
-  fechaNacimiento DateTime
-  telefono        String                @db.VarChar(20)
-  correo          String                @db.VarChar(100)
-  estado          PreRegistrationStatus @default(Pendiente)
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  numeroDocumento String?               @db.VarChar(50)
+  id             Int                   @id @default(autoincrement())
+  firstName      String                @db.VarChar(100)
+  middleName     String?               @db.VarChar(100)
+  lastName       String                @db.VarChar(100)
+  secondLastName String?               @db.VarChar(100)
+  identification String                @unique @db.VarChar(50)
+  birthDate      DateTime
+  phoneNumber    String                @db.VarChar(20)
+  email          String                @db.VarChar(100)
+  status         PreRegistrationStatus @default(Pendiente)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 
-  @@index([estado])
+  @@index([status])
   @@index([createdAt])
-  @@index([correo])
-  @@index([numeroDocumento])
+  @@index([email])
+  @@index([identification])
   @@map("pre_registrations")
 }
 

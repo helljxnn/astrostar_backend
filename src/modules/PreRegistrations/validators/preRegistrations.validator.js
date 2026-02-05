@@ -4,28 +4,28 @@ export const preRegistrationSchemas = {
     validate: (data) => {
       const errors = [];
       
-      if (!data.nombres || data.nombres.length < 2) {
-        errors.push({ field: 'nombres', message: 'Nombres son requeridos (mínimo 2 caracteres)' });
+      if (!data.firstName || data.firstName.length < 2) {
+        errors.push({ field: 'firstName', message: 'Primer nombre es requerido (mínimo 2 caracteres)' });
       }
       
-      if (!data.apellidos || data.apellidos.length < 2) {
-        errors.push({ field: 'apellidos', message: 'Apellidos son requeridos (mínimo 2 caracteres)' });
+      if (!data.lastName || data.lastName.length < 2) {
+        errors.push({ field: 'lastName', message: 'Primer apellido es requerido (mínimo 2 caracteres)' });
       }
 
-      if (!data.numeroDocumento || data.numeroDocumento.length < 6) {
-        errors.push({ field: 'numeroDocumento', message: 'Número de documento es requerido (mínimo 6 caracteres)' });
+      if (!data.identification || data.identification.length < 6) {
+        errors.push({ field: 'identification', message: 'Número de documento es requerido (mínimo 6 caracteres)' });
       }
       
-      if (!data.fechaNacimiento) {
-        errors.push({ field: 'fechaNacimiento', message: 'Fecha de nacimiento es requerida' });
+      if (!data.birthDate) {
+        errors.push({ field: 'birthDate', message: 'Fecha de nacimiento es requerida' });
       }
       
-      if (!data.telefono) {
-        errors.push({ field: 'telefono', message: 'Teléfono es requerido' });
+      if (!data.phoneNumber) {
+        errors.push({ field: 'phoneNumber', message: 'Teléfono es requerido' });
       }
       
-      if (!data.correo) {
-        errors.push({ field: 'correo', message: 'Correo es requerido' });
+      if (!data.email) {
+        errors.push({ field: 'email', message: 'Correo es requerido' });
       }
       
       if (errors.length > 0) {
