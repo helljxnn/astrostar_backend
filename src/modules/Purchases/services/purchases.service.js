@@ -6,14 +6,13 @@ export class PurchasesService {
     this.purchasesRepository = new PurchasesRepository();
   }
 
-  async getAllPurchases({ page = 1, limit = 10, search = "", providerId, status }) {
+  async getAllPurchases({ page = 1, limit = 10, search = "", providerId }) {
     try {
       const result = await this.purchasesRepository.findAll({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
         providerId,
-        status,
       });
 
       return {
@@ -51,7 +50,14 @@ export class PurchasesService {
 
   async createPurchase(purchaseData) {
     try {
-      console.log("🔍 SERVICE: Iniciando createPurchase con datos:", JSON.stringify(purchaseData, null, 2));
+      console.log("🔍 SERVICE: Iniciando createPurchase con datos:");
+      console.log("- providerId:", purchaseData.providerId);
+      console.log("- concept:", purchaseData.concept);
+      console.log("- invoiceName:", purchaseData.invoiceName);
+      console.log("- invoiceData existe?", !!purchaseData.invoiceData);
+      console.log("- invoiceData length:", purchaseData.invoiceData?.length || 0);
+      console.log("- invoiceMimeType:", purchaseData.invoiceMimeType);
+      console.log("- invoiceSize:", purchaseData.invoiceSize);
 
       // Validar que el proveedor existe y está activo
       const provider = await prisma.provider.findUnique({
@@ -78,30 +84,20 @@ export class PurchasesService {
       const purchaseNumber = await this.purchasesRepository.generatePurchaseNumber();
       console.log("✅ SERVICE: Número de compra generado:", purchaseNumber);
 
-      // Calcular el monto total de los items
-      const totalAmount = purchaseData.items.reduce((sum, item) => {
-        return sum + parseFloat(item.subtotal);
-      }, 0);
-
-      // Crear la compra con sus items
+      // Crear la compra
       const newPurchase = await this.purchasesRepository.create({
         purchaseNumber,
         providerId: purchaseData.providerId,
         employeeId: purchaseData.employeeId,
         purchaseDate: new Date(purchaseData.purchaseDate),
-        deliveryDate: purchaseData.deliveryDate ? new Date(purchaseData.deliveryDate) : null,
-        totalAmount,
-        status: purchaseData.status || "Pending",
+        concept: purchaseData.concept,
+        totalAmount: parseFloat(purchaseData.totalAmount),
+        paymentMethod: purchaseData.paymentMethod,
         notes: purchaseData.notes || null,
-        items: {
-          create: purchaseData.items.map((item) => ({
-            productName: item.productName,
-            description: item.description || null,
-            quantity: parseInt(item.quantity),
-            unitPrice: parseFloat(item.unitPrice),
-            subtotal: parseFloat(item.subtotal),
-          })),
-        },
+        invoiceData: purchaseData.invoiceData || null,
+        invoiceName: purchaseData.invoiceName || null,
+        invoiceMimeType: purchaseData.invoiceMimeType || null,
+        invoiceSize: purchaseData.invoiceSize || null,
       });
 
       console.log("✅ SERVICE: Compra creada exitosamente:", newPurchase.id);
@@ -156,34 +152,12 @@ export class PurchasesService {
 
       if (updateData.providerId) dataToUpdate.providerId = updateData.providerId;
       if (updateData.purchaseDate) dataToUpdate.purchaseDate = new Date(updateData.purchaseDate);
-      if (updateData.deliveryDate !== undefined) {
-        dataToUpdate.deliveryDate = updateData.deliveryDate ? new Date(updateData.deliveryDate) : null;
-      }
-      if (updateData.status) dataToUpdate.status = updateData.status;
+      if (updateData.concept) dataToUpdate.concept = updateData.concept;
+      if (updateData.totalAmount) dataToUpdate.totalAmount = parseFloat(updateData.totalAmount);
+      if (updateData.paymentMethod) dataToUpdate.paymentMethod = updateData.paymentMethod;
       if (updateData.notes !== undefined) dataToUpdate.notes = updateData.notes;
-
-      // Si se actualizan los items, recalcular el total
-      if (updateData.items) {
-        const totalAmount = updateData.items.reduce((sum, item) => {
-          return sum + parseFloat(item.subtotal);
-        }, 0);
-        dataToUpdate.totalAmount = totalAmount;
-
-        // Eliminar items antiguos y crear nuevos
-        await prisma.purchaseItem.deleteMany({
-          where: { purchaseId: id },
-        });
-
-        dataToUpdate.items = {
-          create: updateData.items.map((item) => ({
-            productName: item.productName,
-            description: item.description || null,
-            quantity: parseInt(item.quantity),
-            unitPrice: parseFloat(item.unitPrice),
-            subtotal: parseFloat(item.subtotal),
-          })),
-        };
-      }
+      if (updateData.invoiceUrl !== undefined) dataToUpdate.invoiceUrl = updateData.invoiceUrl;
+      if (updateData.invoiceName !== undefined) dataToUpdate.invoiceName = updateData.invoiceName;
 
       const updatedPurchase = await this.purchasesRepository.update(id, dataToUpdate);
 
@@ -198,30 +172,6 @@ export class PurchasesService {
     }
   }
 
-  async changePurchaseStatus(id, status) {
-    try {
-      const existingPurchase = await this.purchasesRepository.findById(id);
-      if (!existingPurchase) {
-        return {
-          success: false,
-          statusCode: 404,
-          message: `No se encontró la compra con ID ${id}.`,
-        };
-      }
-
-      const updatedPurchase = await this.purchasesRepository.changeStatus(id, status);
-
-      return {
-        success: true,
-        data: updatedPurchase,
-        message: `Estado de la compra "${updatedPurchase.purchaseNumber}" cambiado a "${status}" exitosamente.`,
-      };
-    } catch (error) {
-      console.error("Service error - changePurchaseStatus:", error);
-      throw error;
-    }
-  }
-
   async getPurchaseStats() {
     try {
       const stats = await this.purchasesRepository.getStats();
@@ -231,6 +181,124 @@ export class PurchasesService {
       };
     } catch (error) {
       console.error("Service error - getPurchaseStats:", error);
+      throw error;
+    }
+  }
+
+  async uploadInvoice(purchaseId, fileBuffer, fileName, mimeType) {
+    try {
+      const purchase = await this.purchasesRepository.findById(purchaseId);
+
+      if (!purchase) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: `No se encontró la compra con ID ${purchaseId}.`,
+        };
+      }
+
+      // Validar tamaño (5MB máximo)
+      const maxSize = 5 * 1024 * 1024;
+      if (fileBuffer.length > maxSize) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "El archivo excede el tamaño máximo permitido de 5MB",
+        };
+      }
+
+      // Convertir a Base64
+      const base64Data = fileBuffer.toString('base64');
+
+      // Actualizar la compra con la factura
+      const updatedPurchase = await this.purchasesRepository.update(purchaseId, {
+        invoiceData: base64Data,
+        invoiceName: fileName,
+        invoiceMimeType: mimeType,
+        invoiceSize: fileBuffer.length,
+      });
+
+      return {
+        success: true,
+        data: updatedPurchase,
+        message: "Factura subida exitosamente.",
+      };
+    } catch (error) {
+      console.error("Service error - uploadInvoice:", error);
+      throw error;
+    }
+  }
+
+  async downloadInvoice(id) {
+    try {
+      const purchase = await this.purchasesRepository.findById(id);
+
+      if (!purchase) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: `No se encontró la compra con ID ${id}.`,
+        };
+      }
+
+      if (!purchase.invoiceData) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "No hay factura disponible para esta compra.",
+        };
+      }
+
+      // Convertir Base64 a Buffer
+      const fileBuffer = Buffer.from(purchase.invoiceData, 'base64');
+
+      return {
+        success: true,
+        fileBuffer: fileBuffer,
+        fileName: purchase.invoiceName || `factura-${purchase.purchaseNumber}.pdf`,
+        mimeType: purchase.invoiceMimeType || 'application/pdf',
+      };
+    } catch (error) {
+      console.error("Service error - downloadInvoice:", error);
+      throw error;
+    }
+  }
+
+  async deleteInvoice(id) {
+    try {
+      const purchase = await this.purchasesRepository.findById(id);
+
+      if (!purchase) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: `No se encontró la compra con ID ${id}.`,
+        };
+      }
+
+      if (!purchase.invoiceData) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "No hay factura para eliminar.",
+        };
+      }
+
+      // Actualizar la compra eliminando la factura
+      const updatedPurchase = await this.purchasesRepository.update(id, {
+        invoiceData: null,
+        invoiceName: null,
+        invoiceMimeType: null,
+        invoiceSize: null,
+      });
+
+      return {
+        success: true,
+        data: updatedPurchase,
+        message: "Factura eliminada exitosamente.",
+      };
+    } catch (error) {
+      console.error("Service error - deleteInvoice:", error);
       throw error;
     }
   }

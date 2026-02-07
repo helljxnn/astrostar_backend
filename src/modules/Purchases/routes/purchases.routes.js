@@ -1,12 +1,22 @@
 import express from "express";
+import multer from "multer";
 import { PurchasesController } from "../controllers/purchases.controller.js";
 import {
   purchasesValidators,
   handleValidationErrors,
 } from "../validators/purchases.validator.js";
+import purchaseNotesRoutes from "../Notes/routes/purchaseNotes.routes.js";
 
 const router = express.Router();
 const purchasesController = new PurchasesController();
+
+// Configurar multer para manejar FormData
+const upload = multer({
+  storage: multer.memoryStorage(), // Guardar en memoria temporalmente
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB máximo
+  },
+});
 
 /**
  * @swagger
@@ -49,6 +59,105 @@ router.get("/stats", purchasesController.getPurchaseStats);
 
 /**
  * @swagger
+ * /api/purchases/{id}/download:
+ *   get:
+ *     summary: Download purchase invoice
+ *     description: Downloads the invoice file for a specific purchase
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Purchase ID
+ *     responses:
+ *       200:
+ *         description: Invoice file
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Purchase or invoice not found
+ *       500:
+ *         description: Internal server error
+ */
+router.get("/:id/download", purchasesController.downloadInvoice);
+
+/**
+ * @swagger
+ * /api/purchases/{id}/invoice:
+ *   post:
+ *     summary: Upload invoice for a purchase
+ *     description: Uploads an invoice file to Cloudinary for a specific purchase
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Purchase ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - invoice
+ *             properties:
+ *               invoice:
+ *                 type: string
+ *                 format: binary
+ *                 description: Invoice file (PDF, max 5MB)
+ *     responses:
+ *       200:
+ *         description: Invoice uploaded successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Purchase not found
+ *       500:
+ *         description: Internal server error
+ */
+router.post(
+  "/:id/invoice",
+  upload.single("invoice"),
+  purchasesController.uploadInvoice
+);
+
+/**
+ * @swagger
+ * /api/purchases/{id}/invoice:
+ *   delete:
+ *     summary: Delete invoice from a purchase
+ *     description: Deletes the invoice file from Cloudinary for a specific purchase
+ *     tags: [Purchases]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *         description: Purchase ID
+ *     responses:
+ *       200:
+ *         description: Invoice deleted successfully
+ *       404:
+ *         description: Purchase or invoice not found
+ *       500:
+ *         description: Internal server error
+ */
+router.delete("/:id/invoice", purchasesController.deleteInvoice);
+
+/**
+ * @swagger
  * /api/purchases:
  *   get:
  *     summary: Get list of purchases with pagination and filters
@@ -80,12 +189,6 @@ router.get("/stats", purchasesController.getPurchaseStats);
  *         schema:
  *           type: integer
  *         description: Filter by provider ID
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [Pending, Received, Partial, Cancelled]
- *         description: Filter by status
  *     responses:
  *       200:
  *         description: List of purchases retrieved successfully
@@ -135,63 +238,41 @@ router.get(
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             type: object
  *             required:
- *               - providerId
- *               - purchaseDate
- *               - items
+ *               - provider_name
+ *               - concept
+ *               - purchase_date
+ *               - total_amount
+ *               - payment_method
  *             properties:
- *               providerId:
- *                 type: integer
- *                 description: Provider ID
- *               employeeId:
- *                 type: integer
- *                 description: Employee ID (optional)
- *               purchaseDate:
+ *               provider_name:
+ *                 type: string
+ *                 description: Provider name
+ *               concept:
+ *                 type: string
+ *                 description: Purchase concept/description
+ *               purchase_date:
  *                 type: string
  *                 format: date
  *                 description: Purchase date
- *               deliveryDate:
+ *               total_amount:
+ *                 type: number
+ *                 minimum: 0
+ *                 description: Total amount
+ *               payment_method:
  *                 type: string
- *                 format: date
- *                 description: Delivery date (optional)
- *               status:
- *                 type: string
- *                 enum: [Pending, Received, Partial, Cancelled]
- *                 default: Pending
+ *                 description: Payment method
  *               notes:
  *                 type: string
  *                 maxLength: 1000
  *                 description: Additional notes (optional)
- *               items:
- *                 type: array
- *                 minItems: 1
- *                 items:
- *                   type: object
- *                   required:
- *                     - productName
- *                     - quantity
- *                     - unitPrice
- *                     - subtotal
- *                   properties:
- *                     productName:
- *                       type: string
- *                       minLength: 2
- *                       maxLength: 200
- *                     description:
- *                       type: string
- *                       maxLength: 500
- *                     quantity:
- *                       type: integer
- *                       minimum: 1
- *                     unitPrice:
- *                       type: number
- *                       minimum: 0
- *                     subtotal:
- *                       type: number
- *                       minimum: 0
+ *               invoice:
+ *                 type: string
+ *                 format: binary
+ *                 description: Invoice file (optional)
  *     responses:
  *       201:
  *         description: Purchase created successfully
@@ -200,6 +281,7 @@ router.get(
  */
 router.post(
   "/",
+  upload.single("invoice"), // Procesar el archivo primero
   purchasesValidators.create,
   handleValidationErrors,
   purchasesController.createPurchase
@@ -228,40 +310,19 @@ router.post(
  *             properties:
  *               providerId:
  *                 type: integer
+ *               concept:
+ *                 type: string
  *               purchaseDate:
  *                 type: string
  *                 format: date
- *               deliveryDate:
+ *               totalAmount:
+ *                 type: number
+ *                 minimum: 0
+ *               paymentMethod:
  *                 type: string
- *                 format: date
- *               status:
- *                 type: string
- *                 enum: [Pending, Received, Partial, Cancelled]
  *               notes:
  *                 type: string
  *                 maxLength: 1000
- *               items:
- *                 type: array
- *                 minItems: 1
- *                 items:
- *                   type: object
- *                   properties:
- *                     productName:
- *                       type: string
- *                       minLength: 2
- *                       maxLength: 200
- *                     description:
- *                       type: string
- *                       maxLength: 500
- *                     quantity:
- *                       type: integer
- *                       minimum: 1
- *                     unitPrice:
- *                       type: number
- *                       minimum: 0
- *                     subtotal:
- *                       type: number
- *                       minimum: 0
  *     responses:
  *       200:
  *         description: Purchase updated successfully
@@ -277,45 +338,7 @@ router.put(
   purchasesController.updatePurchase
 );
 
-/**
- * @swagger
- * /api/purchases/{id}/status:
- *   patch:
- *     summary: Change purchase status
- *     tags: [Purchases]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *           minimum: 1
- *         description: Purchase ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - status
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [Pending, Received, Partial, Cancelled]
- *     responses:
- *       200:
- *         description: Status changed successfully
- *       400:
- *         description: Invalid status
- *       404:
- *         description: Purchase not found
- */
-router.patch(
-  "/:id/status",
-  purchasesValidators.changeStatus,
-  handleValidationErrors,
-  purchasesController.changePurchaseStatus
-);
+// Rutas de notas (deben ir después de las rutas específicas)
+router.use("/", purchaseNotesRoutes);
 
 export default router;

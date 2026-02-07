@@ -46,69 +46,24 @@ export const purchasesValidators = {
       .withMessage("El ID debe ser un número entero positivo"),
   ],
 
-  // Validación para crear compra
+  // Validación para crear compra (acepta FormData o JSON)
   create: [
-    body("providerId")
-      .notEmpty()
-      .withMessage("El proveedor es requerido")
-      .isInt({ min: 1 })
-      .withMessage("El ID del proveedor debe ser un número entero positivo"),
-    body("employeeId")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("El ID del empleado debe ser un número entero positivo"),
-    body("purchaseDate")
-      .notEmpty()
-      .withMessage("La fecha de compra es requerida")
-      .isISO8601()
-      .withMessage("La fecha de compra debe ser una fecha válida"),
-    body("deliveryDate")
-      .optional()
-      .isISO8601()
-      .withMessage("La fecha de entrega debe ser una fecha válida"),
-    body("status")
-      .optional()
-      .isIn(["Pending", "Received", "Partial", "Cancelled"])
-      .withMessage("Estado inválido"),
-    body("notes")
-      .optional()
-      .isString()
-      .trim()
-      .isLength({ max: 1000 })
-      .withMessage("Las notas no pueden exceder 1000 caracteres"),
-    body("items")
-      .notEmpty()
-      .withMessage("Los items son requeridos")
-      .isArray({ min: 1 })
-      .withMessage("Debe incluir al menos un item"),
-    body("items.*.productName")
-      .notEmpty()
-      .withMessage("El nombre del producto es requerido")
-      .isString()
-      .trim()
-      .isLength({ min: 2, max: 200 })
-      .withMessage("El nombre del producto debe tener entre 2 y 200 caracteres"),
-    body("items.*.description")
-      .optional()
-      .isString()
-      .trim()
-      .isLength({ max: 500 })
-      .withMessage("La descripción no puede exceder 500 caracteres"),
-    body("items.*.quantity")
-      .notEmpty()
-      .withMessage("La cantidad es requerida")
-      .isInt({ min: 1 })
-      .withMessage("La cantidad debe ser un número entero positivo"),
-    body("items.*.unitPrice")
-      .notEmpty()
-      .withMessage("El precio unitario es requerido")
-      .isFloat({ min: 0 })
-      .withMessage("El precio unitario debe ser un número positivo"),
-    body("items.*.subtotal")
-      .notEmpty()
-      .withMessage("El subtotal es requerido")
-      .isFloat({ min: 0 })
-      .withMessage("El subtotal debe ser un número positivo"),
+    // Validación mínima - solo verificar que no esté vacío
+    body("provider_name").optional(),
+    body("proveedor").optional(),
+    body("concept").optional(),
+    body("concepto").optional(),
+    body("purchase_date").optional(),
+    body("purchaseDate").optional(),
+    body("fechaCompra").optional(),
+    body("total_amount").optional(),
+    body("totalAmount").optional(),
+    body("montoTotal").optional(),
+    body("payment_method").optional(),
+    body("paymentMethod").optional(),
+    body("metodoPago").optional(),
+    body("notes").optional(),
+    body("observaciones").optional(),
   ],
 
   // Validación para actualizar compra

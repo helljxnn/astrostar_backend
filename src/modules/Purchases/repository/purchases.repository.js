@@ -1,7 +1,7 @@
 import prisma from "../../../config/database.js";
 
 export class PurchasesRepository {
-  async findAll({ page = 1, limit = 10, search = "", providerId, status }) {
+  async findAll({ page = 1, limit = 10, search = "", providerId }) {
     try {
       const skip = (page - 1) * limit;
       const where = {};
@@ -10,6 +10,7 @@ export class PurchasesRepository {
       if (search) {
         where.OR = [
           { purchaseNumber: { contains: search, mode: "insensitive" } },
+          { concept: { contains: search, mode: "insensitive" } },
           { provider: { businessName: { contains: search, mode: "insensitive" } } },
         ];
       }
@@ -17,11 +18,6 @@ export class PurchasesRepository {
       // Filtro por proveedor
       if (providerId) {
         where.providerId = parseInt(providerId);
-      }
-
-      // Filtro por estado
-      if (status) {
-        where.status = status;
       }
 
       const [purchases, total] = await Promise.all([
@@ -35,6 +31,13 @@ export class PurchasesRepository {
                 id: true,
                 businessName: true,
                 nit: true,
+                entityType: true,
+                documentType: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
               },
             },
             employee: {
@@ -57,26 +60,46 @@ export class PurchasesRepository {
       ]);
 
       // Transformar los datos al formato que espera el frontend
-      const transformedPurchases = purchases.map((purchase) => ({
-        id: purchase.id,
-        numeroCompra: purchase.purchaseNumber,
-        proveedor: purchase.provider?.businessName || "N/A",
-        fechaCompra: purchase.purchaseDate,
-        montoTotal: purchase.totalAmount,
-        metodoPago: "N/A", // Este campo no existe en el modelo actual
-        estado: purchase.status,
-        observaciones: purchase.notes,
-        createdAt: purchase.createdAt,
-        updatedAt: purchase.updatedAt,
-        // Mantener también los campos originales para compatibilidad
-        purchaseNumber: purchase.purchaseNumber,
-        purchaseDate: purchase.purchaseDate,
-        totalAmount: purchase.totalAmount,
-        status: purchase.status,
-        notes: purchase.notes,
-        provider: purchase.provider,
-        employee: purchase.employee,
-      }));
+      const transformedPurchases = purchases.map((purchase) => {
+        // Determinar el tipo de documento
+        let tipoDocumento = "Documento";
+        if (purchase.provider) {
+          if (purchase.provider.entityType === "legal") {
+            tipoDocumento = "NIT";
+          } else if (purchase.provider.documentType?.name) {
+            tipoDocumento = purchase.provider.documentType.name;
+          } else {
+            tipoDocumento = "Cédula";
+          }
+        }
+
+        return {
+          id: purchase.id,
+          numeroCompra: purchase.purchaseNumber,
+          proveedor: purchase.provider?.businessName || "N/A",
+          proveedorNit: purchase.provider?.nit || null,
+          proveedorTipoDocumento: tipoDocumento,
+          fechaCompra: purchase.purchaseDate,
+          montoTotal: purchase.totalAmount,
+          concepto: purchase.concept || "Sin concepto",
+          metodoPago: purchase.paymentMethod || "N/A",
+          observaciones: purchase.notes,
+          factura: purchase.invoiceName || null,
+          createdAt: purchase.createdAt,
+          updatedAt: purchase.updatedAt,
+          // Mantener también los campos originales para compatibilidad
+          purchaseNumber: purchase.purchaseNumber,
+          purchaseDate: purchase.purchaseDate,
+          totalAmount: purchase.totalAmount,
+          concept: purchase.concept,
+          paymentMethod: purchase.paymentMethod,
+          notes: purchase.notes,
+          invoiceUrl: purchase.invoiceUrl,
+          invoiceName: purchase.invoiceName,
+          provider: purchase.provider,
+          employee: purchase.employee,
+        };
+      });
 
       return {
         purchases: transformedPurchases,
@@ -105,6 +128,13 @@ export class PurchasesRepository {
               nit: true,
               phone: true,
               email: true,
+              entityType: true,
+              documentType: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
             },
           },
           employee: {
@@ -119,38 +149,52 @@ export class PurchasesRepository {
               },
             },
           },
-          items: {
-            orderBy: {
-              id: "asc",
-            },
-          },
         },
       });
 
       if (!purchase) return null;
+
+      // Determinar el tipo de documento
+      let tipoDocumento = "Documento";
+      if (purchase.provider) {
+        if (purchase.provider.entityType === "legal") {
+          tipoDocumento = "NIT";
+        } else if (purchase.provider.documentType?.name) {
+          tipoDocumento = purchase.provider.documentType.name;
+        } else {
+          tipoDocumento = "Cédula";
+        }
+      }
 
       // Transformar al formato que espera el frontend
       return {
         id: purchase.id,
         numeroCompra: purchase.purchaseNumber,
         proveedor: purchase.provider?.businessName || "N/A",
+        proveedorNit: purchase.provider?.nit || null,
+        proveedorTipoDocumento: tipoDocumento,
         fechaCompra: purchase.purchaseDate,
         montoTotal: purchase.totalAmount,
-        metodoPago: "N/A",
-        estado: purchase.status,
+        concepto: purchase.concept || "Sin concepto",
+        metodoPago: purchase.paymentMethod || "N/A",
         observaciones: purchase.notes,
+        factura: purchase.invoiceName || null,
         createdAt: purchase.createdAt,
         updatedAt: purchase.updatedAt,
         // Mantener campos originales
         purchaseNumber: purchase.purchaseNumber,
         purchaseDate: purchase.purchaseDate,
-        deliveryDate: purchase.deliveryDate,
         totalAmount: purchase.totalAmount,
-        status: purchase.status,
+        concept: purchase.concept,
+        paymentMethod: purchase.paymentMethod,
         notes: purchase.notes,
+        invoiceUrl: purchase.invoiceUrl,
+        invoiceName: purchase.invoiceName,
+        invoiceData: purchase.invoiceData,
+        invoiceMimeType: purchase.invoiceMimeType,
+        invoiceSize: purchase.invoiceSize,
         provider: purchase.provider,
         employee: purchase.employee,
-        items: purchase.items,
       };
     } catch (error) {
       console.error("Repository error - findById:", error);
@@ -192,7 +236,6 @@ export class PurchasesRepository {
               },
             },
           },
-          items: true,
         },
       });
     } catch (error) {
@@ -225,7 +268,6 @@ export class PurchasesRepository {
               },
             },
           },
-          items: true,
         },
       });
     } catch (error) {
@@ -234,61 +276,19 @@ export class PurchasesRepository {
     }
   }
 
-  async changeStatus(id, status) {
-    try {
-      return await prisma.purchase.update({
-        where: { id },
-        data: { status },
-        include: {
-          provider: {
-            select: {
-              id: true,
-              businessName: true,
-            },
-          },
-        },
-      });
-    } catch (error) {
-      console.error("Repository error - changeStatus:", error);
-      throw error;
-    }
-  }
-
   async getStats() {
     try {
-      const [
-        totalPurchases,
-        pendingPurchases,
-        receivedPurchases,
-        partialPurchases,
-        cancelledPurchases,
-        totalAmount,
-      ] = await Promise.all([
+      const [totalPurchases, totalAmount] = await Promise.all([
         prisma.purchase.count(),
-        prisma.purchase.count({ where: { status: "Pending" } }),
-        prisma.purchase.count({ where: { status: "Received" } }),
-        prisma.purchase.count({ where: { status: "Partial" } }),
-        prisma.purchase.count({ where: { status: "Cancelled" } }),
         prisma.purchase.aggregate({
           _sum: {
             totalAmount: true,
-          },
-          where: {
-            status: {
-              not: "Cancelled",
-            },
           },
         }),
       ]);
 
       return {
         totalPurchases,
-        byStatus: {
-          pending: pendingPurchases,
-          received: receivedPurchases,
-          partial: partialPurchases,
-          cancelled: cancelledPurchases,
-        },
         totalAmount: totalAmount._sum.totalAmount || 0,
       };
     } catch (error) {

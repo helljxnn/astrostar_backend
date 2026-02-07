@@ -113,13 +113,6 @@ enum ProviderStatus {
   Inactive
 }
 
-enum PurchaseStatus {
-  Pending
-  Received
-  Partial
-  Cancelled
-}
-
 enum ScheduleRecurrence {
   no
   dia
@@ -250,6 +243,7 @@ model User {
   employee                Employee?
   passwordResets          PasswordResetToken[]
   refreshTokens           RefreshToken[]
+  purchaseNotes           PurchaseNote[]
   documentType            DocumentType             @relation(fields: [documentTypeId], references: [id])
   role                    Role                     @relation(fields: [roleId], references: [id])
 
@@ -627,39 +621,41 @@ model Purchase {
   id             Int            @id @default(autoincrement())
   purchaseNumber String         @unique @db.VarChar(50)
   purchaseDate   DateTime       @default(now())
-  deliveryDate   DateTime?
+  concept        String         @db.VarChar(500)
   totalAmount    Decimal        @db.Decimal(12, 2)
-  status         PurchaseStatus @default(Pending)
+  paymentMethod  String         @db.VarChar(100)
   notes          String?
+  invoiceUrl     String?        @db.VarChar(500)
+  invoiceName    String?        @db.VarChar(255)
+  invoiceData    String?        @db.Text
+  invoiceMimeType String?       @db.VarChar(100)
+  invoiceSize    Int?
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   providerId     Int
   employeeId     Int?
-  items          PurchaseItem[]
   employee       Employee?      @relation(fields: [employeeId], references: [id])
   provider       Provider       @relation(fields: [providerId], references: [id])
+  purchaseNotes  PurchaseNote[]
 
   @@index([employeeId])
   @@index([providerId])
   @@index([purchaseDate])
-  @@index([status])
   @@map("purchases")
 }
 
-model PurchaseItem {
-  id          Int      @id @default(autoincrement())
-  productName String   @db.VarChar(200)
-  description String?
-  quantity    Int
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  subtotal    Decimal  @db.Decimal(12, 2)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  purchaseId  Int
-  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+model PurchaseNote {
+  id         Int      @id @default(autoincrement())
+  purchaseId Int
+  note       String   @db.Text
+  createdBy  Int
+  createdAt  DateTime @default(now())
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  creator    User     @relation(fields: [createdBy], references: [id])
 
   @@index([purchaseId])
-  @@map("purchase_items")
+  @@index([createdBy])
+  @@map("purchase_notes")
 }
 
 model Service {
