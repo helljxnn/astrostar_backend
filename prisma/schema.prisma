@@ -185,6 +185,7 @@ enum EmployeeStatus {
 
 enum EventStatus {
   Programado
+  En_curso
   Finalizado
   Cancelado
 }

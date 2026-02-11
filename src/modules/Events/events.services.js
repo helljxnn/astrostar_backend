@@ -170,7 +170,7 @@ export class EventsService {
       // Manejar errores específicos de Prisma
       if (error.code === "P2003") {
         throw new Error(
-          "No se puede eliminar el evento porque tiene relaciones activas."
+          "No se puede eliminar el evento porque tiene relaciones activas.",
         );
       }
 
@@ -348,7 +348,7 @@ export class EventsService {
       // Validar formato: debe empezar con + (opcional) seguido de números
       if (!/^\+?\d{7,15}$/.test(cleanPhone)) {
         errors.push(
-          "El teléfono debe contener entre 7 y 15 dígitos, puede incluir + al inicio"
+          "El teléfono debe contener entre 7 y 15 dígitos, puede incluir + al inicio",
         );
       }
 
@@ -359,9 +359,16 @@ export class EventsService {
 
     // Validar estado
     if (data.status !== undefined) {
-      const validStatuses = ["Programado", "Finalizado", "Cancelado"];
+      const validStatuses = [
+        "Programado",
+        "En_curso",
+        "Finalizado",
+        "Cancelado",
+      ];
       if (!validStatuses.includes(data.status)) {
-        errors.push("El estado debe ser: Programado, Finalizado o Cancelado");
+        errors.push(
+          "El estado debe ser: Programado, En_curso, Finalizado o Cancelado",
+        );
       }
     }
 
@@ -373,7 +380,7 @@ export class EventsService {
     ) {
       if (!this.isValidCloudinaryUrl(data.imageUrl)) {
         errors.push(
-          "La URL de la imagen debe ser una URL válida de Cloudinary"
+          "La URL de la imagen debe ser una URL válida de Cloudinary",
         );
       }
     }
@@ -385,7 +392,7 @@ export class EventsService {
     ) {
       if (!this.isValidCloudinaryUrl(data.scheduleFile)) {
         errors.push(
-          "La URL del cronograma debe ser una URL válida de Cloudinary"
+          "La URL del cronograma debe ser una URL válida de Cloudinary",
         );
       }
     }
@@ -468,7 +475,7 @@ export class EventsService {
       // Rechazar si la fecha de inicio es hoy o anterior (permitir desde mañana)
       if (startDateOnly.getTime() <= today.getTime()) {
         errors.push(
-          "El evento debe crearse con al menos un día de anticipación. La fecha de inicio debe ser a partir de mañana"
+          "El evento debe crearse con al menos un día de anticipación. La fecha de inicio debe ser a partir de mañana",
         );
       }
     }
@@ -480,7 +487,7 @@ export class EventsService {
       const endDateOnly = new Date(
         endDate.getFullYear(),
         endDate.getMonth(),
-        endDate.getDate()
+        endDate.getDate(),
       );
 
       // Solo rechazar si la fecha de fin es anterior a hoy (no incluye el día actual)
@@ -495,17 +502,17 @@ export class EventsService {
       const startDateOnly = new Date(
         startDate.getFullYear(),
         startDate.getMonth(),
-        startDate.getDate()
+        startDate.getDate(),
       );
       const endDateOnly = new Date(
         endDate.getFullYear(),
         endDate.getMonth(),
-        endDate.getDate()
+        endDate.getDate(),
       );
 
       if (endDateOnly < startDateOnly) {
         errors.push(
-          "La fecha de fin debe ser posterior o igual a la fecha de inicio"
+          "La fecha de fin debe ser posterior o igual a la fecha de inicio",
         );
       }
 
@@ -524,7 +531,7 @@ export class EventsService {
 
           if (endMinutes <= startMinutes) {
             errors.push(
-              "La hora de fin debe ser posterior a la hora de inicio cuando es el mismo día"
+              "La hora de fin debe ser posterior a la hora de inicio cuando es el mismo día",
             );
           }
         }
@@ -643,7 +650,7 @@ export class EventsService {
       // Usar la zona horaria de Bogotá, Colombia
       const now = new Date();
       const bogotaTime = new Date(
-        now.toLocaleString("en-US", { timeZone: "America/Bogota" })
+        now.toLocaleString("en-US", { timeZone: "America/Bogota" }),
       );
 
       const today =
@@ -657,22 +664,42 @@ export class EventsService {
         ":" +
         String(bogotaTime.getMinutes()).padStart(2, "0");
 
-      // Buscar eventos que deberían estar finalizados pero no lo están
+      // Primero, actualizar eventos que deberían estar en curso
+      const eventsToStartInProgress =
+        await this.eventsRepository.findEventsToStartInProgress(
+          today,
+          currentTime,
+        );
+
+      if (eventsToStartInProgress.length > 0) {
+        await this.eventsRepository.updateMultipleStatuses(
+          eventsToStartInProgress.map((e) => e.id),
+          "En_curso",
+        );
+      }
+
+      // Luego, buscar eventos que deberían estar finalizados
       const eventsToUpdate = await this.eventsRepository.findEventsToFinalize(
         today,
-        currentTime
+        currentTime,
       );
 
       if (eventsToUpdate.length > 0) {
         await this.eventsRepository.updateMultipleStatuses(
           eventsToUpdate.map((e) => e.id),
-          "Finalizado"
+          "Finalizado",
         );
       }
 
-      return eventsToUpdate.length;
+      return {
+        inProgress: eventsToStartInProgress.length,
+        finished: eventsToUpdate.length,
+      };
     } catch (error) {
-      return 0;
+      return {
+        inProgress: 0,
+        finished: 0,
+      };
     }
   }
 
@@ -693,7 +720,7 @@ export class EventsService {
 
       const result = await this.eventsRepository.getAvailableAthletes(
         eventId,
-        filters
+        filters,
       );
 
       return {
@@ -713,7 +740,7 @@ export class EventsService {
       const result = await this.eventsRepository.enrollAthlete(
         eventId,
         athleteId,
-        data
+        data,
       );
 
       return {
@@ -733,7 +760,7 @@ export class EventsService {
     try {
       const result = await this.eventsRepository.unenrollAthlete(
         eventId,
-        athleteId
+        athleteId,
       );
 
       return {

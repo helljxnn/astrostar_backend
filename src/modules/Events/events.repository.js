@@ -180,7 +180,7 @@ export class EventsRepository {
 
       // Transformar eventos para el formato móvil
       const transformedEvents = services.map((service) =>
-        this.transformEventForMobile(service)
+        this.transformEventForMobile(service),
       );
 
       return {
@@ -402,7 +402,7 @@ export class EventsRepository {
           throw new Error("El tipo de evento seleccionado no existe");
         }
         throw new Error(
-          "Error de relación: uno de los IDs proporcionados no existe"
+          "Error de relación: uno de los IDs proporcionados no existe",
         );
       }
 
@@ -543,7 +543,7 @@ export class EventsRepository {
           throw new Error("El tipo de evento seleccionado no existe");
         }
         throw new Error(
-          "Error de relación: uno de los IDs proporcionados no existe"
+          "Error de relación: uno de los IDs proporcionados no existe",
         );
       }
 
@@ -570,7 +570,7 @@ export class EventsRepository {
       // Proporcionar mensajes de error más específicos
       if (error.code === "P2003") {
         throw new Error(
-          "No se puede eliminar el evento debido a restricciones de clave foránea. Verifica que no tenga relaciones activas."
+          "No se puede eliminar el evento debido a restricciones de clave foránea. Verifica que no tenga relaciones activas.",
         );
       }
 
@@ -586,10 +586,11 @@ export class EventsRepository {
    * Obtener estadísticas de eventos
    */
   async getStats() {
-    const [total, programado, finalizado, cancelado, byCategory] =
+    const [total, programado, enCurso, finalizado, cancelado, byCategory] =
       await Promise.all([
         prisma.service.count(),
         prisma.service.count({ where: { status: "Programado" } }),
+        prisma.service.count({ where: { status: "En_curso" } }),
         prisma.service.count({ where: { status: "Finalizado" } }),
         prisma.service.count({ where: { status: "Cancelado" } }),
         prisma.service.groupBy({
@@ -603,6 +604,7 @@ export class EventsRepository {
     return {
       total,
       programado,
+      enCurso,
       finalizado,
       cancelado,
       byCategory,
@@ -765,6 +767,85 @@ export class EventsRepository {
   }
 
   /**
+   * Encontrar eventos que deberían estar en curso
+   */
+  async findEventsToStartInProgress(currentDate, currentTime) {
+    try {
+      // Obtener todos los eventos programados
+      const events = await prisma.service.findMany({
+        where: {
+          status: "Programado",
+        },
+        select: {
+          id: true,
+          name: true,
+          startDate: true,
+          startTime: true,
+          endDate: true,
+          endTime: true,
+          status: true,
+        },
+      });
+
+      // Filtrar manualmente los eventos que deben estar en curso
+      // currentDate ya viene en formato YYYY-MM-DD desde Bogotá
+      const eventsToStartInProgress = events.filter((event) => {
+        const eventStartDate = new Date(event.startDate);
+        const eventStartDateStr =
+          eventStartDate.getFullYear() +
+          "-" +
+          String(eventStartDate.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(eventStartDate.getDate()).padStart(2, "0");
+
+        const eventEndDate = new Date(event.endDate);
+        const eventEndDateStr =
+          eventEndDate.getFullYear() +
+          "-" +
+          String(eventEndDate.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(eventEndDate.getDate()).padStart(2, "0");
+
+        // Si la fecha de inicio es anterior a hoy, el evento debería estar en curso
+        if (eventStartDateStr < currentDate && eventEndDateStr >= currentDate) {
+          return true;
+        }
+
+        // Si la fecha de inicio es hoy, verificar la hora
+        if (eventStartDateStr === currentDate) {
+          const [eventHour, eventMin] = event.startTime.split(":").map(Number);
+          const [currentHour, currentMin] = currentTime.split(":").map(Number);
+
+          const eventMinutes = eventHour * 60 + eventMin;
+          const currentMinutes = currentHour * 60 + currentMin;
+
+          // Si la hora de inicio ya pasó y no ha terminado, poner en curso
+          if (eventMinutes <= currentMinutes) {
+            // Verificar que no haya terminado
+            if (eventEndDateStr > currentDate) {
+              return true;
+            }
+            // Si termina hoy, verificar la hora de fin
+            if (eventEndDateStr === currentDate) {
+              const [endHour, endMin] = event.endTime.split(":").map(Number);
+              const endMinutes = endHour * 60 + endMin;
+              if (currentMinutes < endMinutes) {
+                return true;
+              }
+            }
+          }
+        }
+
+        return false;
+      });
+
+      return eventsToStartInProgress;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Actualizar el estado de múltiples eventos
    */
   async updateMultipleStatuses(eventIds, newStatus) {
@@ -789,7 +870,7 @@ export class EventsRepository {
    */
   async getAvailableAthletes(
     eventId,
-    { page = 1, limit = 10, search = "", categoryId = "" }
+    { page = 1, limit = 10, search = "", categoryId = "" },
   ) {
     try {
       const skip = (page - 1) * limit;
@@ -953,12 +1034,12 @@ export class EventsRepository {
           limit,
           total: categoryId ? transformedAthletes.length : total,
           totalPages: Math.ceil(
-            (categoryId ? transformedAthletes.length : total) / limit
+            (categoryId ? transformedAthletes.length : total) / limit,
           ),
           hasNext:
             page <
             Math.ceil(
-              (categoryId ? transformedAthletes.length : total) / limit
+              (categoryId ? transformedAthletes.length : total) / limit,
             ),
           hasPrev: page > 1,
         },
@@ -987,7 +1068,7 @@ export class EventsRepository {
 
       if (event.status === "Cancelado" || event.status === "Finalizado") {
         throw new Error(
-          "No se puede inscribir en un evento cancelado o finalizado"
+          "No se puede inscribir en un evento cancelado o finalizado",
         );
       }
 
