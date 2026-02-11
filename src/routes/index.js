@@ -25,6 +25,7 @@ import classesRoutes from "../modules/Classes/classes.routes.js";
 import uploadRoutes from "../services/shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
 import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
+import appointmentRoutes from "../modules/Services/AppointmentManagement/routes/AppointmentManagement.routes.js";
 
 const router = Router();
 
@@ -52,6 +53,7 @@ router.use("/events", eventsRoutes);
 router.use("/registrations", registrationsRoutes);
 router.use("/classes", classesRoutes);
 router.use("/schedules", scheduleRoutes);
+router.use("/appointments", appointmentRoutes);
 
 router.use("/upload", uploadRoutes);
 if (process.env.NODE_ENV === "development") {
@@ -84,6 +86,7 @@ router.get("/health", (req, res) => {
       "Events",
       "Registrations",
       "EmployeeSchedules",
+      "Appointments",
     ],
   });
 });

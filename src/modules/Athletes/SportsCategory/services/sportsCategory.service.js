@@ -1,4 +1,4 @@
-import prisma from "../../../../config/database.js";
+﻿import prisma from "../../../../config/database.js";
 
 export class SportsCategoryService {
   /**
@@ -39,7 +39,7 @@ export class SportsCategoryService {
           where,
           skip,
           take: limit,
-          orderBy: { createdAt: "desc" },
+          orderBy: [{ edadMinima: "asc" }, { edadMaxima: "asc" }],
         }),
         prisma.sportsCategory.count({ where }),
       ]);
@@ -147,8 +147,52 @@ export class SportsCategoryService {
     try {
       const { nombre, edadMinima, edadMaxima } = data;
 
+      const hasMin =
+        edadMinima !== undefined &&
+        edadMinima !== null &&
+        String(edadMinima).trim() !== "";
+      const hasMax =
+        edadMaxima !== undefined &&
+        edadMaxima !== null &&
+        String(edadMaxima).trim() !== "";
+
+      if (!hasMin || !hasMax) {
+        return {
+          success: false,
+          message: "Debe proporcionar la edad mínima y máxima.",
+          statusCode: 400,
+        };
+      }
+
+      const minAge = Number(edadMinima);
+      const maxAge = Number(edadMaxima);
+
+      if (!Number.isFinite(minAge) || !Number.isFinite(maxAge)) {
+        return {
+          success: false,
+          message: "Las edades deben ser números válidos.",
+          statusCode: 400,
+        };
+      }
+
       // Validar edades
-      if (Number(edadMinima) >= Number(edadMaxima)) {
+      if (minAge < 6) {
+        return {
+          success: false,
+          message: "La edad minima debe ser mayor o igual a 5.",
+          statusCode: 400,
+        };
+      }
+
+      if (maxAge > 30) {
+        return {
+          success: false,
+          message: "La edad maxima debe ser menor o igual a 30.",
+          statusCode: 400,
+        };
+      }
+
+      if (minAge >= maxAge) {
         return {
           success: false,
           message: "La edad máxima debe ser mayor que la mínima.",
@@ -179,8 +223,8 @@ export class SportsCategoryService {
         data: {
           nombre: nombre.trim(),
           descripcion: data.descripcion || null,
-          edadMinima: Number(edadMinima),
-          edadMaxima: Number(edadMaxima),
+          edadMinima: minAge,
+          edadMaxima: maxAge,
           estado: data.estado || "Activo",
           publicar: data.publicar === true || data.publicar === "true" || false,
           archivo: data.archivo || null, // URL de Cloudinary
@@ -220,14 +264,51 @@ export class SportsCategoryService {
         };
       }
 
+      const hasMin =
+        data.edadMinima !== undefined &&
+        data.edadMinima !== null &&
+        String(data.edadMinima).trim() !== "";
+      const hasMax =
+        data.edadMaxima !== undefined &&
+        data.edadMaxima !== null &&
+        String(data.edadMaxima).trim() !== "";
+
+      if (hasMin !== hasMax) {
+        return {
+          success: false,
+          message: "Debe proporcionar la edad mínima y máxima.",
+          statusCode: 400,
+        };
+      }
+
       // Validar edades si se proporcionan
-      if (data.edadMinima || data.edadMaxima) {
-        const minAge = data.edadMinima
-          ? Number(data.edadMinima)
-          : category.edadMinima;
-        const maxAge = data.edadMaxima
-          ? Number(data.edadMaxima)
-          : category.edadMaxima;
+      if (hasMin && hasMax) {
+        const minAge = Number(data.edadMinima);
+        const maxAge = Number(data.edadMaxima);
+
+        if (!Number.isFinite(minAge) || !Number.isFinite(maxAge)) {
+          return {
+            success: false,
+            message: "Las edades deben ser números válidos.",
+            statusCode: 400,
+          };
+        }
+
+        if (minAge < 6) {
+          return {
+            success: false,
+            message: "La edad minima debe ser mayor o igual a 5.",
+            statusCode: 400,
+          };
+        }
+
+        if (maxAge > 30) {
+          return {
+            success: false,
+            message: "La edad maxima debe ser menor o igual a 30.",
+            statusCode: 400,
+          };
+        }
 
         if (minAge >= maxAge) {
           return {
@@ -264,10 +345,8 @@ export class SportsCategoryService {
       if (data.nombre !== undefined) updateData.nombre = data.nombre.trim();
       if (data.descripcion !== undefined)
         updateData.descripcion = data.descripcion;
-      if (data.edadMinima !== undefined)
-        updateData.edadMinima = Number(data.edadMinima);
-      if (data.edadMaxima !== undefined)
-        updateData.edadMaxima = Number(data.edadMaxima);
+      if (hasMin) updateData.edadMinima = Number(data.edadMinima);
+      if (hasMax) updateData.edadMaxima = Number(data.edadMaxima);
       if (data.estado !== undefined) updateData.estado = data.estado;
       if (data.publicar !== undefined)
         updateData.publicar =
@@ -444,28 +523,93 @@ export class SportsCategoryService {
    */
   async getAthletesByCategory(id) {
     try {
+      const calculateAge = (birthDate) => {
+        if (!birthDate) return null;
+        const today = new Date();
+        const birth = new Date(birthDate);
+        if (Number.isNaN(birth.getTime())) return null;
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+          age--;
+        }
+        return age;
+      };
+
       const athletes = await prisma.inscription.findMany({
         where: {
           sportsCategoryId: Number(id),
           status: "Active",
         },
         include: {
+          sportsCategory: {
+            select: {
+              nombre: true,
+            },
+          },
           athlete: {
             include: {
-              user: true,
+              user: {
+                select: {
+                  firstName: true,
+                  middleName: true,
+                  lastName: true,
+                  secondLastName: true,
+                  email: true,
+                  identification: true,
+                  birthDate: true,
+                  age: true,
+                  documentType: {
+                    select: {
+                      name: true,
+                    },
+                  },
+                },
+              },
             },
           },
         },
+        orderBy: {
+          inscriptionDate: "desc",
+        },
       });
+
+      const data = athletes
+        .map((inscription) => {
+          const user = inscription?.athlete?.user;
+          if (!user) return null;
+          const nameParts = [
+            user.firstName,
+            user.middleName,
+            user.lastName,
+            user.secondLastName,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .replace(/\s+/g, " ")
+            .trim();
+          const ageValue =
+            user.age !== null && user.age !== undefined
+              ? user.age
+              : calculateAge(user.birthDate);
+
+          return {
+            id: inscription.athlete?.id ?? inscription.athleteId,
+            nombre: nameParts || "Sin nombre",
+            email: user.email || "",
+            documento: user.identification || "",
+            tipoDocumento: user.documentType?.name || "",
+            edad: ageValue,
+            categoria: inscription.sportsCategory?.nombre || null,
+            estado: inscription.status,
+            fechaNacimiento: user.birthDate || null,
+          };
+        })
+        .filter(Boolean);
 
       return {
         success: true,
-        data: athletes.map((inscription) => ({
-          id: inscription.athlete.id,
-          name: `${inscription.athlete.user.firstName} ${inscription.athlete.user.lastName}`,
-          email: inscription.athlete.user.email,
-          status: inscription.status,
-        })),
+        data,
       };
     } catch (error) {
       console.error("Error en getAthletesByCategory:", error);
@@ -528,3 +672,4 @@ export class SportsCategoryService {
     };
   }
 }
+

@@ -307,6 +307,7 @@ model Employee {
   userId              Int                  @unique
   employeePermissions EmployeePermission[]
   employeeSchedules   EmployeeSchedule[]
+  appointments        Appointment[]
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
@@ -369,6 +370,29 @@ model EmployeeSchedule {
   employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@map("employee_schedules")
+}
+
+model Appointment {
+  id              Int            @id @default(autoincrement())
+  athleteId       Int
+  specialistId    Int
+  appointmentDate DateTime
+  startTime       String
+  endTime         String
+  specialty       String
+  description     String?
+  status          ScheduleStatus @default(Programado)
+  cancelReason    String?
+  conclusion      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  athlete         Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  specialist      Employee       @relation(fields: [specialistId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId, appointmentDate])
+  @@index([specialistId, appointmentDate])
+  @@index([status])
+  @@map("appointments")
 }
 
 model SportsCategory {
@@ -438,6 +462,8 @@ model Athlete {
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
+  athleteAttendances       AthleteAttendance[]
+  appointments             Appointment[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])

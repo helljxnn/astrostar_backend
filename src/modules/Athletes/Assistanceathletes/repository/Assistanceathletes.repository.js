@@ -42,6 +42,16 @@ export class AssistanceathletesRepository {
       };
     }
 
+    if (categoria) {
+      where.inscriptions = {
+        some: {
+          sportsCategory: {
+            nombre: { equals: categoria, mode: "insensitive" },
+          },
+        },
+      };
+    }
+
     const [athletes, total] = await Promise.all([
       prisma.athlete.findMany({
         where,
@@ -59,15 +69,7 @@ export class AssistanceathletesRepository {
       prisma.athlete.count({ where }),
     ]);
 
-    let filteredAthletes = athletes;
-    if (categoria) {
-      filteredAthletes = athletes.filter((athlete) => {
-        const currentInscription = athlete.inscriptions[0];
-        return currentInscription?.sportsCategory?.nombre === categoria;
-      });
-    }
-
-    const athleteIds = filteredAthletes.map((athlete) => athlete.id);
+    const athleteIds = athletes.map((athlete) => athlete.id);
     const normalizedDate = this.normalizeDate(date);
 
     const attendanceRecords = await prisma.athleteAttendance.findMany({
@@ -81,7 +83,7 @@ export class AssistanceathletesRepository {
       attendanceRecords.map((record) => [record.athleteId, record])
     );
 
-    const data = filteredAthletes.map((athlete) => {
+    const data = athletes.map((athlete) => {
       const attendance = attendanceMap.get(athlete.id);
       const currentInscription = athlete.inscriptions[0];
       const categoriaNombre = currentInscription?.sportsCategory?.nombre || "";
@@ -103,10 +105,8 @@ export class AssistanceathletesRepository {
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: categoria ? filteredAthletes.length : total,
-        pages: Math.ceil(
-          (categoria ? filteredAthletes.length : total) / limit
-        ),
+        total,
+        pages: Math.ceil(total / limit),
       },
     };
   }
