@@ -7,71 +7,106 @@ export class EventsRepository {
    * Transformar evento del backend al formato esperado por el frontend móvil
    */
   transformEventForMobile(service) {
-    return {
-      id: service.id,
-      name: service.name,
-      description: service.description,
-      startDate: service.startDate,
-      endDate: service.endDate,
-      startTime: service.startTime,
-      endTime: service.endTime,
-      location: service.location,
-      phone: service.phone,
-      status: service.status,
-      imageUrl: service.imageUrl,
-      scheduleFile: service.scheduleFile,
-      publish: service.publish,
-      typeId: service.typeId,
-      // Mapear categorías deportivas
-      categories: service.serviceSportsCategories
-        ? service.serviceSportsCategories.map((ssc) => ({
-            id: ssc.sportsCategory.id,
-            name: ssc.sportsCategory.nombre,
-            description:
-              ssc.sportsCategory.descripcion ||
-              `Categoría ${ssc.sportsCategory.nombre} (${ssc.sportsCategory.edadMinima}-${ssc.sportsCategory.edadMaxima} años)`,
-            ageRange: `${ssc.sportsCategory.edadMinima}-${ssc.sportsCategory.edadMaxima} años`,
-          }))
-        : [],
-      // Para compatibilidad - primera categoría como categoryId
-      categoryId:
-        service.serviceSportsCategories &&
-        service.serviceSportsCategories.length > 0
-          ? service.serviceSportsCategories[0].sportsCategory.id
-          : service.categoryId, // fallback al categoryId directo
-      // Categoría del evento (EventCategory)
-      eventCategory: service.event_categories
-        ? {
-            id: service.event_categories.id,
-            name: service.event_categories.name,
-            description: service.event_categories.description || null,
-          }
-        : null,
-      type: service.ServiceType
-        ? {
-            id: service.ServiceType.id,
-            name: service.ServiceType.name,
-            description: service.ServiceType.description || null,
-          }
-        : null,
-      // Para compatibilidad móvil
-      sponsors: service.ServiceSponsor
-        ? service.ServiceSponsor.map((ss) => ({
-            id: ss.id,
-            sponsor: {
-              id: ss.Sponsor.id,
-              name: ss.Sponsor.name,
-              logoUrl: null,
-            },
-          }))
-        : [],
-      // Para el frontend web - incluir datos completos
-      serviceSportsCategories: service.serviceSportsCategories || [],
-      event_categories: service.event_categories || null,
-      ServiceType: service.ServiceType || null,
-      ServiceSponsor: service.ServiceSponsor || [],
-      _count: service._count || { participants: 0 },
-    };
+    try {
+      return {
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        startDate: service.startDate,
+        endDate: service.endDate,
+        startTime: service.startTime,
+        endTime: service.endTime,
+        location: service.location,
+        phone: service.phone,
+        status: service.status,
+        imageUrl: service.imageUrl,
+        scheduleFile: service.scheduleFile,
+        publish: service.publish,
+        typeId: service.typeId,
+        // Mapear categorías deportivas con validación
+        categories: service.serviceSportsCategories
+          ? service.serviceSportsCategories
+              .filter((ssc) => ssc && ssc.sportsCategory) // Filtrar nulls
+              .map((ssc) => ({
+                id: ssc.sportsCategory.id,
+                name: ssc.sportsCategory.nombre || "Sin nombre",
+                description:
+                  ssc.sportsCategory.descripcion ||
+                  `Categoría ${ssc.sportsCategory.nombre || "Sin nombre"} (${ssc.sportsCategory.edadMinima || 0}-${ssc.sportsCategory.edadMaxima || 0} años)`,
+                ageRange: `${ssc.sportsCategory.edadMinima || 0}-${ssc.sportsCategory.edadMaxima || 0} años`,
+              }))
+          : [],
+        // Para compatibilidad - primera categoría como categoryId
+        categoryId:
+          service.serviceSportsCategories &&
+          service.serviceSportsCategories.length > 0 &&
+          service.serviceSportsCategories[0].sportsCategory
+            ? service.serviceSportsCategories[0].sportsCategory.id
+            : service.categoryId || null, // fallback al categoryId directo
+        // Categoría del evento (EventCategory)
+        eventCategory: service.event_categories
+          ? {
+              id: service.event_categories.id,
+              name: service.event_categories.name,
+              description: service.event_categories.description || null,
+            }
+          : null,
+        type: service.ServiceType
+          ? {
+              id: service.ServiceType.id,
+              name: service.ServiceType.name,
+              description: service.ServiceType.description || null,
+            }
+          : null,
+        // Para compatibilidad móvil con validación
+        sponsors: service.ServiceSponsor
+          ? service.ServiceSponsor.filter((ss) => ss && ss.Sponsor) // Filtrar nulls
+              .map((ss) => ({
+                id: ss.id,
+                sponsor: {
+                  id: ss.Sponsor.id,
+                  name: ss.Sponsor.name,
+                  logoUrl: null,
+                },
+              }))
+          : [],
+        // Para el frontend web - incluir datos completos
+        serviceSportsCategories: service.serviceSportsCategories || [],
+        event_categories: service.event_categories || null,
+        ServiceType: service.ServiceType || null,
+        ServiceSponsor: service.ServiceSponsor || [],
+        _count: service._count || { participants: 0 },
+      };
+    } catch (error) {
+      console.error("Error transforming event:", service.id, error.message);
+      // Retornar un objeto mínimo en caso de error
+      return {
+        id: service.id,
+        name: service.name || "Evento sin nombre",
+        description: service.description || "",
+        startDate: service.startDate,
+        endDate: service.endDate,
+        startTime: service.startTime,
+        endTime: service.endTime,
+        location: service.location || "",
+        phone: service.phone || "",
+        status: service.status || "Programado",
+        imageUrl: service.imageUrl || null,
+        scheduleFile: service.scheduleFile || null,
+        publish: service.publish || false,
+        typeId: service.typeId || null,
+        categories: [],
+        categoryId: null,
+        eventCategory: null,
+        type: null,
+        sponsors: [],
+        serviceSportsCategories: [],
+        event_categories: null,
+        ServiceType: null,
+        ServiceSponsor: [],
+        _count: { participants: 0 },
+      };
+    }
   }
 
   /**
@@ -178,10 +213,23 @@ export class EventsRepository {
         prisma.service.count({ where }),
       ]);
 
-      // Transformar eventos para el formato móvil
-      const transformedEvents = services.map((service) =>
-        this.transformEventForMobile(service),
-      );
+      // Transformar eventos para el formato móvil con manejo de errores
+      console.log(`📊 Transformando ${services.length} eventos...`);
+      const transformedEvents = services.map((service, index) => {
+        try {
+          return this.transformEventForMobile(service);
+        } catch (error) {
+          console.error(
+            `❌ Error transformando evento ${index + 1}/${services.length}:`,
+            {
+              id: service.id,
+              name: service.name,
+              error: error.message,
+            },
+          );
+          throw error; // Re-lanzar para que se capture arriba
+        }
+      });
 
       return {
         events: transformedEvents,
@@ -729,6 +777,11 @@ export class EventsRepository {
       // Filtrar manualmente los eventos que deben finalizarse
       // currentDate ya viene en formato YYYY-MM-DD desde Bogotá
       const eventsToFinalize = events.filter((event) => {
+        // Validar que el evento tenga fecha y hora de fin
+        if (!event.endDate || !event.endTime) {
+          return false;
+        }
+
         const eventEndDate = new Date(event.endDate);
         const eventEndDateStr =
           eventEndDate.getFullYear() +
@@ -790,6 +843,16 @@ export class EventsRepository {
       // Filtrar manualmente los eventos que deben estar en curso
       // currentDate ya viene en formato YYYY-MM-DD desde Bogotá
       const eventsToStartInProgress = events.filter((event) => {
+        // Validar que el evento tenga fechas y horas completas
+        if (
+          !event.startDate ||
+          !event.startTime ||
+          !event.endDate ||
+          !event.endTime
+        ) {
+          return false;
+        }
+
         const eventStartDate = new Date(event.startDate);
         const eventStartDateStr =
           eventStartDate.getFullYear() +

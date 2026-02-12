@@ -179,11 +179,20 @@ export class EventsController {
         message: `Se encontraron ${result.pagination.total} eventos.`,
       });
     } catch (error) {
+      console.error("❌ Error en getAllEvents:", error);
+      console.error("Stack trace:", error.stack);
+
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener eventos.",
         error:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
+          process.env.NODE_ENV === "development"
+            ? {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+              }
+            : undefined,
       });
     }
   };
