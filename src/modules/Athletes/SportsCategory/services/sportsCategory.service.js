@@ -40,6 +40,15 @@ export class SportsCategoryService {
           skip,
           take: limit,
           orderBy: [{ edadMinima: "asc" }, { edadMaxima: "asc" }],
+          include: {
+            _count: {
+              select: {
+                inscriptions: true,
+                participants: true,
+                serviceSportsCategories: true,
+              },
+            },
+          },
         }),
         prisma.sportsCategory.count({ where }),
       ]);
@@ -115,6 +124,15 @@ export class SportsCategoryService {
     try {
       const category = await prisma.sportsCategory.findUnique({
         where: { id: Number(id) },
+        include: {
+          _count: {
+            select: {
+              inscriptions: true,
+              participants: true,
+              serviceSportsCategories: true,
+            },
+          },
+        },
       });
 
       if (!category) {
@@ -658,6 +676,13 @@ export class SportsCategoryService {
    * Formato estándar para categorías
    */
   _formatCategory(category) {
+    const counts = category?._count || {};
+    const inscriptionsCount = counts.inscriptions ?? 0;
+    const participantsCount = counts.participants ?? 0;
+    const servicesCount = counts.serviceSportsCategories ?? 0;
+    const associationsCount =
+      inscriptionsCount + participantsCount + servicesCount;
+
     return {
       id: category.id,
       name: category.nombre,
@@ -669,6 +694,13 @@ export class SportsCategoryService {
       imageUrl: category.archivo, // ✅ URL de Cloudinary
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
+      associations: {
+        inscriptions: inscriptionsCount,
+        participants: participantsCount,
+        services: servicesCount,
+      },
+      associationsCount,
+      isAssociated: associationsCount > 0,
     };
   }
 }
