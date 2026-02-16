@@ -24,6 +24,8 @@ import classesRoutes from "../modules/Classes/classes.routes.js";
 import uploadRoutes from "../services/shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
 import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
+import groupsRoutes from "../modules/Services/Groups/routes/groups.routes.js";
+import membershipsRoutes from "../modules/Services/Groups/routes/memberships.routes.js";
 
 const router = Router();
 
@@ -40,8 +42,8 @@ router.use("/document-types", documentTypesRoutes);
 router.use("/sports-categories", sportsCategoryRoutes);
 router.use("/teams", teamsRoutes);
 router.use("/trainers", trainersRoutes);
-router.use("/teams-athletes", athletesRoutes); 
-router.use("/athletes", deportistasRoutes); 
+router.use("/teams-athletes", athletesRoutes);
+router.use("/athletes", deportistasRoutes);
 router.use("/guardians", guardiansRoutes);
 router.use("/pre-registrations", preRegistrationsRoutes);
 router.use("/enrollments", enrollmentsRoutes);
@@ -50,6 +52,8 @@ router.use("/events", eventsRoutes);
 router.use("/registrations", registrationsRoutes);
 router.use("/classes", classesRoutes);
 router.use("/schedules", scheduleRoutes);
+router.use("/groups", groupsRoutes);
+router.use("/", membershipsRoutes);
 
 router.use("/upload", uploadRoutes);
 if (process.env.NODE_ENV === "development") {
@@ -82,6 +86,8 @@ router.get("/health", (req, res) => {
       "Events",
       "Registrations",
       "EmployeeSchedules",
+      "Groups",
+      "GroupMemberships",
     ],
   });
 });

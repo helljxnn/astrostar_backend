@@ -16,31 +16,22 @@ export class RegistrationsRepository {
       },
       include: {
         team: {
-          include: {
-            members: {
-              include: {
-                athlete: {
-                  include: {
-                    user: true,
-                  },
-                },
-                temporaryPerson: true,
-                employee: {
-                  include: {
-                    user: true,
-                  },
-                },
-              },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            coach: true,
+            _count: {
+              select: { members: true },
             },
           },
         },
-        service: {
-          include: {
-            category: true,
-            type: true,
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
           },
         },
-        sportsCategory: true,
       },
     });
   }
@@ -61,7 +52,23 @@ export class RegistrationsRepository {
         status: data.status || "Registered",
       },
       include: {
-        team: true,
+        team: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            coach: true,
+            _count: {
+              select: { members: true },
+            },
+          },
+        },
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
       },
     });
   }
@@ -101,36 +108,26 @@ export class RegistrationsRepository {
             name: true,
             coach: true,
             category: true,
-            teamType: true, // Use teamType instead of phone
+            teamType: true,
             status: true,
             _count: {
               select: { members: true },
             },
           },
         },
-        sportsCategory: true,
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
       },
       orderBy: {
         registrationDate: "desc",
       },
     });
 
-    // Transformar para incluir campos compatibles con el frontend
-    return registrations.map((reg) => {
-      return {
-        ...reg,
-        team: reg.team
-          ? {
-              ...reg.team,
-              name: reg.team.name,
-              coach: reg.team.coach,
-              category: reg.team.category,
-              teamType: reg.team.teamType, // Use the teamType field directly from the database
-              _count: reg.team._count,
-            }
-          : null,
-      };
-    });
+    return registrations;
   }
 
   /**
@@ -150,12 +147,21 @@ export class RegistrationsRepository {
       where,
       include: {
         service: {
-          include: {
-            category: true,
-            type: true,
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            location: true,
           },
         },
-        sportsCategory: true,
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
       },
       orderBy: {
         registrationDate: "desc",
@@ -171,35 +177,34 @@ export class RegistrationsRepository {
       where: { id: parseInt(id) },
       include: {
         team: {
-          include: {
-            members: {
-              include: {
-                athlete: {
-                  include: {
-                    user: true,
-                  },
-                },
-                temporaryPerson: true,
-                employee: {
-                  include: {
-                    user: true,
-                  },
-                },
-              },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            coach: true,
+            teamType: true,
+            status: true,
+            _count: {
+              select: { members: true },
             },
           },
         },
         service: {
-          include: {
-            ServiceType: true,
-            ServiceCategory: {
-              include: {
-                SportsCategory: true,
-              },
-            },
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            location: true,
           },
         },
-        sportsCategory: true,
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
       },
     });
   }
@@ -257,7 +262,8 @@ export class RegistrationsRepository {
         id: true,
         name: true,
         status: true,
-        phone: true, // Contiene el marcador TIPO:Fundacion o TIPO:Temporal
+        category: true,
+        teamType: true,
       },
     });
   }

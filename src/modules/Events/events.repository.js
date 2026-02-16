@@ -499,7 +499,12 @@ export class EventsRepository {
           (id) => !newCategoryIds.includes(id),
         );
 
-        // Si hay categorías que se están eliminando, eliminar inscripciones asociadas
+        // Identificar categorías que se están agregando
+        const addedCategoryIds = newCategoryIds.filter(
+          (id) => !currentCategoryIds.includes(id),
+        );
+
+        // Si hay categorías que se están eliminando, eliminar inscripciones asociadas PRIMERO
         if (removedCategoryIds.length > 0) {
           // Obtener nombres de las categorías para el log
           const removedCategories = await prisma.sportsCategory.findMany({
@@ -512,24 +517,11 @@ export class EventsRepository {
             removedCategories.map((c) => c.nombre).join(", "),
           );
 
-          // Eliminar participantes (equipos) cuya categoría coincida con las categorías removidas
-          const deletedTeams = await prisma.participant.deleteMany({
+          // Eliminar TODOS los participantes (equipos e individuales) cuya categoría deportiva
+          // esté en la lista de categorías removidas
+          const deletedParticipants = await prisma.participant.deleteMany({
             where: {
               serviceId: eventId,
-              type: "Team",
-              team: {
-                category: {
-                  in: removedCategories.map((c) => c.nombre),
-                },
-              },
-            },
-          });
-
-          // Eliminar participantes individuales (deportistas) inscritos en las categorías removidas
-          const deletedAthletes = await prisma.participant.deleteMany({
-            where: {
-              serviceId: eventId,
-              type: "Individual",
               sportsCategoryId: {
                 in: removedCategoryIds,
               },
@@ -537,23 +529,32 @@ export class EventsRepository {
           });
 
           console.log(
-            `✅ Eliminados ${deletedTeams.count} equipos y ${deletedAthletes.count} deportistas de categorías removidas`,
+            `✅ Eliminados ${deletedParticipants.count} participantes (equipos y deportistas) de categorías removidas`,
           );
+
+          // Ahora sí eliminar las relaciones de categorías removidas
+          await prisma.serviceSportsCategory.deleteMany({
+            where: {
+              serviceId: eventId,
+              sportsCategoryId: {
+                in: removedCategoryIds,
+              },
+            },
+          });
         }
 
-        // Eliminar las categorías existentes
-        await prisma.serviceSportsCategory.deleteMany({
-          where: { serviceId: eventId },
-        });
-
-        // Crear las nuevas categorías
-        if (categoryIds.length > 0) {
+        // Agregar solo las categorías nuevas (no las que ya existen)
+        if (addedCategoryIds.length > 0) {
           await prisma.serviceSportsCategory.createMany({
-            data: categoryIds.map((categoryId) => ({
+            data: addedCategoryIds.map((categoryId) => ({
               serviceId: eventId,
-              sportsCategoryId: parseInt(categoryId),
+              sportsCategoryId: categoryId,
             })),
           });
+
+          console.log(
+            `➕ Agregadas ${addedCategoryIds.length} categorías nuevas al evento`,
+          );
         }
       }
 
@@ -1439,10 +1440,8 @@ export class EventsRepository {
         where: {
           serviceId: parsedEventId,
           type: "Team",
-          team: {
-            category: {
-              in: removedCategories.map((c) => c.nombre),
-            },
+          sportsCategoryId: {
+            in: removedCategoryIds,
           },
         },
         include: {
@@ -1452,6 +1451,12 @@ export class EventsRepository {
               name: true,
               category: true,
               teamType: true,
+            },
+          },
+          sportsCategory: {
+            select: {
+              id: true,
+              nombre: true,
             },
           },
         },
@@ -1494,7 +1499,7 @@ export class EventsRepository {
         affectedTeams: affectedTeams.map((p) => ({
           id: p.team.id,
           name: p.team.name,
-          category: p.team.category,
+          category: p.sportsCategory?.nombre || p.team.category,
           teamType: p.team.teamType,
         })),
         affectedAthletes: affectedAthletes.map((p) => ({

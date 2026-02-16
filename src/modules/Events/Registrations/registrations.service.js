@@ -64,8 +64,11 @@ export class RegistrationsService {
       // VALIDACIÓN DE CATEGORÍA: Verificar que el equipo pertenezca a una categoría del evento
       const eventCategories =
         await this.registrationsRepository.getEventCategories(data.serviceId);
+
+      let sportsCategoryId = data.sportsCategoryId || null;
+
       if (eventCategories && eventCategories.length > 0 && team.category) {
-        const teamCategoryMatch = eventCategories.some(
+        const teamCategoryMatch = eventCategories.find(
           (cat) => cat.nombre.toLowerCase() === team.category.toLowerCase(),
         );
 
@@ -78,6 +81,11 @@ export class RegistrationsService {
             statusCode: 400,
             message: `El equipo "${team.name}" pertenece a la categoría "${team.category}" que no está permitida en este evento. Categorías permitidas: ${categoryNames}.`,
           };
+        }
+
+        // Asignar automáticamente el sportsCategoryId si no se proporcionó
+        if (!sportsCategoryId) {
+          sportsCategoryId = teamCategoryMatch.id;
         }
       }
 
@@ -96,9 +104,12 @@ export class RegistrationsService {
         };
       }
 
-      // Crear la inscripción
+      // Crear la inscripción con el sportsCategoryId correcto
       const registration =
-        await this.registrationsRepository.registerTeamToEvent(data);
+        await this.registrationsRepository.registerTeamToEvent({
+          ...data,
+          sportsCategoryId,
+        });
 
       return {
         success: true,
@@ -421,8 +432,10 @@ export class RegistrationsService {
           }
 
           // VALIDACIÓN DE CATEGORÍA: Verificar que el equipo pertenezca a una categoría del evento
+          let sportsCategoryId = null;
+
           if (eventCategories && eventCategories.length > 0 && team.category) {
-            const teamCategoryMatch = eventCategories.some(
+            const teamCategoryMatch = eventCategories.find(
               (cat) => cat.nombre.toLowerCase() === team.category.toLowerCase(),
             );
 
@@ -437,6 +450,9 @@ export class RegistrationsService {
               });
               continue;
             }
+
+            // Asignar el sportsCategoryId correcto
+            sportsCategoryId = teamCategoryMatch.id;
           }
 
           // Verificar si el equipo ya está inscrito
@@ -455,11 +471,12 @@ export class RegistrationsService {
             continue;
           }
 
-          // Crear la inscripción
+          // Crear la inscripción con el sportsCategoryId correcto
           const registration =
             await this.registrationsRepository.createRegistration({
               serviceId,
               teamId,
+              sportsCategoryId,
               notes,
               status: "Registered",
             });
@@ -549,6 +566,8 @@ export class RegistrationsService {
       }
 
       // VALIDACIÓN DE CATEGORÍA: Verificar que el deportista tenga una inscripción activa en una categoría del evento
+      let sportsCategoryId = data.sportsCategoryId || null;
+
       const eventCategories =
         await this.registrationsRepository.getEventCategories(data.serviceId);
       if (eventCategories && eventCategories.length > 0) {
@@ -574,11 +593,11 @@ export class RegistrationsService {
         );
         const eventCategoryIds = eventCategories.map((cat) => cat.id);
 
-        const hasMatchingCategory = athleteCategoryIds.some((catId) =>
+        const matchingCategoryIds = athleteCategoryIds.filter((catId) =>
           eventCategoryIds.includes(catId),
         );
 
-        if (!hasMatchingCategory) {
+        if (matchingCategoryIds.length === 0) {
           const athleteCategories = athleteInscriptions
             .map((insc) => insc.sportsCategory.nombre)
             .join(", ");
@@ -591,6 +610,12 @@ export class RegistrationsService {
             statusCode: 400,
             message: `El deportista "${athleteName}" está inscrito en las categorías: ${athleteCategories}, pero el evento requiere: ${eventCategoryNames}.`,
           };
+        }
+
+        // Asignar automáticamente el sportsCategoryId si no se proporcionó
+        // Usar la primera categoría coincidente
+        if (!sportsCategoryId) {
+          sportsCategoryId = matchingCategoryIds[0];
         }
       }
 
@@ -610,9 +635,12 @@ export class RegistrationsService {
         };
       }
 
-      // Crear la inscripción
+      // Crear la inscripción con el sportsCategoryId correcto
       const registration =
-        await this.registrationsRepository.registerAthleteToEvent(data);
+        await this.registrationsRepository.registerAthleteToEvent({
+          ...data,
+          sportsCategoryId,
+        });
 
       const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
       return {
