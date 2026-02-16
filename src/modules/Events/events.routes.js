@@ -11,12 +11,12 @@ const uploadController = new UploadController();
 router.post(
   "/upload/image",
   upload.single("image"),
-  uploadController.uploadEventImage
+  uploadController.uploadEventImage,
 );
 router.post(
   "/upload/schedule",
   upload.single("schedule"),
-  uploadController.uploadEventSchedule
+  uploadController.uploadEventSchedule,
 );
 router.delete("/upload/delete", uploadController.deleteFile);
 
@@ -32,12 +32,18 @@ router.post("/", eventsController.createEvent);
 router.put("/:id", eventsController.updateEvent);
 router.delete("/:id", eventsController.deleteEvent);
 
+// Ruta para verificar inscripciones afectadas (debe ir antes de las rutas con parámetros)
+router.post(
+  "/:id/check-affected-registrations",
+  eventsController.checkAffectedRegistrations,
+);
+
 // Rutas de inscripción de deportistas
 router.get("/:id/available-athletes", eventsController.getAvailableAthletes);
 router.post("/:id/enroll-athlete", eventsController.enrollAthlete);
 router.delete(
   "/:id/unenroll-athlete/:athleteId",
-  eventsController.unenrollAthlete
+  eventsController.unenrollAthlete,
 );
 
 export default router;

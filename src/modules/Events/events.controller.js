@@ -1197,4 +1197,106 @@ export class EventsController {
       });
     }
   };
+
+  /**
+   * @swagger
+   * /api/events/{id}/check-affected-registrations:
+   *   post:
+   *     summary: Verificar inscripciones afectadas por cambio de categorías
+   *     description: Verifica qué equipos y deportistas serían eliminados al cambiar las categorías del evento
+   *     tags: [Events]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - categoryIds
+   *             properties:
+   *               categoryIds:
+   *                 type: array
+   *                 items:
+   *                   type: integer
+   *                 description: Nuevos IDs de categorías deportivas
+   *                 example: [1, 2]
+   *     responses:
+   *       200:
+   *         description: Información sobre inscripciones afectadas
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     hasAffectedRegistrations:
+   *                       type: boolean
+   *                     removedCategories:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: integer
+   *                           nombre:
+   *                             type: string
+   *                     affectedTeams:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                     affectedAthletes:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                     totalAffected:
+   *                       type: integer
+   *       400:
+   *         description: Error en los datos
+   *       404:
+   *         description: Evento no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  checkAffectedRegistrations = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { categoryIds } = req.body;
+
+      if (!categoryIds || !Array.isArray(categoryIds)) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere un array de categoryIds",
+        });
+      }
+
+      const result = await this.eventsService.checkAffectedRegistrations(
+        id,
+        categoryIds,
+      );
+
+      res.json({
+        success: true,
+        data: result.data,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message || "Error al verificar inscripciones afectadas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 }

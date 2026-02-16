@@ -215,6 +215,25 @@ export class EventsService {
   }
 
   /**
+   * Verificar inscripciones afectadas por cambio de categorías
+   */
+  async checkAffectedRegistrations(eventId, newCategoryIds) {
+    try {
+      const result = await this.eventsRepository.checkAffectedRegistrations(
+        eventId,
+        newCategoryIds,
+      );
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Validar que el nombre del evento sea único
    */
   async validateUniqueName(name, excludeId = null) {

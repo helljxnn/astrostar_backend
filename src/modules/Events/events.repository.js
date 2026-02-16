@@ -214,19 +214,21 @@ export class EventsRepository {
       ]);
 
       // Transformar eventos para el formato móvil con manejo de errores
-      console.log(`📊 Transformando ${services.length} eventos...`);
       const transformedEvents = services.map((service, index) => {
         try {
           return this.transformEventForMobile(service);
         } catch (error) {
-          console.error(
-            `❌ Error transformando evento ${index + 1}/${services.length}:`,
-            {
-              id: service.id,
-              name: service.name,
-              error: error.message,
-            },
-          );
+          // Solo loguear errores en desarrollo
+          if (process.env.NODE_ENV === "development") {
+            console.error(
+              `❌ Error transformando evento ${index + 1}/${services.length}:`,
+              {
+                id: service.id,
+                name: service.name,
+                error: error.message,
+              },
+            );
+          }
           throw error; // Re-lanzar para que se capture arriba
         }
       });
@@ -481,6 +483,64 @@ export class EventsRepository {
 
       // Actualizar categorías deportivas si se proporcionaron
       if (categoryIds !== undefined) {
+        // Obtener categorías actuales
+        const currentCategories = await prisma.serviceSportsCategory.findMany({
+          where: { serviceId: eventId },
+          select: { sportsCategoryId: true },
+        });
+
+        const currentCategoryIds = currentCategories.map(
+          (c) => c.sportsCategoryId,
+        );
+        const newCategoryIds = categoryIds.map((id) => parseInt(id));
+
+        // Identificar categorías que se están eliminando
+        const removedCategoryIds = currentCategoryIds.filter(
+          (id) => !newCategoryIds.includes(id),
+        );
+
+        // Si hay categorías que se están eliminando, eliminar inscripciones asociadas
+        if (removedCategoryIds.length > 0) {
+          // Obtener nombres de las categorías para el log
+          const removedCategories = await prisma.sportsCategory.findMany({
+            where: { id: { in: removedCategoryIds } },
+            select: { id: true, nombre: true },
+          });
+
+          console.log(
+            `🗑️ Eliminando inscripciones de categorías removidas del evento ${eventId}:`,
+            removedCategories.map((c) => c.nombre).join(", "),
+          );
+
+          // Eliminar participantes (equipos) cuya categoría coincida con las categorías removidas
+          const deletedTeams = await prisma.participant.deleteMany({
+            where: {
+              serviceId: eventId,
+              type: "Team",
+              team: {
+                category: {
+                  in: removedCategories.map((c) => c.nombre),
+                },
+              },
+            },
+          });
+
+          // Eliminar participantes individuales (deportistas) inscritos en las categorías removidas
+          const deletedAthletes = await prisma.participant.deleteMany({
+            where: {
+              serviceId: eventId,
+              type: "Individual",
+              sportsCategoryId: {
+                in: removedCategoryIds,
+              },
+            },
+          });
+
+          console.log(
+            `✅ Eliminados ${deletedTeams.count} equipos y ${deletedAthletes.count} deportistas de categorías removidas`,
+          );
+        }
+
         // Eliminar las categorías existentes
         await prisma.serviceSportsCategory.deleteMany({
           where: { serviceId: eventId },
@@ -1319,6 +1379,130 @@ export class EventsRepository {
         success: true,
         deletedCount: deletedCount.count,
         message: `Se eliminaron ${deletedCount.count} inscripciones del evento`,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar inscripciones afectadas por cambio de categorías
+   * Retorna información sobre equipos y deportistas que serían eliminados
+   */
+  async checkAffectedRegistrations(eventId, newCategoryIds) {
+    try {
+      const parsedEventId = parseInt(eventId);
+      const parsedNewCategoryIds = newCategoryIds.map((id) => parseInt(id));
+
+      // Obtener categorías actuales del evento
+      const currentCategories = await prisma.serviceSportsCategory.findMany({
+        where: { serviceId: parsedEventId },
+        include: {
+          sportsCategory: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      const currentCategoryIds = currentCategories.map(
+        (c) => c.sportsCategoryId,
+      );
+
+      // Identificar categorías que se están eliminando
+      const removedCategoryIds = currentCategoryIds.filter(
+        (id) => !parsedNewCategoryIds.includes(id),
+      );
+
+      if (removedCategoryIds.length === 0) {
+        return {
+          hasAffectedRegistrations: false,
+          removedCategories: [],
+          affectedTeams: [],
+          affectedAthletes: [],
+          totalAffected: 0,
+        };
+      }
+
+      // Obtener información de las categorías removidas
+      const removedCategories = currentCategories
+        .filter((c) => removedCategoryIds.includes(c.sportsCategoryId))
+        .map((c) => ({
+          id: c.sportsCategory.id,
+          nombre: c.sportsCategory.nombre,
+        }));
+
+      // Buscar equipos afectados
+      const affectedTeams = await prisma.participant.findMany({
+        where: {
+          serviceId: parsedEventId,
+          type: "Team",
+          team: {
+            category: {
+              in: removedCategories.map((c) => c.nombre),
+            },
+          },
+        },
+        include: {
+          team: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              teamType: true,
+            },
+          },
+        },
+      });
+
+      // Buscar deportistas afectados
+      const affectedAthletes = await prisma.participant.findMany({
+        where: {
+          serviceId: parsedEventId,
+          type: "Individual",
+          sportsCategoryId: {
+            in: removedCategoryIds,
+          },
+        },
+        include: {
+          athlete: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+          sportsCategory: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      return {
+        hasAffectedRegistrations:
+          affectedTeams.length > 0 || affectedAthletes.length > 0,
+        removedCategories,
+        affectedTeams: affectedTeams.map((p) => ({
+          id: p.team.id,
+          name: p.team.name,
+          category: p.team.category,
+          teamType: p.team.teamType,
+        })),
+        affectedAthletes: affectedAthletes.map((p) => ({
+          id: p.athlete.id,
+          name: `${p.athlete.user.firstName} ${p.athlete.user.lastName}`,
+          category: p.sportsCategory.nombre,
+        })),
+        totalAffected: affectedTeams.length + affectedAthletes.length,
       };
     } catch (error) {
       throw error;

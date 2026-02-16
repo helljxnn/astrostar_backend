@@ -590,4 +590,94 @@ export class RegistrationsRepository {
       },
     });
   }
+
+  /**
+   * Obtener categorías deportivas de un evento
+   */
+  async getEventCategories(serviceId) {
+    const eventCategories = await prisma.serviceSportsCategory.findMany({
+      where: {
+        serviceId: parseInt(serviceId),
+      },
+      include: {
+        sportsCategory: true,
+      },
+    });
+
+    return eventCategories.map((ec) => ec.sportsCategory);
+  }
+
+  /**
+   * Obtener inscripciones activas de un deportista en categorías deportivas
+   */
+  async getAthleteActiveInscriptions(athleteId) {
+    return await prisma.inscription.findMany({
+      where: {
+        athleteId: parseInt(athleteId),
+        status: "Active",
+      },
+      include: {
+        sportsCategory: true,
+      },
+    });
+  }
+
+  /**
+   * Obtener equipos disponibles filtrados por categorías del evento (optimizado)
+   * Solo devuelve datos esenciales: id, nombre, categoría, tipo
+   */
+  async getTeamsByEventCategories(serviceId) {
+    // Obtener las categorías del evento
+    const eventCategories = await prisma.serviceSportsCategory.findMany({
+      where: {
+        serviceId: parseInt(serviceId),
+      },
+      include: {
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+
+    // Si el evento no tiene categorías, devolver todos los equipos activos
+    if (!eventCategories || eventCategories.length === 0) {
+      return await prisma.team.findMany({
+        where: {
+          status: "Active",
+        },
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          teamType: true,
+        },
+        orderBy: [{ teamType: "asc" }, { name: "asc" }],
+      });
+    }
+
+    // Extraer nombres de categorías del evento
+    const categoryNames = eventCategories.map((ec) => ec.sportsCategory.nombre);
+
+    // Obtener equipos que coincidan con las categorías del evento
+    const teams = await prisma.team.findMany({
+      where: {
+        status: "Active",
+        category: {
+          in: categoryNames,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        teamType: true,
+      },
+      orderBy: [{ teamType: "asc" }, { name: "asc" }],
+    });
+
+    return teams;
+  }
 }
