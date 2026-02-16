@@ -139,10 +139,25 @@ export class SportsCategoryController {
         });
       }
 
-      if (!minAge || !maxAge) {
+      const hasMin =
+        minAge !== undefined && minAge !== null && String(minAge).trim() !== "";
+      const hasMax =
+        maxAge !== undefined && maxAge !== null && String(maxAge).trim() !== "";
+
+      if (!hasMin || !hasMax) {
         return res.status(400).json({
           success: false,
           message: "Las edades mínima y máxima son obligatorias.",
+          statusCode: 400,
+        });
+      }
+
+      const minAgeNum = Number(minAge);
+      const maxAgeNum = Number(maxAge);
+      if (!Number.isFinite(minAgeNum) || !Number.isFinite(maxAgeNum)) {
+        return res.status(400).json({
+          success: false,
+          message: "Las edades deben ser números válidos.",
           statusCode: 400,
         });
       }
