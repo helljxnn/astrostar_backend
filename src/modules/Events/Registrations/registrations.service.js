@@ -1,8 +1,10 @@
 import { RegistrationsRepository } from "./registrations.repository.js";
+import { RSVPService } from "../RSVP/rsvp.service.js";
 
 export class RegistrationsService {
   constructor() {
     this.registrationsRepository = new RegistrationsRepository();
+    this.rsvpService = new RSVPService();
   }
 
   /**
@@ -110,6 +112,21 @@ export class RegistrationsService {
           ...data,
           sportsCategoryId,
         });
+
+      // Enviar invitación RSVP
+      try {
+        const rsvpResult = await this.rsvpService.createAndSendInvitation(
+          registration.id,
+        );
+        if (!rsvpResult.success) {
+          console.warn(
+            `⚠️  No se pudo enviar invitación RSVP: ${rsvpResult.message}`,
+          );
+        }
+      } catch (rsvpError) {
+        console.error("❌ Error enviando invitación RSVP:", rsvpError.message);
+        // No fallar la inscripción si el email falla
+      }
 
       return {
         success: true,
@@ -641,6 +658,21 @@ export class RegistrationsService {
           ...data,
           sportsCategoryId,
         });
+
+      // Enviar invitación RSVP
+      try {
+        const rsvpResult = await this.rsvpService.createAndSendInvitation(
+          registration.id,
+        );
+        if (!rsvpResult.success) {
+          console.warn(
+            `⚠️  No se pudo enviar invitación RSVP: ${rsvpResult.message}`,
+          );
+        }
+      } catch (rsvpError) {
+        console.error("❌ Error enviando invitación RSVP:", rsvpError.message);
+        // No fallar la inscripción si el email falla
+      }
 
       const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
       return {

@@ -24,6 +24,15 @@ export class RegistrationsRepository {
             _count: {
               select: { members: true },
             },
+            members: {
+              where: {
+                employeeId: { not: null },
+                isActive: true,
+              },
+              include: {
+                employee: { include: { user: true } },
+              },
+            },
           },
         },
         sportsCategory: {
@@ -32,6 +41,7 @@ export class RegistrationsRepository {
             nombre: true,
           },
         },
+        service: true,
       },
     });
   }
@@ -61,6 +71,15 @@ export class RegistrationsRepository {
             _count: {
               select: { members: true },
             },
+            members: {
+              where: {
+                employeeId: { not: null },
+                isActive: true,
+              },
+              include: {
+                employee: { include: { user: true } },
+              },
+            },
           },
         },
         sportsCategory: {
@@ -69,6 +88,7 @@ export class RegistrationsRepository {
             nombre: true,
           },
         },
+        service: true,
       },
     });
   }
@@ -120,6 +140,21 @@ export class RegistrationsRepository {
             id: true,
             nombre: true,
           },
+        },
+        eventInvitations: {
+          select: {
+            id: true,
+            status: true,
+            recipientEmail: true,
+            recipientName: true,
+            sentAt: true,
+            respondedAt: true,
+            invitationType: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
         },
       },
       orderBy: {
@@ -449,6 +484,21 @@ export class RegistrationsRepository {
           },
         },
         sportsCategory: true,
+        eventInvitations: {
+          select: {
+            id: true,
+            status: true,
+            recipientEmail: true,
+            recipientName: true,
+            sentAt: true,
+            respondedAt: true,
+            invitationType: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
+        },
       },
       orderBy: {
         registrationDate: "desc",
@@ -630,7 +680,7 @@ export class RegistrationsRepository {
 
   /**
    * Obtener equipos disponibles filtrados por categorías del evento (optimizado)
-   * Solo devuelve datos esenciales: id, nombre, categoría, tipo
+   * Solo devuelve datos esenciales: id, nombre, categoría, tipo, entrenador
    */
   async getTeamsByEventCategories(serviceId) {
     // Obtener las categorías del evento
@@ -659,6 +709,7 @@ export class RegistrationsRepository {
           name: true,
           category: true,
           teamType: true,
+          coach: true,
         },
         orderBy: [{ teamType: "asc" }, { name: "asc" }],
       });
@@ -680,6 +731,7 @@ export class RegistrationsRepository {
         name: true,
         category: true,
         teamType: true,
+        coach: true,
       },
       orderBy: [{ teamType: "asc" }, { name: "asc" }],
     });

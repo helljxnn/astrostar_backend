@@ -20,6 +20,7 @@ import enrollmentsRoutes from "../modules/Enrollments/routes/enrollments.routes.
 import referenceRoutes from "./reference.routes.js";
 import eventsRoutes from "../modules/Events/events.routes.js";
 import registrationsRoutes from "../modules/Events/Registrations/registrations.routes.js";
+import rsvpRoutes from "../modules/Events/RSVP/rsvp.routes.js";
 import classesRoutes from "../modules/Classes/classes.routes.js";
 import uploadRoutes from "../services/shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
@@ -50,6 +51,7 @@ router.use("/enrollments", enrollmentsRoutes);
 router.use("/reference", referenceRoutes);
 router.use("/events", eventsRoutes);
 router.use("/registrations", registrationsRoutes);
+router.use("/", rsvpRoutes); // RSVP routes at root level for clean URLs
 router.use("/classes", classesRoutes);
 router.use("/schedules", scheduleRoutes);
 router.use("/groups", groupsRoutes);
