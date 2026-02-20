@@ -4,6 +4,7 @@ import roleRoutes from "../modules/Roles/routes/roles.routes.js";
 import employeeRoutes from "../modules/Services/Employees/routes/employees.routes.js";
 import usersRoutes from "../modules/Users/routes/users.routes.js";
 import providerRoutes from "../modules/Providers/routes/providers.routes.js";
+import materialsRoutes from "../modules/Materials/routes/index.js";
 import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/routes/temporaryworkers.routes.js";
 import donorsSponsorsRoutes from "../modules/Donations/DonorsSponsors/routes/donorsSponsors.routes.js";
 import donationsRoutes from "../modules/Donations/Donations/routes/donations.routes.js";
@@ -15,6 +16,7 @@ import trainersRoutes from "../modules/Teams/routes/trainers.routes.js";
 import athletesRoutes from "../modules/Teams/routes/athletes.routes.js";
 import deportistasRoutes from "../modules/Athletes/routes/athletes.routes.js";
 import guardiansRoutes from "../modules/Athletes/Guardians/routes/guardians.routes.js";
+import assistanceathletesRoutes from "../modules/Athletes/Assistanceathletes/routes/Assistanceathletes.routes.js";
 import preRegistrationsRoutes from "../modules/PreRegistrations/routes/preRegistrations.routes.js";
 import enrollmentsRoutes from "../modules/Enrollments/routes/enrollments.routes.js";
 import referenceRoutes from "./reference.routes.js";
@@ -24,7 +26,7 @@ import classesRoutes from "../modules/Classes/classes.routes.js";
 import uploadRoutes from "../services/shared/routes/upload.routes.js";
 import testEmailRoutes from "./testEmail.js";
 import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
-import materialsRoutes from "../modules/Materials/routes/index.js";
+import appointmentRoutes from "../modules/Services/AppointmentManagement/routes/AppointmentManagement.routes.js";
 
 const router = Router();
 
@@ -45,6 +47,7 @@ router.use("/trainers", trainersRoutes);
 router.use("/teams-athletes", athletesRoutes); 
 router.use("/athletes", deportistasRoutes); 
 router.use("/guardians", guardiansRoutes);
+router.use("/assistance-athletes", assistanceathletesRoutes);
 router.use("/pre-registrations", preRegistrationsRoutes);
 router.use("/enrollments", enrollmentsRoutes);
 router.use("/reference", referenceRoutes);
@@ -52,6 +55,7 @@ router.use("/events", eventsRoutes);
 router.use("/registrations", registrationsRoutes);
 router.use("/classes", classesRoutes);
 router.use("/schedules", scheduleRoutes);
+router.use("/appointments", appointmentRoutes);
 
 router.use("/upload", uploadRoutes);
 if (process.env.NODE_ENV === "development") {
@@ -84,9 +88,7 @@ router.get("/health", (req, res) => {
       "Events",
       "Registrations",
       "EmployeeSchedules",
-      "Materials",
-      "Categories",
-      "MaterialMovements",
+      "Appointments",
     ],
   });
 });

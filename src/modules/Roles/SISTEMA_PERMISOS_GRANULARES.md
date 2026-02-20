@@ -1,4 +1,4 @@
-# 🛡️ SISTEMA DE PERMISOS GRANULARES - GUÍA PARA DESARROLLADORES
+﻿# 🛡️ SISTEMA DE PERMISOS GRANULARES - GUÍA PARA DESARROLLADORES
 
 Hemos implementado un sistema de permisos granulares que permite controlar exactamente qué puede hacer cada usuario en cada módulo de la aplicación. **Los permisos se definen una sola vez al crear roles**, y luego cada módulo consulta automáticamente esos permisos.
 
@@ -148,7 +148,7 @@ const MODULOS_DISPONIBLES = [
 **ACCIONES DISPONIBLES:**
 
 ```javascript
-const ACCIONES_DISPONIBLES = ["Ver", "Crear", "Editar", "Eliminar"];
+const ACCIONES_DISPONIBLES = ["Ver", "Crear", "Editar", "Eliminar", "Listar"];
 ```
 
 ---
@@ -434,3 +434,4 @@ Una vez implementado completamente:
 - ✅ **Consistencia**: Comportamiento uniforme en toda la aplicación
 
 ---
+
