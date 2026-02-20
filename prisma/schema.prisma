@@ -243,7 +243,6 @@ model User {
   employee                Employee?
   passwordResets          PasswordResetToken[]
   refreshTokens           RefreshToken[]
-  purchaseNotes           PurchaseNote[]
   documentType            DocumentType             @relation(fields: [documentTypeId], references: [id])
   role                    Role                     @relation(fields: [roleId], references: [id])
 
@@ -302,7 +301,6 @@ model Employee {
   employeePermissions EmployeePermission[]
   employeeSchedules   EmployeeSchedule[]
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purchases           Purchase[]
   teamMembers         TeamMember[]
 
   @@map("employees")
@@ -588,7 +586,6 @@ model Provider {
   documentTypeId   Int?
   statusAssignedAt DateTime           @default(now())
   documentType     DocumentType?      @relation(fields: [documentTypeId], references: [id])
-  purchases        Purchase[]
 
   @@index([businessName])
   @@index([entityType])
@@ -615,47 +612,6 @@ model PreRegistration {
   @@index([email])
   @@index([identification])
   @@map("pre_registrations")
-}
-
-model Purchase {
-  id             Int            @id @default(autoincrement())
-  purchaseNumber String         @unique @db.VarChar(50)
-  purchaseDate   DateTime       @default(now())
-  concept        String         @db.VarChar(500)
-  totalAmount    Decimal        @db.Decimal(12, 2)
-  paymentMethod  String         @db.VarChar(100)
-  notes          String?
-  invoiceUrl     String?        @db.VarChar(500)
-  invoiceName    String?        @db.VarChar(255)
-  invoiceData    String?        @db.Text
-  invoiceMimeType String?       @db.VarChar(100)
-  invoiceSize    Int?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  providerId     Int
-  employeeId     Int?
-  employee       Employee?      @relation(fields: [employeeId], references: [id])
-  provider       Provider       @relation(fields: [providerId], references: [id])
-  purchaseNotes  PurchaseNote[]
-
-  @@index([employeeId])
-  @@index([providerId])
-  @@index([purchaseDate])
-  @@map("purchases")
-}
-
-model PurchaseNote {
-  id         Int      @id @default(autoincrement())
-  purchaseId Int
-  note       String   @db.Text
-  createdBy  Int
-  createdAt  DateTime @default(now())
-  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  creator    User     @relation(fields: [createdBy], references: [id])
-
-  @@index([purchaseId])
-  @@index([createdBy])
-  @@map("purchase_notes")
 }
 
 model Service {
@@ -803,4 +759,109 @@ model DonationFile {
   detail       DonationDetail?  @relation(fields: [detailId], references: [id], onDelete: Cascade)
 
   @@index([donationId])
+}
+
+// ============================================
+// MATERIALES DEPORTIVOS
+// ============================================
+
+enum MaterialStatus {
+  Activo
+  Inactivo
+}
+
+enum CategoryStatus {
+  Activo
+  Inactivo
+}
+
+enum MovementType {
+  Entrada
+  Salida
+}
+
+enum MovementOrigin {
+  Compra
+  Donacion
+  AjustePositivo
+  AjusteNegativo
+  UsoEvento
+  Dano
+  Perdida
+  Entrega
+  ConsumoInterno
+}
+
+enum MovementDestination {
+  Evento
+  ConsumoInterno
+  Dano
+  Perdida
+  Entrega
+}
+
+model MaterialCategory {
+  id          Int            @id @default(autoincrement())
+  nombre      String         @unique @db.VarChar(100)
+  descripcion String?        @db.Text
+  estado      CategoryStatus @default(Activo)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  createdBy   Int?           @map("created_by")
+  updatedBy   Int?           @map("updated_by")
+  materials   Material[]
+
+  @@index([nombre])
+  @@index([estado])
+  @@map("material_categories")
+}
+
+model Material {
+  id          Int                @id @default(autoincrement())
+  nombre      String             @db.VarChar(255)
+  categoriaId Int                @map("categoria_id")
+  categoria   String             @db.VarChar(100)
+  descripcion String?            @db.Text
+  stockActual Int                @default(0) @map("stock_actual") // Temporal: hasta implementar movimientos
+  estado      MaterialStatus     @default(Activo)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+  createdBy   Int?               @map("created_by")
+  updatedBy   Int?               @map("updated_by")
+  category    MaterialCategory   @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  movements   MaterialMovement[] // Para futuro
+
+  @@unique([nombre, categoriaId], name: "unique_material_per_category")
+  @@index([estado])
+  @@index([categoriaId])
+  @@index([nombre])
+  @@map("materials")
+}
+
+model MaterialMovement {
+  id             Int                    @id @default(autoincrement())
+  materialId     Int                    @map("material_id")
+  materialNombre String                 @db.VarChar(255) @map("material_nombre")
+  categoria      String                 @db.VarChar(100)
+  tipoMovimiento MovementType           @map("tipo_movimiento")
+  cantidad       Int
+  origen         MovementOrigin
+  destino        MovementDestination?
+  eventoId       Int?                   @map("evento_id")
+  observaciones  String?                @db.Text
+  stockAnterior  Int                    @map("stock_anterior")
+  stockNuevo     Int                    @map("stock_nuevo")
+  referenceId    Int?                   @map("reference_id")
+  referenceType  String?                @db.VarChar(50) @map("reference_type")
+  fecha          DateTime               @default(now())
+  createdBy      Int                    @map("created_by")
+  createdByName  String?                @db.VarChar(255) @map("created_by_name")
+  material       Material               @relation(fields: [materialId], references: [id], onDelete: Restrict)
+
+  @@index([materialId])
+  @@index([tipoMovimiento])
+  @@index([fecha])
+  @@index([origen])
+  @@index([eventoId])
+  @@map("material_movements")
 }

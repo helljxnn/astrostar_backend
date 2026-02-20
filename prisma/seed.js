@@ -71,7 +71,19 @@ async function main() {
         dashboard: { Ver: true, Crear: true, Editar: true, Eliminar: true },
         users: { Ver: true, Crear: true, Editar: true, Eliminar: true },
         roles: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        sportsEquipment: {
+        materials: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        materialCategories: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        materialsRegistry: {
           Ver: true,
           Crear: true,
           Editar: true,

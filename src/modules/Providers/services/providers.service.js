@@ -203,16 +203,6 @@ export class ProvidersService {
         };
       }
 
-      const hasActivePurchases =
-        await this.providersRepository.hasActivePurchases(id);
-      if (hasActivePurchases) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: `No se puede eliminar el proveedor "${providerToDelete.razonSocial}" porque tiene compras activas asociadas.`,
-        };
-      }
-
       const deletedProvider = await this.providersRepository.delete(id);
 
       return {
@@ -383,20 +373,6 @@ export class ProvidersService {
       };
     } catch (error) {
       console.error("Service error - getProviderStats:", error);
-      throw error;
-    }
-  }
-
-  async checkActivePurchases(providerId) {
-    try {
-      const hasActivePurchases =
-        await this.providersRepository.hasActivePurchases(providerId);
-      return {
-        success: true,
-        hasActivePurchases,
-      };
-    } catch (error) {
-      console.error("Service error - checkActivePurchases:", error);
       throw error;
     }
   }

@@ -240,37 +240,6 @@ export class ProvidersController {
     }
   };
 
-  checkActivePurchases = async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-
-      if (isNaN(id)) {
-        return res.status(400).json({
-          success: false,
-          message: "ID de proveedor inválido",
-        });
-      }
-
-      const result = await this.providersService.checkActivePurchases(id);
-
-      res.json({
-        success: true,
-        hasActivePurchases: result.hasActivePurchases,
-        message: result.hasActivePurchases
-          ? "El proveedor tiene compras activas"
-          : "El proveedor no tiene compras activas",
-      });
-    } catch (error) {
-      console.error("Error in checkActivePurchases controller:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error al verificar compras activas",
-        error:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
-      });
-    }
-  };
-
   checkNitAvailability = async (req, res) => {
     try {
       const { nit, excludeId, tipoEntidad = "juridica" } = req.query;
