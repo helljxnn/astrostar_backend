@@ -17,8 +17,8 @@ export class AssistanceathletesController {
 
       const result = await this.service.getAttendanceByDate({
         date,
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
         search: search.trim(),
         categoria: categoria.trim(),
       });
@@ -53,7 +53,7 @@ export class AssistanceathletesController {
     try {
       const { athleteId, startDate = "", endDate = "" } = req.query;
       const result = await this.service.getAthleteHistory({
-        athleteId: parseInt(athleteId),
+        athleteId: parseInt(athleteId, 10),
         startDate: startDate.trim() || undefined,
         endDate: endDate.trim() || undefined,
       });
@@ -63,6 +63,37 @@ export class AssistanceathletesController {
       res.status(500).json({
         success: false,
         message: "Error interno al obtener historial de asistencia.",
+        statusCode: 500,
+      });
+    }
+  };
+
+  getHistorySummary = async (req, res) => {
+    try {
+      const {
+        startDate = "",
+        endDate = "",
+        page = 1,
+        limit = 10,
+        search = "",
+        categoria = "",
+      } = req.query;
+
+      const result = await this.service.getHistorySummary({
+        startDate: startDate.trim() || undefined,
+        endDate: endDate.trim() || undefined,
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+        search: search.trim(),
+        categoria: categoria.trim(),
+      });
+
+      res.status(result.statusCode || 200).json(result);
+    } catch (error) {
+      console.error("Error en getHistorySummary:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno al obtener resumen de asistencia.",
         statusCode: 500,
       });
     }

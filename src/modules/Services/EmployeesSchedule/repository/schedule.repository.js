@@ -6,12 +6,11 @@ export class ScheduleRepository {
   /**
    * Obtener todos los horarios con filtros y paginación
    */
-  async findAll({ page, limit, employeeId, dayOfWeek, status }) {
+  async findAll({ page, limit, employeeId, dayOfWeek }) {
     const skip = (page - 1) * limit;
     const where = {
       ...(employeeId && { employeeId: parseInt(employeeId) }),
-      ...(dayOfWeek && { dayOfWeek }),
-      ...(status && { status })
+      ...(dayOfWeek && { dayOfWeek })
     };
 
     const [schedules, total] = await Promise.all([
@@ -33,6 +32,11 @@ export class ScheduleRepository {
                   phoneNumber: true
                 }
               }
+            }
+          },
+          novelties: {
+            orderBy: {
+              date: 'desc'
             }
           }
         },
@@ -77,6 +81,11 @@ export class ScheduleRepository {
               }
             }
           }
+        },
+        novelties: {
+          orderBy: {
+            date: 'desc'
+          }
         }
       }
     });
@@ -92,6 +101,11 @@ export class ScheduleRepository {
         employee: {
           include: {
             user: true
+          }
+        },
+        novelties: {
+          orderBy: {
+            date: 'desc'
           }
         }
       },
@@ -109,7 +123,6 @@ export class ScheduleRepository {
     const where = {
       employeeId: parseInt(employeeId),
       scheduleDate: new Date(scheduleDate),
-      status: { not: 'Cancelado' },
       OR: [
         {
           AND: [
@@ -164,8 +177,22 @@ export class ScheduleRepository {
           include: {
             user: true
           }
+        },
+        novelties: {
+          orderBy: {
+            date: 'desc'
+          }
         }
       }
+    });
+  }
+
+  /**
+   * Registrar novedad
+   */
+  async createNovelty(noveltyData) {
+    return await prisma.employeeScheduleNovelty.create({
+      data: noveltyData
     });
   }
 

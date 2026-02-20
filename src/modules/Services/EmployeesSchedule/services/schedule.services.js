@@ -24,17 +24,49 @@ export class ScheduleService {
     return days[date.getDay()];
   }
 
+  normalizeText(value) {
+    return value ? String(value).trim().replace(/\s+/g, ' ') : '';
+  }
+
+  normalizeTime(value) {
+    if (!value) return null;
+    const match = String(value).match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
+    if (!match) return null;
+    const hours = String(match[1]).padStart(2, '0');
+    const minutes = String(match[2]).padStart(2, '0');
+    return `${hours}:${minutes}`;
+  }
+
+  parseTimeRange(value) {
+    if (!value) return null;
+    const match = String(value).match(/([01]?\d|2[0-3]):([0-5]\d)\s*-\s*([01]?\d|2[0-3]):([0-5]\d)/);
+    if (!match) return null;
+    const startTime = this.normalizeTime(`${match[1]}:${match[2]}`);
+    const endTime = this.normalizeTime(`${match[3]}:${match[4]}`);
+    if (!startTime || !endTime) return null;
+    return { startTime, endTime };
+  }
+
+  timeToMinutes(value) {
+    if (!value) return null;
+    const parts = String(value).split(':');
+    if (parts.length < 2) return null;
+    const hours = Number(parts[0]);
+    const minutes = Number(parts[1]);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  }
+
   /**
    * Obtener todos los horarios con filtros
    */
-  async getAllSchedules({ page = 1, limit = 10, employeeId = null, dayOfWeek = '', status = '' }) {
+  async getAllSchedules({ page = 1, limit = 10, employeeId = null, dayOfWeek = '' }) {
     try {
       const result = await this.scheduleRepository.findAll({
         page: parseInt(page),
         limit: parseInt(limit),
         employeeId,
-        dayOfWeek,
-        status
+        dayOfWeek
       });
       return result;
     } catch (error) {
@@ -134,7 +166,6 @@ export class ScheduleService {
         recurrence: scheduleData.repeticion || 'no',
         customRecurrence: scheduleData.customRecurrence ? JSON.stringify(scheduleData.customRecurrence) : null,
         description: scheduleData.descripcion?.trim() || null,
-        status: scheduleData.estado || 'Programado',
         cancellationReason: null
       };
 
@@ -166,16 +197,7 @@ export class ScheduleService {
         };
       }
 
-      // 2. REGLA DE NEGOCIO: No permitir editar horarios cancelados
-      if (existingSchedule.status === 'Cancelado') {
-        return {
-          success: false,
-          statusCode: 400,
-          message: 'No se puede editar un horario cancelado.'
-        };
-      }
-
-      // 3. Si se actualiza fecha u horario, verificar conflictos
+      // 2. Si se actualiza fecha u horario, verificar conflictos
       if (updateData.fecha || updateData.horaInicio || updateData.horaFin) {
         const scheduleDate =
           this.normalizeDateOnly(updateData.fecha) || existingSchedule.scheduleDate;
@@ -220,9 +242,14 @@ export class ScheduleService {
       if (updateData.descripcion !== undefined) {
         scheduleDataForDB.description = updateData.descripcion?.trim() || null;
       }
-      if (updateData.estado) scheduleDataForDB.status = updateData.estado;
-
-      // 5. Actualizar el horario
+      if (Object.keys(scheduleDataForDB).length === 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'No hay campos para actualizar.'
+        };
+      }
+      // 4. Actualizar el horario
       const updatedSchedule = await this.scheduleRepository.update(id, scheduleDataForDB);
       return {
         success: true,
@@ -249,15 +276,6 @@ export class ScheduleService {
         };
       }
 
-      // REGLA DE NEGOCIO: No permitir eliminar horarios completados
-      if (scheduleToDelete.status === 'Completado') {
-        return {
-          success: false,
-          statusCode: 400,
-          message: 'No se puede eliminar un horario completado. Considere cancelarlo en su lugar.'
-        };
-      }
-
       const deleted = await this.scheduleRepository.delete(id);
       if (deleted) {
         return {
@@ -274,7 +292,7 @@ export class ScheduleService {
   /**
    * Registrar una novedad en un horario
    */
-  async registerNovelty(id, motivoCancelacion) {
+  async registerNovelty(id, payload = {}) {
     try {
       const schedule = await this.scheduleRepository.findById(id);
       if (!schedule) {
@@ -285,20 +303,82 @@ export class ScheduleService {
         };
       }
 
-      if (schedule.status === 'Completado') {
+      const motivoCancelacion = this.normalizeText(
+        payload.motivoCancelacion || payload.reason || payload.motivo || ''
+      );
+      if (!motivoCancelacion) {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede registrar una novedad en un horario ya completado.'
+          message: 'El motivo de la novedad es obligatorio.'
         };
       }
 
-      const updatedSchedule = await this.scheduleRepository.update(id, {
-        cancellationReason: motivoCancelacion.trim()
+      const noveltyDateRaw = payload.fecha || payload.date || schedule.scheduleDate;
+      const noveltyDate = this.normalizeDateOnly(noveltyDateRaw);
+      if (!noveltyDate) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'La fecha de la novedad es inválida.'
+        };
+      }
+
+      const rawType = this.normalizeText(payload.tipoCancelacion || payload.type).toLowerCase();
+      const directRange =
+        payload.horaInicio && payload.horaFin
+          ? {
+              startTime: this.normalizeTime(payload.horaInicio),
+              endTime: this.normalizeTime(payload.horaFin)
+            }
+          : null;
+      const parsedRange = directRange || this.parseTimeRange(payload.tiempoCancelacion);
+
+      let noveltyType = ['full', 'time'].includes(rawType) ? rawType : '';
+      if (!noveltyType) {
+        noveltyType = parsedRange ? 'time' : 'full';
+      }
+
+      let startTime = null;
+      let endTime = null;
+      if (noveltyType === 'time') {
+        if (!parsedRange?.startTime || !parsedRange?.endTime) {
+          return {
+            success: false,
+            statusCode: 400,
+            message: 'Debe indicar el tramo de tiempo de la novedad.'
+          };
+        }
+        startTime = parsedRange.startTime;
+        endTime = parsedRange.endTime;
+        const startMinutes = this.timeToMinutes(startTime);
+        const endMinutes = this.timeToMinutes(endTime);
+        if (
+          startMinutes === null ||
+          endMinutes === null ||
+          endMinutes <= startMinutes
+        ) {
+          return {
+            success: false,
+            statusCode: 400,
+            message: 'El rango de tiempo de la novedad no es válido.'
+          };
+        }
+      }
+
+      await this.scheduleRepository.createNovelty({
+        scheduleId: schedule.id,
+        date: noveltyDate,
+        type: noveltyType === 'time' ? 'time' : 'full',
+        startTime,
+        endTime,
+        reason: motivoCancelacion
       });
+
+      const refreshedSchedule = await this.scheduleRepository.findById(id);
       return {
         success: true,
-        data: updatedSchedule,
+        data: refreshedSchedule || schedule,
         message: 'Novedad registrada exitosamente.'
       };
     } catch (error) {
