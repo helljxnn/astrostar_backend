@@ -136,6 +136,11 @@ enum ScheduleStatus {
   Cancelado
 }
 
+enum ScheduleNoveltyType {
+  full
+  time
+}
+
 enum TeamMemberRole {
   Player
   Coach
@@ -399,8 +404,25 @@ model EmployeeSchedule {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  novelties          EmployeeScheduleNovelty[]
 
   @@map("employee_schedules")
+}
+
+model EmployeeScheduleNovelty {
+  id         Int                 @id @default(autoincrement())
+  scheduleId Int
+  date       DateTime
+  type       ScheduleNoveltyType @default(full)
+  startTime  String?
+  endTime    String?
+  reason     String
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  schedule   EmployeeSchedule    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, date])
+  @@map("employee_schedule_novelties")
 }
 
 model Appointment {

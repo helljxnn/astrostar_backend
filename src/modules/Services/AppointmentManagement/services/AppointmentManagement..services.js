@@ -118,6 +118,39 @@ export class AppointmentService {
     return parsedHours * 60 + parsedMinutes;
   }
 
+  isTimeRangeOverlap(startA, endA, startB, endB) {
+    if ([startA, endA, startB, endB].some((value) => value === null)) return false;
+    return startA < endB && endA > startB;
+  }
+
+  getNoveltiesForDate(schedule, targetDate) {
+    const novelties = Array.isArray(schedule?.novelties) ? schedule.novelties : [];
+    return novelties.filter((novelty) => this.isSameDate(novelty?.date, targetDate));
+  }
+
+  isScheduleBlockedByNovelty(schedule, targetDate, startTime, endTime) {
+    const novelties = this.getNoveltiesForDate(schedule, targetDate);
+    if (novelties.length === 0) return false;
+
+    const appointmentStart = this.timeToMinutes(startTime);
+    const appointmentEnd = this.timeToMinutes(endTime);
+    if (appointmentStart === null || appointmentEnd === null) return true;
+
+    return novelties.some((novelty) => {
+      const type = this.normalizeKey(novelty?.type || novelty?.tipoCancelacion || 'full');
+      if (type === 'full') return true;
+      const noveltyStart = this.timeToMinutes(novelty?.startTime);
+      const noveltyEnd = this.timeToMinutes(novelty?.endTime);
+      if (noveltyStart === null || noveltyEnd === null) return true;
+      return this.isTimeRangeOverlap(
+        appointmentStart,
+        appointmentEnd,
+        noveltyStart,
+        noveltyEnd
+      );
+    });
+  }
+
   differenceInDays(dateA, dateB) {
     const a = this.normalizeDateOnly(dateA);
     const b = this.normalizeDateOnly(dateB);
@@ -268,14 +301,23 @@ export class AppointmentService {
     }
 
     const dateOnly = this.normalizeDateOnly(appointmentDate);
-    const hasMatchingSchedule = schedules.some(
+    const matchingSchedules = schedules.filter(
       (schedule) =>
         this.isScheduleActiveOnDate(schedule, dateOnly) &&
         this.isTimeWithinSchedule(schedule, startTime, endTime)
     );
 
-    if (!hasMatchingSchedule) {
+    if (matchingSchedules.length === 0) {
       throw new Error('El especialista no tiene horario disponible para esa fecha y hora.');
+    }
+
+    const hasAvailableSchedule = matchingSchedules.some(
+      (schedule) =>
+        !this.isScheduleBlockedByNovelty(schedule, dateOnly, startTime, endTime)
+    );
+
+    if (!hasAvailableSchedule) {
+      throw new Error('El especialista tiene una novedad en ese horario.');
     }
   }
 

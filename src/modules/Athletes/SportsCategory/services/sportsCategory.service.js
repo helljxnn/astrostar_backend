@@ -194,10 +194,10 @@ export class SportsCategoryService {
       }
 
       // Validar edades
-      if (minAge < 6) {
+      if (minAge < 4) {
         return {
           success: false,
-          message: "La edad minima debe ser mayor o igual a 5.",
+          message: "La edad minima debe ser mayor o igual a 4.",
           statusCode: 400,
         };
       }
@@ -312,10 +312,10 @@ export class SportsCategoryService {
           };
         }
 
-        if (minAge < 6) {
+        if (minAge < 4) {
           return {
             success: false,
-            message: "La edad minima debe ser mayor o igual a 5.",
+            message: "La edad minima debe ser mayor o igual a 4.",
             statusCode: 400,
           };
         }

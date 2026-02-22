@@ -60,11 +60,6 @@ const scheduleController = new ScheduleController();
  *           nullable: true
  *           description: Descripción del horario
  *           example: "Turno regular de oficina"
- *         status:
- *           type: string
- *           description: Estado del horario
- *           enum: [Programado, Completado, Cancelado]
- *           example: "Programado"
  *         cancellationReason:
  *           type: string
  *           nullable: true
@@ -173,11 +168,6 @@ router.get('/employee/:employeeId',
  *         schema:
  *           type: string
  *           enum: [Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday]
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [Programado, Completado, Cancelado]
  *     responses:
  *       200:
  *         description: Lista de horarios con paginación
@@ -230,10 +220,6 @@ router.get('/',
  *               descripcion:
  *                 type: string
  *                 example: "Turno regular de oficina"
- *               estado:
- *                 type: string
- *                 enum: [Programado, Completado, Cancelado]
- *                 example: "Programado"
  *     responses:
  *       201:
  *         description: Horario creado exitosamente
@@ -320,6 +306,20 @@ router.put('/:id',
  *             required:
  *               - motivoCancelacion
  *             properties:
+ *               fecha:
+ *                 type: string
+ *                 format: date
+ *                 example: "2026-02-16"
+ *               tipoCancelacion:
+ *                 type: string
+ *                 enum: [full, time]
+ *                 example: "time"
+ *               tiempoCancelacion:
+ *                 type: string
+ *                 example: "08:00 - 10:00"
+ *               explicacionTiempo:
+ *                 type: string
+ *                 example: "Se reagendó la sesión en ese tramo"
  *               motivoCancelacion:
  *                 type: string
  *                 minLength: 10
