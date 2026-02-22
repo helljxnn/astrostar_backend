@@ -1,18 +1,15 @@
-import { PrismaClient } from '../../generated/prisma/index.js';
+import { PrismaClient } from "../../generated/prisma/index.js";
 
-console.log('🔍 PrismaClient importado:', typeof PrismaClient);
+const isDevelopment = process.env.NODE_ENV !== "production";
 
 const prisma = new PrismaClient({
-  log: ['query', 'info', 'warn', 'error'],
+  log: isDevelopment ? ["query", "info", "warn", "error"] : ["warn", "error"], // Solo errores y warnings en producción
 });
 
-console.log('🔍 Instancia de prisma creada:', typeof prisma);
-console.log('🔍 prisma.user existe:', typeof prisma.user);
-
 // Graceful shutdown (opcional, solo en procesos que terminan)
-process.on('SIGINT', async () => {
+process.on("SIGINT", async () => {
   await prisma.$disconnect();
-  console.log('🔌 Prisma disconnected on app termination');
+  console.log("🔌 Prisma disconnected on app termination");
   process.exit(0);
 });
 

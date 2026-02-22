@@ -244,7 +244,10 @@ router.get("/sports-categories", teamsController.getSportsCategories);
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/check-duplicate-temporal", teamsController.checkDuplicateTemporalTeam);
+router.get(
+  "/check-duplicate-temporal",
+  teamsController.checkDuplicateTemporalTeam
+);
 
 /**
  * @swagger
@@ -287,7 +290,10 @@ router.get("/check-duplicate-temporal", teamsController.checkDuplicateTemporalTe
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/check-temporal-person-availability", teamsController.checkTemporalPersonAvailability);
+router.get(
+  "/check-temporal-person-availability",
+  teamsController.checkTemporalPersonAvailability
+);
 
 /**
  * @swagger
@@ -335,7 +341,10 @@ router.get("/check-temporal-person-availability", teamsController.checkTemporalP
  *       500:
  *         description: Internal server error
  */
-router.get("/:id/check-event-assignments", teamsController.checkTeamAssignedToEvents);
+router.get(
+  "/:id/check-event-assignments",
+  teamsController.checkTeamAssignedToEvents
+);
 
 /**
  * @swagger
@@ -661,7 +670,7 @@ router.patch(
  * /api/teams/{id}:
  *   delete:
  *     summary: Eliminar equipo
- *     description: Elimina un equipo. No se puede eliminar si está asignado a eventos activos (Programado o En_pausa)
+ *     description: Elimina un equipo. No se puede eliminar si está asignado a eventos activos (Programado)
  *     tags: [Teams]
  *     parameters:
  *       - in: path

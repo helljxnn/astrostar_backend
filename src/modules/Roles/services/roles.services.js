@@ -28,7 +28,7 @@ export class RoleService {
       const existingRole = await this.roleRepository.findByName(roleData.name);
       if (existingRole) {
         throw new Error(
-          `El nombre "${roleData.name}" ya está en uso. Elija otro nombre.`
+          `El nombre "${roleData.name}" ya está en uso. Elija otro nombre.`,
         );
       }
 
@@ -67,7 +67,7 @@ export class RoleService {
         roleData.name !== "Administrador"
       ) {
         throw new Error(
-          'El rol "Administrador" es un rol del sistema y su nombre no puede ser modificado por razones de seguridad.'
+          'El rol "Administrador" es un rol del sistema y su nombre no puede ser modificado por razones de seguridad.',
         );
       }
 
@@ -76,7 +76,7 @@ export class RoleService {
         const nameExists = await this.roleRepository.findByName(roleData.name);
         if (nameExists) {
           throw new Error(
-            `El nombre "${roleData.name}" ya está en uso. Elija otro nombre.`
+            `El nombre "${roleData.name}" ya está en uso. Elija otro nombre.`,
           );
         }
       }
@@ -131,7 +131,7 @@ export class RoleService {
 
       // Para otros errores, proporcionamos un mensaje genérico
       throw new Error(
-        "Error interno al eliminar el rol. Por favor, inténtelo de nuevo."
+        "Error interno al eliminar el rol. Por favor, inténtelo de nuevo.",
       );
     }
   }
@@ -163,7 +163,7 @@ export class RoleService {
       }
 
       for (const [actionName, hasPermission] of Object.entries(
-        modulePermissions
+        modulePermissions,
       )) {
         if (typeof hasPermission !== "boolean") {
           return {
@@ -213,16 +213,20 @@ export class RoleService {
   // Check if role name exists (for real-time validation)
   async checkRoleNameExists(name, excludeId = null) {
     try {
-      const existingRole = await this.roleRepository.findByNameCaseInsensitive(name);
-      
+      const existingRole =
+        await this.roleRepository.findByNameCaseInsensitive(name);
+
+      // Convertir excludeId a número si es necesario para comparación correcta
+      const excludeIdNum = excludeId ? parseInt(excludeId) : null;
+
       // Si encontramos un rol y no es el que estamos excluyendo
-      if (existingRole && existingRole.id !== excludeId) {
+      if (existingRole && existingRole.id !== excludeIdNum) {
         return existingRole;
       }
-      
+
       return null;
     } catch (error) {
-      console.error('Service error - checkRoleNameExists:', error);
+      console.error("Service error - checkRoleNameExists:", error);
       throw error;
     }
   }

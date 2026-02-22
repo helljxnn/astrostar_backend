@@ -21,7 +21,7 @@ export class TeamsRepository {
       const person = existingMembership.temporaryPerson;
       const team = existingMembership.team;
       errors.push(
-        `${person.firstName} ${person.lastName} (Temporal) ya está asignado/a al equipo "${team.name}". Las personas temporales no pueden estar en múltiples equipos.`
+        `${person.firstName} ${person.lastName} (Temporal) ya está asignado/a al equipo "${team.name}". Las personas temporales no pueden estar en múltiples equipos.`,
       );
     }
   }
@@ -39,11 +39,11 @@ export class TeamsRepository {
         await this.validateTemporalPersonNotInOtherTeams(
           id,
           excludeTeamId,
-          errors
+          errors,
         );
       } else {
         console.log(
-          `✅ Persona de fundación ${id} puede estar en múltiples equipos`
+          `✅ Persona de fundación ${id} puede estar en múltiples equipos`,
         );
       }
     }
@@ -64,7 +64,7 @@ export class TeamsRepository {
       await this.validateTemporalPersonNotInOtherTeams(
         id,
         excludeTeamId,
-        errors
+        errors,
       );
       if (errors.length > 0) {
         throw new Error(errors[0]);
@@ -89,7 +89,7 @@ export class TeamsRepository {
       }
       if (tempPerson.status !== "Active") {
         throw new Error(
-          `El entrenador temporal ${tempPerson.firstName} ${tempPerson.lastName} no está activo`
+          `El entrenador temporal ${tempPerson.firstName} ${tempPerson.lastName} no está activo`,
         );
       }
       if (tempPerson.personType !== "Entrenador") {
@@ -105,7 +105,7 @@ export class TeamsRepository {
       }
       if (employee.status !== "Activo") {
         throw new Error(
-          `El entrenador ${employee.user.firstName} ${employee.user.lastName} no está activo`
+          `El entrenador ${employee.user.firstName} ${employee.user.lastName} no está activo`,
         );
       }
     }
@@ -133,7 +133,7 @@ export class TeamsRepository {
           errors.push(`La persona temporal con ID ${id} no existe`);
         } else if (tempPerson.status !== "Active") {
           errors.push(
-            `La persona temporal ${tempPerson.firstName} ${tempPerson.lastName} no está activa`
+            `La persona temporal ${tempPerson.firstName} ${tempPerson.lastName} no está activa`,
           );
         }
       } else if (teamType === "Fundacion") {
@@ -145,7 +145,7 @@ export class TeamsRepository {
           errors.push(`El deportista con ID ${id} no existe`);
         } else if (athlete.status !== "Active") {
           errors.push(
-            `El deportista ${athlete.user.firstName} ${athlete.user.lastName} no está activo`
+            `El deportista ${athlete.user.firstName} ${athlete.user.lastName} no está activo`,
           );
         }
       }
@@ -176,19 +176,19 @@ export class TeamsRepository {
             category: category || null,
             team: teamName || null,
           },
-        })
+        }),
       );
 
       const results = await Promise.all(updates);
       console.log(
         "✅ Actualización completada para:",
         results.length,
-        "personas"
+        "personas",
       );
     } catch (error) {
       console.error("❌ Error actualizando personas temporales:", error);
       throw new Error(
-        `Error actualizando personas temporales: ${error.message}`
+        `Error actualizando personas temporales: ${error.message}`,
       );
     }
   }
@@ -207,11 +207,11 @@ export class TeamsRepository {
             category: null,
             team: null,
           },
-        })
+        }),
       );
       await Promise.all(updates);
       console.log(
-        `✅ Limpiado categoría y equipo de ${temporaryPersonIds.length} personas temporales`
+        `✅ Limpiado categoría y equipo de ${temporaryPersonIds.length} personas temporales`,
       );
     } catch (error) {
       console.error("❌ Error limpiando personas temporales:", error);
@@ -282,7 +282,7 @@ export class TeamsRepository {
           (member) =>
             member.position === "Entrenador" ||
             member.memberType === "Employee" ||
-            member.employeeId
+            member.employeeId,
         ) || [];
 
       let entrenadorData = null;
@@ -315,7 +315,7 @@ export class TeamsRepository {
         } catch (trainerError) {
           console.error(
             "Error transformando entrenador principal:",
-            trainerError
+            trainerError,
           );
         }
 
@@ -338,19 +338,19 @@ export class TeamsRepository {
           } catch (secondTrainerError) {
             console.error(
               "Error transformando segundo entrenador:",
-              secondTrainerError
+              secondTrainerError,
             );
           }
         }
       }
 
       // Determinar teamType desde el campo teamType
-      let teamType = team.teamType || 'Temporal';
+      let teamType = team.teamType || "Temporal";
       if (team.members && team.members.length > 0 && !team.teamType) {
         // Fallback: determinar por miembros si no está en phone
-        const hasAthletes = team.members.some(m => m.athleteId);
-        const hasTemporary = team.members.some(m => m.temporaryPersonId);
-        
+        const hasAthletes = team.members.some((m) => m.athleteId);
+        const hasTemporary = team.members.some((m) => m.temporaryPersonId);
+
         if (hasAthletes && !hasTemporary) {
           teamType = "Fundacion";
         } else if (hasTemporary) {
@@ -392,19 +392,23 @@ export class TeamsRepository {
     try {
       console.log(
         "📥 Datos recibidos en repository:",
-        JSON.stringify(teamData, null, 2)
+        JSON.stringify(teamData, null, 2),
       );
 
       const transformed = this.transformToBackend(teamData);
-      const { deportistasIds = [], entrenadorId, segundoEntrenadorId } = transformed;
-      
+      const {
+        deportistasIds = [],
+        entrenadorId,
+        segundoEntrenadorId,
+      } = transformed;
+
       const teamInfo = {
         name: transformed.name,
         description: transformed.description,
         coach: transformed.coach,
         category: transformed.category,
         teamType: transformed.teamType,
-        status: 'Active'
+        status: "Active",
       };
 
       console.log("🔧 Team Info transformado:", teamInfo);
@@ -422,11 +426,11 @@ export class TeamsRepository {
 
       await this.validateMembersAvailability(
         deportistasIds,
-        transformed.teamType
+        transformed.teamType,
       );
       await this.validateTrainerAvailability(
         entrenadorId,
-        transformed.teamType
+        transformed.teamType,
       );
 
       let entrenadorTemporalId = null;
@@ -439,7 +443,7 @@ export class TeamsRepository {
           entrenadorTemporalId = parseInt(entrenadorId);
           console.log(
             "✅ Entrenador temporal identificado:",
-            entrenadorTemporalId
+            entrenadorTemporalId,
           );
         }
       }
@@ -454,7 +458,7 @@ export class TeamsRepository {
           await this.updateTemporaryPersonsCategory(
             allTemporaryPersonIds,
             teamInfo.category,
-            teamInfo.name
+            teamInfo.name,
           );
         }
       }
@@ -549,15 +553,19 @@ export class TeamsRepository {
   async update(id, teamData) {
     try {
       const transformed = this.transformToBackend(teamData);
-      const { deportistasIds = [], entrenadorId, segundoEntrenadorId } = transformed;
-      
+      const {
+        deportistasIds = [],
+        entrenadorId,
+        segundoEntrenadorId,
+      } = transformed;
+
       const teamInfo = {
         name: transformed.name,
         description: transformed.description,
         coach: transformed.coach,
         category: transformed.category,
-        teamType: transformed.teamType || 'Temporal',
-        status: transformed.status
+        teamType: transformed.teamType || "Temporal",
+        status: transformed.status,
       };
 
       const currentTeam = await this.findById(id);
@@ -577,12 +585,12 @@ export class TeamsRepository {
       await this.validateMembersAvailability(
         deportistasIds,
         currentTeam.teamType,
-        id
+        id,
       );
       await this.validateTrainerAvailability(
         entrenadorId,
         currentTeam.teamType,
-        id
+        id,
       );
 
       return await prisma.$transaction(async (tx) => {
@@ -592,7 +600,7 @@ export class TeamsRepository {
             .map((m) => m.temporaryPersonId);
 
           const removedIds = currentIds.filter(
-            (id) => !deportistasIds.includes(id) && id !== entrenadorId
+            (id) => !deportistasIds.includes(id) && id !== entrenadorId,
           );
 
           if (removedIds.length > 0) {
@@ -613,7 +621,7 @@ export class TeamsRepository {
             await this.updateTemporaryPersonsCategory(
               allCurrentIds,
               teamInfo.category,
-              teamInfo.name
+              teamInfo.name,
             );
           }
         }
@@ -760,8 +768,8 @@ export class TeamsRepository {
           status === "Activo"
             ? "Active"
             : status === "Inactivo"
-            ? "Inactive"
-            : status;
+              ? "Inactive"
+              : status;
         statusCondition = `AND status = '${normalizedStatus}'`;
       }
 
@@ -829,12 +837,12 @@ export class TeamsRepository {
                 },
               },
             },
-          })
-        )
+          }),
+        ),
       );
 
       const transformedTeams = teamsWithRelations.map((team) =>
-        this.transformToFrontend(team)
+        this.transformToFrontend(team),
       );
 
       return {
@@ -857,8 +865,8 @@ export class TeamsRepository {
         status === "Activo"
           ? "Active"
           : status === "Inactivo"
-          ? "Inactive"
-          : status;
+            ? "Inactive"
+            : status;
       where.status = normalizedStatus;
     }
     // teamType se filtra por categoría en lugar de un campo separado
@@ -905,7 +913,7 @@ export class TeamsRepository {
     ]);
 
     const transformedTeams = teams.map((team) =>
-      this.transformToFrontend(team)
+      this.transformToFrontend(team),
     );
 
     return {
@@ -1047,7 +1055,7 @@ export class TeamsRepository {
           .sort();
 
         const teamTrainerId = team.members.find(
-          (m) => m.temporaryPersonId && m.position === "Entrenador"
+          (m) => m.temporaryPersonId && m.position === "Entrenador",
         )?.temporaryPersonId;
 
         const inputAthleteIds = athleteIds.sort();
@@ -1074,11 +1082,6 @@ export class TeamsRepository {
 
   async checkTemporalPersonAvailability(personId, excludeTeamId = null) {
     try {
-      console.log("🔍 [REPO] Verificando disponibilidad:", {
-        personId,
-        excludeTeamId,
-      });
-
       const existingMembership = await prisma.teamMember.findFirst({
         where: {
           temporaryPersonId: parseInt(personId),
@@ -1093,11 +1096,6 @@ export class TeamsRepository {
           temporaryPerson: true,
         },
       });
-
-      console.log(
-        "🔍 [REPO] Resultado búsqueda:",
-        existingMembership ? "ENCONTRADO" : "NO ENCONTRADO"
-      );
 
       if (existingMembership) {
         const person = existingMembership.temporaryPerson;
@@ -1121,7 +1119,7 @@ export class TeamsRepository {
     } catch (error) {
       console.error(
         "❌ [REPO] Error checking temporal person availability:",
-        error
+        error,
       );
       throw error;
     }
@@ -1129,11 +1127,6 @@ export class TeamsRepository {
 
   async checkTemporalMembersInOtherActiveTeams(memberIds, excludeTeamId) {
     try {
-      console.log("🔍 [REPO] Verificando conflictos al activar equipo:", {
-        memberIds,
-        excludeTeamId,
-      });
-
       const conflicts = [];
 
       for (const memberId of memberIds) {
@@ -1164,7 +1157,6 @@ export class TeamsRepository {
         }
       }
 
-      console.log("🔍 [REPO] Conflictos encontrados:", conflicts.length);
       return conflicts;
     } catch (error) {
       console.error("❌ [REPO] Error checking conflicts:", error);
@@ -1174,11 +1166,6 @@ export class TeamsRepository {
 
   async isTeamAssignedToEvent(teamId) {
     try {
-      console.log(
-        "🔍 [REPO] Verificando si equipo está asignado a eventos:",
-        teamId
-      );
-
       // Buscar participaciones en TODOS los eventos sin importar el estado
       // El equipo NO se puede eliminar si está asignado a cualquier evento
       const participants = await prisma.participant.findMany({
@@ -1199,11 +1186,12 @@ export class TeamsRepository {
 
       const isAssigned = participants.length > 0;
 
-      console.log("🔍 [REPO] Equipo asignado a eventos:", {
+      console.log("🔍 [REPO] Verificando asignación a eventos:", {
+        teamId,
         isAssigned,
         count: participants.length,
         events: participants.map(
-          (p) => `${p.service.name} (${p.service.status})`
+          (p) => `${p.service.name} (${p.service.status})`,
         ),
       });
 

@@ -44,7 +44,7 @@ export class EventsController {
    *         name: status
    *         schema:
    *           type: string
-   *           enum: [Programado, Finalizado, Cancelado, Pausado]
+   *           enum: [Programado, Finalizado, Cancelado]
    *         description: Filtrar por estado
    *       - in: query
    *         name: categoryId
@@ -94,7 +94,7 @@ export class EventsController {
    *                         type: string
    *                       status:
    *                         type: string
-   *                         enum: [Programado, Finalizado, Cancelado, Pausado]
+   *                         enum: [Programado, Finalizado, Cancelado]
    *                       imageUrl:
    *                         type: string
    *                       scheduleFile:
@@ -179,11 +179,20 @@ export class EventsController {
         message: `Se encontraron ${result.pagination.total} eventos.`,
       });
     } catch (error) {
+      console.error("❌ Error en getAllEvents:", error);
+      console.error("Stack trace:", error.stack);
+
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener eventos.",
         error:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
+          process.env.NODE_ENV === "development"
+            ? {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+              }
+            : undefined,
       });
     }
   };
@@ -368,7 +377,7 @@ export class EventsController {
    *                 example: "+57 300 1234567"
    *               status:
    *                 type: string
-   *                 enum: [Programado, Finalizado, Cancelado, Pausado]
+   *                 enum: [Programado, Finalizado, Cancelado]
    *                 default: Programado
    *                 description: Estado del evento
    *               imageUrl:
@@ -392,7 +401,7 @@ export class EventsController {
    *               typeId:
    *                 type: integer
    *                 description: ID del tipo de evento
-   *                 example: 2
+
    *           example:
    *             name: "Festival Deportivo 2025"
    *             description: "Festival anual de deportes con múltiples disciplinas"
@@ -517,7 +526,7 @@ export class EventsController {
    *                 example: "+57 300 1234567"
    *               status:
    *                 type: string
-   *                 enum: [Programado, Finalizado, Cancelado, Pausado]
+   *                 enum: [Programado, Finalizado, Cancelado]
    *                 default: Programado
    *               imageUrl:
    *                 type: string
@@ -535,7 +544,7 @@ export class EventsController {
    *                 example: 1
    *               typeId:
    *                 type: integer
-   *                 example: 2
+
    *     responses:
    *       200:
    *         description: Evento actualizado exitosamente
@@ -685,7 +694,7 @@ export class EventsController {
    *                     programado:
    *                       type: integer
    *                       description: Eventos programados
-   *                       example: 20
+
    *                     finalizado:
    *                       type: integer
    *                       description: Eventos finalizados
@@ -694,10 +703,10 @@ export class EventsController {
    *                       type: integer
    *                       description: Eventos cancelados
    *                       example: 5
-   *                     pausado:
+   *                     
    *                       type: integer
-   *                       description: Eventos pausados
-   *                       example: 2
+
+
    *                     byCategory:
    *                       type: array
    *                       description: Eventos agrupados por categoría
@@ -1048,7 +1057,7 @@ export class EventsController {
    *               sportsCategoryId:
    *                 type: integer
    *                 description: ID de la categoría deportiva (opcional, usa la de la inscripción activa si no se especifica)
-   *                 example: 2
+
    *               notes:
    *                 type: string
    *                 description: Notas adicionales sobre la inscripción
@@ -1183,6 +1192,108 @@ export class EventsController {
         success: false,
         message:
           error.message || "Error al desinscribir la deportista del evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/events/{id}/check-affected-registrations:
+   *   post:
+   *     summary: Verificar inscripciones afectadas por cambio de categorías
+   *     description: Verifica qué equipos y deportistas serían eliminados al cambiar las categorías del evento
+   *     tags: [Events]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - categoryIds
+   *             properties:
+   *               categoryIds:
+   *                 type: array
+   *                 items:
+   *                   type: integer
+   *                 description: Nuevos IDs de categorías deportivas
+   *                 example: [1, 2]
+   *     responses:
+   *       200:
+   *         description: Información sobre inscripciones afectadas
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     hasAffectedRegistrations:
+   *                       type: boolean
+   *                     removedCategories:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: integer
+   *                           nombre:
+   *                             type: string
+   *                     affectedTeams:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                     affectedAthletes:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                     totalAffected:
+   *                       type: integer
+   *       400:
+   *         description: Error en los datos
+   *       404:
+   *         description: Evento no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  checkAffectedRegistrations = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { categoryIds } = req.body;
+
+      if (!categoryIds || !Array.isArray(categoryIds)) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere un array de categoryIds",
+        });
+      }
+
+      const result = await this.eventsService.checkAffectedRegistrations(
+        id,
+        categoryIds,
+      );
+
+      res.json({
+        success: true,
+        data: result.data,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message || "Error al verificar inscripciones afectadas.",
         error:
           process.env.NODE_ENV === "development" ? error.message : undefined,
       });

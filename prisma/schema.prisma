@@ -185,14 +185,44 @@ enum EmployeeStatus {
 
 enum EventStatus {
   Programado
+  En_curso
   Finalizado
   Cancelado
-  En_pausa
 }
 
 enum TeamType {
   Fundacion
   Temporal
+}
+
+enum GroupStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum GroupLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum EventInvitationStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
+enum InvitationType {
+  INDIVIDUAL
+  TEAM
 }
 
 // ============================================
@@ -311,6 +341,7 @@ model Employee {
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
+  groups              Group[]
 
   @@map("employees")
 }
@@ -462,8 +493,7 @@ model Athlete {
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
-  athleteAttendances       AthleteAttendance[]
-  appointments             Appointment[]
+  groupMemberships         GroupMembership[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])
@@ -599,21 +629,22 @@ model TeamMember {
 }
 
 model Participant {
-  id               Int             @id @default(autoincrement())
+  id               Int               @id @default(autoincrement())
   type             ParticipantType
-  registrationDate DateTime        @default(now())
-  status           String          @default("Registered")
+  registrationDate DateTime          @default(now())
+  status           String            @default("Registered")
   notes            String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   serviceId        Int
   sportsCategoryId Int?
   athleteId        Int?
   teamId           Int?
-  athlete          Athlete?        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  service          Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  sportsCategory   SportsCategory? @relation(fields: [sportsCategoryId], references: [id])
-  team             Team?           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  athlete          Athlete?          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  service          Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  sportsCategory   SportsCategory?   @relation(fields: [sportsCategoryId], references: [id])
+  team             Team?             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  eventInvitations EventInvitation[]
 
   @@map("participants")
 }
@@ -846,4 +877,63 @@ model DonationFile {
   detail       DonationDetail?  @relation(fields: [detailId], references: [id], onDelete: Cascade)
 
   @@index([donationId])
+}
+
+model Group {
+  id          Int               @id @default(autoincrement())
+  name        String            @db.VarChar(100)
+  level       GroupLevel
+  teacherId   Int
+  maxCapacity Int
+  status      GroupStatus       @default(ACTIVE)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  teacher     Employee          @relation(fields: [teacherId], references: [id])
+  memberships GroupMembership[]
+
+  @@index([teacherId])
+  @@index([status])
+  @@map("groups")
+}
+
+model GroupMembership {
+  id        Int              @id @default(autoincrement())
+  groupId   Int
+  athleteId Int
+  startDate DateTime         @default(now())
+  endDate   DateTime?
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  athlete   Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, athleteId, status])
+  @@index([groupId])
+  @@index([athleteId])
+  @@index([status])
+  @@map("group_memberships")
+}
+
+model EventInvitation {
+  id             Int                   @id @default(autoincrement())
+  participantId  Int
+  token          String                @unique @db.VarChar(64)
+  status         EventInvitationStatus @default(PENDING)
+  invitationType InvitationType
+  recipientEmail String                @db.VarChar(150)
+  recipientName  String                @db.VarChar(200)
+  sentAt         DateTime              @default(now())
+  respondedAt    DateTime?
+  expiresAt      DateTime
+  reminderSentAt DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  participant    Participant           @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([participantId])
+  @@map("event_invitations")
 }

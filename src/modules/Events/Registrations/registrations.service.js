@@ -1,8 +1,10 @@
-import { RegistrationsRepository } from './registrations.repository.js';
+import { RegistrationsRepository } from "./registrations.repository.js";
+import { RSVPService } from "../RSVP/rsvp.service.js";
 
 export class RegistrationsService {
   constructor() {
     this.registrationsRepository = new RegistrationsRepository();
+    this.rsvpService = new RSVPService();
   }
 
   /**
@@ -11,45 +13,49 @@ export class RegistrationsService {
   async registerTeamToEvent(data) {
     try {
       // Validar que el evento existe
-      const event = await this.registrationsRepository.checkEventExists(data.serviceId);
+      const event = await this.registrationsRepository.checkEventExists(
+        data.serviceId,
+      );
       if (!event) {
         return {
           success: false,
           statusCode: 404,
-          message: 'El evento no existe.',
+          message: "El evento no existe.",
         };
       }
 
       // Validar que el evento no esté cancelado
-      if (event.status === 'Cancelado') {
+      if (event.status === "Cancelado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede inscribir a un evento cancelado.',
+          message: "No se puede inscribir a un evento cancelado.",
         };
       }
 
       // Validar que el evento no haya finalizado
-      if (event.status === 'Finalizado') {
+      if (event.status === "Finalizado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede inscribir a un evento finalizado.',
+          message: "No se puede inscribir a un evento finalizado.",
         };
       }
 
       // Validar que el equipo existe
-      const team = await this.registrationsRepository.checkTeamExists(data.teamId);
+      const team = await this.registrationsRepository.checkTeamExists(
+        data.teamId,
+      );
       if (!team) {
         return {
           success: false,
           statusCode: 404,
-          message: 'El equipo no existe.',
+          message: "El equipo no existe.",
         };
       }
 
       // Validar que el equipo esté activo
-      if (team.status !== 'Active') {
+      if (team.status !== "Active") {
         return {
           success: false,
           statusCode: 400,
@@ -57,11 +63,40 @@ export class RegistrationsService {
         };
       }
 
+      // VALIDACIÓN DE CATEGORÍA: Verificar que el equipo pertenezca a una categoría del evento
+      const eventCategories =
+        await this.registrationsRepository.getEventCategories(data.serviceId);
+
+      let sportsCategoryId = data.sportsCategoryId || null;
+
+      if (eventCategories && eventCategories.length > 0 && team.category) {
+        const teamCategoryMatch = eventCategories.find(
+          (cat) => cat.nombre.toLowerCase() === team.category.toLowerCase(),
+        );
+
+        if (!teamCategoryMatch) {
+          const categoryNames = eventCategories
+            .map((cat) => cat.nombre)
+            .join(", ");
+          return {
+            success: false,
+            statusCode: 400,
+            message: `El equipo "${team.name}" pertenece a la categoría "${team.category}" que no está permitida en este evento. Categorías permitidas: ${categoryNames}.`,
+          };
+        }
+
+        // Asignar automáticamente el sportsCategoryId si no se proporcionó
+        if (!sportsCategoryId) {
+          sportsCategoryId = teamCategoryMatch.id;
+        }
+      }
+
       // Verificar si el equipo ya está inscrito
-      const existingRegistration = await this.registrationsRepository.checkTeamRegistration(
-        data.serviceId,
-        data.teamId
-      );
+      const existingRegistration =
+        await this.registrationsRepository.checkTeamRegistration(
+          data.serviceId,
+          data.teamId,
+        );
 
       if (existingRegistration) {
         return {
@@ -71,8 +106,27 @@ export class RegistrationsService {
         };
       }
 
-      // Crear la inscripción
-      const registration = await this.registrationsRepository.registerTeamToEvent(data);
+      // Crear la inscripción con el sportsCategoryId correcto
+      const registration =
+        await this.registrationsRepository.registerTeamToEvent({
+          ...data,
+          sportsCategoryId,
+        });
+
+      // Enviar invitación RSVP
+      try {
+        const rsvpResult = await this.rsvpService.createAndSendInvitation(
+          registration.id,
+        );
+        if (!rsvpResult.success) {
+          console.warn(
+            `⚠️  No se pudo enviar invitación RSVP: ${rsvpResult.message}`,
+          );
+        }
+      } catch (rsvpError) {
+        console.error("❌ Error enviando invitación RSVP:", rsvpError.message);
+        // No fallar la inscripción si el email falla
+      }
 
       return {
         success: true,
@@ -90,19 +144,21 @@ export class RegistrationsService {
   async getEventRegistrations(serviceId, filters = {}) {
     try {
       // Validar que el evento existe
-      const event = await this.registrationsRepository.checkEventExists(serviceId);
+      const event =
+        await this.registrationsRepository.checkEventExists(serviceId);
       if (!event) {
         return {
           success: false,
           statusCode: 404,
-          message: 'El evento no existe.',
+          message: "El evento no existe.",
         };
       }
 
-      const registrations = await this.registrationsRepository.getEventRegistrations(
-        serviceId,
-        filters
-      );
+      const registrations =
+        await this.registrationsRepository.getEventRegistrations(
+          serviceId,
+          filters,
+        );
 
       return {
         success: true,
@@ -132,14 +188,15 @@ export class RegistrationsService {
         return {
           success: false,
           statusCode: 404,
-          message: 'El equipo no existe.',
+          message: "El equipo no existe.",
         };
       }
 
-      const registrations = await this.registrationsRepository.getTeamRegistrations(
-        teamId,
-        filters
-      );
+      const registrations =
+        await this.registrationsRepository.getTeamRegistrations(
+          teamId,
+          filters,
+        );
 
       return {
         success: true,
@@ -163,13 +220,14 @@ export class RegistrationsService {
    */
   async getRegistrationById(id) {
     try {
-      const registration = await this.registrationsRepository.getRegistrationById(id);
+      const registration =
+        await this.registrationsRepository.getRegistrationById(id);
 
       if (!registration) {
         return {
           success: false,
           statusCode: 404,
-          message: 'Inscripción no encontrada.',
+          message: "Inscripción no encontrada.",
         };
       }
 
@@ -188,30 +246,37 @@ export class RegistrationsService {
   async updateRegistrationStatus(id, status, notes = null) {
     try {
       // Validar que la inscripción existe
-      const existingRegistration = await this.registrationsRepository.getRegistrationById(id);
+      const existingRegistration =
+        await this.registrationsRepository.getRegistrationById(id);
       if (!existingRegistration) {
         return {
           success: false,
           statusCode: 404,
-          message: 'Inscripción no encontrada.',
+          message: "Inscripción no encontrada.",
         };
       }
 
       // Validar estados válidos
-      const validStatuses = ['Registered', 'Confirmed', 'Cancelled', 'Attended'];
+      const validStatuses = [
+        "Registered",
+        "Confirmed",
+        "Cancelled",
+        "Attended",
+      ];
       if (!validStatuses.includes(status)) {
         return {
           success: false,
           statusCode: 400,
-          message: `Estado inválido. Estados válidos: ${validStatuses.join(', ')}`,
+          message: `Estado inválido. Estados válidos: ${validStatuses.join(", ")}`,
         };
       }
 
-      const updatedRegistration = await this.registrationsRepository.updateRegistrationStatus(
-        id,
-        status,
-        notes
-      );
+      const updatedRegistration =
+        await this.registrationsRepository.updateRegistrationStatus(
+          id,
+          status,
+          notes,
+        );
 
       return {
         success: true,
@@ -229,21 +294,23 @@ export class RegistrationsService {
   async cancelRegistration(id) {
     try {
       // Validar que la inscripción existe
-      const existingRegistration = await this.registrationsRepository.getRegistrationById(id);
-      
+      const existingRegistration =
+        await this.registrationsRepository.getRegistrationById(id);
+
       if (!existingRegistration) {
         return {
           success: false,
           statusCode: 404,
-          message: 'Inscripción no encontrada.',
+          message: "Inscripción no encontrada.",
         };
       }
 
       await this.registrationsRepository.cancelRegistration(id);
 
       // Construir mensaje con validación de datos
-      const teamName = existingRegistration.team?.name || 'Equipo desconocido';
-      const eventName = existingRegistration.service?.name || 'Evento desconocido';
+      const teamName = existingRegistration.team?.name || "Equipo desconocido";
+      const eventName =
+        existingRegistration.service?.name || "Evento desconocido";
 
       return {
         success: true,
@@ -291,11 +358,16 @@ export class RegistrationsService {
    */
   async getAvailableTeams(filters = {}) {
     try {
-      const teams = await this.registrationsRepository.getAvailableTeams(filters);
+      const teams =
+        await this.registrationsRepository.getAvailableTeams(filters);
 
       // Separar equipos por tipo
-      const foundationTeams = teams.filter((team) => team.teamType === 'Fundacion');
-      const temporaryTeams = teams.filter((team) => team.teamType === 'Temporal');
+      const foundationTeams = teams.filter(
+        (team) => team.teamType === "Fundacion",
+      );
+      const temporaryTeams = teams.filter(
+        (team) => team.teamType === "Temporal",
+      );
 
       return {
         success: true,
@@ -318,31 +390,36 @@ export class RegistrationsService {
       const { serviceId, teamIds, notes } = data;
 
       // Validar que el evento existe
-      const event = await this.registrationsRepository.checkEventExists(serviceId);
+      const event =
+        await this.registrationsRepository.checkEventExists(serviceId);
       if (!event) {
         return {
           success: false,
           statusCode: 404,
-          message: 'El evento no existe.',
+          message: "El evento no existe.",
         };
       }
 
       // Validar que el evento no esté cancelado o finalizado
-      if (event.status === 'Cancelado') {
+      if (event.status === "Cancelado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede inscribir a un evento cancelado.',
+          message: "No se puede inscribir a un evento cancelado.",
         };
       }
 
-      if (event.status === 'Finalizado') {
+      if (event.status === "Finalizado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede inscribir a un evento finalizado.',
+          message: "No se puede inscribir a un evento finalizado.",
         };
       }
+
+      // Obtener categorías del evento una sola vez
+      const eventCategories =
+        await this.registrationsRepository.getEventCategories(serviceId);
 
       // Inscribir cada equipo
       const results = [];
@@ -351,17 +428,18 @@ export class RegistrationsService {
       for (const teamId of teamIds) {
         try {
           // Validar que el equipo existe
-          const team = await this.registrationsRepository.checkTeamExists(teamId);
+          const team =
+            await this.registrationsRepository.checkTeamExists(teamId);
           if (!team) {
             errors.push({
               teamId,
-              error: 'El equipo no existe.',
+              error: "El equipo no existe.",
             });
             continue;
           }
 
           // Validar que el equipo esté activo
-          if (team.status !== 'Active') {
+          if (team.status !== "Active") {
             errors.push({
               teamId,
               teamName: team.name,
@@ -370,28 +448,55 @@ export class RegistrationsService {
             continue;
           }
 
+          // VALIDACIÓN DE CATEGORÍA: Verificar que el equipo pertenezca a una categoría del evento
+          let sportsCategoryId = null;
+
+          if (eventCategories && eventCategories.length > 0 && team.category) {
+            const teamCategoryMatch = eventCategories.find(
+              (cat) => cat.nombre.toLowerCase() === team.category.toLowerCase(),
+            );
+
+            if (!teamCategoryMatch) {
+              const categoryNames = eventCategories
+                .map((cat) => cat.nombre)
+                .join(", ");
+              errors.push({
+                teamId,
+                teamName: team.name,
+                error: `El equipo pertenece a la categoría "${team.category}" que no está permitida en este evento. Categorías permitidas: ${categoryNames}.`,
+              });
+              continue;
+            }
+
+            // Asignar el sportsCategoryId correcto
+            sportsCategoryId = teamCategoryMatch.id;
+          }
+
           // Verificar si el equipo ya está inscrito
-          const existingRegistration = await this.registrationsRepository.checkTeamRegistration(
-            serviceId,
-            teamId
-          );
+          const existingRegistration =
+            await this.registrationsRepository.checkTeamRegistration(
+              serviceId,
+              teamId,
+            );
 
           if (existingRegistration) {
             errors.push({
               teamId,
               teamName: team.name,
-              error: 'El equipo ya está inscrito en este evento.',
+              error: "El equipo ya está inscrito en este evento.",
             });
             continue;
           }
 
-          // Crear la inscripción
-          const registration = await this.registrationsRepository.createRegistration({
-            serviceId,
-            teamId,
-            notes,
-            status: 'Registered',
-          });
+          // Crear la inscripción con el sportsCategoryId correcto
+          const registration =
+            await this.registrationsRepository.createRegistration({
+              serviceId,
+              teamId,
+              sportsCategoryId,
+              notes,
+              status: "Registered",
+            });
           results.push(registration);
         } catch (error) {
           errors.push({
@@ -427,45 +532,49 @@ export class RegistrationsService {
   async registerAthleteToEvent(data) {
     try {
       // Validar que el evento existe
-      const event = await this.registrationsRepository.checkEventExists(data.serviceId);
+      const event = await this.registrationsRepository.checkEventExists(
+        data.serviceId,
+      );
       if (!event) {
         return {
           success: false,
           statusCode: 404,
-          message: 'El evento no existe.',
+          message: "El evento no existe.",
         };
       }
 
       // Validar que el evento no esté cancelado
-      if (event.status === 'Cancelado') {
+      if (event.status === "Cancelado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede inscribir a un evento cancelado.',
+          message: "No se puede inscribir a un evento cancelado.",
         };
       }
 
       // Validar que el evento no haya finalizado
-      if (event.status === 'Finalizado') {
+      if (event.status === "Finalizado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede inscribir a un evento finalizado.',
+          message: "No se puede inscribir a un evento finalizado.",
         };
       }
 
       // Validar que el deportista existe
-      const athlete = await this.registrationsRepository.checkAthleteExists(data.athleteId);
+      const athlete = await this.registrationsRepository.checkAthleteExists(
+        data.athleteId,
+      );
       if (!athlete) {
         return {
           success: false,
           statusCode: 404,
-          message: 'El deportista no existe.',
+          message: "El deportista no existe.",
         };
       }
 
       // Validar que el deportista esté activo
-      if (athlete.status !== 'Active') {
+      if (athlete.status !== "Active") {
         return {
           success: false,
           statusCode: 400,
@@ -473,11 +582,66 @@ export class RegistrationsService {
         };
       }
 
+      // VALIDACIÓN DE CATEGORÍA: Verificar que el deportista tenga una inscripción activa en una categoría del evento
+      let sportsCategoryId = data.sportsCategoryId || null;
+
+      const eventCategories =
+        await this.registrationsRepository.getEventCategories(data.serviceId);
+      if (eventCategories && eventCategories.length > 0) {
+        const athleteInscriptions =
+          await this.registrationsRepository.getAthleteActiveInscriptions(
+            data.athleteId,
+          );
+
+        if (!athleteInscriptions || athleteInscriptions.length === 0) {
+          const categoryNames = eventCategories
+            .map((cat) => cat.nombre)
+            .join(", ");
+          const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
+          return {
+            success: false,
+            statusCode: 400,
+            message: `El deportista "${athleteName}" no tiene inscripciones activas en ninguna categoría deportiva. Categorías requeridas para este evento: ${categoryNames}.`,
+          };
+        }
+
+        const athleteCategoryIds = athleteInscriptions.map(
+          (insc) => insc.sportsCategoryId,
+        );
+        const eventCategoryIds = eventCategories.map((cat) => cat.id);
+
+        const matchingCategoryIds = athleteCategoryIds.filter((catId) =>
+          eventCategoryIds.includes(catId),
+        );
+
+        if (matchingCategoryIds.length === 0) {
+          const athleteCategories = athleteInscriptions
+            .map((insc) => insc.sportsCategory.nombre)
+            .join(", ");
+          const eventCategoryNames = eventCategories
+            .map((cat) => cat.nombre)
+            .join(", ");
+          const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
+          return {
+            success: false,
+            statusCode: 400,
+            message: `El deportista "${athleteName}" está inscrito en las categorías: ${athleteCategories}, pero el evento requiere: ${eventCategoryNames}.`,
+          };
+        }
+
+        // Asignar automáticamente el sportsCategoryId si no se proporcionó
+        // Usar la primera categoría coincidente
+        if (!sportsCategoryId) {
+          sportsCategoryId = matchingCategoryIds[0];
+        }
+      }
+
       // Verificar si el deportista ya está inscrito
-      const existingRegistration = await this.registrationsRepository.checkAthleteRegistration(
-        data.serviceId,
-        data.athleteId
-      );
+      const existingRegistration =
+        await this.registrationsRepository.checkAthleteRegistration(
+          data.serviceId,
+          data.athleteId,
+        );
 
       if (existingRegistration) {
         const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
@@ -488,8 +652,27 @@ export class RegistrationsService {
         };
       }
 
-      // Crear la inscripción
-      const registration = await this.registrationsRepository.registerAthleteToEvent(data);
+      // Crear la inscripción con el sportsCategoryId correcto
+      const registration =
+        await this.registrationsRepository.registerAthleteToEvent({
+          ...data,
+          sportsCategoryId,
+        });
+
+      // Enviar invitación RSVP
+      try {
+        const rsvpResult = await this.rsvpService.createAndSendInvitation(
+          registration.id,
+        );
+        if (!rsvpResult.success) {
+          console.warn(
+            `⚠️  No se pudo enviar invitación RSVP: ${rsvpResult.message}`,
+          );
+        }
+      } catch (rsvpError) {
+        console.error("❌ Error enviando invitación RSVP:", rsvpError.message);
+        // No fallar la inscripción si el email falla
+      }
 
       const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
       return {
@@ -508,19 +691,21 @@ export class RegistrationsService {
   async getEventAthleteRegistrations(serviceId, filters = {}) {
     try {
       // Validar que el evento existe
-      const event = await this.registrationsRepository.checkEventExists(serviceId);
+      const event =
+        await this.registrationsRepository.checkEventExists(serviceId);
       if (!event) {
         return {
           success: false,
           statusCode: 404,
-          message: 'El evento no existe.',
+          message: "El evento no existe.",
         };
       }
 
-      const registrations = await this.registrationsRepository.getEventAthleteRegistrations(
-        serviceId,
-        filters
-      );
+      const registrations =
+        await this.registrationsRepository.getEventAthleteRegistrations(
+          serviceId,
+          filters,
+        );
 
       return {
         success: true,
@@ -545,19 +730,21 @@ export class RegistrationsService {
   async getAthleteRegistrations(athleteId, filters = {}) {
     try {
       // Validar que el deportista existe
-      const athlete = await this.registrationsRepository.checkAthleteExists(athleteId);
+      const athlete =
+        await this.registrationsRepository.checkAthleteExists(athleteId);
       if (!athlete) {
         return {
           success: false,
           statusCode: 404,
-          message: 'El deportista no existe.',
+          message: "El deportista no existe.",
         };
       }
 
-      const registrations = await this.registrationsRepository.getAthleteRegistrations(
-        athleteId,
-        filters
-      );
+      const registrations =
+        await this.registrationsRepository.getAthleteRegistrations(
+          athleteId,
+          filters,
+        );
 
       const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
       return {
@@ -582,7 +769,8 @@ export class RegistrationsService {
    */
   async getAvailableAthletes(filters = {}) {
     try {
-      const athletes = await this.registrationsRepository.getAvailableAthletes(filters);
+      const athletes =
+        await this.registrationsRepository.getAvailableAthletes(filters);
 
       return {
         success: true,
@@ -604,31 +792,36 @@ export class RegistrationsService {
       const { serviceId, athleteIds, notes } = data;
 
       // Validar que el evento existe
-      const event = await this.registrationsRepository.checkEventExists(serviceId);
+      const event =
+        await this.registrationsRepository.checkEventExists(serviceId);
       if (!event) {
         return {
           success: false,
           statusCode: 404,
-          message: 'El evento no existe.',
+          message: "El evento no existe.",
         };
       }
 
       // Validar que el evento no esté cancelado o finalizado
-      if (event.status === 'Cancelado') {
+      if (event.status === "Cancelado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede inscribir a un evento cancelado.',
+          message: "No se puede inscribir a un evento cancelado.",
         };
       }
 
-      if (event.status === 'Finalizado') {
+      if (event.status === "Finalizado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede inscribir a un evento finalizado.',
+          message: "No se puede inscribir a un evento finalizado.",
         };
       }
+
+      // Obtener categorías del evento una sola vez
+      const eventCategories =
+        await this.registrationsRepository.getEventCategories(serviceId);
 
       // Inscribir cada deportista
       const results = [];
@@ -637,17 +830,18 @@ export class RegistrationsService {
       for (const athleteId of athleteIds) {
         try {
           // Validar que el deportista existe
-          const athlete = await this.registrationsRepository.checkAthleteExists(athleteId);
+          const athlete =
+            await this.registrationsRepository.checkAthleteExists(athleteId);
           if (!athlete) {
             errors.push({
               athleteId,
-              error: 'El deportista no existe.',
+              error: "El deportista no existe.",
             });
             continue;
           }
 
           // Validar que el deportista esté activo
-          if (athlete.status !== 'Active') {
+          if (athlete.status !== "Active") {
             const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
             errors.push({
               athleteId,
@@ -657,29 +851,76 @@ export class RegistrationsService {
             continue;
           }
 
+          // VALIDACIÓN DE CATEGORÍA: Verificar que el deportista tenga una inscripción activa en una categoría del evento
+          if (eventCategories && eventCategories.length > 0) {
+            const athleteInscriptions =
+              await this.registrationsRepository.getAthleteActiveInscriptions(
+                athleteId,
+              );
+            const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
+
+            if (!athleteInscriptions || athleteInscriptions.length === 0) {
+              const categoryNames = eventCategories
+                .map((cat) => cat.nombre)
+                .join(", ");
+              errors.push({
+                athleteId,
+                athleteName,
+                error: `El deportista no tiene inscripciones activas en ninguna categoría deportiva. Categorías requeridas: ${categoryNames}.`,
+              });
+              continue;
+            }
+
+            const athleteCategoryIds = athleteInscriptions.map(
+              (insc) => insc.sportsCategoryId,
+            );
+            const eventCategoryIds = eventCategories.map((cat) => cat.id);
+
+            const hasMatchingCategory = athleteCategoryIds.some((catId) =>
+              eventCategoryIds.includes(catId),
+            );
+
+            if (!hasMatchingCategory) {
+              const athleteCategories = athleteInscriptions
+                .map((insc) => insc.sportsCategory.nombre)
+                .join(", ");
+              const eventCategoryNames = eventCategories
+                .map((cat) => cat.nombre)
+                .join(", ");
+              errors.push({
+                athleteId,
+                athleteName,
+                error: `El deportista está inscrito en las categorías: ${athleteCategories}, pero el evento requiere: ${eventCategoryNames}.`,
+              });
+              continue;
+            }
+          }
+
           // Verificar si el deportista ya está inscrito
-          const existingRegistration = await this.registrationsRepository.checkAthleteRegistration(
-            serviceId,
-            athleteId
-          );
+          const existingRegistration =
+            await this.registrationsRepository.checkAthleteRegistration(
+              serviceId,
+              athleteId,
+            );
 
           if (existingRegistration) {
             const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`;
             errors.push({
               athleteId,
               athleteName,
-              error: 'El deportista ya está inscrito en este evento.',
+              error: "El deportista ya está inscrito en este evento.",
             });
             continue;
           }
 
           // Crear la inscripción
-          const registration = await this.registrationsRepository.createAthleteRegistration({
-            serviceId,
-            athleteId,
-            notes,
-            status: 'Registered',
-          });
+          const registration =
+            await this.registrationsRepository.createAthleteRegistration({
+              serviceId,
+              athleteId,
+              notes,
+              status: "Registered",
+            });
           results.push(registration);
         } catch (error) {
           errors.push({
@@ -699,6 +940,46 @@ export class RegistrationsService {
           failed: errors.length,
         },
         message: `Se inscribieron ${results.length} de ${athleteIds.length} deportistas exitosamente.`,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener equipos disponibles filtrados por categorías del evento (optimizado)
+   */
+  async getTeamsByEventCategories(serviceId) {
+    try {
+      // Validar que el evento existe
+      const event =
+        await this.registrationsRepository.checkEventExists(serviceId);
+      if (!event) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "El evento no existe.",
+        };
+      }
+
+      const teams =
+        await this.registrationsRepository.getTeamsByEventCategories(serviceId);
+
+      // Separar equipos por tipo
+      const foundationTeams = teams.filter(
+        (team) => team.teamType === "Fundacion",
+      );
+      const temporaryTeams = teams.filter(
+        (team) => team.teamType === "Temporal",
+      );
+
+      return {
+        success: true,
+        data: {
+          foundation: foundationTeams,
+          temporary: temporaryTeams,
+          total: teams.length,
+        },
       };
     } catch (error) {
       throw error;

@@ -29,7 +29,7 @@ class EmailService {
 
       console.log(
         "📧 Inicializando servicio de email con:",
-        process.env.EMAIL_USER
+        process.env.EMAIL_USER,
       );
 
       // Configuración unificada para Gmail (desarrollo y producción)
@@ -87,7 +87,7 @@ class EmailService {
 
       // Verificar conexión con timeout corto
       const connectionTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout de conexión")), 5000)
+        setTimeout(() => reject(new Error("Timeout de conexión")), 5000),
       );
 
       try {
@@ -95,7 +95,7 @@ class EmailService {
       } catch (verifyError) {
         console.warn(
           "⚠️  No se pudo verificar conexión de email, simulando envío:",
-          verifyError.message
+          verifyError.message,
         );
         return { success: true, messageId: "simulated-fallback-" + Date.now() };
       }
@@ -111,19 +111,19 @@ class EmailService {
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword
+          temporaryPassword,
         ),
         text: this.generateWelcomeEmailText(
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword
+          temporaryPassword,
         ),
       };
 
       // Enviar email con timeout
       const sendTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout de envío")), 10000)
+        setTimeout(() => reject(new Error("Timeout de envío")), 10000),
       );
 
       const result = await Promise.race([
@@ -139,7 +139,7 @@ class EmailService {
     } catch (error) {
       console.warn(
         "⚠️  Error enviando email, pero continuando:",
-        error.message
+        error.message,
       );
       return {
         success: false,
@@ -301,13 +301,13 @@ Este es un email automático del sistema AstroStar.
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword
+          temporaryPassword,
         ),
         text: this.generateAthleteWelcomeEmailText(
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword
+          temporaryPassword,
         ),
       };
 
@@ -491,7 +491,7 @@ Este es un email automático del sistema AstroStar.
       const result = await this.transporter.sendMail(mailOptions);
       console.log(
         "✅ Email enviado exitosamente. MessageId:",
-        result.messageId
+        result.messageId,
       );
       return { success: true, messageId: result.messageId };
     } catch (error) {
@@ -589,7 +589,7 @@ Este es un email automático del sistema AstroStar.
           numeroDocumento,
           fechaNacimiento,
           telefono,
-          correo
+          correo,
         ),
       };
 
@@ -603,7 +603,7 @@ Este es un email automático del sistema AstroStar.
     } catch (error) {
       console.error(
         "❌ Error enviando email de pre-inscripción:",
-        error.message
+        error.message,
       );
       return { success: false, error: error.message };
     }
@@ -618,7 +618,7 @@ Este es un email automático del sistema AstroStar.
     numeroDocumento,
     fechaNacimiento,
     telefono,
-    correo
+    correo,
   ) {
     const formatDate = (date) => {
       return new Date(date).toLocaleDateString("es-CO", {
@@ -664,7 +664,7 @@ Este es un email automático del sistema AstroStar.
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Nombre:</strong> ${nombres} ${apellidos}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Número de Documento:</strong> ${numeroDocumento}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Fecha de Nacimiento:</strong> ${formatDate(
-                      fechaNacimiento
+                      fechaNacimiento,
                     )}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${telefono}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Correo:</strong> ${correo}</p>
@@ -822,11 +822,173 @@ Este es un email automático del sistema AstroStar.
       const result = await this.transporter.sendMail(mailOptions);
       console.log(
         "✅ Email de verificación enviado exitosamente. MessageId:",
-        result.messageId
+        result.messageId,
       );
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error("❌ Error enviando email de verificación:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Enviar invitación RSVP para evento
+   */
+  async sendRSVPInvitation(invitation, event, participant, icsContent) {
+    try {
+      if (!this.transporter) {
+        console.log("⚠️  Servicio de email no disponible");
+        return { success: false, error: "Email service not configured" };
+      }
+
+      const { getRSVPInvitationHTML } =
+        await import("../templates/rsvpInvitationTemplate.js");
+      const { formatEventDate, formatEventTime } =
+        await import("../utils/dateFormatter.js");
+
+      const baseUrl =
+        process.env.BACKEND_URL ||
+        process.env.FRONTEND_URL ||
+        "http://localhost:4000";
+      const confirmUrl = `${baseUrl}/api/rsvp?token=${invitation.token}&action=confirm`;
+      const declineUrl = `${baseUrl}/api/rsvp?token=${invitation.token}&action=decline`;
+
+      const emailData = {
+        recipientName: invitation.recipientName,
+        isTeam: invitation.invitationType === "TEAM",
+        teamName: participant.team?.name || "",
+        eventName: event.name,
+        eventDate: formatEventDate(event.startDate),
+        eventTime: formatEventTime(event.startTime, event.endTime),
+        eventLocation: event.location,
+        confirmUrl,
+        declineUrl,
+      };
+
+      const htmlContent = getRSVPInvitationHTML(emailData);
+
+      const mailOptions = {
+        from: `"AstroStar Eventos" <${process.env.EMAIL_USER}>`,
+        to: invitation.recipientEmail,
+        subject: `Confirmación de Asistencia - ${event.name}`,
+        html: htmlContent,
+        attachments: [
+          {
+            filename: `evento-${event.id}.ics`,
+            content: icsContent,
+            contentType: "text/calendar; charset=utf-8; method=REQUEST",
+          },
+        ],
+      };
+
+      console.log(
+        `📤 Enviando invitación RSVP a: ${invitation.recipientEmail}`,
+      );
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log("✅ Invitación RSVP enviada. MessageId:", result.messageId);
+
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error("❌ Error enviando invitación RSVP:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Enviar recordatorio de invitación pendiente
+   */
+  async sendRSVPReminder(invitation, event, participant) {
+    try {
+      if (!this.transporter) {
+        return { success: false, error: "Email service not configured" };
+      }
+
+      const { getRSVPReminderHTML } =
+        await import("../templates/rsvpReminderTemplate.js");
+      const { formatEventDate, formatEventTime } =
+        await import("../utils/dateFormatter.js");
+
+      const baseUrl =
+        process.env.BACKEND_URL ||
+        process.env.FRONTEND_URL ||
+        "http://localhost:4000";
+      const confirmUrl = `${baseUrl}/api/rsvp?token=${invitation.token}&action=confirm`;
+      const declineUrl = `${baseUrl}/api/rsvp?token=${invitation.token}&action=decline`;
+
+      const emailData = {
+        recipientName: invitation.recipientName,
+        isTeam: invitation.invitationType === "TEAM",
+        teamName: participant.team?.name || "",
+        eventName: event.name,
+        eventDate: formatEventDate(event.startDate),
+        eventTime: formatEventTime(event.startTime, event.endTime),
+        eventLocation: event.location,
+        confirmUrl,
+        declineUrl,
+      };
+
+      const htmlContent = getRSVPReminderHTML(emailData);
+
+      const mailOptions = {
+        from: `"AstroStar Eventos" <${process.env.EMAIL_USER}>`,
+        to: invitation.recipientEmail,
+        subject: `⏰ Recordatorio: Confirma tu asistencia a ${event.name}`,
+        html: htmlContent,
+      };
+
+      console.log(
+        `📤 Enviando recordatorio RSVP a: ${invitation.recipientEmail}`,
+      );
+      const result = await this.transporter.sendMail(mailOptions);
+
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error("❌ Error enviando recordatorio RSVP:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Enviar recordatorio de evento confirmado
+   */
+  async sendConfirmedEventReminder(invitation, event, participant) {
+    try {
+      if (!this.transporter) {
+        return { success: false, error: "Email service not configured" };
+      }
+
+      const { getConfirmedReminderHTML } =
+        await import("../templates/rsvpReminderTemplate.js");
+      const { formatEventDate, formatEventTime } =
+        await import("../utils/dateFormatter.js");
+
+      const emailData = {
+        recipientName: invitation.recipientName,
+        isTeam: invitation.invitationType === "TEAM",
+        teamName: participant.team?.name || "",
+        eventName: event.name,
+        eventDate: formatEventDate(event.startDate),
+        eventTime: formatEventTime(event.startTime, event.endTime),
+        eventLocation: event.location,
+      };
+
+      const htmlContent = getConfirmedReminderHTML(emailData);
+
+      const mailOptions = {
+        from: `"AstroStar Eventos" <${process.env.EMAIL_USER}>`,
+        to: invitation.recipientEmail,
+        subject: `📅 Recordatorio: ${event.name} es mañana`,
+        html: htmlContent,
+      };
+
+      console.log(
+        `📤 Enviando recordatorio de evento a: ${invitation.recipientEmail}`,
+      );
+      const result = await this.transporter.sendMail(mailOptions);
+
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error("❌ Error enviando recordatorio de evento:", error.message);
       return { success: false, error: error.message };
     }
   }

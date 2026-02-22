@@ -301,11 +301,21 @@ async function main() {
   ];
 
   for (const eventType of eventTypes) {
-    await prisma.serviceType.upsert({
-      where: { name: eventType.name },
-      update: { description: eventType.description },
-      create: eventType,
-    });
+    try {
+      await prisma.serviceType.create({
+        data: eventType,
+      });
+    } catch (error) {
+      // Si ya existe, actualizar
+      if (error.code === "P2002") {
+        await prisma.serviceType.updateMany({
+          where: { name: eventType.name },
+          data: { description: eventType.description },
+        });
+      } else {
+        throw error;
+      }
+    }
   }
 
   console.log("   ✓ Tipos de eventos configurados\n");
@@ -353,7 +363,7 @@ async function main() {
   console.log("   • Categorías de eventos: Configuradas");
   console.log("   • Tipos de eventos: Configurados");
   console.log(
-    "   • Categorías deportivas: Configuradas (Infantil, PreJuvenil, Juvenil)"
+    "   • Categorías deportivas: Configuradas (Infantil, PreJuvenil, Juvenil)",
   );
   console.log("\n💡 Puedes iniciar sesión con:");
   console.log("   📧 Email: astrostar.java@gmail.com");
