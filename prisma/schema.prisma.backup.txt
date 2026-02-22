@@ -185,44 +185,14 @@ enum EmployeeStatus {
 
 enum EventStatus {
   Programado
-  En_curso
   Finalizado
   Cancelado
+  En_pausa
 }
 
 enum TeamType {
   Fundacion
   Temporal
-}
-
-enum GroupStatus {
-  ACTIVE
-  ARCHIVED
-}
-
-enum GroupLevel {
-  A1
-  A2
-  B1
-  B2
-  C1
-  C2
-}
-
-enum MembershipStatus {
-  ACTIVE
-  INACTIVE
-}
-
-enum EventInvitationStatus {
-  PENDING
-  CONFIRMED
-  DECLINED
-}
-
-enum InvitationType {
-  INDIVIDUAL
-  TEAM
 }
 
 // ============================================
@@ -336,12 +306,9 @@ model Employee {
   updatedAt           DateTime             @updatedAt
   userId              Int                  @unique
   employeePermissions EmployeePermission[]
-  employeeSchedules   EmployeeSchedule[]
-  appointments        Appointment[]
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchases           Purchase[]
   teamMembers         TeamMember[]
-  groups              Group[]
 
   @@map("employees")
 }
@@ -384,48 +351,6 @@ model EmployeePermission {
   @@map("employee_permissions")
 }
 
-model EmployeeSchedule {
-  id                 Int                @id @default(autoincrement())
-  employeeId         Int
-  scheduleDate       DateTime
-  dayOfWeek          String
-  startTime          String
-  endTime            String
-  recurrence         ScheduleRecurrence @default(no)
-  customRecurrence   String?
-  description        String?
-  status             ScheduleStatus     @default(Programado)
-  cancellationReason String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@map("employee_schedules")
-}
-
-model Appointment {
-  id              Int            @id @default(autoincrement())
-  athleteId       Int
-  specialistId    Int
-  appointmentDate DateTime
-  startTime       String
-  endTime         String
-  specialty       String
-  description     String?
-  status          ScheduleStatus @default(Programado)
-  cancelReason    String?
-  conclusion      String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  athlete         Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  specialist      Employee       @relation(fields: [specialistId], references: [id], onDelete: Cascade)
-
-  @@index([athleteId, appointmentDate])
-  @@index([specialistId, appointmentDate])
-  @@index([status])
-  @@map("appointments")
-}
-
 model SportsCategory {
   id                      Int                     @id @default(autoincrement())
   nombre                  String                  @db.VarChar(50)
@@ -456,21 +381,20 @@ model EventCategory {
 }
 
 model Guardian {
-  id               Int          @id @default(autoincrement())
-  firstName        String       @db.VarChar(100)
-  lastName         String       @db.VarChar(100)
-  identification   String       @unique @db.VarChar(50)
-  email            String       @unique @db.VarChar(150)
-  phone            String       @db.VarChar(20)
-  address          String?      @db.VarChar(200)
-  occupation       String?      @db.VarChar(100)
-  statusAssignedAt DateTime     @default(now())
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  documentTypeId   Int
-  birthDate        DateTime?
-  athletes         Athlete[]
-  documentType     DocumentType @relation(fields: [documentTypeId], references: [id])
+  id             Int          @id @default(autoincrement())
+  firstName      String       @db.VarChar(100)
+  lastName       String       @db.VarChar(100)
+  identification String       @unique @db.VarChar(50)
+  email          String       @unique @db.VarChar(150)
+  phone          String       @db.VarChar(20)
+  address        String?      @db.VarChar(200)
+  occupation     String?      @db.VarChar(100)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  documentTypeId Int
+  birthDate      DateTime?
+  athletes       Athlete[]
+  documentType   DocumentType @relation(fields: [documentTypeId], references: [id])
 
   @@map("guardians")
 }
@@ -479,21 +403,19 @@ model Athlete {
   id                       Int                   @id @default(autoincrement())
   userId                   Int                   @unique
   status                   AthleteStatus         @default(Active)
-  statusAssignedAt         DateTime              @default(now())
+  inactivityReason         String?               @db.VarChar(200)
   guardianId               Int?
   relationship             GuardianRelationship?
   otherRelationship        String?               @db.VarChar(100)
   currentInscriptionStatus InscriptionStatus?
   createdAt                DateTime              @default(now())
   updatedAt                DateTime              @updatedAt
-  inactivityReason         String?               @db.VarChar(200)
   guardian                 Guardian?             @relation(fields: [guardianId], references: [id])
   user                     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   enrollments              Enrollment[]
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
-  groupMemberships         GroupMembership[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])
@@ -501,32 +423,17 @@ model Athlete {
   @@map("athletes")
 }
 
-model AthleteAttendance {
-  id          Int      @id @default(autoincrement())
-  athleteId   Int
-  date        DateTime
-  asistencia  Boolean  @default(false)
-  observacion String?  @db.VarChar(500)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-
-  @@unique([athleteId, date])
-  @@index([date])
-  @@map("athlete_attendances")
-}
-
 model Enrollment {
   id               Int              @id @default(autoincrement())
   athleteId        Int
+  fechaInicio      DateTime         @default(now())
+  fechaVencimiento DateTime
   fechaMatricula   DateTime         @default(now())
   estado           EnrollmentStatus @default(Vigente)
-  observaciones    String?
+  observaciones    String?          @db.Text
   comprobantePago  String?          @db.VarChar(500)
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
-  fechaInicio      DateTime         @default(now())
-  fechaVencimiento DateTime
   athlete          Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@index([athleteId])
@@ -579,7 +486,7 @@ model TemporaryPerson {
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   documentTypeId Int
-  personType     TemporaryPersonType   @default(Participante)
+  personType     TemporaryPersonType   @default(Deportista)
   category       String?
   team           String?
   middleName     String?
@@ -629,22 +536,21 @@ model TeamMember {
 }
 
 model Participant {
-  id               Int               @id @default(autoincrement())
+  id               Int             @id @default(autoincrement())
   type             ParticipantType
-  registrationDate DateTime          @default(now())
-  status           String            @default("Registered")
+  registrationDate DateTime        @default(now())
+  status           String          @default("Registered")
   notes            String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   serviceId        Int
   sportsCategoryId Int?
   athleteId        Int?
   teamId           Int?
-  athlete          Athlete?          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  service          Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  sportsCategory   SportsCategory?   @relation(fields: [sportsCategoryId], references: [id])
-  team             Team?             @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  eventInvitations EventInvitation[]
+  athlete          Athlete?        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  service          Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  sportsCategory   SportsCategory? @relation(fields: [sportsCategoryId], references: [id])
+  team             Team?           @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@map("participants")
 }
@@ -668,9 +574,6 @@ model Provider {
   documentType     DocumentType?      @relation(fields: [documentTypeId], references: [id])
   purchases        Purchase[]
 
-  @@index([businessName])
-  @@index([entityType])
-  @@index([status])
   @@map("providers")
 }
 
@@ -678,13 +581,13 @@ model PreRegistration {
   id              Int                   @id @default(autoincrement())
   nombres         String                @db.VarChar(100)
   apellidos       String                @db.VarChar(100)
+  numeroDocumento String?               @db.VarChar(50)
   fechaNacimiento DateTime
   telefono        String                @db.VarChar(20)
   correo          String                @db.VarChar(100)
   estado          PreRegistrationStatus @default(Pendiente)
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
-  numeroDocumento String?               @db.VarChar(50)
 
   @@index([estado])
   @@index([createdAt])
@@ -709,10 +612,6 @@ model Purchase {
   employee       Employee?      @relation(fields: [employeeId], references: [id])
   provider       Provider       @relation(fields: [providerId], references: [id])
 
-  @@index([employeeId])
-  @@index([providerId])
-  @@index([purchaseDate])
-  @@index([status])
   @@map("purchases")
 }
 
@@ -761,7 +660,7 @@ model ServiceSponsor {
   id        Int     @id @default(autoincrement())
   serviceId Int
   sponsorId Int
-  Service   Service @relation(fields: [serviceId], references: [id])
+  Service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
   Sponsor   Sponsor @relation(fields: [sponsorId], references: [id])
 
   @@unique([serviceId, sponsorId])
@@ -877,63 +776,4 @@ model DonationFile {
   detail       DonationDetail?  @relation(fields: [detailId], references: [id], onDelete: Cascade)
 
   @@index([donationId])
-}
-
-model Group {
-  id          Int               @id @default(autoincrement())
-  name        String            @db.VarChar(100)
-  level       GroupLevel
-  teacherId   Int
-  maxCapacity Int
-  status      GroupStatus       @default(ACTIVE)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  teacher     Employee          @relation(fields: [teacherId], references: [id])
-  memberships GroupMembership[]
-
-  @@index([teacherId])
-  @@index([status])
-  @@map("groups")
-}
-
-model GroupMembership {
-  id        Int              @id @default(autoincrement())
-  groupId   Int
-  athleteId Int
-  startDate DateTime         @default(now())
-  endDate   DateTime?
-  status    MembershipStatus @default(ACTIVE)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  athlete   Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-
-  @@unique([groupId, athleteId, status])
-  @@index([groupId])
-  @@index([athleteId])
-  @@index([status])
-  @@map("group_memberships")
-}
-
-model EventInvitation {
-  id             Int                   @id @default(autoincrement())
-  participantId  Int
-  token          String                @unique @db.VarChar(64)
-  status         EventInvitationStatus @default(PENDING)
-  invitationType InvitationType
-  recipientEmail String                @db.VarChar(150)
-  recipientName  String                @db.VarChar(200)
-  sentAt         DateTime              @default(now())
-  respondedAt    DateTime?
-  expiresAt      DateTime
-  reminderSentAt DateTime?
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
-  participant    Participant           @relation(fields: [participantId], references: [id], onDelete: Cascade)
-
-  @@index([token])
-  @@index([status])
-  @@index([expiresAt])
-  @@index([participantId])
-  @@map("event_invitations")
 }

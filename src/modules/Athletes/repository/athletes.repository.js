@@ -1,5 +1,18 @@
 import prisma from "../../../config/database.js";
 
+const calculateAgeFromBirthDate = (birthDate) => {
+  if (!birthDate) return null;
+  const today = new Date();
+  const birth = new Date(birthDate);
+  if (isNaN(birth.getTime())) return null;
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+};
+
 export class AthletesRepository {
   transformToFrontend(athlete) {
     if (!athlete) return null;
@@ -209,12 +222,29 @@ export class AthletesRepository {
 
       // Buscar la categoría deportiva
       const sportsCategory = await prisma.sportsCategory.findFirst({
-        where: { nombre: athleteData.categoria },
+        where: {
+          nombre: {
+            equals: athleteData.categoria,
+            mode: "insensitive",
+          },
+        },
       });
 
       if (!sportsCategory) {
         throw new Error(
           `Categoría deportiva "${athleteData.categoria}" no encontrada`
+        );
+      }
+
+      const athleteAge =
+        userData.age ?? calculateAgeFromBirthDate(userData.birthDate);
+      if (
+        athleteAge !== null &&
+        (athleteAge < sportsCategory.edadMinima ||
+          athleteAge > sportsCategory.edadMaxima)
+      ) {
+        throw new Error(
+          `No se puede crear: la edad ${athleteAge} no corresponde a la categoría "${sportsCategory.nombre}" (${sportsCategory.edadMinima}-${sportsCategory.edadMaxima} años).`
         );
       }
 
@@ -319,12 +349,53 @@ export class AthletesRepository {
           where: { id: parseInt(id) },
           include: {
             user: true,
-            inscriptions: { orderBy: { inscriptionDate: "desc" } },
+            inscriptions: {
+              include: { sportsCategory: true },
+              orderBy: { inscriptionDate: "desc" },
+            },
           },
         });
 
         if (!currentAthlete) {
           throw new Error("Atleta no encontrado");
+        }
+
+        const effectiveBirthDate = athleteData.birthDate
+          ? new Date(athleteData.birthDate)
+          : currentAthlete.user?.birthDate;
+        const categoryName = String(
+          athleteData.categoria ||
+            currentAthlete.inscriptions[0]?.sportsCategory?.nombre ||
+            ""
+        ).trim();
+
+        if (effectiveBirthDate && categoryName) {
+          const athleteAge = calculateAgeFromBirthDate(effectiveBirthDate);
+          if (athleteAge !== null) {
+            const category = await prisma.sportsCategory.findFirst({
+              where: {
+                nombre: {
+                  equals: categoryName,
+                  mode: "insensitive",
+                },
+              },
+            });
+
+            if (!category) {
+              throw new Error(
+                `Categoría deportiva "${categoryName}" no encontrada`
+              );
+            }
+
+            if (
+              athleteAge < category.edadMinima ||
+              athleteAge > category.edadMaxima
+            ) {
+              throw new Error(
+                `No se puede editar: la edad ${athleteAge} no corresponde a la categoría "${category.nombre}" (${category.edadMinima}-${category.edadMaxima} años).`
+              );
+            }
+          }
         }
 
         // Actualizar usuario

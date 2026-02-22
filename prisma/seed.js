@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SEED DE DATOS MAESTROS DEL SISTEMA ASTROSTAR
  *
  * Este archivo carga los datos esenciales que el sistema necesita para funcionar:
@@ -68,27 +68,30 @@ async function main() {
         "Acceso completo al sistema con todos los permisos. Este rol no puede ser eliminado.",
       permissions: {
         // Permisos completos para todos los módulos
-        dashboard: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        users: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        roles: { Ver: true, Crear: true, Editar: true, Eliminar: true },
+        dashboard: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
+        users: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
+        roles: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
         sportsEquipment: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
-        employees: { Ver: true, Crear: true, Editar: true, Eliminar: true },
+        employees: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
         employeesSchedule: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
         appointmentManagement: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
         sportsCategory: {
           Ver: true,
@@ -102,49 +105,57 @@ async function main() {
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
         athletesAssistance: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
         donorsSponsors: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
         donationsManagement: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
         eventsManagement: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
         temporaryWorkers: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
         temporaryTeams: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
-        providers: { Ver: true, Crear: true, Editar: true, Eliminar: true },
+        providers: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
         purchasesManagement: {
           Ver: true,
           Crear: true,
           Editar: true,
           Eliminar: true,
+          Listar: true,
         },
       },
     },
@@ -309,47 +320,6 @@ async function main() {
 
   console.log("   ✓ Tipos de eventos configurados\n");
 
-  // PATROCINADORES (DATOS QUEMADOS TEMPORALES)
-  console.log("💼 Configurando patrocinadores temporales...");
-  await prisma.sponsor.createMany({
-    data: [
-      {
-        name: "Natipan",
-        identification: "900123456-1",
-        description: "Empresa de productos alimenticios",
-        contactEmail: "contacto@natipan.com",
-        phone: "+57 300 1234567",
-        status: "Active",
-      },
-      {
-        name: "Ponymalta",
-        identification: "900234567-2",
-        description: "Bebida maltada nutritiva",
-        contactEmail: "patrocinios@ponymalta.com",
-        phone: "+57 300 7654321",
-        status: "Active",
-      },
-      {
-        name: "NovaSport",
-        identification: "900345678-3",
-        description: "Marca de artículos deportivos",
-        contactEmail: "marketing@novasport.com",
-        phone: "+57 301 1112233",
-        status: "Active",
-      },
-      {
-        name: "Adidas",
-        identification: "900456789-4",
-        description: "Marca internacional de ropa y calzado deportivo",
-        contactEmail: "ventas@adidas.com",
-        phone: "+57 302 4445566",
-        status: "Active",
-      },
-    ],
-    skipDuplicates: true,
-  });
-  console.log("   ✓ Patrocinadores temporales configurados\n");
-
   console.log("DEBUG: Antes de categorías deportivas");
 
   // CATEGORÍAS DEPORTIVAS
@@ -392,7 +362,6 @@ async function main() {
   console.log("   • Usuario Administrador: Creado");
   console.log("   • Categorías de eventos: Configuradas");
   console.log("   • Tipos de eventos: Configurados");
-  console.log("   • Patrocinadores temporales: Configurados");
   console.log(
     "   • Categorías deportivas: Configuradas (Infantil, PreJuvenil, Juvenil)",
   );
@@ -409,3 +378,7 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+
+
+
+
