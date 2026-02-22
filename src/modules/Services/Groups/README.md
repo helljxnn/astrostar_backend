@@ -217,9 +217,7 @@ GET /api/athletes/23/groups
 
 ## Próximos Pasos (FASE 2)
 
-- Módulo de Clases (programación y calendario)
 - Integración con calendario genérico reutilizable
-- Asistencia y seguimiento de clases
 - Reportes y estadísticas avanzadas
 
 ## Notas Importantes
@@ -227,5 +225,4 @@ GET /api/athletes/23/groups
 - Las deportistas NO se inscriben a clases directamente
 - El administrador/profesor gestiona todo
 - Los grupos son estructuras estables
-- Las clases manejarán la programación (Fase 2)
 - Separación clara de responsabilidades entre Grupos y Clases
