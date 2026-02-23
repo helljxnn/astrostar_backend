@@ -1049,6 +1049,35 @@ export class RegistrationsController {
       });
     }
   };
+
+  /**
+   * Obtener deportistas disponibles filtrados por categorías del evento
+   */
+  getAthletesByEventCategories = async (req, res) => {
+    try {
+      const { serviceId } = req.params;
+
+      const result =
+        await this.registrationsService.getAthletesByEventCategories(serviceId);
+
+      if (!result.success) {
+        return res.status(result.statusCode || 404).json(result);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.total} deportistas disponibles para este evento.`,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener deportistas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 }
 
 export default new RegistrationsController();

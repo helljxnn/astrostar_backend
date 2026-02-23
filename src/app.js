@@ -1,58 +1,62 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import cookieParser from 'cookie-parser';
-import { swaggerUi, specs } from './config/swagger.js';
-import routes from './routes/index.js';
-import { requestLogger } from './middlewares/requestLogger.js';
-
-// Load environment variables
-dotenv.config();
+import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import { swaggerUi, specs } from "./config/swagger.js";
+import routes from "./routes/index.js";
+import { requestLogger } from "./middlewares/requestLogger.js";
 
 const app = express();
 
 // Request logger (solo en desarrollo)
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === "development") {
   app.use(requestLogger);
 }
 
 // Middleware
-app.use(cors({
-  origin: true, // Permitir todas las conexiones en desarrollo
-  credentials: true // Permitir envío de cookies
-}));
+app.use(
+  cors({
+    origin: true, // Permitir todas las conexiones en desarrollo
+    credentials: true, // Permitir envío de cookies
+  }),
+);
 app.use(cookieParser());
-app.use(express.json({ charset: 'utf-8' }));
-app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
+app.use(express.json({ charset: "utf-8" }));
+app.use(express.urlencoded({ extended: true, charset: "utf-8" }));
 
 // 💾 Servir imágenes subidas de categorías
-app.use('/uploads/categories', express.static('src/uploads/categories'));
+app.use("/uploads/categories", express.static("src/uploads/categories"));
+
+// 💾 Servir assets públicos (imágenes para RSVP, etc.)
+app.use("/public", express.static("src/public"));
 
 // Swagger documentation - DEBE IR ANTES de las rutas API
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "AstroStar API Documentation",
-  swaggerOptions: {
-    persistAuthorization: true,
-  }
-}));
-
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(specs, {
+    customCss: ".swagger-ui .topbar { display: none }",
+    customSiteTitle: "AstroStar API Documentation",
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  }),
+);
 
 // Asegurar UTF-8 en respuestas JSON (solo para rutas /api)
-app.use('/api', (req, res, next) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+app.use("/api", (req, res, next) => {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
   next();
 });
 
 // API routes
-app.use('/api', routes);
+app.use("/api", routes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: 'AstroStar API is running!',
-    timestamp: new Date().toISOString()
+    message: "AstroStar API is running!",
+    timestamp: new Date().toISOString(),
   });
 });
 
@@ -60,17 +64,17 @@ app.get('/health', (req, res) => {
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Route not found'
+    message: "Route not found",
   });
 });
 
 // Error handler
 app.use((error, req, res, next) => {
-  console.error('Error:', error);
+  console.error("Error:", error);
   res.status(500).json({
     success: false,
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    message: "Internal server error",
+    error: process.env.NODE_ENV === "development" ? error.message : undefined,
   });
 });
 
