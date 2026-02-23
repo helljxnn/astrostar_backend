@@ -1,6 +1,6 @@
 import express from 'express';
 import eventAssignmentsController from '../controllers/eventAssignments.controller.js';
-import { authenticateToken } from '../../../middlewares/auth.middleware.js';
+import { authenticateToken } from '../../../middlewares/auth.js';
 
 const router = express.Router();
 
