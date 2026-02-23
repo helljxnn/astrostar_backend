@@ -4,8 +4,11 @@ import { preRegistrationSchemas } from "../validators/preRegistrations.validator
 export const preRegistrationsController = {
   async create(req, res) {
     try {
+      console.log('📥 [PreRegistration] Datos recibidos:', req.body);
+      
       const { error, value } = preRegistrationSchemas.create.validate(req.body);
       if (error) {
+        console.log('❌ [PreRegistration] Error de validación:', error.details);
         return res.status(400).json({
           success: false,
           message: error.details[0]?.message || 'Error de validación',
@@ -13,7 +16,9 @@ export const preRegistrationsController = {
         });
       }
 
+      console.log('✅ [PreRegistration] Datos validados:', value);
       const preRegistration = await preRegistrationsService.create(value);
+      console.log('✅ [PreRegistration] Pre-inscripción creada:', preRegistration);
 
       return res.status(201).json({
         success: true,
@@ -21,7 +26,7 @@ export const preRegistrationsController = {
         data: preRegistration,
       });
     } catch (error) {
-      console.error('Error en create pre-registration:', error);
+      console.error('❌ [PreRegistration] Error en create:', error);
       return res.status(500).json({
         success: false,
         message: error.message,
@@ -31,9 +36,9 @@ export const preRegistrationsController = {
 
   async findAll(req, res) {
     try {
-      const { estado, page, limit, search } = req.query;
+      const { status, page, limit, search } = req.query;
       const result = await preRegistrationsService.findAll({
-        estado,
+        status,
         page: page ? parseInt(page) : 1,
         limit: limit ? parseInt(limit) : 10,
         search,
@@ -88,9 +93,9 @@ export const preRegistrationsController = {
   async updateStatus(req, res) {
     try {
       const { id } = req.params;
-      let { estado } = req.body;
+      let { status } = req.body;
 
-      if (!estado) {
+      if (!status) {
         return res.status(400).json({
           success: false,
           message: "El estado es requerido",
@@ -99,9 +104,9 @@ export const preRegistrationsController = {
 
       // Capitalizar primera letra para que coincida con el enum
       // "rechazada" -> "Rechazada", "pendiente" -> "Pendiente"
-      estado = estado.charAt(0).toUpperCase() + estado.slice(1).toLowerCase();
+      status = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 
-      const preRegistration = await preRegistrationsService.updateStatus(id, estado);
+      const preRegistration = await preRegistrationsService.updateStatus(id, status);
 
       return res.json({
         success: true,
@@ -137,6 +142,33 @@ export const preRegistrationsController = {
       });
     } catch (error) {
       return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async checkDocument(req, res) {
+    try {
+      const { identification } = req.params;
+
+      if (!identification) {
+        return res.status(400).json({
+          success: false,
+          message: "El número de documento es requerido",
+        });
+      }
+
+      const result = await preRegistrationsService.checkDocumentExists(identification);
+
+      return res.json({
+        success: true,
+        exists: result.exists,
+        message: result.message,
+        location: result.location,
+      });
+    } catch (error) {
+      return res.status(500).json({
         success: false,
         message: error.message,
       });

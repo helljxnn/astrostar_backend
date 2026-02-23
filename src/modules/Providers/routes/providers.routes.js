@@ -319,20 +319,6 @@ router.get(
 
 /**
  * @swagger
- * /api/providers/{id}/active-purchases:
- *   get:
- *     summary: Check if provider has active purchases
- *     tags: [Providers]
- */
-router.get(
-  "/:id/active-purchases",
-  providersValidators.getById,
-  handleValidationErrors,
-  providersController.checkActivePurchases
-);
-
-/**
- * @swagger
  * /api/providers/{id}:
  *   get:
  *     summary: Get provider by ID

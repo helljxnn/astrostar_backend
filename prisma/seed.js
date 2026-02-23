@@ -68,10 +68,22 @@ async function main() {
         "Acceso completo al sistema con todos los permisos. Este rol no puede ser eliminado.",
       permissions: {
         // Permisos completos para todos los módulos
-        dashboard: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
-        users: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
-        roles: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
-        sportsEquipment: {
+        dashboard: { Ver: true, Crear: true, Editar: true, Eliminar: true },
+        users: { Ver: true, Crear: true, Editar: true, Eliminar: true },
+        roles: { Ver: true, Crear: true, Editar: true, Eliminar: true },
+        materials: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        materialCategories: {
+          Ver: true,
+          Crear: true,
+          Editar: true,
+          Eliminar: true,
+        },
+        materialsRegistry: {
           Ver: true,
           Crear: true,
           Editar: true,

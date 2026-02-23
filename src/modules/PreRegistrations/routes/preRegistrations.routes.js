@@ -33,6 +33,7 @@ const resendLimiter = rateLimit({
 // Público - Sin autenticación (con rate limiting)
 router.post("/", createLimiter, preRegistrationsController.create);
 router.post("/resend-email", resendLimiter, preRegistrationsController.resendEmail);
+router.get("/check-document/:identification", preRegistrationsController.checkDocument);
 
 // Protegidas - Requieren autenticación
 router.get("/", authenticateToken, preRegistrationsController.findAll);

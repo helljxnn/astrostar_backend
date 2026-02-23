@@ -567,43 +567,58 @@ Este es un email automático del sistema AstroStar.
    */
   async sendPreRegistrationEmail(preRegistrationData) {
     try {
+      console.log('📧 [EmailService] Iniciando envío de email de pre-inscripción');
+      console.log('📧 [EmailService] Datos recibidos:', preRegistrationData);
+      
       const {
-        nombres,
-        apellidos,
-        numeroDocumento,
-        fechaNacimiento,
-        telefono,
-        correo,
+        firstName,
+        middleName,
+        lastName,
+        secondLastName,
+        identification,
+        birthDate,
+        phoneNumber,
+        email,
       } = preRegistrationData;
+
+      // Construir nombre completo
+      const nombreCompleto = [firstName, middleName, lastName, secondLastName]
+        .filter(Boolean)
+        .join(' ');
+
+      console.log('📧 [EmailService] Nombre completo construido:', nombreCompleto);
+      console.log('📧 [EmailService] Correo destino:', email);
 
       const mailOptions = {
         from: {
           name: "Fundación Manuela Vanegas",
           address: process.env.EMAIL_USER || "fundacion@example.com",
         },
-        to: correo,
+        to: email,
         subject: "¡Bienvenida a la Fundación Manuela Vanegas! - Próximos Pasos",
         html: this.generatePreRegistrationTemplate(
-          nombres,
-          apellidos,
-          numeroDocumento,
-          fechaNacimiento,
-          telefono,
-          correo,
+          firstName,
+          nombreCompleto,
+          identification,
+          birthDate,
+          phoneNumber,
+          email
         ),
       };
 
       if (!this.transporter) {
-        console.log("⚠️  Transporter no configurado, simulando envío");
+        console.log("⚠️  [EmailService] Transporter no configurado, simulando envío");
         return { success: true, messageId: "simulated-prereg-" + Date.now() };
       }
 
+      console.log('📤 [EmailService] Enviando email...');
       const result = await this.transporter.sendMail(mailOptions);
+      console.log('✅ [EmailService] Email enviado exitosamente. MessageId:', result.messageId);
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error(
-        "❌ Error enviando email de pre-inscripción:",
-        error.message,
+        "❌ [EmailService] Error enviando email de pre-inscripción:",
+        error.message
       );
       return { success: false, error: error.message };
     }
@@ -613,12 +628,12 @@ Este es un email automático del sistema AstroStar.
    * Generar template para pre-inscripción
    */
   generatePreRegistrationTemplate(
-    nombres,
-    apellidos,
-    numeroDocumento,
-    fechaNacimiento,
-    telefono,
-    correo,
+    firstName,
+    nombreCompleto,
+    identification,
+    birthDate,
+    phoneNumber,
+    email
   ) {
     const formatDate = (date) => {
       return new Date(date).toLocaleDateString("es-CO", {
@@ -653,7 +668,7 @@ Este es un email automático del sistema AstroStar.
               <!-- Body -->
               <tr>
                 <td style="padding: 40px 30px;">
-                  <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 22px;">Hola ${nombres},</h2>
+                  <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 22px;">Hola ${firstName},</h2>
                   
                   <p style="color: #666666; line-height: 1.6; margin: 0 0 20px 0; font-size: 16px;">
                     ¡Gracias por tu interés en formar parte de nuestra fundación! Hemos recibido tu pre-inscripción exitosamente.
@@ -661,13 +676,13 @@ Este es un email automático del sistema AstroStar.
                   
                   <div style="background-color: #f8f9fa; border-left: 4px solid #B595FF; padding: 20px; margin: 20px 0; border-radius: 5px;">
                     <h3 style="color: #B595FF; margin: 0 0 15px 0; font-size: 18px;">📋 Tus Datos Registrados:</h3>
-                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Nombre:</strong> ${nombres} ${apellidos}</p>
-                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Número de Documento:</strong> ${numeroDocumento}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Nombre:</strong> ${nombreCompleto}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Número de Documento:</strong> ${identification}</p>
                     <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Fecha de Nacimiento:</strong> ${formatDate(
-                      fechaNacimiento,
+                      birthDate
                     )}</p>
-                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${telefono}</p>
-                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Correo:</strong> ${correo}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${phoneNumber}</p>
+                    <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Correo:</strong> ${email}</p>
                   </div>
                   
                   <h3 style="color: #333333; margin: 30px 0 15px 0; font-size: 20px;">🎯 Próximo Paso: Completar tu Matrícula</h3>
@@ -725,7 +740,7 @@ Este es un email automático del sistema AstroStar.
                     © ${new Date().getFullYear()} Fundación Manuela Vanegas. Todos los derechos reservados.
                   </p>
                   <p style="color: #999999; margin: 10px 0 0 0; font-size: 11px;">
-                    Este correo fue enviado a ${correo} porque te pre-inscribiste en nuestra fundación.
+                    Este correo fue enviado a ${email} porque te pre-inscribiste en nuestra fundación.
                   </p>
                 </td>
               </tr>
