@@ -37,8 +37,7 @@ class MaterialsRepository {
           categoriaId: true,
           categoria: true,
           descripcion: true,
-          stockDisponible: true,
-          stockEventos: true,
+          stock: true, // Stock único total
           estado: true,
           createdAt: true,
           updatedAt: true,
@@ -57,14 +56,21 @@ class MaterialsRepository {
       prisma.material.count({ where }),
     ]);
 
-    // Calcular stock_total para cada material
-    const materialsWithTotal = materials.map(material => ({
-      ...material,
-      stockTotal: material.stockDisponible + material.stockEventos,
-    }));
+    // Calcular stockReservado para cada material (desde asignaciones activas)
+    const materialsWithReserved = await Promise.all(
+      materials.map(async (material) => {
+        const stockReservado = await this.calculateReservedStock(material.id);
+        return {
+          ...material,
+          stockTotal: material.stock,
+          stockReservado,
+          stockDisponible: material.stock - stockReservado,
+        };
+      })
+    );
 
     return {
-      materials: materialsWithTotal,
+      materials: materialsWithReserved,
       total,
       page,
       limit,
@@ -84,8 +90,7 @@ class MaterialsRepository {
         categoriaId: true,
         categoria: true,
         descripcion: true,
-        stockDisponible: true,
-        stockEventos: true,
+        stock: true, // Stock único total
         estado: true,
         createdAt: true,
         updatedAt: true,
@@ -103,11 +108,32 @@ class MaterialsRepository {
 
     if (!material) return null;
 
-    // Agregar stock_total calculado
+    // Calcular stockReservado desde asignaciones activas
+    const stockReservado = await this.calculateReservedStock(material.id);
+
     return {
       ...material,
-      stockTotal: material.stockDisponible + material.stockEventos,
+      stockTotal: material.stock,
+      stockReservado,
+      stockDisponible: material.stock - stockReservado,
     };
+  }
+
+  /**
+   * Calcular stock reservado (asignado a eventos activos)
+   */
+  async calculateReservedStock(materialId) {
+    const result = await prisma.eventMaterialAssignment.aggregate({
+      where: {
+        materialId: parseInt(materialId),
+        estado: 'RESERVADO', // Solo asignaciones activas
+      },
+      _sum: {
+        cantidadAsignada: true,
+      },
+    });
+
+    return result._sum.cantidadAsignada || 0;
   }
 
   /**
@@ -155,8 +181,7 @@ class MaterialsRepository {
         categoria: category.nombre,
         descripcion: data.descripcion?.trim() || null,
         unidadMedida: data.unidad_medida?.trim().toLowerCase() || 'unidad',
-        stockDisponible: 0, // Inicia en 0
-        stockEventos: 0, // Inicia en 0
+        stock: 0, // Inicia en 0, se actualiza con movimientos
         estado: 'Activo',
         createdBy: userId,
       },
@@ -170,10 +195,12 @@ class MaterialsRepository {
       },
     });
 
-    // Agregar stock_total calculado
+    // Agregar campos calculados
     return {
       ...material,
-      stockTotal: material.stockDisponible + material.stockEventos,
+      stockTotal: material.stock,
+      stockReservado: 0,
+      stockDisponible: material.stock,
     };
   }
 
@@ -253,10 +280,15 @@ class MaterialsRepository {
       },
     });
 
-    // Agregar stock_total calculado
+    // Calcular stockReservado
+    const stockReservado = await this.calculateReservedStock(materialActualizado.id);
+
+    // Agregar campos calculados
     return {
       ...materialActualizado,
-      stockTotal: materialActualizado.stockDisponible + materialActualizado.stockEventos,
+      stockTotal: materialActualizado.stock,
+      stockReservado,
+      stockDisponible: materialActualizado.stock - stockReservado,
     };
   }
 
@@ -279,10 +311,15 @@ class MaterialsRepository {
       },
     });
 
-    // Agregar stock_total calculado
+    // Calcular stockReservado
+    const stockReservado = await this.calculateReservedStock(materialActualizado.id);
+
+    // Agregar campos calculados
     return {
       ...materialActualizado,
-      stockTotal: materialActualizado.stockDisponible + materialActualizado.stockEventos,
+      stockTotal: materialActualizado.stock,
+      stockReservado,
+      stockDisponible: materialActualizado.stock - stockReservado,
     };
   }
 
@@ -348,37 +385,25 @@ class MaterialsRepository {
         throw new Error('No se pueden registrar bajas en materiales inactivos');
       }
 
-      // 2. Calcular nuevo stock según el origen
-      let nuevoStockDisponible = material.stockDisponible;
-      let nuevoStockEventos = material.stockEventos;
+      // 2. Calcular stock reservado
+      const stockReservado = await this.calculateReservedStock(materialId);
+      const stockDisponible = material.stock - stockReservado;
 
-      if (data.origenStock === 'USO_INTERNO') {
-        // Validar stock disponible suficiente
-        if (material.stockDisponible < data.cantidad) {
-          throw new Error(
-            `Stock disponible insuficiente. Stock disponible: ${material.stockDisponible}, Cantidad solicitada: ${data.cantidad}`
-          );
-        }
-        nuevoStockDisponible -= data.cantidad;
-      } else if (data.origenStock === 'EVENTOS') {
-        // Validar stock de eventos suficiente
-        if (material.stockEventos < data.cantidad) {
-          throw new Error(
-            `Stock de eventos insuficiente. Stock eventos: ${material.stockEventos}, Cantidad solicitada: ${data.cantidad}`
-          );
-        }
-        nuevoStockEventos -= data.cantidad;
+      // 3. Validar stock disponible suficiente
+      if (stockDisponible < data.cantidad) {
+        throw new Error(
+          `Stock disponible insuficiente. Stock disponible: ${stockDisponible}, Cantidad solicitada: ${data.cantidad}`
+        );
       }
 
-      const stockAnterior = material.stockDisponible + material.stockEventos;
-      const stockNuevo = nuevoStockDisponible + nuevoStockEventos;
+      const stockAnterior = material.stock;
+      const nuevoStock = material.stock - data.cantidad;
 
-      // 3. Actualizar stock del material
+      // 4. Actualizar stock del material
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(materialId) },
         data: {
-          stockDisponible: nuevoStockDisponible,
-          stockEventos: nuevoStockEventos,
+          stock: nuevoStock,
         },
         include: {
           category: {
@@ -390,7 +415,7 @@ class MaterialsRepository {
         },
       });
 
-      // 4. Mapear tipo_baja a valor del enum de Prisma
+      // 5. Mapear tipo_baja a valor del enum de Prisma
       let tipoBajaEnum;
       const tipoBajaNormalizado = data.tipo_baja.toUpperCase().trim();
       
@@ -413,9 +438,6 @@ class MaterialsRepository {
           tipoBajaEnum = 'Otro';
       }
 
-      // 5. Mapear origen_stock a valor del enum
-      const origenStockEnum = data.origenStock === 'USO_INTERNO' ? 'USO_INTERNO' : 'EVENTOS';
-
       // 6. Crear movimiento de baja
       await tx.materialMovement.create({
         data: {
@@ -424,20 +446,23 @@ class MaterialsRepository {
           categoria: material.categoria,
           tipoMovimiento: 'Baja',
           cantidad: data.cantidad,
-          destinoStock: origenStockEnum,  // Reutilizar campo para indicar origen
-          tipoBaja: tipoBajaEnum,  // Usar valor del enum de Prisma
+          tipoBaja: tipoBajaEnum,
           observaciones: data.descripcion,
           stockAnterior: stockAnterior,
-          stockNuevo: stockNuevo,
+          stockNuevo: nuevoStock,
           createdBy: userId,
           createdByName: userName,
         },
       });
 
-      // 7. Retornar material actualizado con stock_total
+      // 7. Retornar material actualizado con campos calculados
+      const stockReservadoFinal = await this.calculateReservedStock(materialActualizado.id);
+      
       return {
         ...materialActualizado,
-        stockTotal: materialActualizado.stockDisponible + materialActualizado.stockEventos,
+        stockTotal: materialActualizado.stock,
+        stockReservado: stockReservadoFinal,
+        stockDisponible: materialActualizado.stock - stockReservadoFinal,
       };
     });
   }

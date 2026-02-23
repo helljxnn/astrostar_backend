@@ -223,6 +223,62 @@ enum InvitationType {
   TEAM
 }
 
+enum MaterialStatus {
+  Activo
+  Inactivo
+}
+
+enum CategoryStatus {
+  Activo
+  Inactivo
+}
+
+enum MovementType {
+  Entrada
+  Salida
+  Baja
+}
+
+enum MovementOrigin {
+  Compra
+  Donacion
+  AjustePositivo
+  AjusteNegativo
+  UsoEvento
+  Dano
+  Perdida
+  Entrega
+  ConsumoInterno
+}
+
+enum DestinoMovimiento {
+  Evento
+  ConsumoInterno
+  Dano
+  Perdida
+  Entrega
+}
+
+enum DestinoStock {
+  USO_INTERNO
+  EVENTOS
+}
+
+enum TipoBaja {
+  DanoDeterioro
+  Perdida
+  Robo
+  AjusteInventario
+  Otro
+}
+
+enum EventAssignmentStatus {
+  RESERVADO
+  USADO
+  DEVUELTO
+  CANCELADO
+}
+
 // ============================================
 // MODELOS
 // ============================================
@@ -508,6 +564,8 @@ model Athlete {
   participants             Participant[]
   teamMembers              TeamMember[]
   groupMemberships         GroupMembership[]
+  appointments             Appointment[]
+  attendances              AthleteAttendance[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])
@@ -913,4 +971,106 @@ model EventInvitation {
   @@index([expiresAt])
   @@index([participantId])
   @@map("event_invitations")
+}
+
+// ============================================
+// MÓDULO DE MATERIALES DEPORTIVOS
+// ============================================
+
+model MaterialCategory {
+  id          Int            @id @default(autoincrement())
+  nombre      String         @unique @db.VarChar(100)
+  descripcion String?
+  estado      CategoryStatus @default(Activo)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  createdBy   Int?           @map("created_by")
+  updatedBy   Int?           @map("updated_by")
+  materials   Material[]
+
+  @@index([nombre])
+  @@index([estado])
+  @@map("material_categories")
+}
+
+model Material {
+  id                      Int                       @id @default(autoincrement())
+  nombre                  String                    @db.VarChar(255)
+  categoriaId             Int                       @map("categoria_id")
+  categoria               String                    @db.VarChar(100)
+  descripcion             String?
+  unidadMedida            String                    @default("unidad") @map("unidad_medida") @db.VarChar(50)
+  stock                   Int                       @default(0) // Stock único total
+  estado                  MaterialStatus            @default(Activo)
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  createdBy               Int?                      @map("created_by")
+  updatedBy               Int?                      @map("updated_by")
+  category                MaterialCategory          @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
+  movements               MaterialMovement[]
+  eventAssignments        EventMaterialAssignment[]
+
+  @@unique([nombre, categoriaId], name: "unique_material_per_category")
+  @@index([estado])
+  @@index([categoriaId])
+  @@index([nombre])
+  @@map("materials")
+}
+
+model MaterialMovement {
+  id              Int               @id @default(autoincrement())
+  materialId      Int               @map("material_id")
+  materialNombre  String            @map("material_nombre") @db.VarChar(255)
+  categoria       String            @db.VarChar(100)
+  tipoMovimiento  MovementType      @map("tipo_movimiento")
+  cantidad        Int
+  origen          MovementOrigin?
+  destino         DestinoMovimiento?
+  destinoStock    DestinoStock?     @map("destino_stock") // USO_INTERNO o EVENTOS
+  eventoId        Int?              @map("evento_id")
+  donacionId      Int?              @map("donacion_id")
+  observaciones   String?
+  stockAnterior   Int               @map("stock_anterior")
+  stockNuevo      Int               @map("stock_nuevo")
+  referenceId     Int?              @map("reference_id")
+  referenceType   String?           @map("reference_type") @db.VarChar(50)
+  fecha           DateTime          @default(now())
+  createdBy       Int               @map("created_by")
+  createdByName   String?           @map("created_by_name") @db.VarChar(255)
+  fechaIngreso    DateTime?         @map("fecha_ingreso")
+  proveedorId     Int?              @map("proveedor_id")
+  tipoBaja        TipoBaja?         @map("tipo_baja")
+  material        Material          @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  proveedor       Provider?         @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
+
+  @@index([materialId])
+  @@index([tipoMovimiento])
+  @@index([fecha])
+  @@index([origen])
+  @@index([eventoId])
+  @@index([proveedorId])
+  @@map("material_movements")
+}
+
+model EventMaterialAssignment {
+  id                Int                   @id @default(autoincrement())
+  materialId        Int                   @map("material_id")
+  eventoId          Int                   @map("evento_id")
+  cantidadAsignada  Int                   @map("cantidad_asignada")
+  cantidadUsada     Int                   @default(0) @map("cantidad_usada")
+  cantidadDevuelta  Int                   @default(0) @map("cantidad_devuelta")
+  estado            EventAssignmentStatus @default(RESERVADO)
+  fechaAsignacion   DateTime              @default(now()) @map("fecha_asignacion")
+  fechaFinalizacion DateTime?             @map("fecha_finalizacion")
+  observaciones     String?
+  createdBy         Int                   @map("created_by")
+  createdByName     String?               @map("created_by_name") @db.VarChar(255)
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+  material          Material              @relation(fields: [materialId], references: [id], onDelete: Restrict)
+
+  @@index([materialId])
+  @@index([eventoId])
+  @@index([estado])
+  @@index([fechaAsignacion])
+  @@map("event_material_assignments")
 }

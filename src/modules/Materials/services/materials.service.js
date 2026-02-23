@@ -318,18 +318,14 @@ class MaterialsService {
         };
       }
 
-      // Validar stock suficiente según el origen
-      const stockOrigen = data.origenStock === 'USO_INTERNO' 
-        ? existingMaterial.stockDisponible 
-        : existingMaterial.stockEventos;
-      
-      const nombreOrigen = data.origenStock === 'USO_INTERNO' ? 'disponible' : 'de eventos';
+      // Validar stock disponible suficiente
+      const stockDisponible = existingMaterial.stockDisponible;
 
-      if (stockOrigen < data.cantidad) {
+      if (stockDisponible < data.cantidad) {
         return {
           success: false,
           statusCode: 400,
-          message: `Stock ${nombreOrigen} insuficiente. Stock ${nombreOrigen}: ${stockOrigen}, Cantidad solicitada: ${data.cantidad}`,
+          message: `Stock disponible insuficiente. Stock disponible: ${stockDisponible}, Cantidad solicitada: ${data.cantidad}`,
         };
       }
 
@@ -369,15 +365,6 @@ class MaterialsService {
     const cantidad = parseInt(data.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
       throw new Error('La cantidad debe ser un número positivo');
-    }
-
-    // Origen del stock obligatorio
-    if (!data.origenStock) {
-      throw new Error('El origen de la baja es obligatorio');
-    }
-
-    if (!['USO_INTERNO', 'EVENTOS'].includes(data.origenStock)) {
-      throw new Error('El origen debe ser USO_INTERNO o EVENTOS');
     }
 
     // Tipo de baja
