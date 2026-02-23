@@ -17,6 +17,18 @@ class MaterialsController {
         categoriaId: categoriaId ? parseInt(categoriaId) : null,
       });
 
+      // DEBUG: Log del material con id 5
+      const material5 = result.data?.find(m => m.id === 5);
+      if (material5) {
+        console.log('🔍 Material 5 en respuesta:', {
+          id: material5.id,
+          nombre: material5.nombre,
+          stockDisponible: material5.stockDisponible,
+          stockEventos: material5.stockEventos,
+          stockTotal: material5.stockTotal
+        });
+      }
+
       return res.json(result);
     } catch (error) {
       console.error('Controller error - getAll:', error);
@@ -264,6 +276,82 @@ class MaterialsController {
       return res.json(result);
     } catch (error) {
       console.error('Controller error - checkName:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
+
+  /**
+   * POST /api/materials/materials/:id/discharge
+   * Registrar baja de material
+   */
+  async registerDischarge(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+      const userName = req.user ? `${req.user.firstName} ${req.user.lastName}` : null;
+
+      if (isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID inválido',
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuario no autenticado',
+        });
+      }
+
+      const result = await materialsService.registerDischarge(
+        parseInt(id),
+        req.body,
+        userId,
+        userName
+      );
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json(result);
+      }
+
+      return res.status(201).json(result);
+    } catch (error) {
+      console.error('Controller error - registerDischarge:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al registrar baja',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
+
+  /**
+   * GET /api/materials/materials/:id/reservations
+   * Obtener reservas activas de un material
+   */
+  async getReservations(req, res) {
+    try {
+      const { id } = req.params;
+
+      if (isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID inválido',
+        });
+      }
+
+      // Importar el servicio de reservations
+      const reservationsService = (await import('../services/reservations.service.js')).default;
+      const result = await reservationsService.getByMaterial(parseInt(id));
+
+      return res.json(result);
+    } catch (error) {
+      console.error('Controller error - getReservations:', error);
       return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',

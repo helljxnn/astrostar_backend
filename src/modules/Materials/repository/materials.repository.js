@@ -31,7 +31,17 @@ class MaterialsRepository {
         where,
         skip,
         take: limit,
-        include: {
+        select: {
+          id: true,
+          nombre: true,
+          categoriaId: true,
+          categoria: true,
+          descripcion: true,
+          stockDisponible: true,
+          stockEventos: true,
+          estado: true,
+          createdAt: true,
+          updatedAt: true,
           category: {
             select: {
               id: true,
@@ -47,8 +57,14 @@ class MaterialsRepository {
       prisma.material.count({ where }),
     ]);
 
+    // Calcular stock_total para cada material
+    const materialsWithTotal = materials.map(material => ({
+      ...material,
+      stockTotal: material.stockDisponible + material.stockEventos,
+    }));
+
     return {
-      materials,
+      materials: materialsWithTotal,
       total,
       page,
       limit,
@@ -60,9 +76,21 @@ class MaterialsRepository {
    * Obtener material por ID
    */
   async findById(id) {
-    return await prisma.material.findUnique({
+    const material = await prisma.material.findUnique({
       where: { id: parseInt(id) },
-      include: {
+      select: {
+        id: true,
+        nombre: true,
+        categoriaId: true,
+        categoria: true,
+        descripcion: true,
+        stockDisponible: true,
+        stockEventos: true,
+        estado: true,
+        createdAt: true,
+        updatedAt: true,
+        createdBy: true,
+        updatedBy: true,
         category: {
           select: {
             id: true,
@@ -72,6 +100,14 @@ class MaterialsRepository {
         },
       },
     });
+
+    if (!material) return null;
+
+    // Agregar stock_total calculado
+    return {
+      ...material,
+      stockTotal: material.stockDisponible + material.stockEventos,
+    };
   }
 
   /**
@@ -112,13 +148,15 @@ class MaterialsRepository {
       throw new Error('No se puede crear material con una categoría inactiva');
     }
 
-    return await prisma.material.create({
+    const material = await prisma.material.create({
       data: {
         nombre: data.nombre.trim(),
         categoriaId: parseInt(data.categoria_id),
         categoria: category.nombre,
         descripcion: data.descripcion?.trim() || null,
-        stockActual: 0, // Inicia en 0
+        unidadMedida: data.unidad_medida?.trim().toLowerCase() || 'unidad',
+        stockDisponible: 0, // Inicia en 0
+        stockEventos: 0, // Inicia en 0
         estado: 'Activo',
         createdBy: userId,
       },
@@ -131,6 +169,12 @@ class MaterialsRepository {
         },
       },
     });
+
+    // Agregar stock_total calculado
+    return {
+      ...material,
+      stockTotal: material.stockDisponible + material.stockEventos,
+    };
   }
 
   /**
@@ -194,7 +238,9 @@ class MaterialsRepository {
       }
     }
 
-    return await prisma.material.update({
+    // La unidad de medida siempre es "unidad", no se actualiza
+
+    const materialActualizado = await prisma.material.update({
       where: { id: parseInt(id) },
       data: updateData,
       include: {
@@ -206,6 +252,12 @@ class MaterialsRepository {
         },
       },
     });
+
+    // Agregar stock_total calculado
+    return {
+      ...materialActualizado,
+      stockTotal: materialActualizado.stockDisponible + materialActualizado.stockEventos,
+    };
   }
 
   /**
@@ -219,13 +271,19 @@ class MaterialsRepository {
 
     const newStatus = material.estado === 'Activo' ? 'Inactivo' : 'Activo';
 
-    return await prisma.material.update({
+    const materialActualizado = await prisma.material.update({
       where: { id: parseInt(id) },
       data: {
         estado: newStatus,
         updatedBy: userId,
       },
     });
+
+    // Agregar stock_total calculado
+    return {
+      ...materialActualizado,
+      stockTotal: materialActualizado.stockDisponible + materialActualizado.stockEventos,
+    };
   }
 
   /**
@@ -270,6 +328,138 @@ class MaterialsRepository {
     });
 
     return stock;
+  }
+
+  /**
+   * Registrar baja de material (transacción atómica)
+   */
+  async registerDischarge(materialId, data, userId, userName) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Obtener material con bloqueo
+      const material = await tx.material.findUnique({
+        where: { id: parseInt(materialId) },
+      });
+
+      if (!material) {
+        throw new Error('Material no encontrado');
+      }
+
+      if (material.estado !== 'Activo') {
+        throw new Error('No se pueden registrar bajas en materiales inactivos');
+      }
+
+      // 2. Calcular nuevo stock según el origen
+      let nuevoStockDisponible = material.stockDisponible;
+      let nuevoStockEventos = material.stockEventos;
+
+      if (data.origenStock === 'USO_INTERNO') {
+        // Validar stock disponible suficiente
+        if (material.stockDisponible < data.cantidad) {
+          throw new Error(
+            `Stock disponible insuficiente. Stock disponible: ${material.stockDisponible}, Cantidad solicitada: ${data.cantidad}`
+          );
+        }
+        nuevoStockDisponible -= data.cantidad;
+      } else if (data.origenStock === 'EVENTOS') {
+        // Validar stock de eventos suficiente
+        if (material.stockEventos < data.cantidad) {
+          throw new Error(
+            `Stock de eventos insuficiente. Stock eventos: ${material.stockEventos}, Cantidad solicitada: ${data.cantidad}`
+          );
+        }
+        nuevoStockEventos -= data.cantidad;
+      }
+
+      const stockAnterior = material.stockDisponible + material.stockEventos;
+      const stockNuevo = nuevoStockDisponible + nuevoStockEventos;
+
+      // 3. Actualizar stock del material
+      const materialActualizado = await tx.material.update({
+        where: { id: parseInt(materialId) },
+        data: {
+          stockDisponible: nuevoStockDisponible,
+          stockEventos: nuevoStockEventos,
+        },
+        include: {
+          category: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      // 4. Mapear tipo_baja a valor del enum de Prisma
+      let tipoBajaEnum;
+      const tipoBajaNormalizado = data.tipo_baja.toUpperCase().trim();
+      
+      switch (tipoBajaNormalizado) {
+        case 'DAÑO O DETERIORO':
+        case 'DANO O DETERIORO':
+          tipoBajaEnum = 'DanoDeterioro';
+          break;
+        case 'PÉRDIDA':
+        case 'PERDIDA':
+          tipoBajaEnum = 'Perdida';
+          break;
+        case 'ROBO':
+          tipoBajaEnum = 'Robo';
+          break;
+        case 'AJUSTE DE INVENTARIO':
+          tipoBajaEnum = 'AjusteInventario';
+          break;
+        default:
+          tipoBajaEnum = 'Otro';
+      }
+
+      // 5. Mapear origen_stock a valor del enum
+      const origenStockEnum = data.origenStock === 'USO_INTERNO' ? 'USO_INTERNO' : 'EVENTOS';
+
+      // 6. Crear movimiento de baja
+      await tx.materialMovement.create({
+        data: {
+          materialId: parseInt(materialId),
+          materialNombre: material.nombre,
+          categoria: material.categoria,
+          tipoMovimiento: 'Baja',
+          cantidad: data.cantidad,
+          destinoStock: origenStockEnum,  // Reutilizar campo para indicar origen
+          tipoBaja: tipoBajaEnum,  // Usar valor del enum de Prisma
+          observaciones: data.descripcion,
+          stockAnterior: stockAnterior,
+          stockNuevo: stockNuevo,
+          createdBy: userId,
+          createdByName: userName,
+        },
+      });
+
+      // 7. Retornar material actualizado con stock_total
+      return {
+        ...materialActualizado,
+        stockTotal: materialActualizado.stockDisponible + materialActualizado.stockEventos,
+      };
+    });
+  }
+
+  /**
+   * Mapear tipo de baja a valor del enum
+   */
+  mapTipoBajaToEnum(tipoBaja) {
+    // Normalizar el valor recibido
+    const tipoBajaNormalizado = tipoBaja.toUpperCase().trim();
+    
+    const mapeo = {
+      'DAÑO O DETERIORO': 'DanoDeterioro',
+      'DANO O DETERIORO': 'DanoDeterioro',
+      'PÉRDIDA': 'Perdida',
+      'PERDIDA': 'Perdida',
+      'ROBO': 'Robo',
+      'AJUSTE DE INVENTARIO': 'AjusteInventario',
+      'OTRO': 'Otro',
+    };
+    
+    return mapeo[tipoBajaNormalizado] || 'Otro';
   }
 
   /**

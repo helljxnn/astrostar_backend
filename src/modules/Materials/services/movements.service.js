@@ -19,12 +19,10 @@ class MovementsService {
       return {
         success: true,
         data: result.movements,
-        pagination: {
-          total: result.total,
-          page: result.page,
-          limit: result.limit,
-          totalPages: result.pages,
-        },
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        pages: result.pages,
       };
     } catch (error) {
       console.error('Service error - getAll:', error);
@@ -93,13 +91,16 @@ class MovementsService {
         categoria: material.categoria,
         tipo_movimiento: data.tipo_movimiento,
         cantidad: parseInt(data.cantidad),
-        origen: data.origen,
         destino: data.destino || null,
+        destino_stock: data.destinoStock || null,  // NUEVO: Destino del ingreso
         evento_id: data.evento_id || null,
         observaciones: data.observaciones || null,
         reference_id: data.reference_id || null,
         reference_type: data.reference_type || null,
         created_by_name: userName || null,
+        // Nuevos campos para Ingresos
+        fecha_ingreso: data.fechaIngreso || null,
+        proveedor_id: data.proveedor_id ? parseInt(data.proveedor_id) : null,
       };
 
       // 4. Registrar movimiento con transacción (calcula y valida stock automáticamente)
@@ -132,6 +133,99 @@ class MovementsService {
         };
       }
 
+      throw error;
+    }
+  }
+
+  /**
+   * Actualizar movimiento existente
+   */
+  async updateMovement(id, data, userId, userName) {
+    try {
+      console.log('🔄 Iniciando actualización de movimiento...');
+
+      // 1. Verificar que el movimiento existe
+      const existingMovement = await movementsRepository.findById(id);
+      if (!existingMovement) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'Movimiento no encontrado',
+        };
+      }
+
+      // 2. ❌ BLOQUEAR edición de bajas y salidas
+      if (existingMovement.tipoMovimiento === 'Salida' || existingMovement.tipoMovimiento === 'Baja') {
+        return {
+          success: false,
+          statusCode: 403,
+          message: 'No se pueden editar las bajas de material. Solo se pueden editar ingresos.',
+        };
+      }
+
+      // 3. Validar datos de actualización
+      this.validateUpdateData(data);
+
+      // 4. Preparar datos del movimiento (solo campos editables)
+      const movementData = {
+        observaciones: data.observaciones || null,
+        fecha_ingreso: data.fechaIngreso || null,
+        proveedor_id: data.proveedor_id ? parseInt(data.proveedor_id) : null,
+      };
+
+      // 5. Actualizar movimiento
+      const movement = await movementsRepository.updateMovement(id, movementData);
+
+      console.log('✅ Movimiento actualizado exitosamente');
+
+      return {
+        success: true,
+        data: movement,
+        message: 'Movimiento actualizado exitosamente',
+      };
+    } catch (error) {
+      console.error('❌ Error al actualizar movimiento:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Eliminar movimiento (solo permitido para Entradas)
+   */
+  async deleteMovement(id) {
+    try {
+      console.log('🔄 Iniciando eliminación de movimiento...');
+
+      // 1. Verificar que el movimiento existe
+      const existingMovement = await movementsRepository.findById(id);
+      if (!existingMovement) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'Movimiento no encontrado',
+        };
+      }
+
+      // 2. ❌ BLOQUEAR eliminación de bajas y salidas
+      if (existingMovement.tipoMovimiento === 'Salida' || existingMovement.tipoMovimiento === 'Baja') {
+        return {
+          success: false,
+          statusCode: 403,
+          message: 'No se pueden eliminar las bajas de material. Solo se pueden eliminar ingresos.',
+        };
+      }
+
+      // 3. Eliminar movimiento (esto debería revertir el stock también)
+      await movementsRepository.deleteMovement(id);
+
+      console.log('✅ Movimiento eliminado exitosamente');
+
+      return {
+        success: true,
+        message: 'Movimiento eliminado exitosamente',
+      };
+    } catch (error) {
+      console.error('❌ Error al eliminar movimiento:', error.message);
       throw error;
     }
   }
@@ -232,25 +326,36 @@ class MovementsService {
       throw new Error('La cantidad debe ser un número positivo');
     }
 
-    // Origen
-    if (!data.origen) {
-      throw new Error('El origen es obligatorio');
-    }
+    // Validaciones específicas para ENTRADA
+    if (data.tipo_movimiento === 'Entrada') {
+      // Destino del stock obligatorio
+      if (!data.destinoStock) {
+        throw new Error('El destino del ingreso es obligatorio');
+      }
 
-    const origenesValidos = [
-      'Compra',
-      'Donacion',
-      'AjustePositivo',
-      'AjusteNegativo',
-      'UsoEvento',
-      'Dano',
-      'Perdida',
-      'Entrega',
-      'ConsumoInterno',
-    ];
+      if (!['USO_INTERNO', 'EVENTOS'].includes(data.destinoStock)) {
+        throw new Error('El destino debe ser USO_INTERNO o EVENTOS');
+      }
 
-    if (!origenesValidos.includes(data.origen)) {
-      throw new Error(`Origen inválido. Debe ser uno de: ${origenesValidos.join(', ')}`);
+      // Fecha de ingreso obligatoria
+      if (!data.fechaIngreso) {
+        throw new Error('La fecha de ingreso es obligatoria');
+      }
+
+      // Validar que la fecha no sea futura
+      const fechaIngreso = new Date(data.fechaIngreso);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      fechaIngreso.setHours(0, 0, 0, 0);
+
+      if (fechaIngreso > hoy) {
+        throw new Error('La fecha de ingreso no puede ser futura');
+      }
+
+      // proveedor_id es opcional, pero si se envía debe ser válido
+      if (data.proveedor_id && isNaN(parseInt(data.proveedor_id))) {
+        throw new Error('El ID del proveedor debe ser un número válido');
+      }
     }
 
     // Destino (solo para salidas)
@@ -265,6 +370,33 @@ class MovementsService {
       if (data.destino === 'Evento' && !data.evento_id) {
         throw new Error('El ID del evento es obligatorio cuando el destino es "Evento"');
       }
+    }
+
+    // Observaciones
+    if (data.observaciones && data.observaciones.length > 1000) {
+      throw new Error('Las observaciones no pueden exceder 1000 caracteres');
+    }
+  }
+
+  /**
+   * Validar datos de actualización de movimiento
+   */
+  validateUpdateData(data) {
+    // Fecha de ingreso (si se envía)
+    if (data.fechaIngreso) {
+      const fechaIngreso = new Date(data.fechaIngreso);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      fechaIngreso.setHours(0, 0, 0, 0);
+
+      if (fechaIngreso > hoy) {
+        throw new Error('La fecha de ingreso no puede ser futura');
+      }
+    }
+
+    // proveedor_id es opcional, pero si se envía debe ser válido
+    if (data.proveedor_id && isNaN(parseInt(data.proveedor_id))) {
+      throw new Error('El ID del proveedor debe ser un número válido');
     }
 
     // Observaciones

@@ -92,4 +92,26 @@ router.post(
   movementsController.create
 );
 
+/**
+ * PUT /api/materials/material-movements/:id
+ * Actualizar movimiento existente
+ * Permiso: materialsRegistry.Editar
+ */
+router.put(
+  '/:id',
+  checkPermissions('materialsRegistry', 'Editar'),
+  movementsController.update
+);
+
+/**
+ * DELETE /api/materials/material-movements/:id
+ * Eliminar movimiento (solo permitido para Entradas)
+ * Permiso: materialsRegistry.Eliminar
+ */
+router.delete(
+  '/:id',
+  checkPermissions('materialsRegistry', 'Eliminar'),
+  movementsController.delete
+);
+
 export default router;

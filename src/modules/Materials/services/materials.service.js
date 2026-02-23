@@ -287,6 +287,122 @@ class MaterialsService {
     if (data.descripcion && data.descripcion.length > 1000) {
       throw new Error('La descripción no puede exceder 1000 caracteres');
     }
+
+    // La unidad de medida siempre será "unidad" por defecto
+    // No se requiere validación adicional
+  }
+
+  /**
+   * Registrar baja de material
+   */
+  async registerDischarge(id, data, userId, userName) {
+    try {
+      // Validar datos de baja
+      this.validateDischargeData(data);
+
+      // Verificar que el material existe
+      const existingMaterial = await materialsRepository.findById(id);
+      if (!existingMaterial) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'Material no encontrado',
+        };
+      }
+
+      if (existingMaterial.estado !== 'Activo') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'No se pueden registrar bajas en materiales inactivos',
+        };
+      }
+
+      // Validar stock suficiente según el origen
+      const stockOrigen = data.origenStock === 'USO_INTERNO' 
+        ? existingMaterial.stockDisponible 
+        : existingMaterial.stockEventos;
+      
+      const nombreOrigen = data.origenStock === 'USO_INTERNO' ? 'disponible' : 'de eventos';
+
+      if (stockOrigen < data.cantidad) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `Stock ${nombreOrigen} insuficiente. Stock ${nombreOrigen}: ${stockOrigen}, Cantidad solicitada: ${data.cantidad}`,
+        };
+      }
+
+      // Registrar baja (transacción atómica)
+      const material = await materialsRepository.registerDischarge(id, data, userId, userName);
+
+      return {
+        success: true,
+        data: material,
+        message: `Baja registrada exitosamente. ${data.cantidad} unidad(es) de "${material.nombre}" dada(s) de baja.`,
+      };
+    } catch (error) {
+      console.error('Service error - registerDischarge:', error);
+
+      // Errores específicos
+      if (error.message.includes('Stock insuficiente')) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: error.message,
+        };
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Validar datos de baja
+   */
+  validateDischargeData(data) {
+    // Cantidad
+    if (!data.cantidad) {
+      throw new Error('La cantidad es obligatoria');
+    }
+
+    const cantidad = parseInt(data.cantidad);
+    if (isNaN(cantidad) || cantidad <= 0) {
+      throw new Error('La cantidad debe ser un número positivo');
+    }
+
+    // Origen del stock obligatorio
+    if (!data.origenStock) {
+      throw new Error('El origen de la baja es obligatorio');
+    }
+
+    if (!['USO_INTERNO', 'EVENTOS'].includes(data.origenStock)) {
+      throw new Error('El origen debe ser USO_INTERNO o EVENTOS');
+    }
+
+    // Tipo de baja
+    if (!data.tipo_baja) {
+      throw new Error('El tipo de baja es obligatorio');
+    }
+
+    const tiposValidos = ['Daño o Deterioro', 'Pérdida', 'Robo', 'Ajuste de Inventario', 'Otro'];
+    if (!tiposValidos.includes(data.tipo_baja)) {
+      throw new Error(`Tipo de baja inválido. Debe ser uno de: ${tiposValidos.join(', ')}`);
+    }
+
+    // Descripción
+    if (!data.descripcion || !data.descripcion.trim()) {
+      throw new Error('La descripción es obligatoria');
+    }
+
+    // Si es "Otro", validar descripción más detallada
+    if (data.tipo_baja === 'Otro' && data.descripcion.trim().length < 10) {
+      throw new Error('Para tipo "Otro", la descripción debe tener al menos 10 caracteres');
+    }
+
+    if (data.descripcion.length > 1000) {
+      throw new Error('La descripción no puede exceder 1000 caracteres');
+    }
   }
 }
 

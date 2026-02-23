@@ -27,6 +27,17 @@ router.get(
 );
 
 /**
+ * GET /api/materials/:id/reservations
+ * Obtener reservas activas de un material
+ * Permiso: materials.Ver
+ */
+router.get(
+  '/:id/reservations',
+  checkPermissions('materials', 'Ver'),
+  materialsController.getReservations
+);
+
+/**
  * GET /api/materials/:id/history
  * Obtener historial de movimientos de un material
  * Permiso: materials.Ver
@@ -57,6 +68,17 @@ router.get(
   '/:id',
   checkPermissions('materials', 'Ver'),
   materialsController.getById
+);
+
+/**
+ * POST /api/materials/:id/discharge
+ * Registrar baja de material
+ * Permiso: materials.Editar
+ */
+router.post(
+  '/:id/discharge',
+  checkPermissions('materials', 'Editar'),
+  materialsController.registerDischarge
 );
 
 /**

@@ -95,6 +95,87 @@ class MovementsController {
   }
 
   /**
+   * PUT /api/materials/material-movements/:id
+   * Actualizar movimiento existente
+   */
+  async update(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+      const userName = req.user ? `${req.user.firstName} ${req.user.lastName}` : null;
+
+      if (isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID inválido',
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuario no autenticado',
+        });
+      }
+
+      const result = await movementsService.updateMovement(parseInt(id), req.body, userId, userName);
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json(result);
+      }
+
+      return res.json(result);
+    } catch (error) {
+      console.error('Controller error - update:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al actualizar movimiento',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
+
+  /**
+   * DELETE /api/materials/material-movements/:id
+   * Eliminar movimiento (solo permitido para Entradas)
+   */
+  async delete(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user?.id;
+
+      if (isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID inválido',
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Usuario no autenticado',
+        });
+      }
+
+      const result = await movementsService.deleteMovement(parseInt(id));
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json(result);
+      }
+
+      return res.json(result);
+    } catch (error) {
+      console.error('Controller error - delete:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al eliminar movimiento',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
+
+  /**
    * GET /api/materials/material-movements/history/:materialId
    * Obtener historial de movimientos de un material
    */
