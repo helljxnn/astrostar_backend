@@ -1,4 +1,4 @@
-import { RegistrationsService } from './registrations.service.js';
+import { RegistrationsService } from "./registrations.service.js";
 
 /**
  * @swagger
@@ -72,7 +72,9 @@ export class RegistrationsController {
    */
   registerTeamToEvent = async (req, res) => {
     try {
-      const result = await this.registrationsService.registerTeamToEvent(req.body);
+      const result = await this.registrationsService.registerTeamToEvent(
+        req.body,
+      );
 
       if (!result.success) {
         return res.status(result.statusCode || 400).json(result);
@@ -86,8 +88,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al inscribir equipo.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al inscribir equipo.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -153,9 +156,12 @@ export class RegistrationsController {
       const { serviceId } = req.params;
       const { status } = req.query;
 
-      const result = await this.registrationsService.getEventRegistrations(serviceId, {
-        status,
-      });
+      const result = await this.registrationsService.getEventRegistrations(
+        serviceId,
+        {
+          status,
+        },
+      );
 
       if (!result.success) {
         return res.status(result.statusCode || 404).json(result);
@@ -169,8 +175,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener inscripciones.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al obtener inscripciones.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -208,9 +215,12 @@ export class RegistrationsController {
       const { teamId } = req.params;
       const { status } = req.query;
 
-      const result = await this.registrationsService.getTeamRegistrations(teamId, {
-        status,
-      });
+      const result = await this.registrationsService.getTeamRegistrations(
+        teamId,
+        {
+          status,
+        },
+      );
 
       if (!result.success) {
         return res.status(result.statusCode || 404).json(result);
@@ -224,8 +234,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener inscripciones.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al obtener inscripciones.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -265,13 +276,14 @@ export class RegistrationsController {
       res.json({
         success: true,
         data: result.data,
-        message: 'Inscripción encontrada exitosamente.',
+        message: "Inscripción encontrada exitosamente.",
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener inscripción.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al obtener inscripción.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -327,7 +339,7 @@ export class RegistrationsController {
       const result = await this.registrationsService.updateRegistrationStatus(
         id,
         status,
-        notes
+        notes,
       );
 
       if (!result.success) {
@@ -342,8 +354,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al actualizar estado.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al actualizar estado.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -387,8 +400,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al cancelar inscripción.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al cancelar inscripción.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -443,13 +457,14 @@ export class RegistrationsController {
       res.json({
         success: true,
         data: result.data,
-        message: 'Estadísticas obtenidas exitosamente.',
+        message: "Estadísticas obtenidas exitosamente.",
       });
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener estadísticas.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al obtener estadísticas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -502,7 +517,9 @@ export class RegistrationsController {
     try {
       const { category } = req.query;
 
-      const result = await this.registrationsService.getAvailableTeams({ category });
+      const result = await this.registrationsService.getAvailableTeams({
+        category,
+      });
 
       res.json({
         success: true,
@@ -512,8 +529,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener equipos.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al obtener equipos.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -588,10 +606,16 @@ export class RegistrationsController {
     try {
       const { serviceId, teamIds, notes } = req.body;
 
-      if (!serviceId || !teamIds || !Array.isArray(teamIds) || teamIds.length === 0) {
+      if (
+        !serviceId ||
+        !teamIds ||
+        !Array.isArray(teamIds) ||
+        teamIds.length === 0
+      ) {
         return res.status(400).json({
           success: false,
-          message: 'Se requiere serviceId y un array de teamIds con al menos un equipo.',
+          message:
+            "Se requiere serviceId y un array de teamIds con al menos un equipo.",
         });
       }
 
@@ -613,8 +637,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al inscribir equipos.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al inscribir equipos.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -669,7 +694,9 @@ export class RegistrationsController {
    */
   registerAthleteToEvent = async (req, res) => {
     try {
-      const result = await this.registrationsService.registerAthleteToEvent(req.body);
+      const result = await this.registrationsService.registerAthleteToEvent(
+        req.body,
+      );
 
       if (!result.success) {
         return res.status(result.statusCode || 400).json(result);
@@ -683,8 +710,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al inscribir deportista.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al inscribir deportista.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -722,9 +750,13 @@ export class RegistrationsController {
       const { serviceId } = req.params;
       const { status } = req.query;
 
-      const result = await this.registrationsService.getEventAthleteRegistrations(serviceId, {
-        status,
-      });
+      const result =
+        await this.registrationsService.getEventAthleteRegistrations(
+          serviceId,
+          {
+            status,
+          },
+        );
 
       if (!result.success) {
         return res.status(result.statusCode || 404).json(result);
@@ -738,8 +770,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener inscripciones.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al obtener inscripciones.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -777,9 +810,12 @@ export class RegistrationsController {
       const { athleteId } = req.params;
       const { status } = req.query;
 
-      const result = await this.registrationsService.getAthleteRegistrations(athleteId, {
-        status,
-      });
+      const result = await this.registrationsService.getAthleteRegistrations(
+        athleteId,
+        {
+          status,
+        },
+      );
 
       if (!result.success) {
         return res.status(result.statusCode || 404).json(result);
@@ -793,8 +829,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener inscripciones.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al obtener inscripciones.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -822,7 +859,9 @@ export class RegistrationsController {
     try {
       const { sportsCategoryId } = req.query;
 
-      const result = await this.registrationsService.getAvailableAthletes({ sportsCategoryId });
+      const result = await this.registrationsService.getAvailableAthletes({
+        sportsCategoryId,
+      });
 
       res.json({
         success: true,
@@ -832,8 +871,9 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener deportistas.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al obtener deportistas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -883,10 +923,16 @@ export class RegistrationsController {
     try {
       const { serviceId, athleteIds, notes } = req.body;
 
-      if (!serviceId || !athleteIds || !Array.isArray(athleteIds) || athleteIds.length === 0) {
+      if (
+        !serviceId ||
+        !athleteIds ||
+        !Array.isArray(athleteIds) ||
+        athleteIds.length === 0
+      ) {
         return res.status(400).json({
           success: false,
-          message: 'Se requiere serviceId y un array de athleteIds con al menos un deportista.',
+          message:
+            "Se requiere serviceId y un array de athleteIds con al menos un deportista.",
         });
       }
 
@@ -908,8 +954,98 @@ export class RegistrationsController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al inscribir deportistas.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al inscribir deportistas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/registrations/event/{serviceId}/teams:
+   *   get:
+   *     summary: Obtener equipos disponibles filtrados por categorías del evento
+   *     description: Devuelve solo los equipos que coinciden con las categorías del evento, optimizado con datos mínimos (id, nombre, categoría, tipo)
+   *     tags: [Registrations]
+   *     parameters:
+   *       - in: path
+   *         name: serviceId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *     responses:
+   *       200:
+   *         description: Lista de equipos disponibles filtrados por categoría
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     foundation:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: integer
+   *                           name:
+   *                             type: string
+   *                           category:
+   *                             type: string
+   *                           teamType:
+   *                             type: string
+   *                     temporary:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: integer
+   *                           name:
+   *                             type: string
+   *                           category:
+   *                             type: string
+   *                           teamType:
+   *                             type: string
+   *                     total:
+   *                       type: integer
+   *                 message:
+   *                   type: string
+   *       404:
+   *         description: Evento no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  getTeamsByEventCategories = async (req, res) => {
+    try {
+      const { serviceId } = req.params;
+
+      const result =
+        await this.registrationsService.getTeamsByEventCategories(serviceId);
+
+      if (!result.success) {
+        return res.status(result.statusCode || 404).json(result);
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.total} equipos disponibles para este evento.`,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener equipos.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };

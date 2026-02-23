@@ -60,4 +60,23 @@ export class AssistanceathletesService {
       };
     }
   }
+
+  async getHistorySummary(params) {
+    try {
+      const result = await this.repository.getHistorySummary(params);
+      return {
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
+        range: result.range,
+      };
+    } catch (error) {
+      console.error("Error en getHistorySummary:", error);
+      return {
+        success: false,
+        message: "Error al obtener el resumen de asistencia.",
+        statusCode: 500,
+      };
+    }
+  }
 }

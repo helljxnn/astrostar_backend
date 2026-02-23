@@ -7,71 +7,106 @@ export class EventsRepository {
    * Transformar evento del backend al formato esperado por el frontend móvil
    */
   transformEventForMobile(service) {
-    return {
-      id: service.id,
-      name: service.name,
-      description: service.description,
-      startDate: service.startDate,
-      endDate: service.endDate,
-      startTime: service.startTime,
-      endTime: service.endTime,
-      location: service.location,
-      phone: service.phone,
-      status: service.status,
-      imageUrl: service.imageUrl,
-      scheduleFile: service.scheduleFile,
-      publish: service.publish,
-      typeId: service.typeId,
-      // Mapear categorías deportivas
-      categories: service.serviceSportsCategories
-        ? service.serviceSportsCategories.map((ssc) => ({
-            id: ssc.sportsCategory.id,
-            name: ssc.sportsCategory.nombre,
-            description:
-              ssc.sportsCategory.descripcion ||
-              `Categoría ${ssc.sportsCategory.nombre} (${ssc.sportsCategory.edadMinima}-${ssc.sportsCategory.edadMaxima} años)`,
-            ageRange: `${ssc.sportsCategory.edadMinima}-${ssc.sportsCategory.edadMaxima} años`,
-          }))
-        : [],
-      // Para compatibilidad - primera categoría como categoryId
-      categoryId:
-        service.serviceSportsCategories &&
-        service.serviceSportsCategories.length > 0
-          ? service.serviceSportsCategories[0].sportsCategory.id
-          : service.categoryId, // fallback al categoryId directo
-      // Categoría del evento (EventCategory)
-      eventCategory: service.event_categories
-        ? {
-            id: service.event_categories.id,
-            name: service.event_categories.name,
-            description: service.event_categories.description || null,
-          }
-        : null,
-      type: service.ServiceType
-        ? {
-            id: service.ServiceType.id,
-            name: service.ServiceType.name,
-            description: service.ServiceType.description || null,
-          }
-        : null,
-      // Para compatibilidad móvil
-      sponsors: service.ServiceSponsor
-        ? service.ServiceSponsor.map((ss) => ({
-            id: ss.id,
-            sponsor: {
-              id: ss.Sponsor.id,
-              name: ss.Sponsor.name,
-              logoUrl: null,
-            },
-          }))
-        : [],
-      // Para el frontend web - incluir datos completos
-      serviceSportsCategories: service.serviceSportsCategories || [],
-      event_categories: service.event_categories || null,
-      ServiceType: service.ServiceType || null,
-      ServiceSponsor: service.ServiceSponsor || [],
-      _count: service._count || { participants: 0 },
-    };
+    try {
+      return {
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        startDate: service.startDate,
+        endDate: service.endDate,
+        startTime: service.startTime,
+        endTime: service.endTime,
+        location: service.location,
+        phone: service.phone,
+        status: service.status,
+        imageUrl: service.imageUrl,
+        scheduleFile: service.scheduleFile,
+        publish: service.publish,
+        typeId: service.typeId,
+        // Mapear categorías deportivas con validación
+        categories: service.serviceSportsCategories
+          ? service.serviceSportsCategories
+              .filter((ssc) => ssc && ssc.sportsCategory) // Filtrar nulls
+              .map((ssc) => ({
+                id: ssc.sportsCategory.id,
+                name: ssc.sportsCategory.nombre || "Sin nombre",
+                description:
+                  ssc.sportsCategory.descripcion ||
+                  `Categoría ${ssc.sportsCategory.nombre || "Sin nombre"} (${ssc.sportsCategory.edadMinima || 0}-${ssc.sportsCategory.edadMaxima || 0} años)`,
+                ageRange: `${ssc.sportsCategory.edadMinima || 0}-${ssc.sportsCategory.edadMaxima || 0} años`,
+              }))
+          : [],
+        // Para compatibilidad - primera categoría como categoryId
+        categoryId:
+          service.serviceSportsCategories &&
+          service.serviceSportsCategories.length > 0 &&
+          service.serviceSportsCategories[0].sportsCategory
+            ? service.serviceSportsCategories[0].sportsCategory.id
+            : service.categoryId || null, // fallback al categoryId directo
+        // Categoría del evento (EventCategory)
+        eventCategory: service.event_categories
+          ? {
+              id: service.event_categories.id,
+              name: service.event_categories.name,
+              description: service.event_categories.description || null,
+            }
+          : null,
+        type: service.ServiceType
+          ? {
+              id: service.ServiceType.id,
+              name: service.ServiceType.name,
+              description: service.ServiceType.description || null,
+            }
+          : null,
+        // Para compatibilidad móvil con validación
+        sponsors: service.ServiceSponsor
+          ? service.ServiceSponsor.filter((ss) => ss && ss.Sponsor) // Filtrar nulls
+              .map((ss) => ({
+                id: ss.id,
+                sponsor: {
+                  id: ss.Sponsor.id,
+                  name: ss.Sponsor.name,
+                  logoUrl: null,
+                },
+              }))
+          : [],
+        // Para el frontend web - incluir datos completos
+        serviceSportsCategories: service.serviceSportsCategories || [],
+        event_categories: service.event_categories || null,
+        ServiceType: service.ServiceType || null,
+        ServiceSponsor: service.ServiceSponsor || [],
+        _count: service._count || { participants: 0 },
+      };
+    } catch (error) {
+      console.error("Error transforming event:", service.id, error.message);
+      // Retornar un objeto mínimo en caso de error
+      return {
+        id: service.id,
+        name: service.name || "Evento sin nombre",
+        description: service.description || "",
+        startDate: service.startDate,
+        endDate: service.endDate,
+        startTime: service.startTime,
+        endTime: service.endTime,
+        location: service.location || "",
+        phone: service.phone || "",
+        status: service.status || "Programado",
+        imageUrl: service.imageUrl || null,
+        scheduleFile: service.scheduleFile || null,
+        publish: service.publish || false,
+        typeId: service.typeId || null,
+        categories: [],
+        categoryId: null,
+        eventCategory: null,
+        type: null,
+        sponsors: [],
+        serviceSportsCategories: [],
+        event_categories: null,
+        ServiceType: null,
+        ServiceSponsor: [],
+        _count: { participants: 0 },
+      };
+    }
   }
 
   /**
@@ -178,10 +213,25 @@ export class EventsRepository {
         prisma.service.count({ where }),
       ]);
 
-      // Transformar eventos para el formato móvil
-      const transformedEvents = services.map((service) =>
-        this.transformEventForMobile(service)
-      );
+      // Transformar eventos para el formato móvil con manejo de errores
+      const transformedEvents = services.map((service, index) => {
+        try {
+          return this.transformEventForMobile(service);
+        } catch (error) {
+          // Solo loguear errores en desarrollo
+          if (process.env.NODE_ENV === "development") {
+            console.error(
+              `❌ Error transformando evento ${index + 1}/${services.length}:`,
+              {
+                id: service.id,
+                name: service.name,
+                error: error.message,
+              },
+            );
+          }
+          throw error; // Re-lanzar para que se capture arriba
+        }
+      });
 
       return {
         events: transformedEvents,
@@ -402,7 +452,7 @@ export class EventsRepository {
           throw new Error("El tipo de evento seleccionado no existe");
         }
         throw new Error(
-          "Error de relación: uno de los IDs proporcionados no existe"
+          "Error de relación: uno de los IDs proporcionados no existe",
         );
       }
 
@@ -433,19 +483,78 @@ export class EventsRepository {
 
       // Actualizar categorías deportivas si se proporcionaron
       if (categoryIds !== undefined) {
-        // Eliminar las categorías existentes
-        await prisma.serviceSportsCategory.deleteMany({
+        // Obtener categorías actuales
+        const currentCategories = await prisma.serviceSportsCategory.findMany({
           where: { serviceId: eventId },
+          select: { sportsCategoryId: true },
         });
 
-        // Crear las nuevas categorías
-        if (categoryIds.length > 0) {
-          await prisma.serviceSportsCategory.createMany({
-            data: categoryIds.map((categoryId) => ({
+        const currentCategoryIds = currentCategories.map(
+          (c) => c.sportsCategoryId,
+        );
+        const newCategoryIds = categoryIds.map((id) => parseInt(id));
+
+        // Identificar categorías que se están eliminando
+        const removedCategoryIds = currentCategoryIds.filter(
+          (id) => !newCategoryIds.includes(id),
+        );
+
+        // Identificar categorías que se están agregando
+        const addedCategoryIds = newCategoryIds.filter(
+          (id) => !currentCategoryIds.includes(id),
+        );
+
+        // Si hay categorías que se están eliminando, eliminar inscripciones asociadas PRIMERO
+        if (removedCategoryIds.length > 0) {
+          // Obtener nombres de las categorías para el log
+          const removedCategories = await prisma.sportsCategory.findMany({
+            where: { id: { in: removedCategoryIds } },
+            select: { id: true, nombre: true },
+          });
+
+          console.log(
+            `🗑️ Eliminando inscripciones de categorías removidas del evento ${eventId}:`,
+            removedCategories.map((c) => c.nombre).join(", "),
+          );
+
+          // Eliminar TODOS los participantes (equipos e individuales) cuya categoría deportiva
+          // esté en la lista de categorías removidas
+          const deletedParticipants = await prisma.participant.deleteMany({
+            where: {
               serviceId: eventId,
-              sportsCategoryId: parseInt(categoryId),
+              sportsCategoryId: {
+                in: removedCategoryIds,
+              },
+            },
+          });
+
+          console.log(
+            `✅ Eliminados ${deletedParticipants.count} participantes (equipos y deportistas) de categorías removidas`,
+          );
+
+          // Ahora sí eliminar las relaciones de categorías removidas
+          await prisma.serviceSportsCategory.deleteMany({
+            where: {
+              serviceId: eventId,
+              sportsCategoryId: {
+                in: removedCategoryIds,
+              },
+            },
+          });
+        }
+
+        // Agregar solo las categorías nuevas (no las que ya existen)
+        if (addedCategoryIds.length > 0) {
+          await prisma.serviceSportsCategory.createMany({
+            data: addedCategoryIds.map((categoryId) => ({
+              serviceId: eventId,
+              sportsCategoryId: categoryId,
             })),
           });
+
+          console.log(
+            `➕ Agregadas ${addedCategoryIds.length} categorías nuevas al evento`,
+          );
         }
       }
 
@@ -543,7 +652,7 @@ export class EventsRepository {
           throw new Error("El tipo de evento seleccionado no existe");
         }
         throw new Error(
-          "Error de relación: uno de los IDs proporcionados no existe"
+          "Error de relación: uno de los IDs proporcionados no existe",
         );
       }
 
@@ -570,7 +679,7 @@ export class EventsRepository {
       // Proporcionar mensajes de error más específicos
       if (error.code === "P2003") {
         throw new Error(
-          "No se puede eliminar el evento debido a restricciones de clave foránea. Verifica que no tenga relaciones activas."
+          "No se puede eliminar el evento debido a restricciones de clave foránea. Verifica que no tenga relaciones activas.",
         );
       }
 
@@ -586,13 +695,13 @@ export class EventsRepository {
    * Obtener estadísticas de eventos
    */
   async getStats() {
-    const [total, programado, finalizado, cancelado, pausado, byCategory] =
+    const [total, programado, enCurso, finalizado, cancelado, byCategory] =
       await Promise.all([
         prisma.service.count(),
         prisma.service.count({ where: { status: "Programado" } }),
+        prisma.service.count({ where: { status: "En_curso" } }),
         prisma.service.count({ where: { status: "Finalizado" } }),
         prisma.service.count({ where: { status: "Cancelado" } }),
-        prisma.service.count({ where: { status: "Pausado" } }),
         prisma.service.groupBy({
           by: ["categoryId"],
           _count: {
@@ -604,9 +713,9 @@ export class EventsRepository {
     return {
       total,
       programado,
+      enCurso,
       finalizado,
       cancelado,
-      pausado,
       byCategory,
     };
   }
@@ -729,6 +838,11 @@ export class EventsRepository {
       // Filtrar manualmente los eventos que deben finalizarse
       // currentDate ya viene en formato YYYY-MM-DD desde Bogotá
       const eventsToFinalize = events.filter((event) => {
+        // Validar que el evento tenga fecha y hora de fin
+        if (!event.endDate || !event.endTime) {
+          return false;
+        }
+
         const eventEndDate = new Date(event.endDate);
         const eventEndDateStr =
           eventEndDate.getFullYear() +
@@ -767,6 +881,95 @@ export class EventsRepository {
   }
 
   /**
+   * Encontrar eventos que deberían estar en curso
+   */
+  async findEventsToStartInProgress(currentDate, currentTime) {
+    try {
+      // Obtener todos los eventos programados
+      const events = await prisma.service.findMany({
+        where: {
+          status: "Programado",
+        },
+        select: {
+          id: true,
+          name: true,
+          startDate: true,
+          startTime: true,
+          endDate: true,
+          endTime: true,
+          status: true,
+        },
+      });
+
+      // Filtrar manualmente los eventos que deben estar en curso
+      // currentDate ya viene en formato YYYY-MM-DD desde Bogotá
+      const eventsToStartInProgress = events.filter((event) => {
+        // Validar que el evento tenga fechas y horas completas
+        if (
+          !event.startDate ||
+          !event.startTime ||
+          !event.endDate ||
+          !event.endTime
+        ) {
+          return false;
+        }
+
+        const eventStartDate = new Date(event.startDate);
+        const eventStartDateStr =
+          eventStartDate.getFullYear() +
+          "-" +
+          String(eventStartDate.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(eventStartDate.getDate()).padStart(2, "0");
+
+        const eventEndDate = new Date(event.endDate);
+        const eventEndDateStr =
+          eventEndDate.getFullYear() +
+          "-" +
+          String(eventEndDate.getMonth() + 1).padStart(2, "0") +
+          "-" +
+          String(eventEndDate.getDate()).padStart(2, "0");
+
+        // Si la fecha de inicio es anterior a hoy, el evento debería estar en curso
+        if (eventStartDateStr < currentDate && eventEndDateStr >= currentDate) {
+          return true;
+        }
+
+        // Si la fecha de inicio es hoy, verificar la hora
+        if (eventStartDateStr === currentDate) {
+          const [eventHour, eventMin] = event.startTime.split(":").map(Number);
+          const [currentHour, currentMin] = currentTime.split(":").map(Number);
+
+          const eventMinutes = eventHour * 60 + eventMin;
+          const currentMinutes = currentHour * 60 + currentMin;
+
+          // Si la hora de inicio ya pasó y no ha terminado, poner en curso
+          if (eventMinutes <= currentMinutes) {
+            // Verificar que no haya terminado
+            if (eventEndDateStr > currentDate) {
+              return true;
+            }
+            // Si termina hoy, verificar la hora de fin
+            if (eventEndDateStr === currentDate) {
+              const [endHour, endMin] = event.endTime.split(":").map(Number);
+              const endMinutes = endHour * 60 + endMin;
+              if (currentMinutes < endMinutes) {
+                return true;
+              }
+            }
+          }
+        }
+
+        return false;
+      });
+
+      return eventsToStartInProgress;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Actualizar el estado de múltiples eventos
    */
   async updateMultipleStatuses(eventIds, newStatus) {
@@ -791,7 +994,7 @@ export class EventsRepository {
    */
   async getAvailableAthletes(
     eventId,
-    { page = 1, limit = 10, search = "", categoryId = "" }
+    { page = 1, limit = 10, search = "", categoryId = "" },
   ) {
     try {
       const skip = (page - 1) * limit;
@@ -955,12 +1158,12 @@ export class EventsRepository {
           limit,
           total: categoryId ? transformedAthletes.length : total,
           totalPages: Math.ceil(
-            (categoryId ? transformedAthletes.length : total) / limit
+            (categoryId ? transformedAthletes.length : total) / limit,
           ),
           hasNext:
             page <
             Math.ceil(
-              (categoryId ? transformedAthletes.length : total) / limit
+              (categoryId ? transformedAthletes.length : total) / limit,
             ),
           hasPrev: page > 1,
         },
@@ -989,7 +1192,7 @@ export class EventsRepository {
 
       if (event.status === "Cancelado" || event.status === "Finalizado") {
         throw new Error(
-          "No se puede inscribir en un evento cancelado o finalizado"
+          "No se puede inscribir en un evento cancelado o finalizado",
         );
       }
 
@@ -1177,6 +1380,134 @@ export class EventsRepository {
         success: true,
         deletedCount: deletedCount.count,
         message: `Se eliminaron ${deletedCount.count} inscripciones del evento`,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar inscripciones afectadas por cambio de categorías
+   * Retorna información sobre equipos y deportistas que serían eliminados
+   */
+  async checkAffectedRegistrations(eventId, newCategoryIds) {
+    try {
+      const parsedEventId = parseInt(eventId);
+      const parsedNewCategoryIds = newCategoryIds.map((id) => parseInt(id));
+
+      // Obtener categorías actuales del evento
+      const currentCategories = await prisma.serviceSportsCategory.findMany({
+        where: { serviceId: parsedEventId },
+        include: {
+          sportsCategory: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      const currentCategoryIds = currentCategories.map(
+        (c) => c.sportsCategoryId,
+      );
+
+      // Identificar categorías que se están eliminando
+      const removedCategoryIds = currentCategoryIds.filter(
+        (id) => !parsedNewCategoryIds.includes(id),
+      );
+
+      if (removedCategoryIds.length === 0) {
+        return {
+          hasAffectedRegistrations: false,
+          removedCategories: [],
+          affectedTeams: [],
+          affectedAthletes: [],
+          totalAffected: 0,
+        };
+      }
+
+      // Obtener información de las categorías removidas
+      const removedCategories = currentCategories
+        .filter((c) => removedCategoryIds.includes(c.sportsCategoryId))
+        .map((c) => ({
+          id: c.sportsCategory.id,
+          nombre: c.sportsCategory.nombre,
+        }));
+
+      // Buscar equipos afectados
+      const affectedTeams = await prisma.participant.findMany({
+        where: {
+          serviceId: parsedEventId,
+          type: "Team",
+          sportsCategoryId: {
+            in: removedCategoryIds,
+          },
+        },
+        include: {
+          team: {
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              teamType: true,
+            },
+          },
+          sportsCategory: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      // Buscar deportistas afectados
+      const affectedAthletes = await prisma.participant.findMany({
+        where: {
+          serviceId: parsedEventId,
+          type: "Individual",
+          sportsCategoryId: {
+            in: removedCategoryIds,
+          },
+        },
+        include: {
+          athlete: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+            },
+          },
+          sportsCategory: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      return {
+        hasAffectedRegistrations:
+          affectedTeams.length > 0 || affectedAthletes.length > 0,
+        removedCategories,
+        affectedTeams: affectedTeams.map((p) => ({
+          id: p.team.id,
+          name: p.team.name,
+          category: p.sportsCategory?.nombre || p.team.category,
+          teamType: p.team.teamType,
+        })),
+        affectedAthletes: affectedAthletes.map((p) => ({
+          id: p.athlete.id,
+          name: `${p.athlete.user.firstName} ${p.athlete.user.lastName}`,
+          category: p.sportsCategory.nombre,
+        })),
+        totalAffected: affectedTeams.length + affectedAthletes.length,
       };
     } catch (error) {
       throw error;

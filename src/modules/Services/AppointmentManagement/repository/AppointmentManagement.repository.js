@@ -368,7 +368,16 @@ export class AppointmentRepository {
         endTime: true,
         recurrence: true,
         customRecurrence: true,
-        status: true
+        status: true,
+        novelties: {
+          select: {
+            date: true,
+            type: true,
+            startTime: true,
+            endTime: true,
+            reason: true
+          }
+        }
       }
     });
   }

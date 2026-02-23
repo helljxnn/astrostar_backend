@@ -46,10 +46,7 @@ export const scheduleValidators = {
       .optional()
       .isIn(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
       .withMessage('El día de la semana debe ser: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday o Sunday.'),
-    query('status')
-      .optional()
-      .isIn(['Programado', 'Completado', 'Cancelado'])
-      .withMessage('El estado debe ser: Programado, Completado o Cancelado.')
+    // Estado eliminado del módulo
   ],
 
   /**
@@ -137,10 +134,7 @@ export const scheduleValidators = {
       .isLength({ min: 3, max: 500 })
       .withMessage('La descripción debe tener entre 3 y 500 caracteres.')
       .trim(),
-    body('estado')
-      .optional()
-      .isIn(['Programado', 'Completado', 'Cancelado'])
-      .withMessage('El estado debe ser: Programado, Completado o Cancelado.')
+    // Estado eliminado del módulo
   ],
 
   /**
@@ -189,10 +183,7 @@ export const scheduleValidators = {
       .isLength({ min: 3, max: 500 })
       .withMessage('La descripción debe tener entre 3 y 500 caracteres.')
       .trim(),
-    body('estado')
-      .optional()
-      .isIn(['Programado', 'Completado', 'Cancelado'])
-      .withMessage('El estado debe ser: Programado, Completado o Cancelado.')
+    // Estado eliminado del módulo
   ],
 
   /**
@@ -203,6 +194,38 @@ export const scheduleValidators = {
       .isInt({ min: 1 })
       .withMessage('El ID del horario debe ser un número entero válido mayor a 0.')
       .toInt(),
+    body('fecha')
+      .optional()
+      .isISO8601()
+      .withMessage('La fecha de la novedad debe tener formato válido (YYYY-MM-DD).'),
+    body('tipoCancelacion')
+      .optional()
+      .isIn(['full', 'time'])
+      .withMessage('El tipo de novedad debe ser: full o time.'),
+    body('horaInicio')
+      .optional()
+      .matches(/^([01]?\d|2[0-3]):([0-5]\d)$/)
+      .withMessage('La hora de inicio debe tener formato HH:MM (24 horas).'),
+    body('horaFin')
+      .optional()
+      .matches(/^([01]?\d|2[0-3]):([0-5]\d)$/)
+      .withMessage('La hora de fin debe tener formato HH:MM (24 horas).'),
+    body('tiempoCancelacion')
+      .optional()
+      .custom((value) => {
+        if (!value) return true;
+        if (value === 'Todo el dia') return true;
+        const rangeRegex = /^([01]?\d|2[0-3]):([0-5]\d)\s*-\s*([01]?\d|2[0-3]):([0-5]\d)$/;
+        if (!rangeRegex.test(value)) {
+          throw new Error('El tiempo de la novedad debe tener formato HH:MM - HH:MM.');
+        }
+        return true;
+      }),
+    body('explicacionTiempo')
+      .optional()
+      .isLength({ min: 3, max: 500 })
+      .withMessage('La explicación de la novedad debe tener entre 3 y 500 caracteres.')
+      .trim(),
     body('motivoCancelacion')
       .notEmpty()
       .withMessage('El motivo de la novedad es obligatorio.')

@@ -1,9 +1,9 @@
-import express from 'express';
-import { RegistrationsController } from './registrations.controller.js';
+import express from "express";
+import { RegistrationsController } from "./registrations.controller.js";
 import {
   registrationsValidators,
   handleValidationErrors,
-} from './registrations.validator.js';
+} from "./registrations.validator.js";
 
 const router = express.Router();
 const registrationsController = new RegistrationsController();
@@ -18,7 +18,7 @@ const registrationsController = new RegistrationsController();
  *       200:
  *         description: Estadísticas obtenidas exitosamente
  */
-router.get('/stats', registrationsController.getRegistrationStats);
+router.get("/stats", registrationsController.getRegistrationStats);
 
 /**
  * @swagger
@@ -36,7 +36,29 @@ router.get('/stats', registrationsController.getRegistrationStats);
  *       200:
  *         description: Lista de equipos disponibles separados por tipo (fundación y temporales)
  */
-router.get('/teams/available', registrationsController.getAvailableTeams);
+router.get("/teams/available", registrationsController.getAvailableTeams);
+
+/**
+ * @swagger
+ * /api/registrations/event/{serviceId}/teams:
+ *   get:
+ *     summary: Obtener equipos disponibles filtrados por categorías del evento (optimizado)
+ *     tags: [Registrations]
+ *     parameters:
+ *       - in: path
+ *         name: serviceId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: ID del evento
+ *     responses:
+ *       200:
+ *         description: Lista de equipos disponibles filtrados por categoría del evento
+ */
+router.get(
+  "/event/:serviceId/teams",
+  registrationsController.getTeamsByEventCategories,
+);
 
 /**
  * @swagger
@@ -60,10 +82,10 @@ router.get('/teams/available', registrationsController.getAvailableTeams);
  *         description: Lista de inscripciones del evento
  */
 router.get(
-  '/event/:serviceId',
+  "/event/:serviceId",
   registrationsValidators.getByEvent,
   handleValidationErrors,
-  registrationsController.getEventRegistrations
+  registrationsController.getEventRegistrations,
 );
 
 /**
@@ -88,10 +110,10 @@ router.get(
  *         description: Lista de inscripciones del equipo
  */
 router.get(
-  '/team/:teamId',
+  "/team/:teamId",
   registrationsValidators.getByTeam,
   handleValidationErrors,
-  registrationsController.getTeamRegistrations
+  registrationsController.getTeamRegistrations,
 );
 
 /**
@@ -111,10 +133,10 @@ router.get(
  *         description: Inscripción encontrada
  */
 router.get(
-  '/:id',
+  "/:id",
   registrationsValidators.getById,
   handleValidationErrors,
-  registrationsController.getRegistrationById
+  registrationsController.getRegistrationById,
 );
 
 /**
@@ -148,10 +170,7 @@ router.get(
  *       201:
  *         description: Equipos inscritos exitosamente
  */
-router.post(
-  '/bulk',
-  registrationsController.registerMultipleTeams
-);
+router.post("/bulk", registrationsController.registerMultipleTeams);
 
 /**
  * @swagger
@@ -186,10 +205,10 @@ router.post(
  *         description: Equipo inscrito exitosamente
  */
 router.post(
-  '/',
+  "/",
   registrationsValidators.registerTeam,
   handleValidationErrors,
-  registrationsController.registerTeamToEvent
+  registrationsController.registerTeamToEvent,
 );
 
 /**
@@ -223,10 +242,10 @@ router.post(
  *         description: Estado actualizado exitosamente
  */
 router.patch(
-  '/:id/status',
+  "/:id/status",
   registrationsValidators.updateStatus,
   handleValidationErrors,
-  registrationsController.updateRegistrationStatus
+  registrationsController.updateRegistrationStatus,
 );
 
 /**
@@ -246,10 +265,10 @@ router.patch(
  *         description: Inscripción cancelada exitosamente
  */
 router.delete(
-  '/:id',
+  "/:id",
   registrationsValidators.cancel,
   handleValidationErrors,
-  registrationsController.cancelRegistration
+  registrationsController.cancelRegistration,
 );
 
 // ============================================
@@ -272,7 +291,7 @@ router.delete(
  *       200:
  *         description: Lista de deportistas disponibles
  */
-router.get('/athletes/available', registrationsController.getAvailableAthletes);
+router.get("/athletes/available", registrationsController.getAvailableAthletes);
 
 /**
  * @swagger
@@ -296,10 +315,10 @@ router.get('/athletes/available', registrationsController.getAvailableAthletes);
  *         description: Lista de inscripciones individuales del evento
  */
 router.get(
-  '/event/:serviceId/athletes',
+  "/event/:serviceId/athletes",
   registrationsValidators.getByEvent,
   handleValidationErrors,
-  registrationsController.getEventAthleteRegistrations
+  registrationsController.getEventAthleteRegistrations,
 );
 
 /**
@@ -324,10 +343,10 @@ router.get(
  *         description: Lista de inscripciones del deportista
  */
 router.get(
-  '/athlete/:athleteId',
+  "/athlete/:athleteId",
   registrationsValidators.getByAthlete,
   handleValidationErrors,
-  registrationsController.getAthleteRegistrations
+  registrationsController.getAthleteRegistrations,
 );
 
 /**
@@ -363,10 +382,10 @@ router.get(
  *         description: Deportista inscrito exitosamente
  */
 router.post(
-  '/athlete',
+  "/athlete",
   registrationsValidators.registerAthlete,
   handleValidationErrors,
-  registrationsController.registerAthleteToEvent
+  registrationsController.registerAthleteToEvent,
 );
 
 /**
@@ -400,9 +419,6 @@ router.post(
  *       201:
  *         description: Deportistas inscritos exitosamente
  */
-router.post(
-  '/athletes/bulk',
-  registrationsController.registerMultipleAthletes
-);
+router.post("/athletes/bulk", registrationsController.registerMultipleAthletes);
 
 export default router;

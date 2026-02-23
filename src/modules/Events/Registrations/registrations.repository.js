@@ -16,31 +16,32 @@ export class RegistrationsRepository {
       },
       include: {
         team: {
-          include: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            coach: true,
+            _count: {
+              select: { members: true },
+            },
             members: {
+              where: {
+                employeeId: { not: null },
+                isActive: true,
+              },
               include: {
-                athlete: {
-                  include: {
-                    user: true,
-                  },
-                },
-                temporaryPerson: true,
-                employee: {
-                  include: {
-                    user: true,
-                  },
-                },
+                employee: { include: { user: true } },
               },
             },
           },
         },
-        service: {
-          include: {
-            category: true,
-            type: true,
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
           },
         },
-        sportsCategory: true,
+        service: true,
       },
     });
   }
@@ -61,7 +62,33 @@ export class RegistrationsRepository {
         status: data.status || "Registered",
       },
       include: {
-        team: true,
+        team: {
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            coach: true,
+            _count: {
+              select: { members: true },
+            },
+            members: {
+              where: {
+                employeeId: { not: null },
+                isActive: true,
+              },
+              include: {
+                employee: { include: { user: true } },
+              },
+            },
+          },
+        },
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+        service: true,
       },
     });
   }
@@ -101,36 +128,41 @@ export class RegistrationsRepository {
             name: true,
             coach: true,
             category: true,
-            teamType: true, // Use teamType instead of phone
+            teamType: true,
             status: true,
             _count: {
               select: { members: true },
             },
           },
         },
-        sportsCategory: true,
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+        eventInvitations: {
+          select: {
+            id: true,
+            status: true,
+            recipientEmail: true,
+            recipientName: true,
+            sentAt: true,
+            respondedAt: true,
+            invitationType: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
+        },
       },
       orderBy: {
         registrationDate: "desc",
       },
     });
 
-    // Transformar para incluir campos compatibles con el frontend
-    return registrations.map((reg) => {
-      return {
-        ...reg,
-        team: reg.team
-          ? {
-              ...reg.team,
-              name: reg.team.name,
-              coach: reg.team.coach,
-              category: reg.team.category,
-              teamType: reg.team.teamType, // Use the teamType field directly from the database
-              _count: reg.team._count,
-            }
-          : null,
-      };
-    });
+    return registrations;
   }
 
   /**
@@ -150,12 +182,21 @@ export class RegistrationsRepository {
       where,
       include: {
         service: {
-          include: {
-            category: true,
-            type: true,
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            location: true,
           },
         },
-        sportsCategory: true,
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
       },
       orderBy: {
         registrationDate: "desc",
@@ -171,35 +212,34 @@ export class RegistrationsRepository {
       where: { id: parseInt(id) },
       include: {
         team: {
-          include: {
-            members: {
-              include: {
-                athlete: {
-                  include: {
-                    user: true,
-                  },
-                },
-                temporaryPerson: true,
-                employee: {
-                  include: {
-                    user: true,
-                  },
-                },
-              },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            coach: true,
+            teamType: true,
+            status: true,
+            _count: {
+              select: { members: true },
             },
           },
         },
         service: {
-          include: {
-            ServiceType: true,
-            ServiceCategory: {
-              include: {
-                SportsCategory: true,
-              },
-            },
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            location: true,
           },
         },
-        sportsCategory: true,
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
       },
     });
   }
@@ -257,7 +297,8 @@ export class RegistrationsRepository {
         id: true,
         name: true,
         status: true,
-        phone: true, // Contiene el marcador TIPO:Fundacion o TIPO:Temporal
+        category: true,
+        teamType: true,
       },
     });
   }
@@ -443,6 +484,21 @@ export class RegistrationsRepository {
           },
         },
         sportsCategory: true,
+        eventInvitations: {
+          select: {
+            id: true,
+            status: true,
+            recipientEmail: true,
+            recipientName: true,
+            sentAt: true,
+            respondedAt: true,
+            invitationType: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
+        },
       },
       orderBy: {
         registrationDate: "desc",
@@ -589,5 +645,97 @@ export class RegistrationsRepository {
         id: parseInt(id),
       },
     });
+  }
+
+  /**
+   * Obtener categorías deportivas de un evento
+   */
+  async getEventCategories(serviceId) {
+    const eventCategories = await prisma.serviceSportsCategory.findMany({
+      where: {
+        serviceId: parseInt(serviceId),
+      },
+      include: {
+        sportsCategory: true,
+      },
+    });
+
+    return eventCategories.map((ec) => ec.sportsCategory);
+  }
+
+  /**
+   * Obtener inscripciones activas de un deportista en categorías deportivas
+   */
+  async getAthleteActiveInscriptions(athleteId) {
+    return await prisma.inscription.findMany({
+      where: {
+        athleteId: parseInt(athleteId),
+        status: "Active",
+      },
+      include: {
+        sportsCategory: true,
+      },
+    });
+  }
+
+  /**
+   * Obtener equipos disponibles filtrados por categorías del evento (optimizado)
+   * Solo devuelve datos esenciales: id, nombre, categoría, tipo, entrenador
+   */
+  async getTeamsByEventCategories(serviceId) {
+    // Obtener las categorías del evento
+    const eventCategories = await prisma.serviceSportsCategory.findMany({
+      where: {
+        serviceId: parseInt(serviceId),
+      },
+      include: {
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+
+    // Si el evento no tiene categorías, devolver todos los equipos activos
+    if (!eventCategories || eventCategories.length === 0) {
+      return await prisma.team.findMany({
+        where: {
+          status: "Active",
+        },
+        select: {
+          id: true,
+          name: true,
+          category: true,
+          teamType: true,
+          coach: true,
+        },
+        orderBy: [{ teamType: "asc" }, { name: "asc" }],
+      });
+    }
+
+    // Extraer nombres de categorías del evento
+    const categoryNames = eventCategories.map((ec) => ec.sportsCategory.nombre);
+
+    // Obtener equipos que coincidan con las categorías del evento
+    const teams = await prisma.team.findMany({
+      where: {
+        status: "Active",
+        category: {
+          in: categoryNames,
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        teamType: true,
+        coach: true,
+      },
+      orderBy: [{ teamType: "asc" }, { name: "asc" }],
+    });
+
+    return teams;
   }
 }

@@ -11,13 +11,12 @@ export class ScheduleController {
    */
   getAllSchedules = async (req, res) => {
     try {
-      const { page = 1, limit = 10, employeeId, dayOfWeek, status } = req.query;
+      const { page = 1, limit = 10, employeeId, dayOfWeek } = req.query;
       const result = await this.scheduleService.getAllSchedules({
         page: parseInt(page),
         limit: parseInt(limit),
         employeeId: employeeId ? parseInt(employeeId) : null,
-        dayOfWeek,
-        status
+        dayOfWeek
       });
       res.json({
         success: true,
@@ -181,14 +180,14 @@ export class ScheduleController {
   registerNovelty = async (req, res) => {
     try {
       const { id } = req.params;
-      const { motivoCancelacion } = req.body;
+      const { motivoCancelacion } = req.body || {};
       if (!motivoCancelacion || !motivoCancelacion.trim()) {
         return res.status(400).json({
           success: false,
           message: 'El motivo de la novedad es obligatorio.'
         });
       }
-      const result = await this.scheduleService.registerNovelty(id, motivoCancelacion);
+      const result = await this.scheduleService.registerNovelty(id, req.body || {});
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,

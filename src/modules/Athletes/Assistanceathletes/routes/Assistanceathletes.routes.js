@@ -16,6 +16,13 @@ router.get(
 );
 
 router.get(
+  "/history/summary",
+  assistanceathletesValidators.getHistorySummary,
+  handleValidationErrors,
+  (req, res) => controller.getHistorySummary(req, res)
+);
+
+router.get(
   "/history",
   assistanceathletesValidators.getHistory,
   handleValidationErrors,

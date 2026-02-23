@@ -129,6 +129,11 @@ enum ScheduleStatus {
   Cancelado
 }
 
+enum ScheduleNoveltyType {
+  full
+  time
+}
+
 enum TeamMemberRole {
   Player
   Coach
@@ -178,14 +183,44 @@ enum EmployeeStatus {
 
 enum EventStatus {
   Programado
+  En_curso
   Finalizado
   Cancelado
-  En_pausa
 }
 
 enum TeamType {
   Fundacion
   Temporal
+}
+
+enum GroupStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum GroupLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum EventInvitationStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
+enum InvitationType {
+  INDIVIDUAL
+  TEAM
 }
 
 // ============================================
@@ -303,6 +338,7 @@ model Employee {
   appointments        Appointment[]
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   teamMembers         TeamMember[]
+  groups              Group[]
 
   @@map("employees")
 }
@@ -360,8 +396,25 @@ model EmployeeSchedule {
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  novelties          EmployeeScheduleNovelty[]
 
   @@map("employee_schedules")
+}
+
+model EmployeeScheduleNovelty {
+  id         Int                 @id @default(autoincrement())
+  scheduleId Int
+  date       DateTime
+  type       ScheduleNoveltyType @default(full)
+  startTime  String?
+  endTime    String?
+  reason     String
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  schedule   EmployeeSchedule    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, date])
+  @@map("employee_schedule_novelties")
 }
 
 model Appointment {
@@ -454,8 +507,7 @@ model Athlete {
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
-  athleteAttendances       AthleteAttendance[]
-  appointments             Appointment[]
+  groupMemberships         GroupMembership[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])
@@ -591,21 +643,22 @@ model TeamMember {
 }
 
 model Participant {
-  id               Int             @id @default(autoincrement())
+  id               Int               @id @default(autoincrement())
   type             ParticipantType
-  registrationDate DateTime        @default(now())
-  status           String          @default("Registered")
+  registrationDate DateTime          @default(now())
+  status           String            @default("Registered")
   notes            String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   serviceId        Int
   sportsCategoryId Int?
   athleteId        Int?
   teamId           Int?
-  athlete          Athlete?        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  service          Service         @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  sportsCategory   SportsCategory? @relation(fields: [sportsCategoryId], references: [id])
-  team             Team?           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  athlete          Athlete?          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  service          Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  sportsCategory   SportsCategory?   @relation(fields: [sportsCategoryId], references: [id])
+  team             Team?             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  eventInvitations EventInvitation[]
 
   @@map("participants")
 }
@@ -803,166 +856,61 @@ model DonationFile {
   @@index([donationId])
 }
 
-// ============================================
-// MATERIALES DEPORTIVOS
-// ============================================
+model Group {
+  id          Int               @id @default(autoincrement())
+  name        String            @db.VarChar(100)
+  level       GroupLevel
+  teacherId   Int
+  maxCapacity Int
+  status      GroupStatus       @default(ACTIVE)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  teacher     Employee          @relation(fields: [teacherId], references: [id])
+  memberships GroupMembership[]
 
-enum MaterialStatus {
-  Activo
-  Inactivo
+  @@index([teacherId])
+  @@index([status])
+  @@map("groups")
 }
 
-enum CategoryStatus {
-  Activo
-  Inactivo
+model GroupMembership {
+  id        Int              @id @default(autoincrement())
+  groupId   Int
+  athleteId Int
+  startDate DateTime         @default(now())
+  endDate   DateTime?
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  athlete   Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, athleteId, status])
+  @@index([groupId])
+  @@index([athleteId])
+  @@index([status])
+  @@map("group_memberships")
 }
 
-enum MovementType {
-  Entrada
-  Salida
-  Baja
-  Consumo
-  Ajuste
-}
+model EventInvitation {
+  id             Int                   @id @default(autoincrement())
+  participantId  Int
+  token          String                @unique @db.VarChar(64)
+  status         EventInvitationStatus @default(PENDING)
+  invitationType InvitationType
+  recipientEmail String                @db.VarChar(150)
+  recipientName  String                @db.VarChar(200)
+  sentAt         DateTime              @default(now())
+  respondedAt    DateTime?
+  expiresAt      DateTime
+  reminderSentAt DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  participant    Participant           @relation(fields: [participantId], references: [id], onDelete: Cascade)
 
-enum MovementDestination {
-  Evento
-  ConsumoInterno
-  Dano
-  Perdida
-  Entrega
-}
-
-enum DestinoStock {
-  USO_INTERNO
-  EVENTOS
-}
-
-enum DischargeReason {
-  Danado
-  Perdido
-  Robo
-  Vencido
-  Descarte
-  Otro
-}
-
-enum TipoBaja {
-  DanoDeterioro
-  Perdida
-  Robo
-  AjusteInventario
-  Otro
-}
-
-enum ReservationStatus {
-  Pendiente
-  Confirmada
-  Consumida
-  Cancelada
-}
-
-model MaterialCategory {
-  id          Int            @id @default(autoincrement())
-  nombre      String         @unique @db.VarChar(100)
-  descripcion String?        @db.Text
-  estado      CategoryStatus @default(Activo)
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-  createdBy   Int?           @map("created_by")
-  updatedBy   Int?           @map("updated_by")
-  materials   Material[]
-
-  @@index([nombre])
-  @@index([estado])
-  @@map("material_categories")
-}
-
-model Material {
-  id               Int                   @id @default(autoincrement())
-  nombre           String                @db.VarChar(255)
-  categoriaId      Int                   @map("categoria_id")
-  categoria        String                @db.VarChar(100)
-  descripcion      String?               @db.Text
-  stockDisponible  Int                   @default(0) @map("stock_disponible")
-  stockEventos     Int                   @default(0) @map("stock_eventos")
-  unidadMedida     String                @default("unidad") @map("unidad_medida") @db.VarChar(20)
-  estado           MaterialStatus        @default(Activo)
-  createdAt        DateTime              @default(now()) @map("created_at")
-  updatedAt        DateTime              @updatedAt @map("updated_at")
-  createdBy        Int?                  @map("created_by")
-  updatedBy        Int?                  @map("updated_by")
-  category         MaterialCategory      @relation(fields: [categoriaId], references: [id], onDelete: Restrict)
-  movements        MaterialMovement[]
-  reservations     MaterialReservation[]
-
-  @@unique([nombre, categoriaId], name: "unique_material_per_category")
-  @@index([estado])
-  @@index([categoriaId])
-  @@index([nombre])
-  @@index([unidadMedida])
-  @@map("materials")
-}
-
-model MaterialMovement {
-  id              Int                    @id @default(autoincrement())
-  materialId      Int                    @map("material_id")
-  materialNombre  String                 @db.VarChar(255) @map("material_nombre")
-  categoria       String                 @db.VarChar(100)
-  tipoMovimiento  MovementType           @map("tipo_movimiento")
-  cantidad        Int
-  destino         MovementDestination?
-  destinoStock    DestinoStock?          @map("destino_stock")
-  dischargeReason DischargeReason?       @map("discharge_reason")
-  eventoId        Int?                   @map("evento_id")
-  donacionId      Int?                   @map("donacion_id")
-  reservationId   Int?                   @map("reservation_id")
-  observaciones   String?                @db.Text
-  stockAnterior   Int                    @map("stock_anterior")
-  stockNuevo      Int                    @map("stock_nuevo")
-  referenceId     Int?                   @map("reference_id")
-  referenceType   String?                @db.VarChar(50) @map("reference_type")
-  fecha           DateTime               @default(now())
-  createdBy       Int                    @map("created_by")
-  createdByName   String?                @db.VarChar(255) @map("created_by_name")
-  fechaIngreso    DateTime?              @map("fecha_ingreso") @db.Date
-  proveedorId     Int?                   @map("proveedor_id")
-  tipoBaja        TipoBaja?              @map("tipo_baja")
-  material        Material               @relation(fields: [materialId], references: [id], onDelete: Restrict)
-  reservation     MaterialReservation?   @relation(fields: [reservationId], references: [id], onDelete: SetNull)
-  proveedor       Provider?              @relation(fields: [proveedorId], references: [id], onDelete: SetNull)
-
-  @@index([materialId])
-  @@index([tipoMovimiento])
-  @@index([fecha])
-  @@index([eventoId])
-  @@index([donacionId])
-  @@index([dischargeReason])
-  @@index([fechaIngreso])
-  @@index([proveedorId])
-  @@index([tipoBaja])
-  @@index([destinoStock])
-  @@map("material_movements")
-}
-
-model MaterialReservation {
-  id                Int               @id @default(autoincrement())
-  materialId        Int               @map("material_id")
-  eventoId          Int               @map("evento_id")
-  cantidadReservada Int               @map("cantidad_reservada")
-  estado            ReservationStatus @default(Pendiente)
-  fechaReserva      DateTime          @default(now()) @map("fecha_reserva")
-  fechaEvento       DateTime          @map("fecha_evento")
-  observaciones     String?           @db.Text
-  createdBy         Int               @map("created_by")
-  createdByName     String?           @db.VarChar(255) @map("created_by_name")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
-  material          Material          @relation(fields: [materialId], references: [id], onDelete: Restrict)
-  movements         MaterialMovement[]
-
-  @@index([materialId])
-  @@index([eventoId])
-  @@index([estado])
-  @@index([fechaEvento])
-  @@map("material_reservations")
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([participantId])
+  @@map("event_invitations")
 }
