@@ -725,10 +725,11 @@ model Material {
   updatedAt        DateTime                  @updatedAt @map("updated_at")
   createdBy        Int?                      @map("created_by")
   updatedBy        Int?                      @map("updated_by")
-  unidadMedida     String                    @default("unidad") @map("unidad_medida") @db.VarChar(20)
-  stockFundacion   Int                       @default(0) @map("stock_fundacion")
-  stockEventos     Int                       @default(0) @map("stock_eventos")
-  eventMaterials   EventMaterial[]
+  unidadMedida            String                    @default("unidad") @map("unidad_medida") @db.VarChar(20)
+  stockFundacion          Int                       @default(0) @map("stock_fundacion")
+  stockEventos            Int                       @default(0) @map("stock_eventos")
+  stockEventosReservado   Int                       @default(0) @map("stock_eventos_reservado")
+  eventMaterials          EventMaterial[]
   movements        MaterialMovement[]
   category         MaterialCategory          @relation(fields: [categoriaId], references: [id], map: "materials_categoriaId_fkey")
 
@@ -740,6 +741,7 @@ model Material {
   @@index([unidadMedida])
   @@index([stockFundacion])
   @@index([stockEventos])
+  @@index([stockEventosReservado])
   @@map("materials")
 }
 

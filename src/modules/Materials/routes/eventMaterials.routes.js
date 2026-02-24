@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import eventMaterialsController from '../controllers/eventMaterials.controller.js';
-import { authenticateToken } from '../../../middlewares/auth.middleware.js';
+import { authenticateToken } from '../../../middlewares/auth.js';
 
 const router = Router();
 
@@ -110,5 +110,30 @@ router.post('/:eventoId/materials', authenticateToken, eventMaterialsController.
  *         description: Assignment not found
  */
 router.delete('/:eventoId/materials/:assignmentId', authenticateToken, eventMaterialsController.removeAssignment);
+
+/**
+ * @swagger
+ * /api/materials/events/{eventoId}/finalize:
+ *   post:
+ *     summary: Finalize event - Deduct real stock and create movements
+ *     tags: [Materials - Events]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: eventoId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Event ID
+ *     responses:
+ *       200:
+ *         description: Event finalized successfully
+ *       400:
+ *         description: Validation error or insufficient stock
+ *       401:
+ *         description: Not authenticated
+ */
+router.post('/:eventoId/finalize', authenticateToken, eventMaterialsController.finalizeEvent);
 
 export default router;

@@ -119,6 +119,51 @@ class EventMaterialsController {
       });
     }
   }
+
+  /**
+   * POST /api/materials/events/:eventoId/finalize
+   * Finalize event - Deduct real stock and create movements
+   */
+  async finalizeEvent(req, res) {
+    try {
+      const { eventoId } = req.params;
+      const userId = req.user?.id;
+      const userName = req.user ? `${req.user.firstName} ${req.user.lastName}` : null;
+
+      if (isNaN(eventoId)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid event ID',
+        });
+      }
+
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not authenticated',
+        });
+      }
+
+      const result = await eventMaterialsService.finalizeEvent(
+        parseInt(eventoId),
+        userId,
+        userName
+      );
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json(result);
+      }
+
+      return res.json(result);
+    } catch (error) {
+      console.error('Controller error - finalizeEvent:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error while finalizing event',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
 }
 
 export default new EventMaterialsController();

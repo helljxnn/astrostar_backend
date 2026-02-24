@@ -61,6 +61,7 @@ class MaterialsRepository {
     const materialsWithTotal = materials.map((material) => ({
       ...material,
       stockTotal: material.stockFundacion + material.stockEventos,
+      stockEventosDisponible: material.stockEventos - material.stockEventosReservado,
     }));
 
     return {
@@ -107,6 +108,7 @@ class MaterialsRepository {
     return {
       ...material,
       stockTotal: material.stockFundacion + material.stockEventos,
+      stockEventosDisponible: material.stockEventos - material.stockEventosReservado,
     };
   }
 
