@@ -113,13 +113,6 @@ enum ProviderStatus {
   Inactive
 }
 
-enum PurchaseStatus {
-  Pending
-  Received
-  Partial
-  Cancelled
-}
-
 enum ScheduleRecurrence {
   no
   dia
@@ -344,7 +337,6 @@ model Employee {
   employeeSchedules   EmployeeSchedule[]
   appointments        Appointment[]
   user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  purchases           Purchase[]
   teamMembers         TeamMember[]
   groups              Group[]
 
@@ -690,7 +682,7 @@ model Provider {
   documentTypeId   Int?
   statusAssignedAt DateTime           @default(now())
   documentType     DocumentType?      @relation(fields: [documentTypeId], references: [id])
-  purchases        Purchase[]
+  materialMovements MaterialMovement[]
 
   @@index([businessName])
   @@index([entityType])
@@ -699,61 +691,24 @@ model Provider {
 }
 
 model PreRegistration {
-  id              Int                   @id @default(autoincrement())
-  nombres         String                @db.VarChar(100)
-  apellidos       String                @db.VarChar(100)
-  fechaNacimiento DateTime
-  telefono        String                @db.VarChar(20)
-  correo          String                @db.VarChar(100)
-  estado          PreRegistrationStatus @default(Pendiente)
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  numeroDocumento String?               @db.VarChar(50)
+  id             Int                   @id @default(autoincrement())
+  firstName      String                @db.VarChar(100)
+  middleName     String?               @db.VarChar(100)
+  lastName       String                @db.VarChar(100)
+  secondLastName String?               @db.VarChar(100)
+  identification String                @unique @db.VarChar(50)
+  birthDate      DateTime
+  phoneNumber    String                @db.VarChar(20)
+  email          String                @db.VarChar(100)
+  status         PreRegistrationStatus @default(Pendiente)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
 
-  @@index([estado])
-  @@index([createdAt])
-  @@index([correo])
-  @@index([numeroDocumento])
-  @@map("pre_registrations")
-}
-
-model Purchase {
-  id             Int            @id @default(autoincrement())
-  purchaseNumber String         @unique @db.VarChar(50)
-  purchaseDate   DateTime       @default(now())
-  deliveryDate   DateTime?
-  totalAmount    Decimal        @db.Decimal(12, 2)
-  status         PurchaseStatus @default(Pending)
-  notes          String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  providerId     Int
-  employeeId     Int?
-  items          PurchaseItem[]
-  employee       Employee?      @relation(fields: [employeeId], references: [id])
-  provider       Provider       @relation(fields: [providerId], references: [id])
-
-  @@index([employeeId])
-  @@index([providerId])
-  @@index([purchaseDate])
   @@index([status])
-  @@map("purchases")
-}
-
-model PurchaseItem {
-  id          Int      @id @default(autoincrement())
-  productName String   @db.VarChar(200)
-  description String?
-  quantity    Int
-  unitPrice   Decimal  @db.Decimal(10, 2)
-  subtotal    Decimal  @db.Decimal(12, 2)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  purchaseId  Int
-  purchase    Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-
-  @@index([purchaseId])
-  @@map("purchase_items")
+  @@index([createdAt])
+  @@index([email])
+  @@index([identification])
+  @@map("pre_registrations")
 }
 
 model Service {

@@ -17,8 +17,6 @@ const calculateAge = (birthDate) => {
 
 export const enrollmentsService = {
   async create({ preRegistrationId, athlete, enrollment }) {
-    console.log('📝 [ENROLLMENT SERVICE] preRegistrationId recibido:', preRegistrationId);
-    
     return await prisma.$transaction(async (tx) => {
       // 1. Verificar que el documento no exista
       const existingUser = await tx.user.findUnique({
@@ -33,19 +31,43 @@ export const enrollmentsService = {
       // 2. Calcular edad
       const age = calculateAge(new Date(athlete.birthDate));
 
-      // 3. Validar acudiente si es menor
-      if (age < 18 && !athlete.acudiente) {
-        throw new Error("Deportista menor de edad requiere acudiente");
-      }
-
-      // 4. Validar que el acudiente exista si se proporciona
-      if (athlete.acudiente) {
+      // 3. Validar acudiente SOLO si es menor de 18 años
+      if (age < 18) {
+        if (!athlete.acudiente) {
+          throw new Error("El acudiente es obligatorio para menores de 18 años");
+        }
+        
+        // Validar que el ID del acudiente sea válido
+        const guardianId = parseInt(athlete.acudiente);
+        if (isNaN(guardianId) || guardianId <= 0) {
+          throw new Error("El ID del acudiente debe ser un número entero positivo");
+        }
+        
+        // Verificar que el acudiente existe
         const guardian = await tx.guardian.findUnique({
-          where: { id: parseInt(athlete.acudiente) },
+          where: { id: guardianId },
           select: { id: true },
         });
         if (!guardian) {
           throw new Error("Acudiente no encontrado");
+        }
+      } else {
+        // 4. Mayor de 18: acudiente es opcional
+        if (athlete.acudiente) {
+          // Si se proporciona acudiente, validar que exista
+          const guardianId = parseInt(athlete.acudiente);
+          if (!isNaN(guardianId) && guardianId > 0) {
+            const guardian = await tx.guardian.findUnique({
+              where: { id: guardianId },
+              select: { id: true },
+            });
+            if (!guardian) {
+              throw new Error("Acudiente no encontrado");
+            }
+          } else {
+            // Si el ID no es válido, establecer como null
+            athlete.acudiente = null;
+          }
         }
       }
 
@@ -151,15 +173,12 @@ export const enrollmentsService = {
 
       // 10. Si viene de inscripción del landing, marcarla como procesada
       if (preRegistrationId) {
-        console.log('✅ [ENROLLMENT SERVICE] Marcando pre-inscripción como procesada:', preRegistrationId);
         await tx.preRegistration.update({
           where: { id: preRegistrationId },
           data: { estado: "Procesada" },
         });
-        console.log('✅ [ENROLLMENT SERVICE] Pre-inscripción actualizada exitosamente');
       } else {
         // Si no viene preRegistrationId, buscar por email
-        console.log('⚠️  [ENROLLMENT SERVICE] No se recibió preRegistrationId, buscando por email...');
         const preRegistration = await tx.preRegistration.findFirst({
           where: {
             correo: cleanEmail,
@@ -171,14 +190,10 @@ export const enrollmentsService = {
         });
 
         if (preRegistration) {
-          console.log('✅ [ENROLLMENT SERVICE] Pre-inscripción encontrada por email:', preRegistration.id);
           await tx.preRegistration.update({
             where: { id: preRegistration.id },
             data: { estado: "Procesada" },
           });
-          console.log('✅ [ENROLLMENT SERVICE] Pre-inscripción actualizada exitosamente');
-        } else {
-          console.log('⚠️  [ENROLLMENT SERVICE] No se encontró pre-inscripción pendiente con ese email');
         }
       }
 
@@ -289,10 +304,7 @@ export const enrollmentsService = {
             fechaVencimiento: enrollment.fechaVencimiento,
             status: 'processed'
           });
-
-          console.log(`✅ Procesada matrícula ${enrollment.id} - Deportista: ${enrollment.athlete.user.firstName} ${enrollment.athlete.user.lastName}`);
         } catch (error) {
-          console.error(`❌ Error procesando matrícula ${enrollment.id}:`, error);
           results.push({
             enrollmentId: enrollment.id,
             status: 'error',

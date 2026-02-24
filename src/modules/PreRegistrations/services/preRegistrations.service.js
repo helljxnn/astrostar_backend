@@ -1,12 +1,13 @@
 import { preRegistrationsRepository } from "../repository/preRegistrations.repository.js";
 import emailService from "../../../services/emailService.js";
+import prisma from "../../../config/database.js";
 
 export const preRegistrationsService = {
   async create(data) {
     // 1. Verificar si ya existe una pre-inscripción pendiente con el mismo correo o documento
     const existing = await preRegistrationsRepository.findAll({
-      search: data.correo,
-      estado: "Pendiente",
+      search: data.email,
+      status: "Pendiente",
       page: 1,
       limit: 1,
     });
@@ -15,7 +16,7 @@ export const preRegistrationsService = {
       const existingReg = existing.data[0];
       
       // Verificar si es el mismo correo o documento
-      if (existingReg.correo === data.correo || existingReg.numeroDocumento === data.numeroDocumento) {
+      if (existingReg.email === data.email || existingReg.identification === data.identification) {
         throw new Error(
           "Ya existe una pre-inscripción pendiente con este correo o documento. " +
           "Si no recibiste el correo, usa la opción de reenviar."
@@ -23,11 +24,11 @@ export const preRegistrationsService = {
       }
     }
 
-    // 2. Convertir fechaNacimiento a Date si viene como string
+    // 2. Convertir birthDate a Date si viene como string
     const dataToCreate = {
       ...data,
-      fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : new Date(),
-      estado: "Pendiente",
+      birthDate: data.birthDate ? new Date(data.birthDate) : new Date(),
+      status: "Pendiente",
     };
 
     // 3. Crear pre-inscripción
@@ -58,9 +59,9 @@ export const preRegistrationsService = {
     return await preRegistrationsRepository.delete(id);
   },
 
-  async updateStatus(id, estado) {
+  async updateStatus(id, status) {
     await this.findById(id);
-    return await preRegistrationsRepository.update(id, { estado });
+    return await preRegistrationsRepository.update(id, { status });
   },
 
   async resendEmail(email) {
@@ -78,11 +79,11 @@ export const preRegistrationsService = {
     const preRegistration = preRegistrations.data[0];
 
     // Si el email cambió, actualizar
-    if (preRegistration.correo !== email) {
+    if (preRegistration.email !== email) {
       await preRegistrationsRepository.update(preRegistration.id, {
-        correo: email,
+        email: email,
       });
-      preRegistration.correo = email;
+      preRegistration.email = email;
     }
 
     // Reenviar correo
@@ -95,6 +96,43 @@ export const preRegistrationsService = {
     return {
       email,
       sentAt: new Date(),
+    };
+  },
+
+  async checkDocumentExists(identification) {
+    // 1. Buscar en pre-registros
+    const existingPreRegistration = await preRegistrationsRepository.findByDocument(identification);
+    
+    // 2. Buscar en usuarios (deportistas matriculados)
+    const existingUser = await prisma.user.findFirst({
+      where: { identification },
+      select: {
+        id: true,
+        identification: true,
+        firstName: true,
+        lastName: true,
+      }
+    });
+
+    // Si existe en cualquiera de las dos tablas
+    const exists = !!(existingPreRegistration || existingUser);
+    
+    let message = 'Documento disponible';
+    let location = null;
+    
+    if (existingPreRegistration) {
+      message = 'Este documento ya tiene una inscripción pendiente';
+      location = 'preRegistration';
+    } else if (existingUser) {
+      message = 'Este documento ya está matriculado en el sistema';
+      location = 'user';
+    }
+
+    return {
+      exists,
+      message,
+      location,
+      data: existingPreRegistration || existingUser || null,
     };
   },
 };

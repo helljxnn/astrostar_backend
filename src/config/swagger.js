@@ -215,6 +215,48 @@ const options = {
             message: { type: "string", description: "Message if not available" },
           },
         },
+
+        MaterialCategory: {
+          type: "object",
+          properties: {
+            id: { type: "integer", description: "ID auto-generado de la categoría" },
+            nombre: { type: "string", maxLength: 100, description: "Nombre de la categoría" },
+            descripcion: { type: "string", description: "Descripción de la categoría" },
+            estado: { type: "string", enum: ["Activo", "Inactivo"], description: "Estado de la categoría" },
+            createdAt: { type: "string", format: "date-time", description: "Fecha de creación" },
+            updatedAt: { type: "string", format: "date-time", description: "Fecha de última actualización" },
+            createdBy: { type: "integer", description: "ID del usuario que creó" },
+            updatedBy: { type: "integer", description: "ID del usuario que actualizó" },
+            _count: {
+              type: "object",
+              properties: {
+                materials: { type: "integer", description: "Cantidad de materiales asociados" }
+              }
+            }
+          },
+        },
+
+        MaterialCategoryInput: {
+          type: "object",
+          required: ["nombre"],
+          properties: {
+            nombre: { 
+              type: "string", 
+              minLength: 3, 
+              maxLength: 100, 
+              description: "Nombre de la categoría (único)" 
+            },
+            descripcion: { 
+              type: "string", 
+              description: "Descripción de la categoría (opcional)" 
+            },
+            estado: { 
+              type: "string", 
+              enum: ["Activo", "Inactivo"], 
+              description: "Estado de la categoría" 
+            },
+          },
+        },
       },
 
       responses: {

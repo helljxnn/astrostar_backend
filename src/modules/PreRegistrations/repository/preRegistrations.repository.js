@@ -7,21 +7,24 @@ export const preRegistrationsRepository = {
     });
   },
 
-  async findAll({ estado, page = 1, limit = 10, search }) {
+  async findAll({ status, page = 1, limit = 10, search }) {
     const skip = (page - 1) * limit;
     const where = {};
 
-    if (estado) {
+    if (status) {
       // Capitalizar primera letra para que coincida con el enum
       // "pendiente" -> "Pendiente", "procesada" -> "Procesada"
-      where.estado = estado.charAt(0).toUpperCase() + estado.slice(1).toLowerCase();
+      where.status = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
     }
 
     if (search) {
       where.OR = [
-        { nombres: { contains: search, mode: "insensitive" } },
-        { apellidos: { contains: search, mode: "insensitive" } },
-        { correo: { contains: search, mode: "insensitive" } },
+        { firstName: { contains: search, mode: "insensitive" } },
+        { middleName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { secondLastName: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { identification: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -33,13 +36,15 @@ export const preRegistrationsRepository = {
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
-          nombres: true,
-          apellidos: true,
-          numeroDocumento: true,
-          fechaNacimiento: true,
-          telefono: true,
-          correo: true,
-          estado: true,
+          firstName: true,
+          middleName: true,
+          lastName: true,
+          secondLastName: true,
+          identification: true,
+          birthDate: true,
+          phoneNumber: true,
+          email: true,
+          status: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -74,6 +79,17 @@ export const preRegistrationsRepository = {
   async delete(id) {
     return await prisma.preRegistration.delete({
       where: { id: parseInt(id) },
+    });
+  },
+
+  async findByDocument(identification) {
+    return await prisma.preRegistration.findUnique({
+      where: { identification },
+      select: {
+        id: true,
+        identification: true,
+        status: true,
+      },
     });
   },
 };

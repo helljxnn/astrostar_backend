@@ -4,6 +4,7 @@ import roleRoutes from "../modules/Roles/routes/roles.routes.js";
 import employeeRoutes from "../modules/Services/Employees/routes/employees.routes.js";
 import usersRoutes from "../modules/Users/routes/users.routes.js";
 import providerRoutes from "../modules/Providers/routes/providers.routes.js";
+import materialsRoutes from "../modules/Materials/routes/index.js";
 import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/routes/temporaryworkers.routes.js";
 import donorsSponsorsRoutes from "../modules/Donations/DonorsSponsors/routes/donorsSponsors.routes.js";
 import donationsRoutes from "../modules/Donations/Donations/routes/donations.routes.js";
@@ -36,6 +37,7 @@ router.use("/roles", roleRoutes);
 router.use("/employees", employeeRoutes);
 router.use("/users", usersRoutes);
 router.use("/providers", providerRoutes);
+router.use("/", materialsRoutes); // Materials, Categories, Material-Movements
 router.use("/temporary-workers", temporaryWorkersRoutes);
 router.use("/donors-sponsors", donorsSponsorsRoutes);
 router.use("/donations", donationsRoutes);

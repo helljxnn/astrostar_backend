@@ -104,11 +104,6 @@ export class ProvidersRepository {
       where: { id },
       include: {
         documentType: true,
-        purchases: {
-          include: {
-            items: true,
-          },
-        },
       },
     });
 
@@ -184,19 +179,6 @@ export class ProvidersRepository {
       include: { documentType: true },
     });
     return provider ? this.transformToFrontend(provider) : null;
-  }
-
-  async hasActivePurchases(providerId) {
-    const purchases = await prisma.purchase.count({
-      where: {
-        providerId: providerId,
-        status: {
-          in: ["Pending", "Received", "Partial"],
-        },
-      },
-    });
-
-    return purchases > 0;
   }
 
   async create(providerData) {
@@ -298,20 +280,12 @@ export class ProvidersRepository {
       totalProviders,
       activeProviders,
       providersByEntityType,
-      providersWithPurchases,
     ] = await Promise.all([
       prisma.provider.count(),
       prisma.provider.count({ where: { status: "Active" } }),
       prisma.provider.groupBy({
         by: ["entityType"],
         _count: true,
-      }),
-      prisma.provider.count({
-        where: {
-          purchases: {
-            some: {},
-          },
-        },
       }),
     ]);
 
@@ -323,8 +297,6 @@ export class ProvidersRepository {
         entityType: item.entityType === "legal" ? "juridica" : "natural",
         count: item._count,
       })),
-      providersWithPurchases,
-      providersWithoutPurchases: totalProviders - providersWithPurchases,
     };
   }
 
