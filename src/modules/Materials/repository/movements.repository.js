@@ -151,90 +151,73 @@ class MovementsRepository {
   }
 
   /**
-   * Registrar movimiento con actualización de stock (transacción atómica)
+   * Register movement with stock update (atomic transaction)
    */
   async registerMovement(data, userId) {
     return await prisma.$transaction(async (tx) => {
-      console.log('🔍 DEBUG registerMovement - data recibida:', JSON.stringify(data, null, 2));
+      console.log('🔍 DEBUG registerMovement - data received:', JSON.stringify(data, null, 2));
       
-      // 1. Obtener material con bloqueo
+      // 1. Get material with lock
       const material = await tx.material.findUnique({
         where: { id: parseInt(data.material_id) },
       });
 
       if (!material) {
-        throw new Error('Material no encontrado');
+        throw new Error('Material not found');
       }
 
       if (material.estado !== 'Activo') {
-        throw new Error('No se pueden registrar movimientos en materiales inactivos');
+        throw new Error('Cannot register movements on inactive materials');
       }
 
-      // 2. Calcular stock actual (disponible + eventos)
-      const stockActual = material.stockDisponible + material.stockEventos;
-      console.log('📊 Stock actual - Disponible:', material.stockDisponible, 'Eventos:', material.stockEventos);
+      // 2. Determine which inventory to update
+      const inventoryType = data.inventario_destino || 'FUNDACION';
+      const stockField = inventoryType === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const currentStock = material[stockField];
 
-      // 3. Calcular nuevo stock según tipo de movimiento y destino
-      let nuevoStockDisponible = material.stockDisponible;
-      let nuevoStockEventos = material.stockEventos;
+      console.log(`📊 Current stock in ${inventoryType}:`, currentStock);
+
+      // 3. Calculate new stock based on movement type
+      let newStockValue = currentStock;
       
-      console.log('🎯 Destino stock recibido:', data.destino_stock);
+      console.log('🎯 Movement type:', data.tipo_movimiento);
       
       if (data.tipo_movimiento === 'Entrada') {
-        // Para ingresos, sumar al stock según el destino
-        if (data.destino_stock === 'USO_INTERNO') {
-          nuevoStockDisponible += parseInt(data.cantidad);
-          console.log('✅ Sumando a stock disponible:', parseInt(data.cantidad));
-        } else if (data.destino_stock === 'EVENTOS') {
-          nuevoStockEventos += parseInt(data.cantidad);
-          console.log('✅ Sumando a stock eventos:', parseInt(data.cantidad));
-        } else {
-          console.log('⚠️ Destino stock no reconocido:', data.destino_stock);
-        }
+        // For entries, add to the specified inventory
+        newStockValue += parseInt(data.cantidad);
+        console.log('✅ Adding to stock:', parseInt(data.cantidad));
       } else if (data.tipo_movimiento === 'Salida') {
-        // Para salidas, restar del stock según el destino (origen)
-        if (data.destino_stock === 'USO_INTERNO') {
-          nuevoStockDisponible -= parseInt(data.cantidad);
-        } else if (data.destino_stock === 'EVENTOS') {
-          nuevoStockEventos -= parseInt(data.cantidad);
-        }
+        // For exits, subtract from stock
+        newStockValue -= parseInt(data.cantidad);
+        console.log('➖ Subtracting from stock:', parseInt(data.cantidad));
       }
 
-      const stockNuevo = nuevoStockDisponible + nuevoStockEventos;
-      console.log('📊 Nuevo stock - Disponible:', nuevoStockDisponible, 'Eventos:', nuevoStockEventos);
+      console.log('📊 New stock value:', newStockValue);
 
-      // 4. Validar stock suficiente para salidas
-      if (data.tipo_movimiento === 'Salida') {
-        if (data.destino_stock === 'USO_INTERNO' && nuevoStockDisponible < 0) {
-          throw new Error(
-            `Stock disponible insuficiente. Stock disponible: ${material.stockDisponible}, Cantidad solicitada: ${data.cantidad}`
-          );
-        }
-        if (data.destino_stock === 'EVENTOS' && nuevoStockEventos < 0) {
-          throw new Error(
-            `Stock de eventos insuficiente. Stock eventos: ${material.stockEventos}, Cantidad solicitada: ${data.cantidad}`
-          );
-        }
+      // 4. Validate sufficient stock for exits
+      if (data.tipo_movimiento === 'Salida' && newStockValue < 0) {
+        throw new Error(
+          `Insufficient stock. Available: ${currentStock}, Requested: ${data.cantidad}`
+        );
       }
 
-      // 5. Actualizar stock del material
+      // 5. Calculate total stock before and after
+      const stockAnterior = material.stockFundacion + material.stockEventos;
+      const stockNuevo = inventoryType === 'FUNDACION'
+        ? newStockValue + material.stockEventos
+        : material.stockFundacion + newStockValue;
+
+      // 6. Update material stock
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(data.material_id) },
         data: {
-          stockDisponible: nuevoStockDisponible,
-          stockEventos: nuevoStockEventos,
+          [stockField]: newStockValue,
         },
       });
       
-      console.log('✅ Material actualizado en BD - Disponible:', materialActualizado.stockDisponible, 'Eventos:', materialActualizado.stockEventos);
+      console.log(`✅ Material updated in DB - ${stockField}:`, materialActualizado[stockField]);
 
-      // 6. Mapear destino_stock a valor del enum
-      let destinoStockEnum = null;
-      if (data.destino_stock) {
-        destinoStockEnum = data.destino_stock === 'USO_INTERNO' ? 'USO_INTERNO' : 'EVENTOS';
-      }
-
-      // 7. Crear movimiento
+      // 7. Create movement record
       const movement = await tx.materialMovement.create({
         data: {
           materialId: parseInt(data.material_id),
@@ -243,17 +226,17 @@ class MovementsRepository {
           tipoMovimiento: data.tipo_movimiento,
           cantidad: parseInt(data.cantidad),
           destino: data.destino || null,
-          destinoStock: destinoStockEnum,  // NUEVO: Guardar destino del stock
+          inventarioOrigen: data.tipo_movimiento === 'Salida' ? inventoryType : null,
+          inventarioDestino: data.tipo_movimiento === 'Entrada' ? inventoryType : null,
           eventoId: data.evento_id ? parseInt(data.evento_id) : null,
           donacionId: data.donacion_id ? parseInt(data.donacion_id) : null,
           observaciones: data.observaciones || null,
-          stockAnterior: stockActual,
+          stockAnterior: stockAnterior,
           stockNuevo: stockNuevo,
           referenceId: data.reference_id || null,
           referenceType: data.reference_type || null,
           createdBy: userId,
           createdByName: data.created_by_name || null,
-          // Campos para ingresos
           fechaIngreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
           proveedorId: data.proveedor_id || null,
         },
@@ -505,55 +488,57 @@ class MovementsRepository {
   }
 
   /**
-   * Eliminar movimiento (con reversión de stock)
+   * Delete movement (with stock reversal)
    */
   async deleteMovement(id) {
     return await prisma.$transaction(async (tx) => {
-      // 1. Obtener el movimiento
+      // 1. Get the movement
       const movement = await tx.materialMovement.findUnique({
         where: { id: parseInt(id) },
       });
 
       if (!movement) {
-        throw new Error('Movimiento no encontrado');
+        throw new Error('Movement not found');
       }
 
-      // 2. Obtener el material
+      // 2. Get the material
       const material = await tx.material.findUnique({
         where: { id: movement.materialId },
       });
 
       if (!material) {
-        throw new Error('Material no encontrado');
+        throw new Error('Material not found');
       }
 
-      // 3. Revertir el stock según el tipo de movimiento
-      let nuevoStockDisponible = material.stockDisponible;
+      // 3. Determine which inventory to reverse
+      const inventoryType = movement.inventarioDestino || movement.inventarioOrigen || 'FUNDACION';
+      const stockField = inventoryType === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      let newStockValue = material[stockField];
       
       if (movement.tipoMovimiento === 'Entrada') {
-        // Si era una entrada, restar la cantidad
-        nuevoStockDisponible -= movement.cantidad;
+        // If it was an entry, subtract the quantity
+        newStockValue -= movement.cantidad;
       } else if (movement.tipoMovimiento === 'Salida' || movement.tipoMovimiento === 'Baja') {
-        // Si era una salida/baja, sumar la cantidad
-        nuevoStockDisponible += movement.cantidad;
+        // If it was an exit/discharge, add the quantity back
+        newStockValue += movement.cantidad;
       }
 
-      // 4. Validar que el stock no quede negativo
-      if (nuevoStockDisponible < 0) {
+      // 4. Validate that stock won't go negative
+      if (newStockValue < 0) {
         throw new Error(
-          `No se puede eliminar el movimiento porque dejaría el stock en negativo (${nuevoStockDisponible})`
+          `Cannot delete movement because it would leave stock negative (${newStockValue})`
         );
       }
 
-      // 5. Actualizar el stock del material
+      // 5. Update material stock
       await tx.material.update({
         where: { id: movement.materialId },
         data: {
-          stockDisponible: nuevoStockDisponible,
+          [stockField]: newStockValue,
         },
       });
 
-      // 6. Eliminar el movimiento
+      // 6. Delete the movement
       await tx.materialMovement.delete({
         where: { id: parseInt(id) },
       });
