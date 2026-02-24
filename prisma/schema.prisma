@@ -726,8 +726,9 @@ model Material {
   createdBy        Int?                      @map("created_by")
   updatedBy        Int?                      @map("updated_by")
   unidadMedida     String                    @default("unidad") @map("unidad_medida") @db.VarChar(20)
-  stock            Int                       @default(0)
-  eventAssignments EventMaterialAssignment[]
+  stockFundacion   Int                       @default(0) @map("stock_fundacion")
+  stockEventos     Int                       @default(0) @map("stock_eventos")
+  eventMaterials   EventMaterial[]
   movements        MaterialMovement[]
   category         MaterialCategory          @relation(fields: [categoriaId], references: [id], map: "materials_categoriaId_fkey")
 
@@ -737,34 +738,38 @@ model Material {
   @@index([estado], map: "idx_material_estado")
   @@index([nombre], map: "idx_material_nombre")
   @@index([unidadMedida])
+  @@index([stockFundacion])
+  @@index([stockEventos])
   @@map("materials")
 }
 
 model MaterialMovement {
-  id             Int                @id @default(autoincrement())
-  materialId     Int                @map("material_id")
-  materialNombre String             @map("material_nombre") @db.VarChar(255)
-  categoria      String             @db.VarChar(100)
-  tipoMovimiento MovementType       @map("tipo_movimiento")
-  cantidad       Int
-  observaciones  String?
-  stockAnterior  Int                @map("stock_anterior")
-  stockNuevo     Int                @map("stock_nuevo")
-  referenceId    Int?               @map("reference_id")
-  referenceType  String?            @map("reference_type") @db.VarChar(50)
-  fecha          DateTime           @default(now())
-  createdBy      Int                @map("created_by")
-  createdByName  String?            @map("created_by_name") @db.VarChar(255)
-  destino        DestinoMovimiento?
-  eventoId       Int?               @map("evento_id")
-  donacionId     Int?               @map("donacion_id")
-  reservation_id Int?
-  fechaIngreso   DateTime?          @map("fecha_ingreso") @db.Date
-  proveedorId    Int?               @map("proveedor_id")
-  tipoBaja       TipoBaja?          @map("tipo_baja")
-  destinoStock   DestinoStock?      @map("destino_stock")
-  material       Material           @relation(fields: [materialId], references: [id], map: "material_movements_materialId_fkey")
-  proveedor      Provider?          @relation(fields: [proveedorId], references: [id], onUpdate: NoAction)
+  id                  Int                @id @default(autoincrement())
+  materialId          Int                @map("material_id")
+  materialNombre      String             @map("material_nombre") @db.VarChar(255)
+  categoria           String             @db.VarChar(100)
+  tipoMovimiento      MovementType       @map("tipo_movimiento")
+  cantidad            Int
+  observaciones       String?
+  stockAnterior       Int                @map("stock_anterior")
+  stockNuevo          Int                @map("stock_nuevo")
+  referenceId         Int?               @map("reference_id")
+  referenceType       String?            @map("reference_type") @db.VarChar(50)
+  fecha               DateTime           @default(now())
+  createdBy           Int                @map("created_by")
+  createdByName       String?            @map("created_by_name") @db.VarChar(255)
+  destino             DestinoMovimiento?
+  eventoId            Int?               @map("evento_id")
+  donacionId          Int?               @map("donacion_id")
+  reservation_id      Int?
+  fechaIngreso        DateTime?          @map("fecha_ingreso") @db.Date
+  proveedorId         Int?               @map("proveedor_id")
+  tipoBaja            TipoBaja?          @map("tipo_baja")
+  destinoStock        DestinoStock?      @map("destino_stock")
+  inventarioOrigen    InventoryType?     @map("inventario_origen")
+  inventarioDestino   InventoryType?     @map("inventario_destino")
+  material            Material           @relation(fields: [materialId], references: [id], map: "material_movements_materialId_fkey")
+  proveedor           Provider?          @relation(fields: [proveedorId], references: [id], onUpdate: NoAction)
 
   @@index([materialId])
   @@index([tipoMovimiento])
@@ -778,30 +783,26 @@ model MaterialMovement {
   @@index([fechaIngreso])
   @@index([reservation_id])
   @@index([tipoBaja])
+  @@index([inventarioOrigen])
+  @@index([inventarioDestino])
   @@map("material_movements")
 }
 
-model EventMaterialAssignment {
-  id                Int                   @id @default(autoincrement())
-  materialId        Int                   @map("material_id")
-  eventoId          Int                   @map("evento_id")
-  cantidadAsignada  Int                   @map("cantidad_asignada")
-  cantidadUsada     Int                   @default(0) @map("cantidad_usada")
-  cantidadDevuelta  Int                   @default(0) @map("cantidad_devuelta")
-  estado            EventAssignmentStatus @default(RESERVADO)
-  fechaAsignacion   DateTime              @default(now()) @map("fecha_asignacion")
-  fechaFinalizacion DateTime?             @map("fecha_finalizacion")
-  observaciones     String?
-  createdBy         Int                   @map("created_by")
-  createdByName     String?               @map("created_by_name") @db.VarChar(255)
-  updatedAt         DateTime              @default(now()) @updatedAt @map("updated_at")
-  material          Material              @relation(fields: [materialId], references: [id])
+model EventMaterial {
+  id               Int      @id @default(autoincrement())
+  materialId       Int      @map("material_id")
+  eventoId         Int      @map("evento_id")
+  cantidad         Int
+  fechaAsignacion  DateTime @default(now()) @map("fecha_asignacion")
+  observaciones    String?
+  createdBy        Int      @map("created_by")
+  createdByName    String?  @map("created_by_name") @db.VarChar(255)
+  material         Material @relation(fields: [materialId], references: [id])
 
   @@index([materialId])
   @@index([eventoId])
-  @@index([estado])
   @@index([fechaAsignacion])
-  @@map("event_material_assignments")
+  @@map("event_materials")
 }
 
 model purchases {
@@ -1068,19 +1069,17 @@ enum DestinoStock {
   EVENTOS
 }
 
+enum InventoryType {
+  FUNDACION
+  EVENTOS
+}
+
 enum TipoBaja {
   DanoDeterioro
   Perdida
   Robo
   AjusteInventario
   Otro
-}
-
-enum EventAssignmentStatus {
-  RESERVADO
-  USADO
-  DEVUELTO
-  CANCELADO
 }
 
 enum OrigenMovimiento {
