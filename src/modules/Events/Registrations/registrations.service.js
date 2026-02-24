@@ -497,6 +497,25 @@ export class RegistrationsService {
               notes,
               status: "Registered",
             });
+
+          // Enviar invitación RSVP
+          try {
+            const rsvpResult = await this.rsvpService.createAndSendInvitation(
+              registration.id,
+            );
+            if (!rsvpResult.success) {
+              console.warn(
+                `⚠️  No se pudo enviar invitación RSVP para equipo ${teamId}: ${rsvpResult.message}`,
+              );
+            }
+          } catch (rsvpError) {
+            console.error(
+              `❌ Error enviando invitación RSVP para equipo ${teamId}:`,
+              rsvpError.message,
+            );
+            // No fallar la inscripción si el email falla
+          }
+
           results.push(registration);
         } catch (error) {
           errors.push({
@@ -921,6 +940,25 @@ export class RegistrationsService {
               notes,
               status: "Registered",
             });
+
+          // Enviar invitación RSVP
+          try {
+            const rsvpResult = await this.rsvpService.createAndSendInvitation(
+              registration.id,
+            );
+            if (!rsvpResult.success) {
+              console.warn(
+                `⚠️  No se pudo enviar invitación RSVP para deportista ${athleteId}: ${rsvpResult.message}`,
+              );
+            }
+          } catch (rsvpError) {
+            console.error(
+              `❌ Error enviando invitación RSVP para deportista ${athleteId}:`,
+              rsvpError.message,
+            );
+            // No fallar la inscripción si el email falla
+          }
+
           results.push(registration);
         } catch (error) {
           errors.push({
@@ -980,6 +1018,40 @@ export class RegistrationsService {
           temporary: temporaryTeams,
           total: teams.length,
         },
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener deportistas disponibles filtrados por categorías del evento
+   */
+  async getAthletesByEventCategories(serviceId) {
+    try {
+      // Validar que el evento existe
+      const event =
+        await this.registrationsRepository.checkEventExists(serviceId);
+      if (!event) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "El evento no existe.",
+        };
+      }
+
+      const athletes =
+        await this.registrationsRepository.getAthletesByEventCategories(
+          serviceId,
+        );
+
+      return {
+        success: true,
+        data: {
+          athletes,
+          total: athletes.length,
+        },
+        message: "Deportistas obtenidos exitosamente.",
       };
     } catch (error) {
       throw error;

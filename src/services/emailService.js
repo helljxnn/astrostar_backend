@@ -22,15 +22,9 @@ class EmailService {
         !process.env.EMAIL_PASSWORD ||
         process.env.EMAIL_PASSWORD === "your-app-password-here"
       ) {
-        console.log("⚠️  Credenciales de email no configuradas");
         this.transporter = null;
         return;
       }
-
-      console.log(
-        "📧 Inicializando servicio de email con:",
-        process.env.EMAIL_USER,
-      );
 
       // Configuración unificada para Gmail (desarrollo y producción)
       this.transporter = nodemailer.createTransport({
@@ -46,12 +40,18 @@ class EmailService {
           rejectUnauthorized: false,
         },
       });
-
-      console.log("✅ Servicio de email inicializado correctamente");
     } catch (error) {
       console.error("❌ Error inicializando servicio de email:", error);
       this.transporter = null;
     }
+  }
+
+  /**
+   * Reinicializar el transportador de email
+   * Útil cuando las variables de entorno se cargan después de la instanciación
+   */
+  reinitialize() {
+    this.initializeTransporter();
   }
 
   /**
@@ -60,7 +60,6 @@ class EmailService {
   async verifyConnection() {
     try {
       if (!this.transporter) {
-        console.log("📧 Servicio de email en modo simulación");
         return false;
       }
 
@@ -81,7 +80,6 @@ class EmailService {
 
       // Si no hay transporter configurado, simular envío inmediatamente
       if (!this.transporter) {
-        console.log("📧 Simulando envío de email de bienvenida a:", email);
         return { success: true, messageId: "simulated-" + Date.now() };
       }
 
@@ -469,8 +467,6 @@ Este es un email automático del sistema AstroStar.
    */
   async sendPasswordResetEmail(email, resetToken) {
     try {
-      console.log("📧 Intentando enviar email de recuperación a:", email);
-
       const mailOptions = {
         from: {
           name: "AstroStar - Sistema de Gestión",
@@ -483,16 +479,10 @@ Este es un email automático del sistema AstroStar.
       };
 
       if (!this.transporter) {
-        console.log("⚠️  Transporter no configurado, simulando envío");
         return { success: true, messageId: "simulated-reset-" + Date.now() };
       }
 
-      console.log("📤 Enviando email...");
       const result = await this.transporter.sendMail(mailOptions);
-      console.log(
-        "✅ Email enviado exitosamente. MessageId:",
-        result.messageId,
-      );
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error("❌ Error enviando email de recuperación:", error.message);
@@ -758,8 +748,6 @@ Este es un email automático del sistema AstroStar.
    */
   async sendEmailVerificationCode(email, verificationCode, firstName) {
     try {
-      console.log("📧 Intentando enviar código de verificación a:", email);
-
       const mailOptions = {
         from: {
           name: "AstroStar - Sistema de Gestión",
@@ -826,19 +814,13 @@ Este es un email automático del sistema AstroStar.
       };
 
       if (!this.transporter) {
-        console.log("⚠️  Transporter no configurado, simulando envío");
         return {
           success: true,
           messageId: "simulated-verification-" + Date.now(),
         };
       }
 
-      console.log("📤 Enviando email de verificación...");
       const result = await this.transporter.sendMail(mailOptions);
-      console.log(
-        "✅ Email de verificación enviado exitosamente. MessageId:",
-        result.messageId,
-      );
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error("❌ Error enviando email de verificación:", error.message);
@@ -852,7 +834,6 @@ Este es un email automático del sistema AstroStar.
   async sendRSVPInvitation(invitation, event, participant, icsContent) {
     try {
       if (!this.transporter) {
-        console.log("⚠️  Servicio de email no disponible");
         return { success: false, error: "Email service not configured" };
       }
 
@@ -896,12 +877,7 @@ Este es un email automático del sistema AstroStar.
         ],
       };
 
-      console.log(
-        `📤 Enviando invitación RSVP a: ${invitation.recipientEmail}`,
-      );
       const result = await this.transporter.sendMail(mailOptions);
-      console.log("✅ Invitación RSVP enviada. MessageId:", result.messageId);
-
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error("❌ Error enviando invitación RSVP:", error.message);
@@ -951,11 +927,7 @@ Este es un email automático del sistema AstroStar.
         html: htmlContent,
       };
 
-      console.log(
-        `📤 Enviando recordatorio RSVP a: ${invitation.recipientEmail}`,
-      );
       const result = await this.transporter.sendMail(mailOptions);
-
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error("❌ Error enviando recordatorio RSVP:", error.message);
@@ -996,11 +968,7 @@ Este es un email automático del sistema AstroStar.
         html: htmlContent,
       };
 
-      console.log(
-        `📤 Enviando recordatorio de evento a: ${invitation.recipientEmail}`,
-      );
       const result = await this.transporter.sendMail(mailOptions);
-
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error("❌ Error enviando recordatorio de evento:", error.message);

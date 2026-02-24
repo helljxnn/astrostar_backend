@@ -382,20 +382,20 @@ model EmployeePermission {
 }
 
 model EmployeeSchedule {
-  id                 Int                @id @default(autoincrement())
+  id                 Int                       @id @default(autoincrement())
   employeeId         Int
   scheduleDate       DateTime
   dayOfWeek          String
   startTime          String
   endTime            String
-  recurrence         ScheduleRecurrence @default(no)
+  recurrence         ScheduleRecurrence        @default(no)
   customRecurrence   String?
   description        String?
-  status             ScheduleStatus     @default(Programado)
+  status             ScheduleStatus            @default(Programado)
   cancellationReason String?
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
-  employee           Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  employee           Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   novelties          EmployeeScheduleNovelty[]
 
   @@map("employee_schedules")
@@ -508,6 +508,8 @@ model Athlete {
   participants             Participant[]
   teamMembers              TeamMember[]
   groupMemberships         GroupMembership[]
+  appointments             Appointment[]
+  attendances              AthleteAttendance[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])

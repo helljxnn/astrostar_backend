@@ -512,11 +512,6 @@ export class EventsRepository {
             select: { id: true, nombre: true },
           });
 
-          console.log(
-            `🗑️ Eliminando inscripciones de categorías removidas del evento ${eventId}:`,
-            removedCategories.map((c) => c.nombre).join(", "),
-          );
-
           // Eliminar TODOS los participantes (equipos e individuales) cuya categoría deportiva
           // esté en la lista de categorías removidas
           const deletedParticipants = await prisma.participant.deleteMany({
@@ -527,10 +522,6 @@ export class EventsRepository {
               },
             },
           });
-
-          console.log(
-            `✅ Eliminados ${deletedParticipants.count} participantes (equipos y deportistas) de categorías removidas`,
-          );
 
           // Ahora sí eliminar las relaciones de categorías removidas
           await prisma.serviceSportsCategory.deleteMany({
@@ -551,10 +542,6 @@ export class EventsRepository {
               sportsCategoryId: categoryId,
             })),
           });
-
-          console.log(
-            `➕ Agregadas ${addedCategoryIds.length} categorías nuevas al evento`,
-          );
         }
       }
 

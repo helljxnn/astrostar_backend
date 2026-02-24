@@ -62,6 +62,31 @@ router.get(
 
 /**
  * @swagger
+ * /api/registrations/event/{serviceId}/athletes/available:
+ *   get:
+ *     summary: Obtener deportistas disponibles filtrados por categorías del evento
+ *     tags: [Registrations]
+ *     parameters:
+ *       - in: path
+ *         name: serviceId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Deportistas disponibles obtenidos exitosamente
+ *       404:
+ *         description: Evento no encontrado
+ *       500:
+ *         description: Error interno del servidor
+ */
+router.get(
+  "/event/:serviceId/athletes/available",
+  registrationsController.getAthletesByEventCategories,
+);
+
+/**
+ * @swagger
  * /api/registrations/event/{serviceId}:
  *   get:
  *     summary: Obtener inscripciones de un evento

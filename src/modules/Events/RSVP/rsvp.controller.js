@@ -21,7 +21,7 @@ export class RSVPController {
           error: "Parámetros inválidos",
           message: "El enlace no es válido. Faltan parámetros requeridos.",
         });
-        return res.status(400).send(html);
+        return res.status(400).type("html").send(html);
       }
 
       if (!["confirm", "decline"].includes(action)) {
@@ -30,7 +30,7 @@ export class RSVPController {
           error: "Acción inválida",
           message: "La acción especificada no es válida.",
         });
-        return res.status(400).send(html);
+        return res.status(400).type("html").send(html);
       }
 
       // Procesar respuesta
@@ -40,7 +40,7 @@ export class RSVPController {
       const html = getRSVPResponseHTML(result);
 
       const statusCode = result.success ? 200 : result.statusCode || 400;
-      res.status(statusCode).send(html);
+      res.status(statusCode).type("html").send(html);
     } catch (error) {
       console.error("Error en handleRSVPResponse:", error);
       const html = getRSVPResponseHTML({
@@ -49,7 +49,7 @@ export class RSVPController {
         message:
           "Ocurrió un error al procesar tu respuesta. Por favor intenta nuevamente.",
       });
-      res.status(500).send(html);
+      res.status(500).type("html").send(html);
     }
   };
 

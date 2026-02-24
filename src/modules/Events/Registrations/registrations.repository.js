@@ -681,6 +681,7 @@ export class RegistrationsRepository {
   /**
    * Obtener equipos disponibles filtrados por categorías del evento (optimizado)
    * Solo devuelve datos esenciales: id, nombre, categoría, tipo, entrenador
+   * Incluye estado de invitación RSVP si el equipo ya está inscrito
    */
   async getTeamsByEventCategories(serviceId) {
     // Obtener las categorías del evento
@@ -700,7 +701,7 @@ export class RegistrationsRepository {
 
     // Si el evento no tiene categorías, devolver todos los equipos activos
     if (!eventCategories || eventCategories.length === 0) {
-      return await prisma.team.findMany({
+      const teams = await prisma.team.findMany({
         where: {
           status: "Active",
         },
@@ -713,6 +714,44 @@ export class RegistrationsRepository {
         },
         orderBy: [{ teamType: "asc" }, { name: "asc" }],
       });
+
+      // Obtener invitaciones para equipos ya inscritos
+      const teamIds = teams.map((t) => t.id);
+      const registrations = await prisma.participant.findMany({
+        where: {
+          serviceId: parseInt(serviceId),
+          teamId: { in: teamIds },
+          type: "Team",
+        },
+        include: {
+          eventInvitations: {
+            select: {
+              id: true,
+              status: true,
+              recipientEmail: true,
+              recipientName: true,
+              sentAt: true,
+              respondedAt: true,
+              invitationType: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+          },
+        },
+      });
+
+      // Mapear invitaciones a equipos
+      const registrationMap = new Map();
+      registrations.forEach((reg) => {
+        registrationMap.set(reg.teamId, reg.eventInvitations);
+      });
+
+      return teams.map((team) => ({
+        ...team,
+        eventInvitations: registrationMap.get(team.id) || [],
+      }));
     }
 
     // Extraer nombres de categorías del evento
@@ -736,6 +775,225 @@ export class RegistrationsRepository {
       orderBy: [{ teamType: "asc" }, { name: "asc" }],
     });
 
-    return teams;
+    // Obtener invitaciones para equipos ya inscritos
+    const teamIds = teams.map((t) => t.id);
+    const registrations = await prisma.participant.findMany({
+      where: {
+        serviceId: parseInt(serviceId),
+        teamId: { in: teamIds },
+        type: "Team",
+      },
+      include: {
+        eventInvitations: {
+          select: {
+            id: true,
+            status: true,
+            recipientEmail: true,
+            recipientName: true,
+            sentAt: true,
+            respondedAt: true,
+            invitationType: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
+        },
+      },
+    });
+
+    // Mapear invitaciones a equipos
+    const registrationMap = new Map();
+    registrations.forEach((reg) => {
+      registrationMap.set(reg.teamId, reg.eventInvitations);
+    });
+
+    return teams.map((team) => ({
+      ...team,
+      eventInvitations: registrationMap.get(team.id) || [],
+    }));
+  }
+
+  /**
+   * Obtener deportistas disponibles filtrados por categorías del evento
+   * Solo devuelve deportistas que tienen inscripciones activas en las categorías del evento
+   * Incluye estado de invitación RSVP si el deportista ya está inscrito
+   */
+  async getAthletesByEventCategories(serviceId) {
+    // Obtener las categorías del evento
+    const eventCategories = await prisma.serviceSportsCategory.findMany({
+      where: {
+        serviceId: parseInt(serviceId),
+      },
+      include: {
+        sportsCategory: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+
+    // Si el evento no tiene categorías, devolver todos los deportistas activos
+    if (!eventCategories || eventCategories.length === 0) {
+      const athletes = await prisma.athlete.findMany({
+        where: {
+          status: "Active",
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              middleName: true,
+              lastName: true,
+              secondLastName: true,
+              email: true,
+              phoneNumber: true,
+              birthDate: true,
+              age: true,
+              identification: true,
+            },
+          },
+          inscriptions: {
+            where: {
+              status: "Active",
+            },
+            include: {
+              sportsCategory: true,
+            },
+          },
+        },
+        orderBy: {
+          user: {
+            firstName: "asc",
+          },
+        },
+      });
+
+      // Obtener invitaciones para deportistas ya inscritos
+      const athleteIds = athletes.map((a) => a.id);
+      const registrations = await prisma.participant.findMany({
+        where: {
+          serviceId: parseInt(serviceId),
+          athleteId: { in: athleteIds },
+          type: "Individual",
+        },
+        include: {
+          eventInvitations: {
+            select: {
+              id: true,
+              status: true,
+              recipientEmail: true,
+              recipientName: true,
+              sentAt: true,
+              respondedAt: true,
+              invitationType: true,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 1,
+          },
+        },
+      });
+
+      // Mapear invitaciones a deportistas
+      const registrationMap = new Map();
+      registrations.forEach((reg) => {
+        registrationMap.set(reg.athleteId, reg.eventInvitations);
+      });
+
+      return athletes.map((athlete) => ({
+        ...athlete,
+        eventInvitations: registrationMap.get(athlete.id) || [],
+      }));
+    }
+
+    // Extraer IDs de categorías del evento
+    const eventCategoryIds = eventCategories.map((ec) => ec.sportsCategory.id);
+
+    // Obtener deportistas que tienen inscripciones activas en las categorías del evento
+    const athletes = await prisma.athlete.findMany({
+      where: {
+        status: "Active",
+        inscriptions: {
+          some: {
+            status: "Active",
+            sportsCategoryId: {
+              in: eventCategoryIds,
+            },
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            middleName: true,
+            lastName: true,
+            secondLastName: true,
+            email: true,
+            phoneNumber: true,
+            birthDate: true,
+            age: true,
+            identification: true,
+          },
+        },
+        inscriptions: {
+          where: {
+            status: "Active",
+          },
+          include: {
+            sportsCategory: true,
+          },
+        },
+      },
+      orderBy: {
+        user: {
+          firstName: "asc",
+        },
+      },
+    });
+
+    // Obtener invitaciones para deportistas ya inscritos
+    const athleteIds = athletes.map((a) => a.id);
+    const registrations = await prisma.participant.findMany({
+      where: {
+        serviceId: parseInt(serviceId),
+        athleteId: { in: athleteIds },
+        type: "Individual",
+      },
+      include: {
+        eventInvitations: {
+          select: {
+            id: true,
+            status: true,
+            recipientEmail: true,
+            recipientName: true,
+            sentAt: true,
+            respondedAt: true,
+            invitationType: true,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 1,
+        },
+      },
+    });
+
+    // Mapear invitaciones a deportistas
+    const registrationMap = new Map();
+    registrations.forEach((reg) => {
+      registrationMap.set(reg.athleteId, reg.eventInvitations);
+    });
+
+    return athletes.map((athlete) => ({
+      ...athlete,
+      eventInvitations: registrationMap.get(athlete.id) || [],
+    }));
   }
 }
