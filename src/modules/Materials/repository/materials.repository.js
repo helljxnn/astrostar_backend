@@ -4,7 +4,7 @@ const prisma = new PrismaClient();
 
 class MaterialsRepository {
   /**
-   * Obtener todos los materiales con paginación y búsqueda
+   * Get all materials with pagination and search
    */
   async findAll({ page = 1, limit = 10, search = '', estado = null, categoriaId = null }) {
     const skip = (page - 1) * limit;
@@ -37,7 +37,8 @@ class MaterialsRepository {
           categoriaId: true,
           categoria: true,
           descripcion: true,
-          stock: true, // Stock único total
+          stockFundacion: true,
+          stockEventos: true,
           estado: true,
           createdAt: true,
           updatedAt: true,
@@ -56,21 +57,14 @@ class MaterialsRepository {
       prisma.material.count({ where }),
     ]);
 
-    // Calcular stockReservado para cada material (desde asignaciones activas)
-    const materialsWithReserved = await Promise.all(
-      materials.map(async (material) => {
-        const stockReservado = await this.calculateReservedStock(material.id);
-        return {
-          ...material,
-          stockTotal: material.stock,
-          stockReservado,
-          stockDisponible: material.stock - stockReservado,
-        };
-      })
-    );
+    // Calculate total stock for each material
+    const materialsWithTotal = materials.map((material) => ({
+      ...material,
+      stockTotal: material.stockFundacion + material.stockEventos,
+    }));
 
     return {
-      materials: materialsWithReserved,
+      materials: materialsWithTotal,
       total,
       page,
       limit,
@@ -79,7 +73,7 @@ class MaterialsRepository {
   }
 
   /**
-   * Obtener material por ID
+   * Get material by ID
    */
   async findById(id) {
     const material = await prisma.material.findUnique({
@@ -90,7 +84,8 @@ class MaterialsRepository {
         categoriaId: true,
         categoria: true,
         descripcion: true,
-        stock: true, // Stock único total
+        stockFundacion: true,
+        stockEventos: true,
         estado: true,
         createdAt: true,
         updatedAt: true,
@@ -108,32 +103,11 @@ class MaterialsRepository {
 
     if (!material) return null;
 
-    // Calcular stockReservado desde asignaciones activas
-    const stockReservado = await this.calculateReservedStock(material.id);
-
+    // Add calculated total stock
     return {
       ...material,
-      stockTotal: material.stock,
-      stockReservado,
-      stockDisponible: material.stock - stockReservado,
+      stockTotal: material.stockFundacion + material.stockEventos,
     };
-  }
-
-  /**
-   * Calcular stock reservado (asignado a eventos activos)
-   */
-  async calculateReservedStock(materialId) {
-    const result = await prisma.eventMaterialAssignment.aggregate({
-      where: {
-        materialId: parseInt(materialId),
-        estado: 'RESERVADO', // Solo asignaciones activas
-      },
-      _sum: {
-        cantidadAsignada: true,
-      },
-    });
-
-    return result._sum.cantidadAsignada || 0;
   }
 
   /**
@@ -157,21 +131,21 @@ class MaterialsRepository {
   }
 
   /**
-   * Crear material
+   * Create material
    */
   async create(data, userId) {
-    // Obtener nombre de la categoría
+    // Get category name
     const category = await prisma.materialCategory.findUnique({
       where: { id: parseInt(data.categoria_id) },
       select: { nombre: true, estado: true },
     });
 
     if (!category) {
-      throw new Error('Categoría no encontrada');
+      throw new Error('Category not found');
     }
 
     if (category.estado !== 'Activo') {
-      throw new Error('No se puede crear material con una categoría inactiva');
+      throw new Error('Cannot create material with inactive category');
     }
 
     const material = await prisma.material.create({
@@ -181,7 +155,8 @@ class MaterialsRepository {
         categoria: category.nombre,
         descripcion: data.descripcion?.trim() || null,
         unidadMedida: data.unidad_medida?.trim().toLowerCase() || 'unidad',
-        stock: 0, // Inicia en 0, se actualiza con movimientos
+        stockFundacion: 0, // Starts at 0
+        stockEventos: 0, // Starts at 0
         estado: 'Activo',
         createdBy: userId,
       },
@@ -195,12 +170,10 @@ class MaterialsRepository {
       },
     });
 
-    // Agregar campos calculados
+    // Add calculated fields
     return {
       ...material,
-      stockTotal: material.stock,
-      stockReservado: 0,
-      stockDisponible: material.stock,
+      stockTotal: material.stockFundacion + material.stockEventos,
     };
   }
 
@@ -280,25 +253,20 @@ class MaterialsRepository {
       },
     });
 
-    // Calcular stockReservado
-    const stockReservado = await this.calculateReservedStock(materialActualizado.id);
-
-    // Agregar campos calculados
+    // Add calculated total stock
     return {
       ...materialActualizado,
-      stockTotal: materialActualizado.stock,
-      stockReservado,
-      stockDisponible: materialActualizado.stock - stockReservado,
+      stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
     };
   }
 
   /**
-   * Cambiar estado del material
+   * Toggle material status
    */
   async toggleStatus(id, userId) {
     const material = await this.findById(id);
     if (!material) {
-      throw new Error('Material no encontrado');
+      throw new Error('Material not found');
     }
 
     const newStatus = material.estado === 'Activo' ? 'Inactivo' : 'Activo';
@@ -311,15 +279,10 @@ class MaterialsRepository {
       },
     });
 
-    // Calcular stockReservado
-    const stockReservado = await this.calculateReservedStock(materialActualizado.id);
-
-    // Agregar campos calculados
+    // Add calculated total stock
     return {
       ...materialActualizado,
-      stockTotal: materialActualizado.stock,
-      stockReservado,
-      stockDisponible: materialActualizado.stock - stockReservado,
+      stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
     };
   }
 
@@ -368,42 +331,46 @@ class MaterialsRepository {
   }
 
   /**
-   * Registrar baja de material (transacción atómica)
+   * Register material discharge (atomic transaction)
    */
   async registerDischarge(materialId, data, userId, userName) {
     return await prisma.$transaction(async (tx) => {
-      // 1. Obtener material con bloqueo
+      // 1. Get material with lock
       const material = await tx.material.findUnique({
         where: { id: parseInt(materialId) },
       });
 
       if (!material) {
-        throw new Error('Material no encontrado');
+        throw new Error('Material not found');
       }
 
       if (material.estado !== 'Activo') {
-        throw new Error('No se pueden registrar bajas en materiales inactivos');
+        throw new Error('Cannot register discharge on inactive materials');
       }
 
-      // 2. Calcular stock reservado
-      const stockReservado = await this.calculateReservedStock(materialId);
-      const stockDisponible = material.stock - stockReservado;
+      // 2. Determine which inventory to deduct from
+      const inventoryType = data.inventario_origen || 'FUNDACION';
+      const stockField = inventoryType === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const currentStock = material[stockField];
 
-      // 3. Validar stock disponible suficiente
-      if (stockDisponible < data.cantidad) {
+      // 3. Validate sufficient stock
+      if (currentStock < data.cantidad) {
         throw new Error(
-          `Stock disponible insuficiente. Stock disponible: ${stockDisponible}, Cantidad solicitada: ${data.cantidad}`
+          `Insufficient stock in ${inventoryType}. Available: ${currentStock}, Requested: ${data.cantidad}`
         );
       }
 
-      const stockAnterior = material.stock;
-      const nuevoStock = material.stock - data.cantidad;
+      const stockAnterior = material.stockFundacion + material.stockEventos;
+      const newStockValue = currentStock - data.cantidad;
+      const stockNuevo = inventoryType === 'FUNDACION' 
+        ? newStockValue + material.stockEventos
+        : material.stockFundacion + newStockValue;
 
-      // 4. Actualizar stock del material
+      // 4. Update material stock
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(materialId) },
         data: {
-          stock: nuevoStock,
+          [stockField]: newStockValue,
         },
         include: {
           category: {
@@ -415,7 +382,7 @@ class MaterialsRepository {
         },
       });
 
-      // 5. Mapear tipo_baja a valor del enum de Prisma
+      // 5. Map discharge type to enum value
       let tipoBajaEnum;
       const tipoBajaNormalizado = data.tipo_baja.toUpperCase().trim();
       
@@ -438,7 +405,7 @@ class MaterialsRepository {
           tipoBajaEnum = 'Otro';
       }
 
-      // 6. Crear movimiento de baja
+      // 6. Create discharge movement
       await tx.materialMovement.create({
         data: {
           materialId: parseInt(materialId),
@@ -446,23 +413,20 @@ class MaterialsRepository {
           categoria: material.categoria,
           tipoMovimiento: 'Baja',
           cantidad: data.cantidad,
+          inventarioOrigen: inventoryType,
           tipoBaja: tipoBajaEnum,
           observaciones: data.descripcion,
           stockAnterior: stockAnterior,
-          stockNuevo: nuevoStock,
+          stockNuevo: stockNuevo,
           createdBy: userId,
           createdByName: userName,
         },
       });
 
-      // 7. Retornar material actualizado con campos calculados
-      const stockReservadoFinal = await this.calculateReservedStock(materialActualizado.id);
-      
+      // 7. Return updated material with calculated total
       return {
         ...materialActualizado,
-        stockTotal: materialActualizado.stock,
-        stockReservado: stockReservadoFinal,
-        stockDisponible: materialActualizado.stock - stockReservadoFinal,
+        stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
       };
     });
   }
@@ -485,6 +449,89 @@ class MaterialsRepository {
     };
     
     return mapeo[tipoBajaNormalizado] || 'Otro';
+  }
+
+  /**
+   * Transfer stock between inventories (atomic transaction)
+   */
+  async transferStock(materialId, data, userId, userName) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Get material with lock
+      const material = await tx.material.findUnique({
+        where: { id: parseInt(materialId) },
+      });
+
+      if (!material) {
+        throw new Error('Material not found');
+      }
+
+      if (material.estado !== 'Activo') {
+        throw new Error('Cannot transfer stock on inactive materials');
+      }
+
+      // 2. Validate different inventories
+      if (data.from === data.to) {
+        throw new Error('Source and destination inventories must be different');
+      }
+
+      // 3. Determine stock fields
+      const fromField = data.from === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const toField = data.to === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const fromStock = material[fromField];
+      const toStock = material[toField];
+
+      // 4. Validate sufficient stock in source
+      if (fromStock < data.cantidad) {
+        throw new Error(
+          `Insufficient stock in ${data.from}. Available: ${fromStock}, Requested: ${data.cantidad}`
+        );
+      }
+
+      const stockAnterior = material.stockFundacion + material.stockEventos;
+      const newFromStock = fromStock - data.cantidad;
+      const newToStock = toStock + data.cantidad;
+
+      // 5. Update material stock
+      const materialActualizado = await tx.material.update({
+        where: { id: parseInt(materialId) },
+        data: {
+          [fromField]: newFromStock,
+          [toField]: newToStock,
+        },
+        include: {
+          category: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      // 6. Create transfer movement
+      await tx.materialMovement.create({
+        data: {
+          materialId: parseInt(materialId),
+          materialNombre: material.nombre,
+          categoria: material.categoria,
+          tipoMovimiento: 'TRANSFERENCIA',
+          cantidad: data.cantidad,
+          inventarioOrigen: data.from,
+          inventarioDestino: data.to,
+          observaciones: data.observaciones || `Transfer from ${data.from} to ${data.to}`,
+          stockAnterior: stockAnterior,
+          stockNuevo: stockAnterior, // Total doesn't change in transfers
+          createdBy: userId,
+          createdByName: userName,
+        },
+      });
+
+      // 7. Return updated material with calculated total
+      return {
+        ...materialActualizado,
+        stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
+      };
+    });
   }
 
   /**

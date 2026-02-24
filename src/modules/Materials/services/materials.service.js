@@ -293,20 +293,20 @@ class MaterialsService {
   }
 
   /**
-   * Registrar baja de material
+   * Register material discharge
    */
   async registerDischarge(id, data, userId, userName) {
     try {
-      // Validar datos de baja
+      // Validate discharge data
       this.validateDischargeData(data);
 
-      // Verificar que el material existe
+      // Verify material exists
       const existingMaterial = await materialsRepository.findById(id);
       if (!existingMaterial) {
         return {
           success: false,
           statusCode: 404,
-          message: 'Material no encontrado',
+          message: 'Material not found',
         };
       }
 
@@ -314,34 +314,38 @@ class MaterialsService {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se pueden registrar bajas en materiales inactivos',
+          message: 'Cannot register discharges on inactive materials',
         };
       }
 
-      // Validar stock disponible suficiente
-      const stockDisponible = existingMaterial.stockDisponible;
+      // Determine which inventory to deduct from
+      const inventoryType = data.inventario_origen || 'FUNDACION';
+      const availableStock = inventoryType === 'FUNDACION' 
+        ? existingMaterial.stockFundacion 
+        : existingMaterial.stockEventos;
 
-      if (stockDisponible < data.cantidad) {
+      // Validate sufficient stock
+      if (availableStock < data.cantidad) {
         return {
           success: false,
           statusCode: 400,
-          message: `Stock disponible insuficiente. Stock disponible: ${stockDisponible}, Cantidad solicitada: ${data.cantidad}`,
+          message: `Insufficient stock in ${inventoryType}. Available: ${availableStock}, Requested: ${data.cantidad}`,
         };
       }
 
-      // Registrar baja (transacción atómica)
+      // Register discharge (atomic transaction)
       const material = await materialsRepository.registerDischarge(id, data, userId, userName);
 
       return {
         success: true,
         data: material,
-        message: `Baja registrada exitosamente. ${data.cantidad} unidad(es) de "${material.nombre}" dada(s) de baja.`,
+        message: `Discharge registered successfully. ${data.cantidad} unit(s) of "${material.nombre}" discharged.`,
       };
     } catch (error) {
       console.error('Service error - registerDischarge:', error);
 
-      // Errores específicos
-      if (error.message.includes('Stock insuficiente')) {
+      // Specific errors
+      if (error.message.includes('Insufficient stock') || error.message.includes('insuficiente')) {
         return {
           success: false,
           statusCode: 400,
@@ -354,41 +358,46 @@ class MaterialsService {
   }
 
   /**
-   * Validar datos de baja
+   * Validate discharge data
    */
   validateDischargeData(data) {
-    // Cantidad
+    // Quantity
     if (!data.cantidad) {
-      throw new Error('La cantidad es obligatoria');
+      throw new Error('Quantity is required');
     }
 
     const cantidad = parseInt(data.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
-      throw new Error('La cantidad debe ser un número positivo');
+      throw new Error('Quantity must be a positive number');
     }
 
-    // Tipo de baja
+    // Discharge type
     if (!data.tipo_baja) {
-      throw new Error('El tipo de baja es obligatorio');
+      throw new Error('Discharge type is required');
     }
 
-    const tiposValidos = ['Daño o Deterioro', 'Pérdida', 'Robo', 'Ajuste de Inventario', 'Otro'];
-    if (!tiposValidos.includes(data.tipo_baja)) {
-      throw new Error(`Tipo de baja inválido. Debe ser uno de: ${tiposValidos.join(', ')}`);
+    const validTypes = ['Daño o Deterioro', 'Pérdida', 'Robo', 'Ajuste de Inventario', 'Otro'];
+    if (!validTypes.includes(data.tipo_baja)) {
+      throw new Error(`Invalid discharge type. Must be one of: ${validTypes.join(', ')}`);
     }
 
-    // Descripción
+    // Description
     if (!data.descripcion || !data.descripcion.trim()) {
-      throw new Error('La descripción es obligatoria');
+      throw new Error('Description is required');
     }
 
-    // Si es "Otro", validar descripción más detallada
+    // If "Otro", validate more detailed description
     if (data.tipo_baja === 'Otro' && data.descripcion.trim().length < 10) {
-      throw new Error('Para tipo "Otro", la descripción debe tener al menos 10 caracteres');
+      throw new Error('For type "Otro", description must be at least 10 characters');
     }
 
     if (data.descripcion.length > 1000) {
-      throw new Error('La descripción no puede exceder 1000 caracteres');
+      throw new Error('Description cannot exceed 1000 characters');
+    }
+
+    // Inventory origin (optional, defaults to FUNDACION)
+    if (data.inventario_origen && !['FUNDACION', 'EVENTOS'].includes(data.inventario_origen)) {
+      throw new Error('Inventory origin must be FUNDACION or EVENTOS');
     }
   }
 }

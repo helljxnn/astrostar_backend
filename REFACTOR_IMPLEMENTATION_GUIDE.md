@@ -23,97 +23,95 @@
 
 ## 📋 NEXT STEPS - BACKEND
 
-### 3. Update Repositories
+### 3. Update Repositories ✅ COMPLETE
 
-#### materials.repository.js
-- [ ] Update `findAll()` to return `stockFundacion` and `stockEventos`
-- [ ] Remove `calculateReservedStock()` method (no longer needed)
-- [ ] Update `findById()` to return dual stock
-- [ ] Update `create()` - stocks start at 0
-- [ ] Update `update()` - no stock changes here
-- [ ] Update `registerDischarge()` - deduct from correct inventory
-- [ ] Remove all references to single `stock` field
+#### materials.repository.js ✅
+- ✅ Update `findAll()` to return `stockFundacion` and `stockEventos`
+- ✅ Remove `calculateReservedStock()` method (no longer needed)
+- ✅ Update `findById()` to return dual stock
+- ✅ Update `create()` - stocks start at 0
+- ✅ Update `update()` - no stock changes here
+- ✅ Update `registerDischarge()` - deduct from correct inventory
+- ✅ Remove all references to single `stock` field
+- ✅ Add `transferStock()` method
 
-#### movements.repository.js
-- [ ] Update `registerMovement()` for dual inventory logic
-- [ ] Add support for `inventario_origen` and `inventario_destino`
-- [ ] Simplify logic (no more virtual reservations)
-- [ ] Update `deleteMovement()` to handle dual stock reversal
+#### movements.repository.js ✅
+- ✅ Update `registerMovement()` for dual inventory logic
+- ✅ Add support for `inventario_origen` and `inventario_destino`
+- ✅ Simplify logic (no more virtual reservations)
+- ✅ Update `deleteMovement()` to handle dual stock reversal
 
-#### eventAssignments.repository.js → eventMaterials.repository.js
-- [ ] Rename file to `eventMaterials.repository.js`
-- [ ] Simplify to basic CRUD (no states, no finalization)
-- [ ] Remove `finalizeEvent()` method
-- [ ] Remove `calculateReservedStock()` method
-- [ ] Add `create()` - simple assignment
-- [ ] Add `delete()` - simple removal with stock reversal
+#### eventMaterials.repository.js ✅
+- ✅ Created new simplified repository
+- ✅ Basic CRUD (no states, no finalization)
+- ✅ Removed `finalizeEvent()` method
+- ✅ Removed `calculateReservedStock()` method
 
-### 4. Create New Repository
+### 4. Update Services ✅ COMPLETE
 
-#### transfers.repository.js (NEW)
-- [ ] Create `transferStock()` method
-- [ ] Validate source inventory has sufficient stock
-- [ ] Update both inventory columns
-- [ ] Create movement record with type TRANSFERENCIA
+#### materials.service.js ✅
+- ✅ Updated all methods to work with dual stock
+- ✅ Removed `stockReservado` calculations
+- ✅ Updated validation logic
+- ✅ Updated `registerDischarge()` to specify inventory
 
-### 5. Update Services
+#### movements.service.js ✅
+- ✅ Updated `registerMovement()` for new flow
+- ✅ Added validation for `inventario_destino`
+- ✅ Simplified logic (no auto-assignment creation)
+- ✅ Updated error messages
 
-#### materials.service.js
-- [ ] Update all methods to work with dual stock
-- [ ] Remove `stockReservado` calculations
-- [ ] Update validation logic
-- [ ] Update `registerDischarge()` to specify inventory
+#### eventMaterials.service.js ✅ (NEW)
+- ✅ Created new simplified service
+- ✅ Removed `finalizeEvent()` method
+- ✅ Simplified `assignMaterial()` - immediate deduction
+- ✅ Added `removeAssignment()` - stock reversal
+- ✅ Removed all state management logic
 
-#### movements.service.js
-- [ ] Update `registerMovement()` for new flow
-- [ ] Add validation for `inventario_destino`
-- [ ] Simplify logic (no auto-assignment creation)
-- [ ] Update error messages
+#### transfers.service.js ✅ (NEW)
+- ✅ Created service for inventory transfers
+- ✅ Validate transfer between different inventories
+- ✅ Validate sufficient stock in source
+- ✅ Call repository method
 
-#### eventAssignments.service.js → eventMaterials.service.js
-- [ ] Rename to `eventMaterials.service.js`
-- [ ] Remove `finalizeEvent()` method
-- [ ] Simplify `assignMaterial()` - immediate deduction
-- [ ] Add `removeAssignment()` - stock reversal
-- [ ] Remove all state management logic
+### 5. Update Controllers ✅ COMPLETE
 
-#### transfers.service.js (NEW)
-- [ ] Create service for inventory transfers
-- [ ] Validate transfer between different inventories
-- [ ] Validate sufficient stock in source
-- [ ] Call repository method
+#### materials.controller.js ✅
+- ✅ Updated response format (dual stock)
+- ✅ No major changes needed
 
-### 6. Update Controllers
+#### movements.controller.js ✅
+- ✅ Updated request validation
+- ✅ Handle new inventory fields
 
-#### materials.controller.js
-- [ ] Update response format (dual stock)
-- [ ] No major changes needed
+#### eventMaterials.controller.js ✅ (NEW)
+- ✅ Created new controller
+- ✅ Removed `finalizeEvent()` endpoint
+- ✅ Simplified `assignMaterial()` endpoint
+- ✅ Added `removeAssignment()` endpoint
 
-#### movements.controller.js
-- [ ] Update request validation
-- [ ] Handle new inventory fields
+#### transfers.controller.js ✅ (NEW)
+- ✅ Created controller for transfers
+- ✅ Added `POST /api/materials/:id/transfer` endpoint
 
-#### eventAssignments.controller.js → eventMaterials.controller.js
-- [ ] Rename to `eventMaterials.controller.js`
-- [ ] Remove `finalizeEvent()` endpoint
-- [ ] Simplify `assignMaterial()` endpoint
-- [ ] Add `removeAssignment()` endpoint
+### 6. Update Routes ✅ COMPLETE
 
-#### transfers.controller.js (NEW)
-- [ ] Create controller for transfers
-- [ ] Add `POST /api/materials/:id/transfer` endpoint
+#### materials.routes.js ✅
+- ✅ No changes needed
 
-### 7. Update Routes
+#### transfers.routes.js ✅ (NEW)
+- ✅ Created transfer routes
+- ✅ Added Swagger documentation
 
-#### materials.routes.js
-- [ ] Add transfer route
-- [ ] Update documentation
+#### eventMaterials.routes.js ✅ (NEW)
+- ✅ Created new routes file
+- ✅ Removed finalize route
+- ✅ Simplified routes
+- ✅ Updated Swagger docs
 
-#### eventAssignments.routes.js → eventMaterials.routes.js
-- [ ] Rename file
-- [ ] Remove finalize route
-- [ ] Simplify routes
-- [ ] Update Swagger docs
+#### index.js ✅
+- ✅ Updated to use new routes
+- ✅ Removed old reservations and eventAssignments routes
 
 ---
 
