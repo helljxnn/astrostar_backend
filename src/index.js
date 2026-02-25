@@ -1,3 +1,7 @@
+// Load environment variables FIRST before any other imports
+import dotenv from "dotenv";
+dotenv.config();
+
 import app from "./app.js";
 import emailService from "./services/emailService.js";
 import { startEnrollmentExpirationJob } from "./jobs/enrollmentExpirationJob.js";
@@ -8,6 +12,9 @@ const PORT = process.env.PORT || 4000;
 // Inicializar servicios
 async function initializeServices() {
   try {
+    // Reinicializar el servicio de email para asegurar que las variables de entorno estén cargadas
+    emailService.reinitialize();
+
     // Verificar conexión de email
     await emailService.verifyConnection();
 
