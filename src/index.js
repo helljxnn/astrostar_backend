@@ -16,7 +16,10 @@ async function initializeServices() {
     emailService.reinitialize();
 
     // Verificar conexión de email
-    await emailService.verifyConnection();
+    const emailOk = await emailService.verifyConnection();
+    if (!emailOk) {
+      console.warn("⚠️  Servicio de email no disponible (revisa EMAIL_USER/EMAIL_PASSWORD o conectividad SMTP).");
+    }
 
     // Iniciar job de vencimiento de matrículas
     startEnrollmentExpirationJob();

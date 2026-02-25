@@ -14,7 +14,7 @@ class EmailService {
   /**
    * Inicializar el transportador de email
    */
-  initializeTransporter() {
+  async initializeTransporter() {
     try {
       // Verificar si las credenciales están configuradas
       if (
@@ -41,7 +41,7 @@ class EmailService {
         },
       });
     } catch (error) {
-      console.error("❌ Error inicializando servicio de email:", error);
+      console.error('? Error inicializando servicio de email:', error);
       this.transporter = null;
     }
   }
@@ -66,6 +66,7 @@ class EmailService {
       await this.transporter.verify();
       return true;
     } catch (error) {
+      console.warn("⚠️  No se pudo verificar la conexión de email:", error?.message || error);
       return false;
     }
   }
@@ -327,6 +328,248 @@ Este es un email automático del sistema AstroStar.
         error: error.message,
         message: "Error enviando email",
       };
+    }
+  }
+
+  /**
+   * Notificar al deportista que se creó una cita
+   */
+    async sendAppointmentNotification({ to, athleteName, date, time, specialistName }) {
+    if (!to) {
+      return { success: false, message: "Correo destinatario no definido" };
+    }
+
+    const ready = await this.ensureTransporter();
+    if (!ready.ok) {
+      console.warn("??  Notificaci?n de cita no enviada:", ready.reason);
+      return { success: false, error: ready.reason };
+    }
+
+    const subject = "Nueva cita programada";
+    const plainText = `Hola ${athleteName || "deportista"}, se program? una cita para el ${date} a las ${time}${
+      specialistName ? ` con ${specialistName}` : ""
+    }. Ingresa al m?dulo de citas para m?s detalles.`;
+
+    const html = `
+      <p>Hola ${athleteName || "deportista"},</p>
+      <p>Se program? una cita para el <strong>${date}</strong> a las <strong>${time}</strong>${
+        specialistName ? ` con <strong>${specialistName}</strong>` : ""
+      }.</p>
+      <p>Por favor ingresa al m?dulo de citas para m?s detalles.</p>
+    `;
+
+    const mailOptions = {
+      from: {
+        name: "AstroStar - Sistema de Gestión",
+        address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
+      },
+      to,
+      subject,
+      text: plainText,
+      html,
+    };
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.warn("⚠️  Error enviando notificación de cita:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  formatScheduleDate(date) {
+    if (!date) return "";
+    const parsed = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toLocaleDateString("es-CO", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  formatScheduleRecurrence(recurrence = "no") {
+    const labels = {
+      no: "Sin repetición",
+      dia: "Cada día",
+      semana: "Cada semana",
+      mes: "Cada mes",
+      anio: "Cada año",
+      laboral: "Días laborales",
+      personalizado: "Repetición personalizada",
+    };
+    return labels[recurrence] || "Sin repetición";
+  }
+
+  generateScheduleNotificationTemplate({
+    employeeName,
+    actionTitle,
+    scheduleDate,
+    timeRange,
+    recurrenceLabel,
+    description,
+  }) {
+    const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const hasDescription = description && String(description).trim() !== "";
+    return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${actionTitle} - AstroStar</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 640px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 28px; text-align: center; border-radius: 12px 12px 0 0; }
+        .content { background: #f8f9fb; padding: 28px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+        .badge { display: inline-block; padding: 6px 12px; background: #e5e7ff; color: #4c51bf; border-radius: 999px; font-weight: 600; font-size: 13px; letter-spacing: 0.3px; }
+        .card { background: white; border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px 18px; margin: 18px 0; }
+        .card h3 { margin: 0 0 8px 0; color: #111827; }
+        .detail { margin: 6px 0; font-size: 14px; color: #374151; }
+        .highlight { color: #4c51bf; font-weight: 700; }
+        .button { display: inline-block; background: #667eea; color: white; padding: 12px 22px; text-decoration: none; border-radius: 8px; margin-top: 18px; font-weight: 600; }
+        .footer { text-align: center; margin-top: 18px; color: #6b7280; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="badge">${actionTitle}</div>
+          <h1 style="margin: 10px 0 0 0;">Horario de trabajo</h1>
+          <p style="margin: 8px 0 0 0; opacity: .9;">AstroStar - Sistema de Gestión</p>
+        </div>
+        <div class="content">
+          <p>Hola <strong>${employeeName}</strong>,</p>
+          <p>Tu horario ha sido <strong>${actionTitle.toLowerCase()}</strong>. Aquí están los detalles:</p>
+
+          <div class="card">
+            <h3>Detalle del horario</h3>
+            <p class="detail">📅 <span class="highlight">${scheduleDate}</span></p>
+            <p class="detail">⏰ <span class="highlight">${timeRange}</span></p>
+            <p class="detail">🔁 ${recurrenceLabel}</p>
+            ${hasDescription ? `<p class="detail">📝 ${description}</p>` : ""}
+          </div>
+
+          <div class="card" style="background:#f0f4ff;">
+            <h3>¿Qué debo hacer?</h3>
+            <ul style="margin: 8px 0 0 16px; padding: 0; color:#374151;">
+              <li>Revisa tu agenda y confirma disponibilidad.</li>
+              <li>Si detectas algún conflicto, contacta al coordinador.</li>
+              <li>Guarda este correo como referencia.</li>
+            </ul>
+          </div>
+
+          <div style="text-align:center;">
+            <a class="button" href="${baseUrl}/login">Abrir AstroStar</a>
+          </div>
+
+          <p style="margin-top:16px; color:#4b5563; font-size:14px;">
+            Este correo se envió al email registrado en tu perfil. Si no reconoces este cambio, responde a tu coordinador.
+          </p>
+        </div>
+        <div class="footer">
+          <p>Este es un correo automático. Por favor no respondas a este mensaje.</p>
+          <p>© ${new Date().getFullYear()} AstroStar</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
+  }
+
+  generateScheduleNotificationText({
+    employeeName,
+    actionTitle,
+    scheduleDate,
+    timeRange,
+    recurrenceLabel,
+    description,
+  }) {
+    return `${actionTitle} - AstroStar
+
+Hola ${employeeName},
+
+Tu horario ha sido ${actionTitle.toLowerCase()}.
+
+Fecha: ${scheduleDate}
+Horario: ${timeRange}
+Repetición: ${recurrenceLabel}
+${description ? `Descripción: ${description}\n` : ""} 
+Si necesitas cambios, contacta a tu coordinador.
+
+Este correo fue enviado al email registrado en tu perfil.
+`;
+  }
+
+  /**
+   * Notificar al empleado cuando se crea o actualiza su horario
+   */
+  async sendEmployeeScheduleNotification({
+    to,
+    employeeName,
+    action = "created",
+    scheduleDate,
+    startTime,
+    endTime,
+    recurrence = "no",
+    description = "",
+  }) {
+    if (!to) {
+      return { success: false, message: "Correo destinatario no definido" };
+    }
+
+    const ready = await this.ensureTransporter();
+    if (!ready.ok) {
+      console.warn("⚠️  Notificación de horario no enviada:", ready.reason);
+      return { success: false, error: ready.reason };
+    }
+
+    const actionTitle =
+      action === "updated" ? "Horario actualizado" : "Nuevo horario asignado";
+    const formattedDate = this.formatScheduleDate(scheduleDate);
+    const timeRange =
+      startTime && endTime ? `${startTime} - ${endTime}` : startTime || "";
+    const recurrenceLabel = this.formatScheduleRecurrence(recurrence);
+
+    const mailOptions = {
+      from: {
+        name: "AstroStar - Sistema de Gestión",
+        address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
+      },
+      to,
+      subject: `${actionTitle} - AstroStar`,
+      html: this.generateScheduleNotificationTemplate({
+        employeeName,
+        actionTitle,
+        scheduleDate: formattedDate,
+        timeRange,
+        recurrenceLabel,
+        description,
+      }),
+      text: this.generateScheduleNotificationText({
+        employeeName,
+        actionTitle,
+        scheduleDate: formattedDate,
+        timeRange,
+        recurrenceLabel,
+        description,
+      }),
+    };
+
+    if (!this.transporter) {
+      console.log("📧 (simulado) Notificación de horario ->", to);
+      return { success: true, simulated: true };
+    }
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.warn("⚠️  Error enviando notificación de horario:", error.message);
+      return { success: false, error: error.message };
     }
   }
 
@@ -615,6 +858,34 @@ Este es un email automático del sistema AstroStar.
   }
 
   /**
+   * Enviar correo de agradecimiento a donante creado desde el landing
+   */
+  async sendDonorLandingEmail(donorData) {
+    try {
+      const mailOptions = {
+        from: {
+          name: "Fundaci\u00f3n Manuela Vanegas",
+          address: process.env.EMAIL_USER || "fundacion@example.com",
+        },
+        to: donorData.correo,
+        subject: "Gracias por tu inter\u00e9s en apoyar la fundaci\u00f3n",
+        html: this.generateDonorLandingTemplate(donorData),
+      };
+
+      if (!this.transporter) {
+        console.log("ðŸ“§ (simulado) Email a donante landing ->", donorData.correo);
+        return { success: true, messageId: "simulated-donor-" + Date.now() };
+      }
+
+      const result = await this.transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error("Error enviando email a donante landing:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Generar template para pre-inscripción
    */
   generatePreRegistrationTemplate(
@@ -732,6 +1003,74 @@ Este es un email automático del sistema AstroStar.
                   <p style="color: #999999; margin: 10px 0 0 0; font-size: 11px;">
                     Este correo fue enviado a ${email} porque te pre-inscribiste en nuestra fundación.
                   </p>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    </body>
+    </html>
+    `;
+  }
+
+  generateDonorLandingTemplate(donor) {
+    const name =
+      donor.nombre ||
+      donor.nombreCompleto ||
+      donor.razonSocial ||
+      "Amigo de la fundaci\u00f3n";
+
+    return `
+    <!DOCTYPE html>
+    <html lang="es">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Gracias por tu apoyo</title>
+      <style>
+        body { font-family: 'Arial', sans-serif; background: #f7f9fc; color: #2d2d2d; margin: 0; padding: 0; }
+        a { color: #4f46e5; text-decoration: none; }
+      </style>
+    </head>
+    <body style="font-family: Arial, sans-serif; color: #333; background: #f7f7fb; margin: 0; padding: 0;">
+      <table width="100%" cellspacing="0" cellpadding="0" style="padding:24px 0;">
+        <tr>
+          <td align="center">
+            <table width="640" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.08);">
+              <tr>
+                <td style="background:linear-gradient(135deg,#6b7bff,#9BE9FF);padding:32px;color:#fff;">
+                  <h1 style="margin:0;font-size:24px;">\u00a1Gracias por tu inter\u00e9s en donar!</h1>
+                  <p style="margin:6px 0 0;font-size:15px;">Fundaci\u00f3n Manuela Vanegas</p>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:28px 32px;">
+                  <p style="font-size:16px;">Hola <strong>${name}</strong>,</p>
+                  <p style="font-size:15px; line-height:1.6;">
+                    Recibimos tu informaci\u00f3n y en breve un miembro del equipo se comunicar\u00e1 contigo para confirmar los detalles de tu apoyo. Te contactaremos por el medio que registraste para continuar el proceso.
+                  </p>
+                  <div style="background:#f4f6ff;border-left:4px solid #B595FF;padding:16px;border-radius:10px;margin:18px 0;">
+                    <p style="margin:0;font-size:14px;color:#4a4a4a;"><strong>Tus datos registrados</strong></p>
+                    <p style="margin:4px 0;font-size:14px;">Correo: ${donor.correo || "No informado"}</p>
+                    <p style="margin:4px 0;font-size:14px;">Tel\u00e9fono: ${donor.telefono || "No informado"}</p>
+                    <p style="margin:4px 0;font-size:14px;">Ciudad / Pa\u00eds: ${donor.ciudad || ""} ${donor.pais || ""}</p>
+                    <p style="margin:4px 0;font-size:14px;">Mensaje: ${donor.descripcion || "No informado"}</p>
+                  </div>
+                  <div style="background:#fff7e6;border:1px solid #ffe4b5;border-radius:10px;padding:14px;margin:18px 0;">
+                    <p style="margin:0;font-size:14px;color:#8a6d3b;">
+                      Si ya hiciste tu donaci\u00f3n y necesitas tu certificado, escr\u00edbenos a
+                      <a href="mailto:fundacionmanuelavanegas@gmail.com"><strong> fundacionmanuelavanegas@gmail.com</strong></a>.
+                    </p>
+                  </div>
+                  <p style="font-size:14px; color:#555;">
+                    Si este mensaje no corresponde a tu solicitud, por favor ign\u00f3ralo.
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td style="background:#f3f3f6;padding:16px 32px;text-align:center;font-size:12px;color:#777;">
+                  \u00a9 ${new Date().getFullYear()} Fundaci\u00f3n Manuela Vanegas
                 </td>
               </tr>
             </table>

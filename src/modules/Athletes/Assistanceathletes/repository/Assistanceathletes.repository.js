@@ -206,7 +206,7 @@ export class AssistanceathletesRepository {
             include: { sportsCategory: true },
             orderBy: { inscriptionDate: "desc" },
           },
-          athleteAttendances: {
+          attendances: {
             where: {
               date: {
                 gte: start,
@@ -221,7 +221,7 @@ export class AssistanceathletesRepository {
     ]);
 
     const data = athletes.map((athlete) => {
-      const records = athlete.athleteAttendances || [];
+      const records = athlete.attendances || [];
       const present = records.filter((r) => r.asistencia).length;
       const absent = records.filter((r) => !r.asistencia).length;
       const totalRecords = records.length;

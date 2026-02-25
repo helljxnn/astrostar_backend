@@ -94,6 +94,27 @@ export class DonorsSponsorsController {
     }
   };
 
+  createFromLanding = async (req, res) => {
+    try {
+      const result = await this.donorsSponsorsService.createFromLanding(
+        req.body
+      );
+      res.status(201).json(result);
+    } catch (error) {
+      const message =
+        error.message ||
+        "Error interno del servidor al registrar el donante.";
+      const status =
+        message.includes("registrada") || message.includes("correo")
+          ? 400
+          : 500;
+      res.status(status).json({
+        success: false,
+        message,
+      });
+    }
+  };
+
   update = async (req, res) => {
     try {
       const id = parseInt(req.params.id);

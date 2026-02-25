@@ -12,6 +12,22 @@ export function startRSVPReminderJob() {
     console.log("🔔 [RSVP Job] Ejecutando job de recordatorios RSVP...");
 
     try {
+      // Comprobar existencia de la tabla para evitar P2021
+      const tableCheck = await prisma.$queryRaw`SELECT to_regclass('public.event_invitations') AS regclass`;
+      if (!Array.isArray(tableCheck) || !tableCheck[0]?.regclass) {
+        console.warn(
+          "⚠️ [RSVP Job] Tabla event_invitations no existe. Omitiendo job. Ejecuta migraciones si necesitas RSVP."
+        );
+        return;
+      }
+
+      if (!prisma?.eventInvitation?.findMany) {
+        console.warn(
+          "⚠️ [RSVP Job] Prisma client no tiene el modelo eventInvitation. Ejecuta `npm run prisma:generate` (tras detener el backend) para regenerar el cliente."
+        );
+        return;
+      }
+
       const now = new Date();
       const in25Hours = new Date(now.getTime() + 25 * 60 * 60 * 1000);
       const in24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
