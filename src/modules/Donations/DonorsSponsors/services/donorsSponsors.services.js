@@ -1,4 +1,5 @@
 import { DonorsSponsorsRepository } from "../repository/donorsSponsors.repository.js";
+import emailService from "../../../../services/emailService.js";
 
 export class DonorsSponsorsService {
   constructor() {
@@ -89,6 +90,46 @@ export class DonorsSponsorsService {
     }
   }
 
+  async createFromLanding(payload) {
+    try {
+      const landingPayload = {
+        tipo: "Donante",
+        tipoPersona: "Natural",
+        nombreCompleto: payload.nombreCompleto || payload.nombre || "",
+        telefono: payload.telefono || payload.phone || "",
+        correo: payload.correo || payload.email || "",
+        direccion: payload.direccion || payload.address || "",
+        ciudad: payload.ciudad || payload.city || "",
+        pais: payload.pais || payload.country || "",
+        estado: "Por confirmar",
+        descripcion:
+          payload.mensaje ||
+          payload.descripcion ||
+          "Registro creado desde el landing de donaciones.",
+        autorizacion: payload.autorizacion || "Si",
+      };
+
+      await this.ensureUnique(landingPayload);
+      const created = await this.donorsSponsorsRepository.create(landingPayload);
+
+      emailService
+        .sendDonorLandingEmail(created)
+        .catch((err) =>
+          console.warn("Error enviando email de landing a donante:", err.message)
+        );
+
+      return {
+        success: true,
+        data: created,
+        message:
+          "Hemos recibido tu informaci\u00f3n. Te contactaremos pronto para confirmar la donaci\u00f3n.",
+      };
+    } catch (error) {
+      console.error("Error in DonorsSponsorsService.createFromLanding:", error);
+      throw error;
+    }
+  }
+
   async update(id, payload) {
     try {
       const existing = await this.donorsSponsorsRepository.findById(id);
@@ -97,6 +138,18 @@ export class DonorsSponsorsService {
           success: false,
           statusCode: 404,
           message: `No se encontr\u00f3 el registro con ID ${id}.`,
+        };
+      }
+
+      const isAnonymous =
+        (existing.nombre || "").toLowerCase() === "anonimo" ||
+        (existing.identificacion || existing.id || "").toString() ===
+          "0000000000";
+      if (isAnonymous) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "El registro Anonimo no se puede editar.",
         };
       }
 
@@ -122,6 +175,18 @@ export class DonorsSponsorsService {
           success: false,
           statusCode: 404,
           message: `No se encontr\u00f3 el registro con ID ${id}.`,
+        };
+      }
+
+      const isAnonymous =
+        (existing.nombre || "").toLowerCase() === "anonimo" ||
+        (existing.identificacion || existing.id || "").toString() ===
+          "0000000000";
+      if (isAnonymous) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "El registro Anonimo no se puede eliminar.",
         };
       }
 

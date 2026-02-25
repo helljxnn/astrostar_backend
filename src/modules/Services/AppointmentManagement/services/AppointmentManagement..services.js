@@ -1,5 +1,6 @@
 
 import { AppointmentRepository } from '../repository/AppointmentManagement.repository.js';
+import emailService from '../../../../services/emailService.js';
 
 const SPECIALTY_LABELS = {
   psicologia: 'Psicología Deportiva',
@@ -446,6 +447,18 @@ export class AppointmentService {
 
       const newAppointment = await this.appointmentRepository.create(appointmentDataForDB);
       const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`.trim();
+
+      // Notificar al deportista por email (no bloqueante)
+      emailService
+        .sendAppointmentNotification({
+          to: athlete.user.email,
+          athleteName,
+          date: startDateKey,
+          time: `${startTime} - ${endTime}`,
+          specialistName: `${specialist.user.firstName} ${specialist.user.lastName}`.trim(),
+        })
+        .catch((err) => console.warn('⚠️  Error enviando email de cita:', err?.message));
+
       return {
         success: true,
         data: newAppointment,

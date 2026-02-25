@@ -27,6 +27,7 @@ import testEmailRoutes from "./testEmail.js";
 import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedule.routes.js";
 import groupsRoutes from "../modules/Services/Groups/routes/groups.routes.js";
 import membershipsRoutes from "../modules/Services/Groups/routes/memberships.routes.js";
+import appointmentRoutes from "../modules/Services/AppointmentManagement/routes/AppointmentManagement.routes.js";
 
 const router = Router();
 
@@ -46,6 +47,8 @@ router.use("/trainers", trainersRoutes);
 router.use("/teams-athletes", athletesRoutes);
 router.use("/athletes", deportistasRoutes);
 router.use("/guardians", guardiansRoutes);
+// Módulo asistencia deportistas
+router.use("/assistance-athletes", assistanceathletesRoutes);
 router.use("/pre-registrations", preRegistrationsRoutes);
 router.use("/enrollments", enrollmentsRoutes);
 router.use("/reference", referenceRoutes);
@@ -55,6 +58,7 @@ router.use("/", rsvpRoutes); // RSVP routes at root level for clean URLs
 router.use("/schedules", scheduleRoutes);
 router.use("/groups", groupsRoutes);
 router.use("/", membershipsRoutes);
+router.use("/appointments", appointmentRoutes);
 
 router.use("/upload", uploadRoutes);
 if (process.env.NODE_ENV === "development") {
@@ -82,6 +86,7 @@ router.get("/health", (req, res) => {
       "Trainers",
       "Athletes",
       "Guardians",
+      "AssistanceAthletes",
       "PreRegistrations",
       "Enrollments",
       "Events",

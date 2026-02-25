@@ -28,6 +28,7 @@ enum EnrollmentStatus {
 enum SponsorStatus {
   Active
   Inactive
+  Pending
 }
 
 enum DonorSponsorType {
@@ -516,6 +517,8 @@ model Athlete {
   participants             Participant[]
   teamMembers              TeamMember[]
   groupMemberships         GroupMembership[]
+  appointments             Appointment[]
+  attendances              AthleteAttendance[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])
