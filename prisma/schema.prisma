@@ -179,7 +179,6 @@ model EmployeeSchedule {
   updatedAt          DateTime                  @updatedAt
   employee           Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   novelties          EmployeeScheduleNovelty[]
-  employee           Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@map("employee_schedules")
 }
@@ -716,23 +715,23 @@ model MaterialCategory {
 }
 
 model Material {
-  id               Int                       @id @default(autoincrement())
-  nombre           String                    @db.VarChar(255)
-  categoriaId      Int                       @map("categoria_id")
-  categoria        String                    @db.VarChar(100)
-  descripcion      String?
-  estado           MaterialStatus            @default(Activo)
-  createdAt        DateTime                  @default(now()) @map("created_at")
-  updatedAt        DateTime                  @updatedAt @map("updated_at")
-  createdBy        Int?                      @map("created_by")
-  updatedBy        Int?                      @map("updated_by")
-  unidadMedida            String                    @default("unidad") @map("unidad_medida") @db.VarChar(20)
-  stockFundacion          Int                       @default(0) @map("stock_fundacion")
-  stockEventos            Int                       @default(0) @map("stock_eventos")
-  stockEventosReservado   Int                       @default(0) @map("stock_eventos_reservado")
-  eventMaterials          EventMaterial[]
-  movements        MaterialMovement[]
-  category         MaterialCategory          @relation(fields: [categoriaId], references: [id], map: "materials_categoriaId_fkey")
+  id                    Int                @id @default(autoincrement())
+  nombre                String             @db.VarChar(255)
+  categoriaId           Int                @map("categoria_id")
+  categoria             String             @db.VarChar(100)
+  descripcion           String?
+  estado                MaterialStatus     @default(Activo)
+  createdAt             DateTime           @default(now()) @map("created_at")
+  updatedAt             DateTime           @updatedAt @map("updated_at")
+  createdBy             Int?               @map("created_by")
+  updatedBy             Int?               @map("updated_by")
+  unidadMedida          String             @default("unidad") @map("unidad_medida") @db.VarChar(20)
+  stockFundacion        Int                @default(0) @map("stock_fundacion")
+  stockEventos          Int                @default(0) @map("stock_eventos")
+  stockEventosReservado Int                @default(0) @map("stock_eventos_reservado")
+  eventMaterials        EventMaterial[]
+  movements             MaterialMovement[]
+  category              MaterialCategory   @relation(fields: [categoriaId], references: [id], map: "materials_categoriaId_fkey")
 
   @@unique([nombre, categoriaId], name: "unique_material_per_category", map: "unique_material_per_category")
   @@index([categoriaId])
@@ -747,32 +746,32 @@ model Material {
 }
 
 model MaterialMovement {
-  id                  Int                @id @default(autoincrement())
-  materialId          Int                @map("material_id")
-  materialNombre      String             @map("material_nombre") @db.VarChar(255)
-  categoria           String             @db.VarChar(100)
-  tipoMovimiento      MovementType       @map("tipo_movimiento")
-  cantidad            Int
-  observaciones       String?
-  stockAnterior       Int                @map("stock_anterior")
-  stockNuevo          Int                @map("stock_nuevo")
-  referenceId         Int?               @map("reference_id")
-  referenceType       String?            @map("reference_type") @db.VarChar(50)
-  fecha               DateTime           @default(now())
-  createdBy           Int                @map("created_by")
-  createdByName       String?            @map("created_by_name") @db.VarChar(255)
-  destino             DestinoMovimiento?
-  eventoId            Int?               @map("evento_id")
-  donacionId          Int?               @map("donacion_id")
-  reservation_id      Int?
-  fechaIngreso        DateTime?          @map("fecha_ingreso") @db.Date
-  proveedorId         Int?               @map("proveedor_id")
-  tipoBaja            TipoBaja?          @map("tipo_baja")
-  destinoStock        DestinoStock?      @map("destino_stock")
-  inventarioOrigen    InventoryType?     @map("inventario_origen")
-  inventarioDestino   InventoryType?     @map("inventario_destino")
-  material            Material           @relation(fields: [materialId], references: [id], map: "material_movements_materialId_fkey")
-  proveedor           Provider?          @relation(fields: [proveedorId], references: [id], onUpdate: NoAction)
+  id                Int                @id @default(autoincrement())
+  materialId        Int                @map("material_id")
+  materialNombre    String             @map("material_nombre") @db.VarChar(255)
+  categoria         String             @db.VarChar(100)
+  tipoMovimiento    MovementType       @map("tipo_movimiento")
+  cantidad          Int
+  observaciones     String?
+  stockAnterior     Int                @map("stock_anterior")
+  stockNuevo        Int                @map("stock_nuevo")
+  referenceId       Int?               @map("reference_id")
+  referenceType     String?            @map("reference_type") @db.VarChar(50)
+  fecha             DateTime           @default(now())
+  createdBy         Int                @map("created_by")
+  createdByName     String?            @map("created_by_name") @db.VarChar(255)
+  destino           DestinoMovimiento?
+  eventoId          Int?               @map("evento_id")
+  donacionId        Int?               @map("donacion_id")
+  reservation_id    Int?
+  fechaIngreso      DateTime?          @map("fecha_ingreso") @db.Date
+  proveedorId       Int?               @map("proveedor_id")
+  tipoBaja          TipoBaja?          @map("tipo_baja")
+  destinoStock      DestinoStock?      @map("destino_stock")
+  inventarioOrigen  InventoryType?     @map("inventario_origen")
+  inventarioDestino InventoryType?     @map("inventario_destino")
+  material          Material           @relation(fields: [materialId], references: [id], map: "material_movements_materialId_fkey")
+  proveedor         Provider?          @relation(fields: [proveedorId], references: [id], onUpdate: NoAction)
 
   @@index([materialId])
   @@index([tipoMovimiento])
@@ -792,15 +791,15 @@ model MaterialMovement {
 }
 
 model EventMaterial {
-  id               Int      @id @default(autoincrement())
-  materialId       Int      @map("material_id")
-  eventoId         Int      @map("evento_id")
-  cantidad         Int
-  fechaAsignacion  DateTime @default(now()) @map("fecha_asignacion")
-  observaciones    String?
-  createdBy        Int      @map("created_by")
-  createdByName    String?  @map("created_by_name") @db.VarChar(255)
-  material         Material @relation(fields: [materialId], references: [id])
+  id              Int      @id @default(autoincrement())
+  materialId      Int      @map("material_id")
+  eventoId        Int      @map("evento_id")
+  cantidad        Int
+  fechaAsignacion DateTime @default(now()) @map("fecha_asignacion")
+  observaciones   String?
+  createdBy       Int      @map("created_by")
+  createdByName   String?  @map("created_by_name") @db.VarChar(255)
+  material        Material @relation(fields: [materialId], references: [id])
 
   @@index([materialId])
   @@index([eventoId])
