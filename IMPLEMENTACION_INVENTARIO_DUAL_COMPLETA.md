@@ -8,6 +8,60 @@ Se implementó exitosamente el sistema de inventario dual (Fundación + Eventos)
 
 ---
 
+## � VEALIDACIONES DE ELIMINACIÓN DE MATERIALES
+
+### Reglas de Negocio Implementadas
+
+**Un material SOLO puede eliminarse físicamente si:**
+1. ✅ Stock actual = 0 (en todos los inventarios)
+2. ✅ NO tiene movimientos históricos (nunca tuvo ingresos/salidas/bajas)
+
+**Si tiene movimientos históricos:**
+- ❌ NO se puede eliminar físicamente
+- ✅ Se debe marcar como "Inactivo" para mantener integridad referencial
+- ✅ Mantiene el historial contable completo
+
+### Casos de Uso
+
+| Escenario | Stock | Movimientos | Acción Permitida |
+|-----------|-------|-------------|------------------|
+| Material recién creado sin uso | 0 | 0 | ✅ Eliminar físicamente |
+| Material con stock actual | >0 | Cualquiera | ❌ Bloqueado - "Tiene stock registrado" |
+| Material usado pero agotado | 0 | >0 | ❌ Bloqueado - "Tiene movimientos históricos" → Marcar Inactivo |
+| Ejemplo: "Mercados" para evento | 0 | Ingreso + Salida | ❌ Bloqueado → Marcar Inactivo |
+
+### Implementación Backend
+
+**Archivo:** `src/modules/Materials/repository/materials.repository.js`
+
+```javascript
+async delete(id) {
+  // 1. Verificar stock actual
+  const stockTotal = material.stockFundacion + material.stockEventos + material.stockEventosReservado;
+  if (stockTotal > 0) {
+    throw new Error('No se puede eliminar - tiene stock registrado');
+  }
+
+  // 2. Verificar movimientos históricos
+  const movementsCount = await prisma.materialMovement.count({
+    where: { materialId: parseInt(id) }
+  });
+  
+  if (movementsCount > 0) {
+    throw new Error('No se puede eliminar - tiene movimientos históricos. Marcar como Inactivo.');
+  }
+
+  // 3. Solo eliminar si pasa ambas validaciones
+  return await prisma.material.delete({ where: { id: parseInt(id) } });
+}
+```
+
+**Información adicional en API:**
+- Cada material incluye: `hasMovements: boolean` y `movementsCount: number`
+- Frontend puede mostrar mensajes específicos según el caso
+
+---
+
 ## 📊 DECISIÓN ARQUITECTÓNICA FINAL
 
 ### Modelo Implementado: DOS INVENTARIOS SEPARADOS
