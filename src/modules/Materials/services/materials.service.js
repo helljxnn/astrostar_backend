@@ -202,7 +202,7 @@ class MaterialsService {
   }
 
   /**
-   * Eliminar material (solo si no tiene movimientos)
+   * Eliminar material (solo si no tiene stock ni movimientos)
    */
   async delete(id) {
     try {
@@ -213,13 +213,33 @@ class MaterialsService {
         message: 'Material eliminado exitosamente',
       };
     } catch (error) {
-      if (error.message.includes('movimiento(s) registrado(s)')) {
+      // Errores de validación de negocio
+      if (error.message.includes('tiene stock registrado')) {
         return {
           success: false,
           statusCode: 400,
           message: error.message,
+          reason: 'HAS_STOCK',
         };
       }
+      
+      if (error.message.includes('movimiento(s) histórico(s)')) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: error.message,
+          reason: 'HAS_MOVEMENTS',
+        };
+      }
+
+      if (error.message.includes('no encontrado')) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: error.message,
+        };
+      }
+
       console.error('Service error - delete:', error);
       throw error;
     }

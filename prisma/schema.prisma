@@ -1054,9 +1054,13 @@ enum CategoryStatus {
 
 enum MovementType {
   Entrada
+  Salida
   Baja
   Consumo
   Ajuste
+  TRANSFERENCIA
+  SALIDA_EVENTO
+  REVERSO_SALIDA_EVENTO
 }
 
 enum DestinoMovimiento {

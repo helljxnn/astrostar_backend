@@ -30,7 +30,7 @@ async function initializeServices() {
 
 app.listen(PORT, "0.0.0.0", async () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Accessible from network at http://192.168.0.4:${PORT}`);
+  console.log(`📱 Accessible from network at http://192.168.20.41:${PORT}`);
 
   // Inicializar servicios adicionales
   await initializeServices();
