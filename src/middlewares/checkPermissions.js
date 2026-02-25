@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+import prisma from "../config/database.js";
 
 /**
  * Middleware para verificar permisos específicos por módulo y acción
@@ -16,12 +16,15 @@ export const checkPermissions = (module, action) => {
       if (!userId || !userRole) {
         return res.status(401).json({
           success: false,
-          message: 'Usuario no autenticado'
+          message: "Usuario no autenticado",
         });
       }
 
-      // Si es admin, permitir todo
-      if (userRole === 'admin') {
+      // Verificar si es admin (múltiples variantes)
+      const roleName = userRole.name || userRole;
+      const roleStr = String(roleName).toLowerCase();
+
+      if (roleStr === "admin" || roleStr === "administrador") {
         return next();
       }
 
@@ -32,16 +35,16 @@ export const checkPermissions = (module, action) => {
           role: {
             select: {
               name: true,
-              permissions: true
-            }
-          }
-        }
+              permissions: true,
+            },
+          },
+        },
       });
 
       if (!user || !user.role) {
         return res.status(403).json({
           success: false,
-          message: 'Usuario sin rol asignado'
+          message: "Usuario sin rol asignado",
         });
       }
 
@@ -50,24 +53,23 @@ export const checkPermissions = (module, action) => {
 
       // Verificar si tiene permisos para el módulo y acción específica
       const modulePermissions = permissions[module];
-      
+
       if (!modulePermissions || !modulePermissions[action]) {
         return res.status(403).json({
           success: false,
           message: `No tienes permisos para ${action.toLowerCase()} en ${module}`,
-          requiredPermission: `${module}.${action}`
+          requiredPermission: `${module}.${action}`,
         });
       }
 
       // Si llegamos aquí, el usuario tiene permisos
       req.userPermissions = permissions;
       next();
-
     } catch (error) {
-      console.error('Error checking permissions:', error);
+      console.error("Error checking permissions:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor'
+        message: "Error interno del servidor",
       });
     }
   };
@@ -87,12 +89,15 @@ export const checkModuleAccess = (module) => {
       if (!userId || !userRole) {
         return res.status(401).json({
           success: false,
-          message: 'Usuario no autenticado'
+          message: "Usuario no autenticado",
         });
       }
 
-      // Si es admin, permitir todo
-      if (userRole === 'admin') {
+      // Verificar si es admin (múltiples variantes)
+      const roleName = userRole.name || userRole;
+      const roleStr = String(roleName).toLowerCase();
+
+      if (roleStr === "admin" || roleStr === "administrador") {
         return next();
       }
 
@@ -102,16 +107,16 @@ export const checkModuleAccess = (module) => {
         include: {
           role: {
             select: {
-              permissions: true
-            }
-          }
-        }
+              permissions: true,
+            },
+          },
+        },
       });
 
       if (!user || !user.role) {
         return res.status(403).json({
           success: false,
-          message: 'Acceso denegado'
+          message: "Acceso denegado",
         });
       }
 
@@ -119,21 +124,23 @@ export const checkModuleAccess = (module) => {
       const modulePermissions = permissions[module];
 
       // Verificar si tiene al menos un permiso en el módulo
-      if (!modulePermissions || !Object.values(modulePermissions).some(Boolean)) {
+      if (
+        !modulePermissions ||
+        !Object.values(modulePermissions).some(Boolean)
+      ) {
         return res.status(403).json({
           success: false,
-          message: `No tienes acceso al módulo ${module}`
+          message: `No tienes acceso al módulo ${module}`,
         });
       }
 
       req.userPermissions = permissions;
       next();
-
     } catch (error) {
-      console.error('Error checking module access:', error);
+      console.error("Error checking module access:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor'
+        message: "Error interno del servidor",
       });
     }
   };
@@ -160,8 +167,8 @@ export const hasPermission = (permissions, module, action) => {
  */
 export const getAccessibleModules = (permissions) => {
   if (!permissions) return [];
-  
-  return Object.keys(permissions).filter(module => {
+
+  return Object.keys(permissions).filter((module) => {
     const modulePermissions = permissions[module];
     return Object.values(modulePermissions).some(Boolean);
   });
