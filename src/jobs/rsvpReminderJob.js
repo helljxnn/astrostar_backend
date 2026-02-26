@@ -13,8 +13,14 @@ export function startRSVPReminderJob() {
 
     try {
       // Comprobar existencia de la tabla para evitar P2021
-      const tableCheck = await prisma.$queryRaw`SELECT to_regclass('public.event_invitations') AS regclass`;
-      if (!Array.isArray(tableCheck) || !tableCheck[0]?.regclass) {
+      const [{ exists }] = await prisma.$queryRaw`
+        SELECT EXISTS (
+          SELECT 1 FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'event_invitations'
+        ) AS exists
+      `;
+
+      if (!exists) {
         console.warn(
           "⚠️ [RSVP Job] Tabla event_invitations no existe. Omitiendo job. Ejecuta migraciones si necesitas RSVP."
         );

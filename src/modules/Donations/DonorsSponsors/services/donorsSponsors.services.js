@@ -96,6 +96,9 @@ export class DonorsSponsorsService {
         tipo: "Donante",
         tipoPersona: "Natural",
         nombreCompleto: payload.nombreCompleto || payload.nombre || "",
+        tipoDocumento: payload.tipoDocumento || payload.documentType || "",
+        numeroDocumento:
+          payload.numeroDocumento || payload.identificacion || payload.id || "",
         telefono: payload.telefono || payload.phone || "",
         correo: payload.correo || payload.email || "",
         direccion: payload.direccion || payload.address || "",

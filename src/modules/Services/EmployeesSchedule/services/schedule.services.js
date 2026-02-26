@@ -59,13 +59,20 @@ export class ScheduleService {
   }
 
   formatEmployeeName(user = {}) {
+    const clean = (value) => {
+      if (!value) return '';
+      const text = String(value).trim();
+      if (text.toLowerCase() === 'null' || text.toLowerCase() === 'undefined') return '';
+      return text;
+    };
+
     const {
       firstName = '',
       middleName = '',
       lastName = '',
       secondLastName = '',
     } = user || {};
-    const fullName = `${firstName} ${middleName} ${lastName} ${secondLastName}`
+    const fullName = `${clean(firstName)} ${clean(middleName)} ${clean(lastName)} ${clean(secondLastName)}`
       .replace(/\s+/g, ' ')
       .trim();
     return fullName || 'Empleado';
