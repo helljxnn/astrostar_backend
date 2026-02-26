@@ -20,9 +20,7 @@ export const preRegistrationsRepository = {
     if (search) {
       where.OR = [
         { firstName: { contains: search, mode: "insensitive" } },
-        { middleName: { contains: search, mode: "insensitive" } },
         { lastName: { contains: search, mode: "insensitive" } },
-        { secondLastName: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
         { identification: { contains: search, mode: "insensitive" } },
       ];
@@ -37,9 +35,7 @@ export const preRegistrationsRepository = {
         select: {
           id: true,
           firstName: true,
-          middleName: true,
           lastName: true,
-          secondLastName: true,
           identification: true,
           birthDate: true,
           phoneNumber: true,

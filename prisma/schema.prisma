@@ -179,7 +179,6 @@ model EmployeeSchedule {
   updatedAt          DateTime                  @updatedAt
   employee           Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   novelties          EmployeeScheduleNovelty[]
-  employee           Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@map("employee_schedules")
 }
@@ -475,21 +474,19 @@ model Provider {
 }
 
 model PreRegistration {
-  id              Int                   @id @default(autoincrement())
-  nombres         String                @db.VarChar(100)
-  apellidos       String                @db.VarChar(100)
-  fechaNacimiento DateTime
-  telefono        String                @db.VarChar(20)
-  correo          String                @db.VarChar(100)
-  estado          PreRegistrationStatus @default(Pendiente)
-  createdAt       DateTime              @default(now())
-  updatedAt       DateTime              @updatedAt
-  numeroDocumento String?               @db.VarChar(50)
+  id             Int                   @id @default(autoincrement())
+  firstName      String                @map("first_name") @db.VarChar(100)
+  lastName       String                @map("last_name") @db.VarChar(100)
+  birthDate      DateTime              @map("birth_date")
+  phoneNumber    String                @map("phone_number") @db.VarChar(20)
+  email          String                @unique @db.VarChar(100)
+  status         PreRegistrationStatus @default(Pendiente)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  identification String?               @unique @db.VarChar(50)
 
   @@index([createdAt])
-  @@index([correo])
-  @@index([estado])
-  @@index([numeroDocumento])
+  @@index([status])
   @@map("pre_registrations")
 }
 
