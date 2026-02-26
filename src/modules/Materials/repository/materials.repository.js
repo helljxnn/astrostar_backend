@@ -39,6 +39,7 @@ class MaterialsRepository {
           descripcion: true,
           stockFundacion: true,
           stockEventos: true,
+          stockEventosReservado: true,
           estado: true,
           createdAt: true,
           updatedAt: true,
@@ -57,12 +58,23 @@ class MaterialsRepository {
       prisma.material.count({ where }),
     ]);
 
-    // Calculate total stock for each material
-    const materialsWithTotal = materials.map((material) => ({
-      ...material,
-      stockTotal: material.stockFundacion + material.stockEventos,
-      stockEventosDisponible: material.stockEventos - material.stockEventosReservado,
-    }));
+    // Calculate total stock and check for movements for each material
+    const materialsWithTotal = await Promise.all(
+      materials.map(async (material) => {
+        // Check if material has any movements
+        const movementsCount = await prisma.materialMovement.count({
+          where: { materialId: material.id },
+        });
+
+        return {
+          ...material,
+          stockTotal: material.stockFundacion + material.stockEventos,
+          stockEventosDisponible: material.stockEventos - (material.stockEventosReservado || 0),
+          hasMovements: movementsCount > 0,
+          movementsCount,
+        };
+      })
+    );
 
     return {
       materials: materialsWithTotal,
@@ -87,6 +99,7 @@ class MaterialsRepository {
         descripcion: true,
         stockFundacion: true,
         stockEventos: true,
+        stockEventosReservado: true,
         estado: true,
         createdAt: true,
         updatedAt: true,
@@ -104,11 +117,18 @@ class MaterialsRepository {
 
     if (!material) return null;
 
-    // Add calculated total stock
+    // Check if material has any movements
+    const movementsCount = await prisma.materialMovement.count({
+      where: { materialId: material.id },
+    });
+
+    // Add calculated fields
     return {
       ...material,
       stockTotal: material.stockFundacion + material.stockEventos,
-      stockEventosDisponible: material.stockEventos - material.stockEventosReservado,
+      stockEventosDisponible: material.stockEventos - (material.stockEventosReservado || 0),
+      hasMovements: movementsCount > 0,
+      movementsCount,
     };
   }
 
@@ -289,20 +309,45 @@ class MaterialsRepository {
   }
 
   /**
-   * Eliminar material (solo si no tiene movimientos)
+   * Eliminar material (solo si no tiene stock ni movimientos)
    */
   async delete(id) {
-    // Verificar si tiene movimientos
+    // Obtener el material con su stock actual
+    const material = await prisma.material.findUnique({
+      where: { id: parseInt(id) },
+      select: {
+        id: true,
+        nombre: true,
+        stockFundacion: true,
+        stockEventos: true,
+        stockEventosReservado: true,
+      },
+    });
+
+    if (!material) {
+      throw new Error('Material no encontrado');
+    }
+
+    // Verificar si tiene stock actual
+    const stockTotal = material.stockFundacion + material.stockEventos + material.stockEventosReservado;
+    if (stockTotal > 0) {
+      throw new Error(
+        `No se puede eliminar el material porque tiene stock registrado (Fundación: ${material.stockFundacion}, Eventos: ${material.stockEventos}, Reservado: ${material.stockEventosReservado}). Debe agotar el stock primero.`
+      );
+    }
+
+    // Verificar si tiene movimientos históricos
     const movementsCount = await prisma.materialMovement.count({
       where: { materialId: parseInt(id) },
     });
 
     if (movementsCount > 0) {
       throw new Error(
-        `No se puede eliminar el material porque tiene ${movementsCount} movimiento(s) registrado(s). Cambie el estado a Inactivo en su lugar.`
+        `No se puede eliminar el material porque tiene ${movementsCount} movimiento(s) histórico(s). Cambie el estado a Inactivo en su lugar para mantener la integridad del historial.`
       );
     }
 
+    // Solo se puede eliminar si no tiene stock ni movimientos
     return await prisma.material.delete({
       where: { id: parseInt(id) },
     });

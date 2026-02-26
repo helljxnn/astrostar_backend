@@ -17,18 +17,6 @@ class MaterialsController {
         categoriaId: categoriaId ? parseInt(categoriaId) : null,
       });
 
-      // DEBUG: Log del material con id 5
-      const material5 = result.data?.find(m => m.id === 5);
-      if (material5) {
-        console.log('🔍 Material 5 en respuesta:', {
-          id: material5.id,
-          nombre: material5.nombre,
-          stockDisponible: material5.stockDisponible,
-          stockEventos: material5.stockEventos,
-          stockTotal: material5.stockTotal
-        });
-      }
-
       return res.json(result);
     } catch (error) {
       console.error('Controller error - getAll:', error);
