@@ -695,11 +695,9 @@ Este es un email automático del sistema AstroStar.
                   
                   <h3 style="color: #333333; margin: 30px 0 15px 0; font-size: 18px;">📄 Documentos que debes traer:</h3>
                   <ul style="color: #666666; line-height: 1.8; font-size: 15px; padding-left: 20px;">
-                    <li>Documento de identidad (original y copia)</li>
-                    <li>Registro civil de nacimiento</li>
-                    <li>Certificado médico</li>
-                    <li>2 fotos tamaño cédula</li>
+                    <li>Documento de identidad (copia)</li>
                     <li>Documento de identidad del acudiente (si es menor de edad)</li>
+                    <li>Copia del registro civil</li>
                   </ul>
                   
                   <div style="background-color: #e3f2fd; border-left: 4px solid #2196F3; padding: 15px; margin: 25px 0; border-radius: 5px;">

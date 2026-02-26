@@ -35,7 +35,9 @@ export const preRegistrationsRepository = {
         select: {
           id: true,
           firstName: true,
+          middleName: true,
           lastName: true,
+          secondLastName: true,
           identification: true,
           birthDate: true,
           phoneNumber: true,
