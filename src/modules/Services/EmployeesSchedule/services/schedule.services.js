@@ -85,15 +85,17 @@ export class ScheduleService {
 
     const employeeName = this.formatEmployeeName(employeeUser);
     emailService
-      .sendEmployeeScheduleNotification({
+      .sendScheduleNotification({
         to,
         employeeName,
         action,
-        scheduleDate: schedule.scheduleDate,
-        startTime: schedule.startTime,
-        endTime: schedule.endTime,
-        recurrence: schedule.recurrence,
-        description: schedule.description,
+        scheduleData: {
+          date: schedule.scheduleDate,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          recurrence: schedule.recurrence,
+          description: schedule.description,
+        },
       })
       .then((result) => {
         if (!result?.success) {

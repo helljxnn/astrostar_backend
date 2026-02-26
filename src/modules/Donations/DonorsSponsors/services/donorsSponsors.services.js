@@ -112,20 +112,35 @@ export class DonorsSponsorsService {
         autorizacion: payload.autorizacion || "Si",
       };
 
+      console.log("🔄 [SERVICE] Payload transformado:", landingPayload);
+
       await this.ensureUnique(landingPayload);
       const created = await this.donorsSponsorsRepository.create(landingPayload);
 
+      console.log("✅ [SERVICE] Donante creado en BD:", created.id);
+      console.log("📧 [SERVICE] Intentando enviar correo a:", created.correo);
+
       emailService
-        .sendDonorLandingEmail(created)
+        .sendDonorWelcomeEmail(created)
+        .then((result) => {
+          if (result.success) {
+            console.log("✅ [EMAIL] Correo enviado exitosamente a:", created.correo);
+            if (result.simulated) {
+              console.log("⚠️  [EMAIL] Correo simulado (SMTP no disponible)");
+            }
+          } else {
+            console.warn("⚠️  [EMAIL] Error enviando correo:", result.error);
+          }
+        })
         .catch((err) =>
-          console.warn("Error enviando email de landing a donante:", err.message)
+          console.warn("❌ [EMAIL] Error enviando email de bienvenida a donante:", err.message)
         );
 
       return {
         success: true,
         data: created,
         message:
-          "Hemos recibido tu informaci\u00f3n. Te contactaremos pronto para confirmar la donaci\u00f3n.",
+          "Hemos recibido tu información. Te contactaremos pronto para confirmar la donación.",
       };
     } catch (error) {
       console.error("Error in DonorsSponsorsService.createFromLanding:", error);

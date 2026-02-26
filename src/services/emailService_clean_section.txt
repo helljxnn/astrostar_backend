@@ -1,0 +1,68 @@
+    return labels[recurrence] || "Sin repetición";
+  }
+
+  /**
+   * Notificar al deportista que se creó una cita
+   */
+  async sendAppointmentNotification({ to, athleteName, date, time, specialistName }) {
+    if (!to) {
+      return { success: false, message: "Correo destinatario no definido" };
+    }
+
+    const ready = await this.ensureTransporter();
+    if (!ready.ok) {
+      console.warn("⚠️  Notificación de cita no enviada:", ready.reason);
+      return { success: false, error: ready.reason };
+    }
+
+    const subject = "Nueva cita programada";
+    const plainText = `Hola ${athleteName || "deportista"}, se programó una cita para el ${date} a las ${time}${
+      specialistName ? ` con ${specialistName}` : ""
+    }. Ingresa al módulo de citas para más detalles.`;
+
+    const html = `
+      <p>Hola ${athleteName || "deportista"},</p>
+      <p>Se programó una cita para el <strong>${date}</strong> a las <strong>${time}</strong>${
+        specialistName ? ` con <strong>${specialistName}</strong>` : ""
+      }.</p>
+      <p>Por favor ingresa al módulo de citas para más detalles.</p>
+    `;
+
+    const mailOptions = {
+      from: {
+        name: "AstroStar - Sistema de Gestión",
+        address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
+      },
+      to,
+      subject,
+      text: plainText,
+      html,
+    };
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.warn("⚠️  Error enviando notificación de cita:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  formatScheduleDate(date) {
+    if (!date) return "";
+    const parsed = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toLocaleDateString("es-CO", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  /**
+   * Generar template HTML para email de bienvenida de deportista
+   */
+  generateAthleteWelcomeEmailTemplate(firstName, lastName, email, password) {
+    return `
+    <!DOCTYPE html>

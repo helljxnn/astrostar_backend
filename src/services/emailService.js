@@ -1,4 +1,4 @@
-﻿/**
+﻿﻿﻿﻿/**
  * Servicio de Email - AstroStar
  * Maneja el envÃ­o de correos electrÃ³nicos del sistema
  */
@@ -587,27 +587,80 @@ Este es un email automÃ¡tico del sistema AstroStar.
 
   formatScheduleRecurrence(recurrence = "no") {
     const labels = {
-      no: "Sin repeticiÃ³n",
-      dia: "Cada dÃ­a",
+      no: "Sin repetición",
+      dia: "Cada día",
       semana: "Cada semana",
       mes: "Cada mes",
-      anio: "Cada aÃ±o",
-      laboral: "DÃ­as laborales",
-      personalizado: "RepeticiÃ³n personalizada",
+      anio: "Cada año",
+      laboral: "Días laborales",
+      personalizado: "Repetición personalizada",
     };
-    return labels[recurrence] || "Sin repeticiÃ³n";
+    return labels[recurrence] || "Sin repetición";
   }
 
-  generateScheduleNotificationTemplate({
-    employeeName,
-    actionTitle,
-    scheduleDate,
-    timeRange,
-    recurrenceLabel,
-    description,
-  }) {
-    const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-    const hasDescription = description && String(description).trim() !== "";
+  /**
+   * Notificar al deportista que se creó una cita
+   */
+  async sendAppointmentNotification({ to, athleteName, date, time, specialistName }) {
+    if (!to) {
+      return { success: false, message: "Correo destinatario no definido" };
+    }
+
+    const ready = await this.ensureTransporter();
+    if (!ready.ok) {
+      console.warn("⚠️  Notificación de cita no enviada:", ready.reason);
+      return { success: false, error: ready.reason };
+    }
+
+    const subject = "Nueva cita programada";
+    const plainText = `Hola ${athleteName || "deportista"}, se programó una cita para el ${date} a las ${time}${
+      specialistName ? ` con ${specialistName}` : ""
+    }. Ingresa al módulo de citas para más detalles.`;
+
+    const html = `
+      <p>Hola ${athleteName || "deportista"},</p>
+      <p>Se programó una cita para el <strong>${date}</strong> a las <strong>${time}</strong>${
+        specialistName ? ` con <strong>${specialistName}</strong>` : ""
+      }.</p>
+      <p>Por favor ingresa al módulo de citas para más detalles.</p>
+    `;
+
+    const mailOptions = {
+      from: {
+        name: "AstroStar - Sistema de Gestión",
+        address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
+      },
+      to,
+      subject,
+      text: plainText,
+      html,
+    };
+
+    try {
+      const result = await this.transporter.sendMail(mailOptions);
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.warn("⚠️  Error enviando notificación de cita:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  formatScheduleDate(date) {
+    if (!date) return "";
+    const parsed = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(parsed.getTime())) return "";
+    return parsed.toLocaleDateString("es-CO", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  /**
+   * Generar template HTML para email de bienvenida de deportista
+   */
+  generateAthleteWelcomeEmailTemplate(firstName, lastName, email, password) {
     return `
     <!DOCTYPE html>
     <html lang="es">
@@ -1810,6 +1863,218 @@ Este es un email automÃ¡tico del sistema AstroStar.
       return { success: false, error: error.message };
     }
   }
+
+    /**
+     * Enviar correo de bienvenida a donante desde landing
+     */
+    async sendDonorWelcomeEmail(donorData) {
+      try {
+        const { generateDonorWelcomeHTML, generateDonorWelcomeText } = await import('../templates/donorWelcomeTemplate.js');
+
+        const mailOptions = {
+          from: {
+            name: "Fundación Manuela Vanegas",
+            address: process.env.EMAIL_USER || "fundacion@example.com",
+          },
+          to: donorData.correo,
+          subject: "¡Gracias por tu interés en donar! - Fundación Manuela Vanegas",
+          html: generateDonorWelcomeHTML(donorData),
+          text: generateDonorWelcomeText(donorData),
+        };
+
+        const result = await this.sendMailWithFallback(mailOptions);
+        if (result.success) {
+          if (result.simulated) {
+            console.log("📧 (simulado) Email de bienvenida a donante ->", donorData.correo);
+          }
+          return { success: true, messageId: result.messageId, simulated: !!result.simulated };
+        }
+
+        return { success: false, error: result.error || "No se pudo enviar el email" };
+      } catch (error) {
+        console.error("Error enviando email de bienvenida a donante:", error.message);
+        return { success: false, error: error.message };
+      }
+    }
+
+    /**
+     * Enviar notificación de horario a empleado (crear, editar, novedad)
+     */
+    async sendScheduleNotification({ to, employeeName, action, scheduleData }) {
+      try {
+        if (!to) {
+          return { success: false, message: "Correo destinatario no definido" };
+        }
+
+        const { generateScheduleNotificationHTML, generateScheduleNotificationText } = 
+          await import('../templates/scheduleNotificationTemplate.js');
+
+        const ready = await this.ensureTransporter();
+        if (!ready.ok) {
+          console.warn("⚠️  Notificación de horario no enviada:", ready.reason);
+          if (ready.simulated) {
+            console.log("📧 (simulado) Notificación de horario ->", to);
+            return { success: true, simulated: true };
+          }
+          return { success: false, error: ready.reason };
+        }
+
+        const actionTitles = {
+          created: "Nuevo horario asignado",
+          updated: "Horario actualizado",
+          novelty: "Novedad en horario"
+        };
+
+        const actionTitle = actionTitles[action] || "Notificación de horario";
+        const formattedDate = this.formatScheduleDate(scheduleData.date);
+        const timeRange = scheduleData.startTime && scheduleData.endTime
+          ? `${scheduleData.startTime} - ${scheduleData.endTime}`
+          : scheduleData.startTime || "";
+        const recurrenceLabel = this.formatScheduleRecurrence(scheduleData.recurrence || "no");
+
+        const mailOptions = {
+          from: {
+            name: "AstroStar - Sistema de Gestión",
+            address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
+          },
+          to,
+          subject: `${actionTitle} - AstroStar`,
+          html: generateScheduleNotificationHTML({
+            employeeName,
+            actionTitle,
+            scheduleDate: formattedDate,
+            timeRange,
+            recurrenceLabel,
+            description: scheduleData.description || scheduleData.motivoCancelacion || "",
+          }),
+          text: generateScheduleNotificationText({
+            employeeName,
+            actionTitle,
+            scheduleDate: formattedDate,
+            timeRange,
+            recurrenceLabel,
+            description: scheduleData.description || scheduleData.motivoCancelacion || "",
+          }),
+        };
+
+        const result = await this.sendMailWithFallback(mailOptions);
+        return result;
+      } catch (error) {
+        console.error("Error enviando notificación de horario:", error.message);
+        return { success: false, error: error.message };
+      }
+    }
+
+    /**
+     * Enviar notificación de asistencia a deportista
+     */
+    async sendAttendanceNotification({ to, athleteName, date, status, observation }) {
+      try {
+        if (!to) {
+          return { success: false, message: "Correo destinatario no definido" };
+        }
+
+        const { generateAttendanceNotificationHTML, generateAttendanceNotificationText } =
+          await import('../templates/attendanceNotificationTemplate.js');
+
+        const ready = await this.ensureTransporter();
+        if (!ready.ok) {
+          console.warn("⚠️  Notificación de asistencia no enviada:", ready.reason);
+          if (ready.simulated) {
+            console.log("📧 (simulado) Notificación de asistencia ->", to);
+            return { success: true, simulated: true };
+          }
+          return { success: false, error: ready.reason };
+        }
+
+        const formattedDate = new Date(date).toLocaleDateString("es-CO", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        const mailOptions = {
+          from: {
+            name: "AstroStar - Sistema de Gestión",
+            address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
+          },
+          to,
+          subject: `Registro de Asistencia - ${formattedDate}`,
+          html: generateAttendanceNotificationHTML({
+            athleteName,
+            date: formattedDate,
+            status,
+            observation: observation || "",
+          }),
+          text: generateAttendanceNotificationText({
+            athleteName,
+            date: formattedDate,
+            status,
+            observation: observation || "",
+          }),
+        };
+
+        const result = await this.sendMailWithFallback(mailOptions);
+        return result;
+      } catch (error) {
+        console.error("Error enviando notificación de asistencia:", error.message);
+        return { success: false, error: error.message };
+      }
+    }
+
+    /**
+     * Enviar alerta de ausencias (más del 50%)
+     */
+    async sendAbsenceAlert({ to, athleteName, absencePercentage, totalDays, absentDays, period }) {
+      try {
+        if (!to) {
+          return { success: false, message: "Correo destinatario no definido" };
+        }
+
+        const { generateAbsenceAlertHTML, generateAbsenceAlertText } =
+          await import('../templates/attendanceNotificationTemplate.js');
+
+        const ready = await this.ensureTransporter();
+        if (!ready.ok) {
+          console.warn("⚠️  Alerta de ausencias no enviada:", ready.reason);
+          if (ready.simulated) {
+            console.log("📧 (simulado) Alerta de ausencias ->", to);
+            return { success: true, simulated: true };
+          }
+          return { success: false, error: ready.reason };
+        }
+
+        const mailOptions = {
+          from: {
+            name: "AstroStar - Sistema de Gestión",
+            address: process.env.EMAIL_USER || "astrostar.system@gmail.com",
+          },
+          to,
+          subject: `⚠️ Alerta: Inasistencias superiores al 50%`,
+          html: generateAbsenceAlertHTML({
+            athleteName,
+            absencePercentage,
+            totalDays,
+            absentDays,
+            period: period || "",
+          }),
+          text: generateAbsenceAlertText({
+            athleteName,
+            absencePercentage,
+            totalDays,
+            absentDays,
+            period: period || "",
+          }),
+        };
+
+        const result = await this.sendMailWithFallback(mailOptions);
+        return result;
+      } catch (error) {
+        console.error("Error enviando alerta de ausencias:", error.message);
+        return { success: false, error: error.message };
+      }
+    }
 }
 
 export default new EmailService();
