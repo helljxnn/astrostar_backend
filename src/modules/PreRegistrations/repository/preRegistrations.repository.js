@@ -12,9 +12,7 @@ export const preRegistrationsRepository = {
     const where = {};
 
     if (status) {
-      // Capitalizar primera letra para que coincida con el enum
-      // "pendiente" -> "Pendiente", "procesada" -> "Procesada"
-      where.status = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+      where.status = status;
     }
 
     if (search) {
@@ -88,6 +86,27 @@ export const preRegistrationsRepository = {
         identification: true,
         status: true,
       },
+    });
+  },
+
+  // Validar unicidad considerando solo inscripciones activas
+  async findActiveByEmailOrDocument(email, identification) {
+    return await prisma.preRegistration.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { identification: identification }
+        ],
+        status: {
+          not: 'Rejected' // Permitir solo si no está rechazada
+        }
+      },
+      select: {
+        id: true,
+        email: true,
+        identification: true,
+        status: true,
+      }
     });
   },
 };

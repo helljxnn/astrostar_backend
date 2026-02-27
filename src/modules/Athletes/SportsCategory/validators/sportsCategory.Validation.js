@@ -27,7 +27,10 @@ export const sportsCategoryValidators = {
     query('page').optional().isInt({ min: 1 }).withMessage('La página debe ser un número entero mayor o igual a 1.').toInt(),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('El límite debe estar entre 1 y 100.').toInt(),
     query('search').optional().isString().isLength({ max: 100 }).withMessage('El término de búsqueda no puede exceder 100 caracteres.').trim(),
-    query('status').optional().isIn(['Activo', 'Inactivo']).withMessage('El estado debe ser "Activo" o "Inactivo".')
+    query('status')
+      .optional({ values: 'falsy' })
+      .isIn(['Activo', 'Inactivo'])
+      .withMessage('El estado debe ser "Activo" o "Inactivo".')
   ],
 
   checkName: [

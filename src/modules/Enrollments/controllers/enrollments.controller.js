@@ -123,21 +123,13 @@ export const enrollmentsController = {
     }
   },
 
+  // ELIMINADO: Las matrículas NO deben poder eliminarse
+  // Solo pueden cambiar de estado (Vigente, Suspendida, Vencida, Cancelada)
   async delete(req, res) {
-    try {
-      const { id } = req.params;
-      await enrollmentsService.delete(id);
-
-      return res.json({
-        success: true,
-        message: "Matrícula eliminada",
-      });
-    } catch (error) {
-      return res.status(500).json({
-        success: false,
-        message: error.message,
-      });
-    }
+    return res.status(403).json({
+      success: false,
+      message: "Las matrículas no pueden ser eliminadas. Solo pueden cambiar de estado (Vigente, Suspendida, Vencida, Cancelada).",
+    });
   },
 
   /**

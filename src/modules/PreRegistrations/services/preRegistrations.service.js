@@ -4,31 +4,41 @@ import prisma from "../../../config/database.js";
 
 export const preRegistrationsService = {
   async create(data) {
-    // 1. Verificar si ya existe una pre-inscripción pendiente con el mismo correo o documento
-    const existing = await preRegistrationsRepository.findAll({
-      search: data.email,
-      status: "Pendiente",
-      page: 1,
-      limit: 1,
+    // 1. Verificar si ya existe una pre-inscripción con el mismo correo o documento
+    // Nota: Las inscripciones rechazadas se eliminan automáticamente, así que solo buscamos activas
+    const existingByEmail = await prisma.preRegistration.findUnique({
+      where: { email: data.email },
+      select: { id: true, status: true }
     });
 
-    if (existing.data && existing.data.length > 0) {
-      const existingReg = existing.data[0];
-      
-      // Verificar si es el mismo correo o documento
-      if (existingReg.email === data.email || existingReg.identification === data.identification) {
-        throw new Error(
-          "Ya existe una pre-inscripción pendiente con este correo o documento. " +
-          "Si no recibiste el correo, usa la opción de reenviar."
-        );
-      }
+    if (existingByEmail) {
+      throw new Error(
+        `Ya existe una inscripción ${existingByEmail.status === 'Pending' ? 'pendiente' : 'procesada'} con este correo. ` +
+        (existingByEmail.status === 'Pending' 
+          ? "Si no recibiste el correo, usa la opción de reenviar."
+          : "Este usuario ya está en proceso de matrícula.")
+      );
+    }
+
+    const existingByDocument = await prisma.preRegistration.findUnique({
+      where: { identification: data.identification },
+      select: { id: true, status: true }
+    });
+
+    if (existingByDocument) {
+      throw new Error(
+        `Ya existe una inscripción ${existingByDocument.status === 'Pending' ? 'pendiente' : 'procesada'} con este documento. ` +
+        (existingByDocument.status === 'Pending' 
+          ? "Si no recibiste el correo, usa la opción de reenviar."
+          : "Este usuario ya está en proceso de matrícula.")
+      );
     }
 
     // 2. Convertir birthDate a Date si viene como string
     const dataToCreate = {
       ...data,
       birthDate: data.birthDate ? new Date(data.birthDate) : new Date(),
-      status: "Pendiente",
+      status: "Pending",
     };
 
     // 3. Crear pre-inscripción
@@ -49,7 +59,7 @@ export const preRegistrationsService = {
   async findById(id) {
     const preRegistration = await preRegistrationsRepository.findById(id);
     if (!preRegistration) {
-      throw new Error("Pre-inscripción no encontrada");
+      throw new Error("Inscripción no encontrada");
     }
     return preRegistration;
   },
@@ -61,25 +71,59 @@ export const preRegistrationsService = {
 
   async updateStatus(id, status) {
     await this.findById(id);
+    
+    // Si se rechaza, eliminar físicamente para liberar email y documento
+    if (status === 'Rejected') {
+      await preRegistrationsRepository.delete(id);
+      return { 
+        id, 
+        status: 'Rejected', 
+        deleted: true,
+        message: 'Inscripción rechazada y eliminada del sistema'
+      };
+    }
+    
+    // Para otros status, actualizar normalmente
     return await preRegistrationsRepository.update(id, { status });
   },
 
-  async resendEmail(email) {
-    // Buscar pre-inscripción más reciente con ese email
-    const preRegistrations = await preRegistrationsRepository.findAll({
-      search: email,
-      page: 1,
-      limit: 1,
-    });
-
-    if (!preRegistrations.data || preRegistrations.data.length === 0) {
-      throw new Error("No se encontró ninguna pre-inscripción con ese correo");
+  async resendEmail(data) {
+    const { email, identification } = data;
+    
+    // Buscar inscripción por documento (más confiable) o por email
+    let preRegistration = null;
+    
+    if (identification) {
+      // Buscar por documento
+      preRegistration = await prisma.preRegistration.findUnique({
+        where: { identification },
+      });
+    } else if (email) {
+      // Buscar por email (si no se proporcionó documento)
+      preRegistration = await prisma.preRegistration.findUnique({
+        where: { email },
+      });
     }
 
-    const preRegistration = preRegistrations.data[0];
+    if (!preRegistration) {
+      throw new Error(
+        identification 
+          ? "No se encontró ninguna inscripción con ese documento"
+          : "No se encontró ninguna inscripción con ese correo"
+      );
+    }
 
     // Si el email cambió, actualizar
-    if (preRegistration.email !== email) {
+    if (email && preRegistration.email !== email) {
+      // Validar que el nuevo email no esté en uso
+      const existingWithNewEmail = await prisma.preRegistration.findUnique({
+        where: { email },
+      });
+      
+      if (existingWithNewEmail && existingWithNewEmail.id !== preRegistration.id) {
+        throw new Error("El nuevo correo ya está en uso por otra inscripción");
+      }
+      
       await preRegistrationsRepository.update(preRegistration.id, {
         email: email,
       });
@@ -94,14 +138,21 @@ export const preRegistrationsService = {
     }
 
     return {
-      email,
+      email: preRegistration.email,
       sentAt: new Date(),
     };
   },
 
   async checkDocumentExists(identification) {
-    // 1. Buscar en pre-registros
-    const existingPreRegistration = await preRegistrationsRepository.findByDocument(identification);
+    // 1. Buscar en pre-registros (las rechazadas se eliminan automáticamente)
+    const existingPreRegistration = await prisma.preRegistration.findUnique({
+      where: { identification },
+      select: {
+        id: true,
+        identification: true,
+        status: true,
+      }
+    });
     
     // 2. Buscar en usuarios (deportistas matriculados)
     const existingUser = await prisma.user.findFirst({
@@ -121,7 +172,9 @@ export const preRegistrationsService = {
     let location = null;
     
     if (existingPreRegistration) {
-      message = 'Este documento ya tiene una inscripción pendiente';
+      message = existingPreRegistration.status === 'Pending' 
+        ? 'Este documento ya tiene una inscripción pendiente'
+        : 'Este documento ya está procesado y en proceso de matrícula';
       location = 'preRegistration';
     } else if (existingUser) {
       message = 'Este documento ya está matriculado en el sistema';

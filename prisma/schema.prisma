@@ -482,7 +482,7 @@ model PreRegistration {
   birthDate      DateTime              @map("birth_date")
   phoneNumber    String                @map("phone_number") @db.VarChar(20)
   email          String                @unique @db.VarChar(100)
-  status         PreRegistrationStatus @default(Pendiente)
+  status         PreRegistrationStatus @default(Pending)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
   identification String?               @unique @db.VarChar(50)
@@ -830,9 +830,9 @@ model purchases {
 }
 
 enum PreRegistrationStatus {
-  Pendiente
-  Procesada
-  Rechazada
+  Pending
+  Processed
+  Rejected
 }
 
 enum EnrollmentStatus {

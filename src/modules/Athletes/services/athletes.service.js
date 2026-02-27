@@ -59,6 +59,7 @@ export class AthletesService {
   async createAthlete(athleteData) {
     try {
       console.log('🔍 [SERVICE] Datos recibidos:', JSON.stringify(athleteData, null, 2));
+      console.log('🔍 [SERVICE] preRegistrationId:', athleteData.preRegistrationId);
       
       // Establecer estado por defecto como "Activo" si no se proporciona
       const dataWithDefaults = {
@@ -92,6 +93,26 @@ export class AthletesService {
 
       console.log('🔍 [SERVICE] Creando deportista en repositorio...');
       const newAthlete = await this.athletesRepository.create(dataWithDefaults);
+
+      // 🔥 NUEVO: Si viene de inscripción del landing, marcarla como procesada
+      if (athleteData.preRegistrationId) {
+        console.log('🔄 [SERVICE] Marcando inscripción como Procesada...');
+        console.log('🔄 [SERVICE] preRegistrationId:', athleteData.preRegistrationId);
+        
+        try {
+          const prisma = (await import('../../../config/database.js')).default;
+          await prisma.preRegistration.update({
+            where: { id: parseInt(athleteData.preRegistrationId) },
+            data: { status: "Processed" }, // ← Cambiado a inglés
+          });
+          console.log('✅ [SERVICE] Inscripción marcada como Procesada exitosamente');
+        } catch (error) {
+          console.error('❌ [SERVICE] Error marcando inscripción como Procesada:', error);
+          // No fallar la creación del atleta si falla marcar la inscripción
+        }
+      } else {
+        console.log('⚠️ [SERVICE] No hay preRegistrationId para marcar');
+      }
 
       // Enviar email de bienvenida con credenciales
       const emailResult = await this.sendWelcomeEmail(newAthlete, temporaryPassword);
