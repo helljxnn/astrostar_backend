@@ -2,6 +2,7 @@ node_modules
 /generated/prisma
 
 .env
+.env.production.example
 
 SETUP_ROLES.md
 ROLES_DETAILS.md
