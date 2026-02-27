@@ -1391,7 +1391,7 @@ Este es un email automÃ¡tico del sistema AstroStar.
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>ConfirmaciÃ³n de Pre-inscripciÃ³n</title>
+      <title>Confirmación de Inscripción</title>
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f5f5f5;">
       <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
@@ -1413,7 +1413,7 @@ Este es un email automÃ¡tico del sistema AstroStar.
                   <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 22px;">Hola ${firstName},</h2>
                   
                   <p style="color: #666666; line-height: 1.6; margin: 0 0 20px 0; font-size: 16px;">
-                    Â¡Gracias por tu interÃ©s en formar parte de nuestra fundaciÃ³n! Hemos recibido tu pre-inscripciÃ³n exitosamente.
+                    ¡Gracias por tu interés en formar parte de nuestra fundación! Hemos recibido tu inscripción exitosamente.
                   </p>
                   
                   <div style="background-color: #f8f9fa; border-left: 4px solid #B595FF; padding: 20px; margin: 20px 0; border-radius: 5px;">
@@ -1447,11 +1447,9 @@ Este es un email automÃ¡tico del sistema AstroStar.
                   
                   <h3 style="color: #333333; margin: 30px 0 15px 0; font-size: 18px;">ðŸ“„ Documentos que debes traer:</h3>
                   <ul style="color: #666666; line-height: 1.8; font-size: 15px; padding-left: 20px;">
-                    <li>Documento de identidad (original y copia)</li>
-                    <li>Registro civil de nacimiento</li>
-                    <li>Certificado mÃ©dico</li>
-                    <li>2 fotos tamaÃ±o cÃ©dula</li>
+                    <li>Documento de identidad (copia)</li>
                     <li>Documento de identidad del acudiente (si es menor de edad)</li>
+                    <li>Copia del registro civil</li>
                   </ul>
                   
                   <div style="background-color: #e3f2fd; border-left: 4px solid #2196F3; padding: 15px; margin: 25px 0; border-radius: 5px;">
@@ -1482,7 +1480,7 @@ Este es un email automÃ¡tico del sistema AstroStar.
                     Â© ${new Date().getFullYear()} FundaciÃ³n Manuela Vanegas. Todos los derechos reservados.
                   </p>
                   <p style="color: #999999; margin: 10px 0 0 0; font-size: 11px;">
-                    Este correo fue enviado a ${email} porque te pre-inscribiste en nuestra fundaciÃ³n.
+                    Este correo fue enviado a ${email} porque te inscribiste en nuestra fundación.
                   </p>
                 </td>
               </tr>

@@ -28,6 +28,8 @@ export const preRegistrationSchemas = {
         errors.push({ field: 'email', message: 'Correo es requerido' });
       }
       
+      // middleName y secondLastName son opcionales, no se validan
+      
       if (errors.length > 0) {
         return { error: { details: errors }, value: null };
       }

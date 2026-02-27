@@ -16,12 +16,21 @@ export const athletesService = {
   },
 
   async update(id, data) {
-    const { shouldUpdateEnrollment, ...athleteData } = data;
+    const { shouldUpdateEnrollment, emailChanged, ...athleteData } = data;
 
     return await prisma.$transaction(async (tx) => {
       // 1. Obtener deportista actual
       const currentAthlete = await tx.athlete.findUnique({
         where: { id: parseInt(id) },
+        include: {
+          user: {
+            select: {
+              email: true,
+              firstName: true,
+              lastName: true,
+            }
+          }
+        }
       });
 
       if (!currentAthlete) {
@@ -30,6 +39,7 @@ export const athletesService = {
 
       const oldEstado = currentAthlete.estado;
       const newEstado = athleteData.estado;
+      const oldEmail = currentAthlete.user?.email;
 
       // 2. Actualizar deportista
       const updatedAthlete = await tx.athlete.update({
@@ -44,7 +54,22 @@ export const athletesService = {
         },
       });
 
-      // 3. Si cambió el estado y se solicita actualizar matrícula
+      // 3. Si cambió el email, enviar notificación (no bloqueante)
+      if (emailChanged && athleteData.email && oldEmail !== athleteData.email) {
+        // Importar emailService al inicio del archivo
+        const emailService = require('../../services/emailService.js').default;
+        
+        emailService.sendEmailUpdateNotification({
+          newEmail: athleteData.email,
+          oldEmail: oldEmail,
+          firstName: currentAthlete.user?.firstName || athleteData.firstName,
+          lastName: currentAthlete.user?.lastName || athleteData.lastName,
+        }).catch((error) => {
+          console.error("Error enviando correo de actualización de email:", error);
+        });
+      }
+
+      // 4. Si cambió el estado y se solicita actualizar matrícula
       if (shouldUpdateEnrollment && oldEstado !== newEstado) {
         // Si cambió a Inactivo
         if (newEstado === "Inactivo" && oldEstado === "Activo") {

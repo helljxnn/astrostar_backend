@@ -103,6 +103,15 @@ export class AthletesRepository {
             }
           : null,
       })),
+      matriculas: (athlete.enrollments || []).map((mat) => ({
+        id: mat.id,
+        fechaMatricula: mat.fechaMatricula,
+        fechaInicio: mat.fechaInicio,
+        fechaVencimiento: mat.fechaVencimiento,
+        estado: mat.estado,
+        observaciones: mat.observaciones,
+        comprobantePago: mat.comprobantePago,
+      })),
       createdAt: athlete.createdAt,
       updatedAt: athlete.updatedAt,
       statusAssignedAt: athlete.statusAssignedAt,
@@ -238,13 +247,12 @@ export class AthletesRepository {
 
       const athleteAge =
         userData.age ?? calculateAgeFromBirthDate(userData.birthDate);
-      if (
-        athleteAge !== null &&
-        (athleteAge < sportsCategory.edadMinima ||
-          athleteAge > sportsCategory.edadMaxima)
-      ) {
+      
+      // Nueva validación: Solo rechazar si la edad es MENOR al mínimo de la categoría
+      // Permite que deportistas se inscriban en categorías superiores
+      if (athleteAge !== null && athleteAge < sportsCategory.edadMinima) {
         throw new Error(
-          `No se puede crear: la edad ${athleteAge} no corresponde a la categoría "${sportsCategory.nombre}" (${sportsCategory.edadMinima}-${sportsCategory.edadMaxima} años).`
+          `No se puede crear: la edad ${athleteAge} es menor al rango de la categoría "${sportsCategory.nombre}" (${sportsCategory.edadMinima}-${sportsCategory.edadMaxima} años). Puedes escoger categorías para edades mayores o iguales.`
         );
       }
 
@@ -387,12 +395,11 @@ export class AthletesRepository {
               );
             }
 
-            if (
-              athleteAge < category.edadMinima ||
-              athleteAge > category.edadMaxima
-            ) {
+            // Nueva validación: Solo rechazar si la edad es MENOR al mínimo de la categoría
+            // Permite que deportistas se inscriban en categorías superiores
+            if (athleteAge < category.edadMinima) {
               throw new Error(
-                `No se puede editar: la edad ${athleteAge} no corresponde a la categoría "${category.nombre}" (${category.edadMinima}-${category.edadMaxima} años).`
+                `No se puede editar: la edad ${athleteAge} es menor al rango de la categoría "${category.nombre}" (${category.edadMinima}-${category.edadMaxima} años). Puedes escoger categorías para edades mayores o iguales.`
               );
             }
           }
@@ -576,6 +583,9 @@ export class AthletesRepository {
             },
             orderBy: { inscriptionDate: "desc" },
           },
+          enrollments: {
+            orderBy: { fechaMatricula: "desc" },
+          },
         },
         orderBy: { createdAt: "desc" },
       }),
@@ -627,6 +637,9 @@ export class AthletesRepository {
             sportsCategory: true,
           },
           orderBy: { inscriptionDate: "desc" },
+        },
+        enrollments: {
+          orderBy: { fechaMatricula: "desc" },
         },
       },
     });
