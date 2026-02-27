@@ -196,7 +196,6 @@ router.get('/',
  *               - fecha
  *               - horaInicio
  *               - horaFin
- *               - descripcion
  *             properties:
  *               empleadoId:
  *                 type: integer

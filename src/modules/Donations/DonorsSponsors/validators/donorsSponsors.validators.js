@@ -3,13 +3,18 @@ import { body, param, query, validationResult } from "express-validator";
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    const firstError = errors.array()[0];
+    const formatted = errors.array().map(({ path, msg, value, param }) => ({
+      field: path || param,
+      message: msg,
+      value,
+    }));
+    const firstError = formatted[0];
     return res.status(400).json({
       success: false,
-      message: firstError.msg,
-      field: firstError.path,
+      message: firstError.message,
+      field: firstError.field,
       value: firstError.value,
-      errors: errors.array(),
+      errors: formatted,
     });
   }
   next();
@@ -18,11 +23,24 @@ export const handleValidationErrors = (req, res, next) => {
 export const donorsSponsorsValidators = {
   list: [
     query("page").optional().isInt({ min: 1 }).toInt(),
-    query("limit").optional().isInt({ min: 1, max: 100 }).toInt(),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("El límite debe estar entre 1 y 100.")
+      .toInt(),
     query("search").optional().isLength({ max: 100 }).trim(),
-    query("status").optional().isIn(["Activo", "Inactivo"]),
-    query("tipo").optional().isIn(["Donante", "Patrocinador"]),
-    query("tipoPersona").optional().isIn(["Natural", "Juridica"]),
+    query("status")
+      .optional()
+      .isIn(["Activo", "Inactivo", "Por confirmar"])
+      .withMessage("El estado debe ser Activo, Inactivo o Por confirmar."),
+    query("tipo")
+      .optional()
+      .isIn(["Donante", "Patrocinador"])
+      .withMessage("El tipo debe ser Donante o Patrocinador."),
+    query("tipoPersona")
+      .optional()
+      .isIn(["Natural", "Juridica"])
+      .withMessage("El tipo de persona debe ser Natural o Juridica."),
   ],
 
   getById: [param("id").isInt({ min: 1 }).withMessage("ID inv\u00e1lido").toInt()],
@@ -126,8 +144,15 @@ export const donorsSponsorsValidators = {
       .isLength({ min: 2, max: 120 })
       .withMessage("El pa\u00eds debe tener entre 2 y 120 caracteres.")
       .trim(),
-    body("descripcion").optional().isLength({ max: 500 }).trim(),
-    body("estado").optional().isIn(["Activo", "Inactivo"]),
+    body("descripcion")
+      .optional()
+      .isLength({ max: 500 })
+      .withMessage("La descripción debe tener máximo 500 caracteres.")
+      .trim(),
+    body("estado")
+      .optional()
+      .isIn(["Activo", "Inactivo", "Por confirmar"])
+      .withMessage("El estado debe ser Activo, Inactivo o Por confirmar."),
   ],
 
   update: [
@@ -208,8 +233,15 @@ export const donorsSponsorsValidators = {
       .isLength({ min: 2, max: 120 })
       .withMessage("El pa\u00eds debe tener entre 2 y 120 caracteres.")
       .trim(),
-    body("descripcion").optional().isLength({ max: 500 }).trim(),
-    body("estado").optional().isIn(["Activo", "Inactivo"]),
+    body("descripcion")
+      .optional()
+      .isLength({ max: 500 })
+      .withMessage("La descripción debe tener máximo 500 caracteres.")
+      .trim(),
+    body("estado")
+      .optional()
+      .isIn(["Activo", "Inactivo", "Por confirmar"])
+      .withMessage("El estado debe ser Activo, Inactivo o Por confirmar."),
   ],
 
   delete: [param("id").isInt({ min: 1 }).withMessage("ID inv\u00e1lido").toInt()],
@@ -219,8 +251,8 @@ export const donorsSponsorsValidators = {
     body("status")
       .notEmpty()
       .withMessage("El estado es obligatorio.")
-      .isIn(["Activo", "Inactivo"])
-      .withMessage("El estado debe ser Activo o Inactivo."),
+      .isIn(["Activo", "Inactivo", "Por confirmar"])
+      .withMessage("El estado debe ser Activo, Inactivo o Por confirmar."),
   ],
 
   checkIdentification: [
@@ -242,5 +274,43 @@ export const donorsSponsorsValidators = {
       .trim()
       .normalizeEmail(),
     query("excludeId").optional().isInt({ min: 1 }).toInt(),
+  ],
+
+  createFromLanding: [
+    body("nombreCompleto")
+      .notEmpty()
+      .withMessage("El nombre es obligatorio.")
+      .isLength({ min: 2, max: 150 }),
+    body("correo")
+      .notEmpty()
+      .withMessage("El correo es obligatorio.")
+      .isEmail()
+      .withMessage("Correo inv\u00e1lido.")
+      .isLength({ max: 150 }),
+    body("telefono")
+      .notEmpty()
+      .withMessage("El tel\u00e9fono es obligatorio.")
+      .isLength({ min: 7, max: 20 }),
+    body("tipoDocumento")
+      .notEmpty()
+      .withMessage("El tipo de documento es obligatorio.")
+      .isLength({ max: 50 }),
+    body("numeroDocumento")
+      .notEmpty()
+      .withMessage("El n\u00famero de documento es obligatorio.")
+      .isLength({ min: 5, max: 50 })
+      .withMessage("El documento debe tener entre 5 y 50 caracteres.")
+      .matches(/^[0-9A-Za-z.\-]+$/)
+      .withMessage(
+        "El documento solo puede contener n\u00fameros, letras, puntos o guiones."
+      ),
+    body("mensaje").optional().isLength({ max: 500 }),
+    body("autorizacion")
+      .notEmpty()
+      .withMessage("Indica si autorizas ser contactado.")
+      .isIn(["Si", "No", "Sí", "si", "no"]),
+    body("ciudad").optional().isLength({ min: 2, max: 120 }),
+    body("pais").optional().isLength({ min: 2, max: 120 }),
+    body("direccion").optional().isLength({ min: 4, max: 200 }),
   ],
 };

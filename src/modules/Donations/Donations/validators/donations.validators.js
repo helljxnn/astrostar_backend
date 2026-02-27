@@ -104,6 +104,10 @@ export const donationValidators = {
     query("search").optional().isString().trim().isLength({ max: 100 }),
     query("status").optional().isIn(allowedStatus),
     query("type").optional().isIn(allowedTypes),
+    query("month")
+      .optional()
+      .matches(/^\d{4}-(0[1-9]|1[0-2])$/)
+      .withMessage("Mes invalido, use formato AAAA-MM"),
   ],
 
   getById: [param("id").isInt({ min: 1 }).withMessage("ID invalido").toInt()],

@@ -129,10 +129,9 @@ export const scheduleValidators = {
         return true;
       }),
     body('descripcion')
-      .notEmpty()
-      .withMessage('La descripción es obligatoria.')
+      .optional({ nullable: true, checkFalsy: true })
       .isLength({ min: 3, max: 500 })
-      .withMessage('La descripción debe tener entre 3 y 500 caracteres.')
+      .withMessage('La descripción debe tener entre 3 y 500 caracteres si la incluyes.')
       .trim(),
     // Estado eliminado del módulo
   ],
@@ -179,9 +178,9 @@ export const scheduleValidators = {
     body('customRecurrence')
       .optional(),
     body('descripcion')
-      .optional()
+      .optional({ nullable: true, checkFalsy: true })
       .isLength({ min: 3, max: 500 })
-      .withMessage('La descripción debe tener entre 3 y 500 caracteres.')
+      .withMessage('La descripción debe tener entre 3 y 500 caracteres si la incluyes.')
       .trim(),
     // Estado eliminado del módulo
   ],

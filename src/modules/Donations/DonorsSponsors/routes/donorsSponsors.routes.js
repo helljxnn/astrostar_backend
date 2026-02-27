@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import DonorsSponsorsController from "../controllers/donorsSponsors.controller.js";
 import {
   donorsSponsorsValidators,
@@ -8,6 +9,25 @@ import { authenticateToken } from "../../../../middlewares/auth.js";
 
 const router = express.Router();
 const controller = DonorsSponsorsController;
+
+const landingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 3,
+  message: {
+    success: false,
+    message: "Demasiadas solicitudes. Intenta m\u00e1s tarde.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+router.post(
+  "/landing",
+  landingLimiter,
+  donorsSponsorsValidators.createFromLanding,
+  handleValidationErrors,
+  controller.createFromLanding
+);
 
 router.get(
   "/stats",

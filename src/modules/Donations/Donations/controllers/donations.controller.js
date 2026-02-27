@@ -3,13 +3,21 @@ import DonationsService from "../services/donations.services.js";
 export class DonationsController {
   list = async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = "", status, type } = req.query;
+      const {
+        page = 1,
+        limit = 10,
+        search = "",
+        status,
+        type,
+        month,
+      } = req.query;
       const result = await DonationsService.list({
         page: Number(page),
         limit: Number(limit),
         search,
         status,
         type,
+        month,
       });
 
       res.json({

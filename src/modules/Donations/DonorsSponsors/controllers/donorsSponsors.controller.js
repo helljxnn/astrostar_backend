@@ -94,6 +94,35 @@ export class DonorsSponsorsController {
     }
   };
 
+  createFromLanding = async (req, res) => {
+    try {
+      console.log("📝 [LANDING] Recibiendo solicitud de donante desde landing");
+      console.log("📝 [LANDING] Body recibido:", JSON.stringify(req.body, null, 2));
+      
+      const result = await this.donorsSponsorsService.createFromLanding(
+        req.body
+      );
+      
+      console.log("✅ [LANDING] Donante creado exitosamente:", result.data?.id);
+      
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("❌ [LANDING] Error en createFromLanding:", error.message);
+      
+      const message =
+        error.message ||
+        "Error interno del servidor al registrar el donante.";
+      const status =
+        message.includes("registrada") || message.includes("correo")
+          ? 400
+          : 500;
+      res.status(status).json({
+        success: false,
+        message,
+      });
+    }
+  };
+
   update = async (req, res) => {
     try {
       const id = parseInt(req.params.id);

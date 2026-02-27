@@ -3,11 +3,15 @@ import prisma from "../../../../config/database.js";
 export class DonorsSponsorsRepository {
   mapStatusToDb(status) {
     if (!status) return undefined;
-    return status === "Activo" ? "Active" : "Inactive";
+    if (status === "Activo") return "Active";
+    if (status === "Por confirmar" || status === "Pendiente") return "Pending";
+    return "Inactive";
   }
 
   mapStatusFromDb(status) {
-    return status === "Active" ? "Activo" : "Inactivo";
+    if (status === "Active") return "Activo";
+    if (status === "Pending") return "Por confirmar";
+    return "Inactivo";
   }
 
   mapTypeToDb(tipo) {
@@ -66,8 +70,11 @@ export class DonorsSponsorsRepository {
       payload.razonSocial ||
       payload.nombreCompleto ||
       "";
-    const identification =
+    let identification =
       payload.identificacion || payload.nit || payload.numeroDocumento || "";
+    if (!identification) {
+      identification = `landing-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    }
 
     return {
       name: baseName.trim(),
@@ -344,6 +351,7 @@ export class DonorsSponsorsRepository {
       ],
       estados: [
         { value: "Activo", label: "Activo" },
+        { value: "Por confirmar", label: "Por confirmar" },
         { value: "Inactivo", label: "Inactivo" },
       ],
     };

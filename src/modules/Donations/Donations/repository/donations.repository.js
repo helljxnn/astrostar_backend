@@ -106,7 +106,7 @@ export class DonationsRepository {
     return this.findById(created.id);
   }
 
-  async findAll({ page = 1, limit = 10, search = "", status, type }) {
+  async findAll({ page = 1, limit = 10, search = "", status, type, month }) {
     const skip = (page - 1) * limit;
 
     const where = { deletedAt: null };
@@ -125,6 +125,17 @@ export class DonationsRepository {
 
     if (status) where.status = this.mapStatusToDb(status);
     if (type) where.type = this.mapTypeToDb(type);
+
+    if (month) {
+      // month formato AAAA-MM
+      const [year, monthNum] = month.split("-").map(Number);
+      const startDate = new Date(Date.UTC(year, monthNum - 1, 1, 0, 0, 0));
+      const endDate = new Date(Date.UTC(year, monthNum, 1, 0, 0, 0));
+      where.donationAt = {
+        gte: startDate,
+        lt: endDate,
+      };
+    }
 
     const [records, total] = await Promise.all([
       prisma.donation.findMany({

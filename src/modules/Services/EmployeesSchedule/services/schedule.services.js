@@ -1,5 +1,6 @@
 // 📁 Services/Employees/EmployeesSchedule/services/schedule.services.js
 import { ScheduleRepository } from '../repository/schedule.repository.js';
+import emailService from '../../../../services/emailService.js';
 
 export class ScheduleService {
   constructor() {
@@ -55,6 +56,58 @@ export class ScheduleService {
     const minutes = Number(parts[1]);
     if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
     return hours * 60 + minutes;
+  }
+
+  formatEmployeeName(user = {}) {
+    const clean = (value) => {
+      if (!value) return '';
+      const text = String(value).trim();
+      if (text.toLowerCase() === 'null' || text.toLowerCase() === 'undefined') return '';
+      return text;
+    };
+
+    const {
+      firstName = '',
+      middleName = '',
+      lastName = '',
+      secondLastName = '',
+    } = user || {};
+    const fullName = `${clean(firstName)} ${clean(middleName)} ${clean(lastName)} ${clean(secondLastName)}`
+      .replace(/\s+/g, ' ')
+      .trim();
+    return fullName || 'Empleado';
+  }
+
+  notifyEmployeeSchedule({ schedule, action = 'created' }) {
+    const employeeUser = schedule?.employee?.user;
+    const to = employeeUser?.email;
+    if (!to) return;
+
+    const employeeName = this.formatEmployeeName(employeeUser);
+    emailService
+      .sendScheduleNotification({
+        to,
+        employeeName,
+        action,
+        scheduleData: {
+          date: schedule.scheduleDate,
+          startTime: schedule.startTime,
+          endTime: schedule.endTime,
+          recurrence: schedule.recurrence,
+          description: schedule.description,
+        },
+      })
+      .then((result) => {
+        if (!result?.success) {
+          console.warn(
+            '⚠️  No se pudo enviar el email de horario:',
+            result?.error || result,
+          );
+        }
+      })
+      .catch((err) =>
+        console.warn('⚠️  Error enviando email de horario:', err?.message),
+      );
   }
 
   /**
@@ -171,6 +224,7 @@ export class ScheduleService {
 
       // 7. Crear el horario
       const newSchedule = await this.scheduleRepository.create(scheduleDataForDB);
+      this.notifyEmployeeSchedule({ schedule: newSchedule, action: 'created' });
       return {
         success: true,
         data: newSchedule,
@@ -251,6 +305,7 @@ export class ScheduleService {
       }
       // 4. Actualizar el horario
       const updatedSchedule = await this.scheduleRepository.update(id, scheduleDataForDB);
+      this.notifyEmployeeSchedule({ schedule: updatedSchedule, action: 'updated' });
       return {
         success: true,
         data: updatedSchedule,
