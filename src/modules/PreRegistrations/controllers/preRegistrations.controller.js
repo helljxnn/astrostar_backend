@@ -22,7 +22,7 @@ export const preRegistrationsController = {
 
       return res.status(201).json({
         success: true,
-        message: "Pre-inscripción creada exitosamente",
+        message: "Inscripción creada exitosamente",
         data: preRegistration,
       });
     } catch (error) {
@@ -80,7 +80,7 @@ export const preRegistrationsController = {
 
       return res.json({
         success: true,
-        message: "Pre-inscripción eliminada",
+        message: "Inscripción eliminada",
       });
     } catch (error) {
       return res.status(500).json({
@@ -93,7 +93,7 @@ export const preRegistrationsController = {
   async updateStatus(req, res) {
     try {
       const { id } = req.params;
-      let { status } = req.body;
+      const { status } = req.body;
 
       if (!status) {
         return res.status(400).json({
@@ -101,10 +101,6 @@ export const preRegistrationsController = {
           message: "El estado es requerido",
         });
       }
-
-      // Capitalizar primera letra para que coincida con el enum
-      // "rechazada" -> "Rechazada", "pendiente" -> "Pendiente"
-      status = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
 
       const preRegistration = await preRegistrationsService.updateStatus(id, status);
 
@@ -124,16 +120,17 @@ export const preRegistrationsController = {
 
   async resendEmail(req, res) {
     try {
-      const { email } = req.body;
+      const { email, identification } = req.body;
 
-      if (!email) {
+      // Debe proporcionar al menos uno: email o documento
+      if (!email && !identification) {
         return res.status(400).json({
           success: false,
-          message: "El correo es requerido",
+          message: "Debes proporcionar el correo o el número de documento",
         });
       }
 
-      const result = await preRegistrationsService.resendEmail(email);
+      const result = await preRegistrationsService.resendEmail({ email, identification });
 
       return res.json({
         success: true,

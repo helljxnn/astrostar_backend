@@ -17,6 +17,12 @@ const calculateAge = (birthDate) => {
 
 export const enrollmentsService = {
   async create({ preRegistrationId, athlete, enrollment }) {
+    console.log('🔍 [ENROLLMENT SERVICE] ========================================');
+    console.log('🔍 [ENROLLMENT SERVICE] INICIANDO CREACIÓN DE MATRÍCULA');
+    console.log('🔍 [ENROLLMENT SERVICE] preRegistrationId recibido:', preRegistrationId);
+    console.log('🔍 [ENROLLMENT SERVICE] Tipo:', typeof preRegistrationId);
+    console.log('🔍 [ENROLLMENT SERVICE] ========================================');
+    
     return await prisma.$transaction(async (tx) => {
       // 1. Verificar que el documento no exista
       const existingUser = await tx.user.findUnique({
@@ -172,28 +178,57 @@ export const enrollmentsService = {
       });
 
       // 10. Si viene de inscripción del landing, marcarla como procesada
+      console.log('🔍 [ENROLLMENT SERVICE] Verificando preRegistrationId...');
+      console.log('🔍 [ENROLLMENT SERVICE] preRegistrationId:', preRegistrationId);
+      console.log('🔍 [ENROLLMENT SERVICE] ¿Existe?', !!preRegistrationId);
+      
       if (preRegistrationId) {
+        console.log('🔄 [ENROLLMENT SERVICE] Marcando inscripción como Procesada...');
+        console.log('🔄 [ENROLLMENT SERVICE] ID a actualizar:', preRegistrationId);
+        
         await tx.preRegistration.update({
           where: { id: preRegistrationId },
-          data: { estado: "Procesada" },
+          data: { status: "Processed" }, // ← Cambiado a inglés
         });
+        
+        console.log('✅ [ENROLLMENT SERVICE] Inscripción marcada como Procesada exitosamente');
       } else {
-        // Si no viene preRegistrationId, buscar por email
-        const preRegistration = await tx.preRegistration.findFirst({
+        console.log('⚠️ [ENROLLMENT SERVICE] No hay preRegistrationId, buscando por email/documento...');
+        
+        // Si no viene preRegistrationId, buscar por email O por documento
+        let preRegistration = await tx.preRegistration.findFirst({
           where: {
-            correo: cleanEmail,
-            estado: "Pendiente"
+            email: cleanEmail,
+            status: "Pending" // ← Cambiado a inglés
           },
           orderBy: {
             createdAt: 'desc'
           }
         });
 
+        // Si no se encontró por email, buscar por documento
+        if (!preRegistration) {
+          console.log('⚠️ [ENROLLMENT SERVICE] No encontrada por email, buscando por documento...');
+          preRegistration = await tx.preRegistration.findFirst({
+            where: {
+              identification: athlete.identification?.trim(),
+              status: "Pending" // ← Cambiado a inglés
+            },
+            orderBy: {
+              createdAt: 'desc'
+            }
+          });
+        }
+
         if (preRegistration) {
+          console.log('✅ [ENROLLMENT SERVICE] Inscripción encontrada:', preRegistration.id);
           await tx.preRegistration.update({
             where: { id: preRegistration.id },
-            data: { estado: "Procesada" },
+            data: { status: "Processed" }, // ← Cambiado a inglés
           });
+          console.log('✅ [ENROLLMENT SERVICE] Inscripción marcada como Procesada');
+        } else {
+          console.log('⚠️ [ENROLLMENT SERVICE] No se encontró inscripción pendiente para marcar');
         }
       }
 
@@ -247,7 +282,32 @@ export const enrollmentsService = {
   },
 
   async delete(id) {
-    await this.findById(id);
+    // Verificar que la matrícula existe
+    const enrollment = await this.findById(id);
+    
+    // REGLA DE NEGOCIO: No se puede eliminar una matrícula reciente (menos de 1 año desde su creación)
+    const now = new Date();
+    const enrollmentDate = new Date(enrollment.fechaMatricula);
+    const oneYearLater = new Date(enrollmentDate);
+    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+    
+    if (now < oneYearLater) {
+      const monthsRemaining = Math.ceil((oneYearLater - now) / (1000 * 60 * 60 * 24 * 30));
+      throw new Error(
+        `No se puede eliminar una matrícula reciente. ` +
+        `Debe esperar ${monthsRemaining} mes(es) desde la fecha de matrícula (${enrollmentDate.toLocaleDateString('es-CO')}). ` +
+        `Podrá eliminarla después del ${oneYearLater.toLocaleDateString('es-CO')}.`
+      );
+    }
+    
+    // REGLA DE NEGOCIO: No se puede eliminar una matrícula vigente
+    if (enrollment.estado === 'Vigente') {
+      throw new Error(
+        'No se puede eliminar una matrícula vigente. ' +
+        'Primero debe vencer o ser cancelada.'
+      );
+    }
+    
     return await enrollmentsRepository.delete(id);
   },
 

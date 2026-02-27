@@ -74,19 +74,29 @@ export class UsersController {
 
   async checkEmailAvailability(req, res) {
     try {
+      console.log('🔍 [UsersController] checkEmailAvailability llamado');
+      console.log('🔍 [UsersController] Query params:', req.query);
+      
       const { email, excludeUserId } = req.query;
       
-      if (!email) {
-        return res.status(400).json({
-          success: false,
-          message: "El email es requerido",
+      console.log('🔍 [UsersController] Email recibido:', email);
+      console.log('🔍 [UsersController] excludeUserId recibido:', excludeUserId);
+      
+      // Si no hay email, devolver disponible (para evitar errores en el frontend)
+      if (!email || email.trim() === '') {
+        console.log('⚠️ [UsersController] Email vacío, devolviendo disponible');
+        return res.json({
+          success: true,
+          available: true,
+          message: '',
         });
       }
 
       const result = await usersService.checkEmailAvailability(email, excludeUserId);
+      console.log('✅ [UsersController] Resultado:', result);
       res.json(result);
     } catch (error) {
-      console.error("Error in checkEmailAvailability controller:", error);
+      console.error("❌ [UsersController] Error:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al verificar email",

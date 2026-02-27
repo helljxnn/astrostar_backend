@@ -639,7 +639,7 @@ Este es un email automático del sistema AstroStar.
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Confirmación de Pre-inscripción</title>
+      <title>Confirmación de Inscripción</title>
     </head>
     <body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f5f5f5;">
       <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
@@ -661,7 +661,7 @@ Este es un email automático del sistema AstroStar.
                   <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 22px;">Hola ${firstName},</h2>
                   
                   <p style="color: #666666; line-height: 1.6; margin: 0 0 20px 0; font-size: 16px;">
-                    ¡Gracias por tu interés en formar parte de nuestra fundación! Hemos recibido tu pre-inscripción exitosamente.
+                    ¡Gracias por tu interés en formar parte de nuestra fundación! Hemos recibido tu inscripción exitosamente.
                   </p>
                   
                   <div style="background-color: #f8f9fa; border-left: 4px solid #B595FF; padding: 20px; margin: 20px 0; border-radius: 5px;">
@@ -695,11 +695,9 @@ Este es un email automático del sistema AstroStar.
                   
                   <h3 style="color: #333333; margin: 30px 0 15px 0; font-size: 18px;">📄 Documentos que debes traer:</h3>
                   <ul style="color: #666666; line-height: 1.8; font-size: 15px; padding-left: 20px;">
-                    <li>Documento de identidad (original y copia)</li>
-                    <li>Registro civil de nacimiento</li>
-                    <li>Certificado médico</li>
-                    <li>2 fotos tamaño cédula</li>
+                    <li>Documento de identidad (copia)</li>
                     <li>Documento de identidad del acudiente (si es menor de edad)</li>
+                    <li>Copia del registro civil</li>
                   </ul>
                   
                   <div style="background-color: #e3f2fd; border-left: 4px solid #2196F3; padding: 15px; margin: 25px 0; border-radius: 5px;">
@@ -730,7 +728,7 @@ Este es un email automático del sistema AstroStar.
                     © ${new Date().getFullYear()} Fundación Manuela Vanegas. Todos los derechos reservados.
                   </p>
                   <p style="color: #999999; margin: 10px 0 0 0; font-size: 11px;">
-                    Este correo fue enviado a ${email} porque te pre-inscribiste en nuestra fundación.
+                    Este correo fue enviado a ${email} porque te inscribiste en nuestra fundación.
                   </p>
                 </td>
               </tr>
@@ -972,6 +970,117 @@ Este es un email automático del sistema AstroStar.
       return { success: true, messageId: result.messageId };
     } catch (error) {
       console.error("❌ Error enviando recordatorio de evento:", error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Enviar notificación de actualización de email
+   */
+  async sendEmailUpdateNotification({ newEmail, oldEmail, firstName, lastName }) {
+    try {
+      console.log('📧 [EmailService] Enviando notificación de actualización de email');
+      
+      const nombreCompleto = `${firstName} ${lastName}`;
+      const fechaActualizacion = new Date().toLocaleDateString("es-CO", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+      const mailOptions = {
+        from: {
+          name: "Fundación Manuela Vanegas",
+          address: process.env.EMAIL_USER || "fundacion@example.com",
+        },
+        to: newEmail,
+        subject: "Actualización de correo electrónico - Fundación MV",
+        html: `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Actualización de Email</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Arial', sans-serif; background-color: #f5f5f5;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #B595FF 0%, #9BE9FF 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: bold;">✉️ Actualización de Email</h1>
+              <p style="color: #ffffff; margin: 10px 0 0 0; font-size: 16px;">Fundación Manuela Vanegas</p>
+            </td>
+          </tr>
+          
+          <!-- Body -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="color: #333333; margin: 0 0 20px 0; font-size: 22px;">Hola ${firstName},</h2>
+              
+              <p style="color: #666666; line-height: 1.6; margin: 0 0 20px 0; font-size: 16px;">
+                Tu correo electrónico ha sido actualizado exitosamente en nuestro sistema.
+              </p>
+              
+              <div style="background-color: #f8f9fa; border-left: 4px solid #B595FF; padding: 20px; margin: 20px 0; border-radius: 5px;">
+                <h3 style="color: #B595FF; margin: 0 0 15px 0; font-size: 18px;">📋 Detalles de la actualización:</h3>
+                <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Nombre:</strong> ${nombreCompleto}</p>
+                <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Email anterior:</strong> ${oldEmail || 'N/A'}</p>
+                <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Nuevo email:</strong> ${newEmail}</p>
+                <p style="color: #666666; margin: 5px 0; font-size: 14px;"><strong>Fecha:</strong> ${fechaActualizacion}</p>
+              </div>
+              
+              <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 25px 0; border-radius: 5px;">
+                <p style="color: #856404; margin: 0; font-size: 14px;">
+                  ⚠️ <strong>Importante:</strong> Si no realizaste este cambio, por favor contacta al administrador inmediatamente.
+                </p>
+              </div>
+              
+              <p style="color: #666666; line-height: 1.6; margin: 20px 0; font-size: 16px;">
+                A partir de ahora, todas las comunicaciones se enviarán a este nuevo correo electrónico.
+              </p>
+              
+              <div style="background-color: #B595FF; color: #ffffff; padding: 25px; border-radius: 8px; margin: 20px 0; text-align: center;">
+                <h4 style="margin: 0 0 15px 0; font-size: 18px;">📞 ¿Necesitas ayuda?</h4>
+                <p style="margin: 5px 0; font-size: 14px;"><strong>Teléfono:</strong> ${process.env.CONTACT_PHONE || "(604) 123-4567"}</p>
+                <p style="margin: 5px 0; font-size: 14px;"><strong>Email:</strong> ${process.env.CONTACT_EMAIL || "contacto@fundacionmv.com"}</p>
+              </div>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #333333; padding: 20px; text-align: center;">
+              <p style="color: #ffffff; margin: 0; font-size: 12px;">
+                © ${new Date().getFullYear()} Fundación Manuela Vanegas. Todos los derechos reservados.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+        `,
+      };
+
+      if (!this.transporter) {
+        console.log("⚠️  [EmailService] Transporter no configurado, simulando envío");
+        return { success: true, messageId: "simulated-email-update-" + Date.now() };
+      }
+
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log('✅ [EmailService] Email de actualización enviado exitosamente');
+      return { success: true, messageId: result.messageId };
+    } catch (error) {
+      console.error("❌ [EmailService] Error enviando email de actualización:", error.message);
       return { success: false, error: error.message };
     }
   }
