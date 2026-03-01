@@ -747,6 +747,66 @@ export class EventsController {
 
   /**
    * @swagger
+   * /api/events/by-quarter:
+   *   get:
+   *     summary: Obtener eventos agrupados por trimestre
+   *     description: Obtiene la cantidad de eventos finalizados agrupados por trimestre y año para los últimos 3 años.
+   *     tags: [Events]
+   *     responses:
+   *       200:
+   *         description: Datos obtenidos exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       trimestre:
+   *                         type: string
+   *                         example: "Trim 1"
+   *                       año2023:
+   *                         type: integer
+   *                         example: 21
+   *                       año2024:
+   *                         type: integer
+   *                         example: 13
+   *                       año2025:
+   *                         type: integer
+   *                         example: 18
+   *                 message:
+   *                   type: string
+   *                   example: "Datos de eventos por trimestre obtenidos exitosamente."
+   *       500:
+   *         description: Error interno del servidor
+   */
+  getEventsByQuarter = async (req, res) => {
+    try {
+      const result = await this.eventsService.getEventsByQuarter();
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: "Datos de eventos por trimestre obtenidos exitosamente.",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener datos por trimestre.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
    * /api/events/reference-data:
    *   get:
    *     summary: Obtener datos de referencia para formularios

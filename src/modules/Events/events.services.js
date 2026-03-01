@@ -200,6 +200,21 @@ export class EventsService {
   }
 
   /**
+   * Obtener eventos agrupados por trimestre
+   */
+  async getEventsByQuarter() {
+    try {
+      const events = await this.eventsRepository.getEventsByQuarter();
+      return {
+        success: true,
+        data: events,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Obtener datos de referencia
    */
   async getReferenceData() {
