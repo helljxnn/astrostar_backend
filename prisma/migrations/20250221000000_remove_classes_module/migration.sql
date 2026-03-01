@@ -1,7 +1,16 @@
--- DropForeignKey
-ALTER TABLE "class_athletes" DROP CONSTRAINT IF EXISTS "class_athletes_classId_fkey";
-ALTER TABLE "class_athletes" DROP CONSTRAINT IF EXISTS "class_athletes_athleteId_fkey";
-ALTER TABLE "classes" DROP CONSTRAINT IF EXISTS "classes_employeeId_fkey";
+-- DropForeignKey (skip if not exists)
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'class_athletes_classId_fkey') THEN
+    ALTER TABLE "class_athletes" DROP CONSTRAINT "class_athletes_classId_fkey";
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'class_athletes_athleteId_fkey') THEN
+    ALTER TABLE "class_athletes" DROP CONSTRAINT "class_athletes_athleteId_fkey";
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'classes_employeeId_fkey') THEN
+    ALTER TABLE "classes" DROP CONSTRAINT "classes_employeeId_fkey";
+  END IF;
+END $$;
 
 -- DropTable
 DROP TABLE IF EXISTS "class_athletes";

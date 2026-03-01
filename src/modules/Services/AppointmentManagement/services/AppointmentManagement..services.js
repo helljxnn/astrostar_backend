@@ -1,6 +1,7 @@
 
 import { AppointmentRepository } from '../repository/AppointmentManagement.repository.js';
 import emailService from '../../../../services/emailService.js';
+import appointmentEmailService from './AppointmentEmail.service.js';
 
 const SPECIALTY_LABELS = {
   psicologia: 'Psicología Deportiva',
@@ -447,17 +448,21 @@ export class AppointmentService {
 
       const newAppointment = await this.appointmentRepository.create(appointmentDataForDB);
       const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`.trim();
+      const specialistName = `${specialist.user.firstName} ${specialist.user.lastName}`.trim();
 
-      // Notificar al deportista por email (no bloqueante)
-      emailService
-        .sendAppointmentNotification({
-          to: athlete.user.email,
+      // Notificar al deportista y especialista por email (no bloqueante)
+      appointmentEmailService
+        .sendAppointmentCreated(
+          {
+            ...newAppointment,
+            specialty: this.resolveSpecialtyLabel(specialtyKey)
+          },
+          athlete.user.email,
           athleteName,
-          date: startDateKey,
-          time: `${startTime} - ${endTime}`,
-          specialistName: `${specialist.user.firstName} ${specialist.user.lastName}`.trim(),
-        })
-        .catch((err) => console.warn('⚠️  Error enviando email de cita:', err?.message));
+          specialist.user.email,
+          specialistName
+        )
+        .catch((err) => console.warn('⚠️  Error enviando emails de cita:', err?.message));
 
       return {
         success: true,
@@ -655,6 +660,26 @@ export class AppointmentService {
         conclusion: null
       });
 
+      // Enviar correos de cancelación (no bloqueante)
+      if (appointment.athlete && appointment.athlete.user && appointment.specialist && appointment.specialist.user) {
+        const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
+        const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
+        
+        appointmentEmailService
+          .sendAppointmentCancelled(
+            {
+              ...updatedAppointment,
+              specialty: this.resolveSpecialtyLabel(appointment.specialty)
+            },
+            appointment.athlete.user.email,
+            athleteName,
+            appointment.specialist.user.email,
+            specialistName,
+            cancelReason
+          )
+          .catch((err) => console.warn('⚠️  Error enviando emails de cancelación:', err?.message));
+      }
+
       return {
         success: true,
         data: updatedAppointment,
@@ -840,4 +865,188 @@ export class AppointmentService {
       throw error;
     }
   }
+
+  /**
+   * Proponer reagendamiento de cita cancelada
+   */
+  async proposeReschedule(appointmentId, newDate, newStartTime, newEndTime) {
+    try {
+      const appointment = await this.appointmentRepository.findById(appointmentId);
+
+      if (!appointment) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'Cita no encontrada.'
+        };
+      }
+
+      if (appointment.status !== 'Cancelado') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'Solo se pueden reagendar citas canceladas.'
+        };
+      }
+
+      // Validar que tenga la información del deportista
+      if (!appointment.athlete || !appointment.athlete.user || !appointment.athlete.user.email) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'No se pudo obtener el email del deportista.'
+        };
+      }
+
+      // Generar token único para el reagendamiento
+      const rescheduleToken = appointmentEmailService.generateRescheduleToken();
+
+      // Actualizar la cita con la propuesta
+      const updatedAppointment = await this.appointmentRepository.update(appointmentId, {
+        needsReschedule: true,
+        rescheduleProposedDate: this.normalizeDateOnly(newDate),
+        rescheduleProposedStart: newStartTime,
+        rescheduleProposedEnd: newEndTime,
+        rescheduleStatus: 'pending',
+        rescheduleToken
+      });
+
+      const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
+      const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
+
+      // Enviar email al deportista
+      await appointmentEmailService.sendRescheduleProposal(
+        {
+          ...updatedAppointment,
+          specialty: this.resolveSpecialtyLabel(updatedAppointment.specialty || appointment.specialty),
+          specialistName
+        },
+        appointment.athlete.user.email,
+        athleteName
+      );
+
+      return {
+        success: true,
+        data: updatedAppointment,
+        message: 'Propuesta de reagendamiento enviada al deportista.'
+      };
+    } catch (error) {
+      console.error('Service error - proposeReschedule:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Aceptar reagendamiento (desde email)
+   */
+  async acceptReschedule(token) {
+    try {
+      const appointment = await this.appointmentRepository.findByRescheduleToken(token);
+
+      if (!appointment) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'Token de reagendamiento inválido o expirado.'
+        };
+      }
+
+      if (appointment.rescheduleStatus !== 'pending') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'Esta propuesta ya fue procesada.'
+        };
+      }
+
+      // Actualizar la cita con la nueva fecha y marcarla como programada
+      const updatedAppointment = await this.appointmentRepository.update(appointment.id, {
+        appointmentDate: appointment.rescheduleProposedDate,
+        startTime: appointment.rescheduleProposedStart,
+        endTime: appointment.rescheduleProposedEnd,
+        status: 'Programado',
+        rescheduleStatus: 'accepted',
+        needsReschedule: false,
+        cancelReason: null
+      });
+
+      // Notificar al especialista
+      if (appointment.specialist && appointment.specialist.user && appointment.specialist.user.email) {
+        const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
+        const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
+        
+        await appointmentEmailService.sendRescheduleConfirmation(
+          updatedAppointment,
+          appointment.specialist.user.email,
+          specialistName,
+          athleteName,
+          true
+        );
+      }
+
+      return {
+        success: true,
+        data: updatedAppointment,
+        message: 'Cita reagendada exitosamente.'
+      };
+    } catch (error) {
+      console.error('Service error - acceptReschedule:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Rechazar reagendamiento (desde email)
+   */
+  async rejectReschedule(token) {
+    try {
+      const appointment = await this.appointmentRepository.findByRescheduleToken(token);
+
+      if (!appointment) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: 'Token de reagendamiento inválido o expirado.'
+        };
+      }
+
+      if (appointment.rescheduleStatus !== 'pending') {
+        return {
+          success: false,
+          statusCode: 400,
+          message: 'Esta propuesta ya fue procesada.'
+        };
+      }
+
+      // Marcar como rechazada
+      const updatedAppointment = await this.appointmentRepository.update(appointment.id, {
+        rescheduleStatus: 'rejected',
+        needsReschedule: false
+      });
+
+      // Notificar al especialista
+      if (appointment.specialist && appointment.specialist.user && appointment.specialist.user.email) {
+        const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
+        const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
+        
+        await appointmentEmailService.sendRescheduleConfirmation(
+          updatedAppointment,
+          appointment.specialist.user.email,
+          specialistName,
+          athleteName,
+          false
+        );
+      }
+
+      return {
+        success: true,
+        data: updatedAppointment,
+        message: 'Propuesta de reagendamiento rechazada.'
+      };
+    } catch (error) {
+      console.error('Service error - rejectReschedule:', error);
+      throw error;
+    }
+  }
 }
+

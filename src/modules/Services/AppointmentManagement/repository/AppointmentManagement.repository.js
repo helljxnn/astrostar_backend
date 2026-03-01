@@ -287,6 +287,28 @@ export class AppointmentRepository {
   }
 
   /**
+   * Buscar cita por token de reagendamiento
+   */
+  async findByRescheduleToken(token) {
+    return await prisma.appointment.findUnique({
+      where: { rescheduleToken: token },
+      include: {
+        athlete: {
+          include: {
+            user: true
+          }
+        },
+        specialist: {
+          include: {
+            user: true
+          }
+        }
+      }
+    });
+  }
+
+
+  /**
    * Obtener deportistas activos
    */
   async getActiveAthletes() {

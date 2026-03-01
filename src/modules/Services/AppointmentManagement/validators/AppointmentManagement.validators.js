@@ -221,6 +221,43 @@ export const appointmentValidators = {
   ],
 
   /**
+   * Validación para proponer reagendamiento
+   */
+  reschedule: [
+    param('id')
+      .isInt({ min: 1 })
+      .withMessage('El ID de la cita debe ser un número entero válido mayor a 0.')
+      .toInt(),
+    body('newDate')
+      .notEmpty()
+      .withMessage('La nueva fecha es obligatoria.')
+      .isISO8601()
+      .withMessage('La nueva fecha debe tener formato válido (YYYY-MM-DD).'),
+    body('newStartTime')
+      .notEmpty()
+      .withMessage('La hora de inicio es obligatoria.')
+      .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+      .withMessage('La hora de inicio debe tener formato HH:MM.'),
+    body('newEndTime')
+      .notEmpty()
+      .withMessage('La hora de fin es obligatoria.')
+      .matches(/^([01]\d|2[0-3]):([0-5]\d)$/)
+      .withMessage('La hora de fin debe tener formato HH:MM.')
+      .custom((value, { req }) => {
+        if (req.body.newStartTime) {
+          const [startHour, startMin] = req.body.newStartTime.split(':').map(Number);
+          const [endHour, endMin] = value.split(':').map(Number);
+          const startMinutes = startHour * 60 + startMin;
+          const endMinutes = endHour * 60 + endMin;
+          if (endMinutes <= startMinutes) {
+            throw new Error('La hora de fin debe ser mayor que la hora de inicio.');
+          }
+        }
+        return true;
+      })
+  ],
+
+  /**
    * Validación para eliminar cita
    */
   delete: [

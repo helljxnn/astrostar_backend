@@ -10,6 +10,8 @@ export class DonationsController {
         status,
         type,
         month,
+        serviceId,
+        eventId,
       } = req.query;
       const result = await DonationsService.list({
         page: Number(page),
@@ -18,6 +20,7 @@ export class DonationsController {
         status,
         type,
         month,
+        serviceId: serviceId || eventId || undefined,
       });
 
       res.json({
@@ -53,7 +56,10 @@ export class DonationsController {
 
   create = async (req, res) => {
     try {
-      const payload = req.body;
+      const payload = {
+        ...req.body,
+        serviceId: req.body.serviceId || req.body.eventId || null,
+      };
       const result = await DonationsService.create(payload);
       res.status(201).json(result);
     } catch (error) {
@@ -68,7 +74,11 @@ export class DonationsController {
   update = async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await DonationsService.update(id, req.body);
+      const payload = {
+        ...req.body,
+        serviceId: req.body.serviceId || req.body.eventId || undefined,
+      };
+      const result = await DonationsService.update(id, payload);
       res.json(result);
     } catch (error) {
       console.error("Error update donation", error);

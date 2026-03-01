@@ -104,6 +104,8 @@ export const donationValidators = {
     query("search").optional().isString().trim().isLength({ max: 100 }),
     query("status").optional().isIn(allowedStatus),
     query("type").optional().isIn(allowedTypes),
+    query("serviceId").optional().isInt({ min: 1 }).toInt(),
+    query("eventId").optional().isInt({ min: 1 }).toInt(),
     query("month")
       .optional()
       .matches(/^\d{4}-(0[1-9]|1[0-2])$/)
@@ -125,6 +127,8 @@ export const donationValidators = {
     body("status").optional().isIn(allowedStatus),
     body("anonymous").optional().isBoolean(),
     body("donorSponsorId").optional().isInt({ min: 1 }).toInt(),
+    body("serviceId").optional().isInt({ min: 1 }).toInt(),
+    body("eventId").optional().isInt({ min: 1 }).toInt(),
     body("program").optional().isString().trim().isLength({ max: 200 }),
     body("notes").optional().isString().trim().isLength({ max: 500 }),
     body("details")
@@ -144,6 +148,8 @@ export const donationValidators = {
   update: [
     param("id").isInt({ min: 1 }).withMessage("ID invalido").toInt(),
     body("status").optional().isIn(allowedStatus),
+    body("serviceId").optional().isInt({ min: 1 }).toInt(),
+    body("eventId").optional().isInt({ min: 1 }).toInt(),
     body("program").optional().isString().trim().isLength({ max: 200 }),
     body("notes").optional().isString().trim().isLength({ max: 500 }),
     body("details").optional().isArray({ min: 1 }),
