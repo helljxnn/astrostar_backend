@@ -77,6 +77,24 @@ router.patch('/:id/complete',
   appointmentController.completeAppointment
 );
 
+// =========================
+// Reagendamiento
+// =========================
+router.post('/:id/reschedule',
+  authenticateToken,
+  appointmentValidators.reschedule,
+  handleValidationErrors,
+  appointmentController.proposeReschedule
+);
+
+router.get('/reschedule/:token/accept',
+  appointmentController.acceptReschedule
+);
+
+router.get('/reschedule/:token/reject',
+  appointmentController.rejectReschedule
+);
+
 router.delete('/:id',
   authenticateToken,
   appointmentValidators.delete,

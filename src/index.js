@@ -6,6 +6,7 @@ import app from "./app.js";
 import emailService from "./services/emailService.js";
 import { startEnrollmentExpirationJob } from "./jobs/enrollmentExpirationJob.js";
 import { startRSVPReminderJob } from "./jobs/rsvpReminderJob.js";
+import { startAppointmentReminderJob } from "./jobs/appointmentReminderJob.js";
 
 const PORT = process.env.PORT || 4000;
 
@@ -39,6 +40,9 @@ async function initializeServices() {
     } else {
       startRSVPReminderJob();
     }
+
+    // Iniciar job de recordatorios de citas
+    startAppointmentReminderJob();
   } catch (error) {
     console.warn("âš ï¸ Error inicializando servicios:", error.message);
   }
