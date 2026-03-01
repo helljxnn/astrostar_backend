@@ -379,7 +379,7 @@ export class AthletesService {
 
       return { 
         available: false, 
-        message: `El email "${email}" ya está en uso.` 
+        message: 'Este email ya está matriculado' 
       };
     } catch (error) {
       console.error('Service error - checkEmailAvailability:', error);
@@ -404,7 +404,7 @@ export class AthletesService {
 
       return { 
         available: false, 
-        message: `La identificación "${identification}" ya está en uso.` 
+        message: 'Este documento ya está matriculado' 
       };
     } catch (error) {
       console.error('Service error - checkIdentificationAvailability:', error);

@@ -93,7 +93,7 @@ export class UsersService {
       return {
         success: true,
         available: false,
-        message: `El email "${email}" ya está en uso.`,
+        message: 'Este email ya está matriculado',
       };
     } catch (error) {
       console.error("Error in checkEmailAvailability service:", error);
@@ -127,7 +127,7 @@ export class UsersService {
       return {
         success: true,
         available: false,
-        message: `La identificación "${identification}" ya está en uso.`,
+        message: 'Este documento ya está matriculado',
       };
     } catch (error) {
       console.error("Error in checkIdentificationAvailability service:", error);

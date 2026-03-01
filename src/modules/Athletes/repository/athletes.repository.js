@@ -51,13 +51,13 @@ export class AthletesRepository {
       return age;
     };
 
-    // Formatear fecha para input type="date"
+    // Formatear fecha para input type="date" usando UTC para evitar problemas de zona horaria
     const formatDateForInput = (date) => {
       if (!date) return null;
       const d = new Date(date);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
+      const year = d.getUTCFullYear();
+      const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(d.getUTCDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     };
 
@@ -78,6 +78,19 @@ export class AthletesRepository {
       categoria: currentInscription?.sportsCategory?.nombre || "",
       estado: athlete.status === "Active" ? "Activo" : "Inactivo",
       acudiente: athlete.guardianId,
+      guardian: athlete.guardian ? {
+        id: athlete.guardian.id,
+        nombreCompleto: `${athlete.guardian.firstName} ${athlete.guardian.lastName}`,
+        firstName: athlete.guardian.firstName,
+        lastName: athlete.guardian.lastName,
+        identification: athlete.guardian.identification,
+        email: athlete.guardian.email,
+        phone: athlete.guardian.phone,
+        address: athlete.guardian.address,
+        birthDate: formatDateForInput(athlete.guardian.birthDate),
+        documentTypeId: athlete.guardian.documentTypeId,
+        tipoDocumento: athlete.guardian.documentType?.name || '',
+      } : null,
       parentesco: athlete.relationship || athlete.otherRelationship,
       estadoInscripcion: currentInscription
         ? mapInscriptionStatus(currentInscription.status)
@@ -163,7 +176,11 @@ export class AthletesRepository {
       documentTypeId: athleteData.documentTypeId
         ? parseInt(athleteData.documentTypeId)
         : null,
-      birthDate: athleteData.birthDate ? new Date(athleteData.birthDate) : null,
+      birthDate: athleteData.birthDate ? (() => {
+        const date = new Date(athleteData.birthDate);
+        // Normalizar a UTC medianoche para evitar problemas de zona horaria
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+      })() : null,
       age: athleteData.birthDate ? calculateAge(athleteData.birthDate) : null,
       address: athleteData.address || "N/A",
       passwordHash: "temp_password_hash", // Se debe generar un hash real
@@ -248,12 +265,19 @@ export class AthletesRepository {
       const athleteAge =
         userData.age ?? calculateAgeFromBirthDate(userData.birthDate);
       
-      // Nueva validación: Solo rechazar si la edad es MENOR al mínimo de la categoría
-      // Permite que deportistas se inscriban en categorías superiores
-      if (athleteAge !== null && athleteAge < sportsCategory.edadMinima) {
-        throw new Error(
-          `No se puede crear: la edad ${athleteAge} es menor al rango de la categoría "${sportsCategory.nombre}" (${sportsCategory.edadMinima}-${sportsCategory.edadMaxima} años). Puedes escoger categorías para edades mayores o iguales.`
-        );
+      // REGLA DE NEGOCIO: NO validar edad vs categoría cuando viene de matrícula (preRegistrationId)
+      // Esto permite matricular deportistas en categorías superiores a su edad
+      const isFromEnrollment = athleteData.preRegistrationId !== undefined;
+      
+      if (!isFromEnrollment) {
+        // Solo validar si NO viene de matrícula
+        // Nueva validación: Solo rechazar si la edad es MENOR al mínimo de la categoría
+        // Permite que deportistas se inscriban en categorías superiores
+        if (athleteAge !== null && athleteAge < sportsCategory.edadMinima) {
+          throw new Error(
+            `No se puede crear: la edad ${athleteAge} es menor al rango de la categoría "${sportsCategory.nombre}" (${sportsCategory.edadMinima}-${sportsCategory.edadMaxima} años). Puedes escoger categorías para edades mayores o iguales.`
+          );
+        }
       }
 
       // Buscar o crear rol de atleta
@@ -576,7 +600,11 @@ export class AthletesRepository {
               documentType: true,
             },
           },
-          guardian: true,
+          guardian: {
+            include: {
+              documentType: true,
+            },
+          },
           inscriptions: {
             include: {
               sportsCategory: true,
@@ -631,7 +659,11 @@ export class AthletesRepository {
             documentType: true,
           },
         },
-        guardian: true,
+        guardian: {
+          include: {
+            documentType: true,
+          },
+        },
         inscriptions: {
           include: {
             sportsCategory: true,
