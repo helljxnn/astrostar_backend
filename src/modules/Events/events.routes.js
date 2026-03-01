@@ -22,6 +22,7 @@ router.delete("/upload/delete", uploadController.deleteFile);
 
 // Rutas de estadísticas y datos de referencia (deben ir antes de las rutas con parámetros)
 router.get("/stats", eventsController.getEventStats);
+router.get("/by-quarter", eventsController.getEventsByQuarter);
 router.get("/reference-data", eventsController.getReferenceData);
 router.get("/check-name", eventsController.checkEventName);
 

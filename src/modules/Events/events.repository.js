@@ -682,29 +682,223 @@ export class EventsRepository {
    * Obtener estadísticas de eventos
    */
   async getStats() {
-    const [total, programado, enCurso, finalizado, cancelado, byCategory] =
-      await Promise.all([
-        prisma.service.count(),
-        prisma.service.count({ where: { status: "Programado" } }),
-        prisma.service.count({ where: { status: "En_curso" } }),
-        prisma.service.count({ where: { status: "Finalizado" } }),
-        prisma.service.count({ where: { status: "Cancelado" } }),
-        prisma.service.groupBy({
-          by: ["categoryId"],
-          _count: {
-            id: true,
-          },
-        }),
-      ]);
+    // Calcular fechas para comparación (últimos 30 días vs 30 días anteriores)
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(now.getDate() - 30);
+    const sixtyDaysAgo = new Date(now);
+    sixtyDaysAgo.setDate(now.getDate() - 60);
 
-    return {
+    const [
       total,
       programado,
       enCurso,
       finalizado,
       cancelado,
       byCategory,
+      byType,
+      enrolledAthletes,
+      enrolledTeams,
+      // Datos del período anterior para calcular tendencias
+      totalPrevious,
+      enrolledAthletesPrevious,
+      enrolledTeamsPrevious,
+    ] = await Promise.all([
+      prisma.service.count(),
+      prisma.service.count({ where: { status: "Programado" } }),
+      prisma.service.count({ where: { status: "En_curso" } }),
+      prisma.service.count({ where: { status: "Finalizado" } }),
+      prisma.service.count({ where: { status: "Cancelado" } }),
+      prisma.service.groupBy({
+        by: ["categoryId"],
+        _count: {
+          id: true,
+        },
+      }),
+      // Agrupar por tipo de evento
+      prisma.service.groupBy({
+        by: ["typeId"],
+        _count: {
+          id: true,
+        },
+      }),
+      // Contar deportistas inscritas (participantes con athleteId)
+      prisma.participant.count({
+        where: {
+          athleteId: { not: null },
+        },
+      }),
+      // Contar equipos inscritos (participantes con teamId)
+      prisma.participant.count({
+        where: {
+          teamId: { not: null },
+        },
+      }),
+      // Eventos creados hace 30-60 días
+      prisma.service.count({
+        where: {
+          createdAt: {
+            gte: sixtyDaysAgo,
+            lt: thirtyDaysAgo,
+          },
+        },
+      }),
+      // Deportistas inscritas hace 30-60 días
+      prisma.participant.count({
+        where: {
+          athleteId: { not: null },
+          registrationDate: {
+            gte: sixtyDaysAgo,
+            lt: thirtyDaysAgo,
+          },
+        },
+      }),
+      // Equipos inscritos hace 30-60 días
+      prisma.participant.count({
+        where: {
+          teamId: { not: null },
+          registrationDate: {
+            gte: sixtyDaysAgo,
+            lt: thirtyDaysAgo,
+          },
+        },
+      }),
+    ]);
+
+    // Obtener TODOS los tipos de eventos de la tabla ServiceType
+    const allTypes = await prisma.serviceType.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    });
+
+    // Crear un mapa con todos los tipos y sus conteos
+    const typeCountMap = new Map();
+
+    // Inicializar todos los tipos con count 0
+    allTypes.forEach((type) => {
+      typeCountMap.set(type.id, {
+        name: type.name,
+        count: 0,
+      });
+    });
+
+    // Actualizar con los conteos reales
+    byType.forEach((t) => {
+      if (typeCountMap.has(t.typeId)) {
+        typeCountMap.get(t.typeId).count = t._count.id;
+      }
+    });
+
+    // Convertir a array y ordenar por count (mayor a menor)
+    const byTypeWithNames = Array.from(typeCountMap.values()).sort(
+      (a, b) => b.count - a.count,
+    );
+
+    // Calcular eventos próximos (programados + en curso)
+    const upcoming = programado + enCurso;
+
+    // Calcular porcentajes de crecimiento
+    const calculateGrowth = (current, previous) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
     };
+
+    // Eventos creados en los últimos 30 días
+    const totalRecent = await prisma.service.count({
+      where: {
+        createdAt: {
+          gte: thirtyDaysAgo,
+        },
+      },
+    });
+
+    return {
+      total,
+      enrolledAthletes,
+      enrolledTeams,
+      upcoming,
+      byStatus: {
+        completed: finalizado,
+        inProgress: enCurso,
+        scheduled: programado,
+        cancelled: cancelado,
+      },
+      byCategory,
+      byType: byTypeWithNames.sort((a, b) => b.count - a.count),
+      trends: {
+        total: calculateGrowth(totalRecent, totalPrevious),
+        enrolledAthletes: calculateGrowth(
+          enrolledAthletes,
+          enrolledAthletesPrevious,
+        ),
+        enrolledTeams: calculateGrowth(enrolledTeams, enrolledTeamsPrevious),
+      },
+    };
+  }
+
+  /**
+   * Obtener eventos agrupados por trimestre y año
+   */
+  async getEventsByQuarter() {
+    try {
+      // Obtener todos los eventos finalizados
+      const events = await prisma.service.findMany({
+        where: {
+          status: "Finalizado",
+        },
+        select: {
+          id: true,
+          startDate: true,
+        },
+      });
+
+      // Agrupar eventos por año y trimestre
+      const groupedData = {};
+
+      events.forEach((event) => {
+        const date = new Date(event.startDate);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1; // getMonth() devuelve 0-11
+
+        // Determinar el trimestre (1-4)
+        const quarter = Math.ceil(month / 3);
+
+        // Inicializar el año si no existe
+        if (!groupedData[year]) {
+          groupedData[year] = { 1: 0, 2: 0, 3: 0, 4: 0 };
+        }
+
+        // Incrementar el contador del trimestre
+        groupedData[year][quarter]++;
+      });
+
+      // Convertir a formato de array para el frontend
+      const result = [];
+
+      // Obtener los últimos 3 años con datos
+      const years = Object.keys(groupedData)
+        .map(Number)
+        .sort((a, b) => b - a)
+        .slice(0, 3);
+
+      // Crear estructura para cada trimestre
+      for (let quarter = 1; quarter <= 4; quarter++) {
+        const quarterData = {
+          trimestre: `Trim ${quarter}`,
+        };
+
+        years.forEach((year) => {
+          quarterData[`año${year}`] = groupedData[year]?.[quarter] || 0;
+        });
+
+        result.push(quarterData);
+      }
+
+      return result;
+    } catch (error) {
+      console.error("Error en getEventsByQuarter:", error);
+      throw error;
+    }
   }
 
   /**
