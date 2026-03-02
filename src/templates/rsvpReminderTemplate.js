@@ -59,15 +59,29 @@ export function getRSVPReminderHTML(data) {
               
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                 <tr>
-                  <td align="center" style="padding: 0 10px;">
-                    <a href="${confirmUrl}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 6px; font-size: 16px; font-weight: bold;">
-                      ✓ Confirmar Asistencia
-                    </a>
+                  <td align="center" style="padding: 10px;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="background-color: #10b981; border-radius: 8px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
+                          <a href="${confirmUrl}" style="display: inline-block; color: #ffffff; text-decoration: none; padding: 16px 50px; font-size: 16px; font-weight: bold; border-radius: 8px;">
+                            ✓ Confirmar Asistencia
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
-                  <td align="center" style="padding: 0 10px;">
-                    <a href="${declineUrl}" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 6px; font-size: 16px; font-weight: bold;">
-                      ✗ No Podré Asistir
-                    </a>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 10px;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="background-color: #ef4444; border-radius: 8px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);">
+                          <a href="${declineUrl}" style="display: inline-block; color: #ffffff; text-decoration: none; padding: 16px 50px; font-size: 16px; font-weight: bold; border-radius: 8px;">
+                            ✗ No Podré Asistir
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>

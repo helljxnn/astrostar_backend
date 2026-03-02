@@ -68,33 +68,40 @@ export function getRSVPInvitationHTML(data) {
               <!-- Buttons -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                 <tr>
-                  <td align="center" style="padding: 0 10px;">
-                    <a href="${confirmUrl}" style="display: inline-block; background-color: #10b981; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 6px; font-size: 16px; font-weight: bold;">
-                      ✓ Confirmar Asistencia
-                    </a>
+                  <td align="center" style="padding: 10px;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="background-color: #10b981; border-radius: 8px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
+                          <a href="${confirmUrl}" style="display: inline-block; color: #ffffff; text-decoration: none; padding: 16px 50px; font-size: 16px; font-weight: bold; border-radius: 8px;">
+                            ✓ Confirmar Asistencia
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
-                  <td align="center" style="padding: 0 10px;">
-                    <a href="${declineUrl}" style="display: inline-block; background-color: #ef4444; color: #ffffff; text-decoration: none; padding: 15px 40px; border-radius: 6px; font-size: 16px; font-weight: bold;">
-                      ✗ No Podré Asistir
-                    </a>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 10px;">
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="background-color: #ef4444; border-radius: 8px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);">
+                          <a href="${declineUrl}" style="display: inline-block; color: #ffffff; text-decoration: none; padding: 16px 50px; font-size: 16px; font-weight: bold; border-radius: 8px;">
+                            ✗ No Podré Asistir
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
               
-              <!-- Alternative Links -->
-              <p style="color: #999999; font-size: 12px; line-height: 1.6; margin: 20px 0; text-align: center;">
-                Si los botones no funcionan, copia y pega estos enlaces en tu navegador:<br>
-                <strong>Confirmar:</strong> ${confirmUrl}<br>
-                <strong>Declinar:</strong> ${declineUrl}
-              </p>
-              
               <!-- Calendar -->
-              <div style="text-align: center; margin: 30px 0;">
-                <p style="color: #666666; font-size: 14px; margin: 0 0 10px;">
+              <div style="background-color: #f0f9ff; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center;">
+                <p style="color: #0369a1; font-size: 15px; margin: 0 0 8px; font-weight: 600;">
                   📆 Agrega este evento a tu calendario
                 </p>
-                <p style="color: #999999; font-size: 12px;">
-                  (El archivo .ics está adjunto a este correo)
+                <p style="color: #64748b; font-size: 13px; margin: 0;">
+                  El archivo .ics está adjunto a este correo
                 </p>
               </div>
             </td>

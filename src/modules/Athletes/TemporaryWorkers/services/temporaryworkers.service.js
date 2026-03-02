@@ -1,4 +1,4 @@
-import { TemporaryWorkersRepository } from '../repository/temporaryworkers.repository.js';
+import { TemporaryWorkersRepository } from "../repository/temporaryworkers.repository.js";
 
 export class TemporaryWorkersService {
   constructor() {
@@ -13,7 +13,7 @@ export class TemporaryWorkersService {
       const result = await this.temporaryWorkersRepository.findAll(filters);
       return result;
     } catch (error) {
-      console.error('Error in getAllTemporaryWorkers service:', error);
+      console.error("Error in getAllTemporaryWorkers service:", error);
       throw error;
     }
   }
@@ -23,22 +23,23 @@ export class TemporaryWorkersService {
    */
   async getTemporaryWorkerById(id) {
     try {
-      const temporaryWorker = await this.temporaryWorkersRepository.findById(id);
-      
+      const temporaryWorker =
+        await this.temporaryWorkersRepository.findById(id);
+
       if (!temporaryWorker) {
         return {
           success: false,
           statusCode: 404,
-          message: 'Persona temporal no encontrada.'
+          message: "Persona temporal no encontrada.",
         };
       }
 
       return {
         success: true,
-        data: temporaryWorker
+        data: temporaryWorker,
       };
     } catch (error) {
-      console.error('Error in getTemporaryWorkerById service:', error);
+      console.error("Error in getTemporaryWorkerById service:", error);
       throw error;
     }
   }
@@ -68,15 +69,16 @@ export class TemporaryWorkersService {
       // Mapear campos del frontend al backend
       const mappedData = this.mapFrontendToBackend(data);
 
-      const temporaryWorker = await this.temporaryWorkersRepository.create(mappedData);
+      const temporaryWorker =
+        await this.temporaryWorkersRepository.create(mappedData);
 
       return {
         success: true,
         data: temporaryWorker,
-        message: `Persona temporal '${temporaryWorker.firstName} ${temporaryWorker.lastName}' creada exitosamente.`
+        message: `Persona temporal '${temporaryWorker.firstName} ${temporaryWorker.lastName}' creada exitosamente.`,
       };
     } catch (error) {
-      console.error('Error in createTemporaryWorker service:', error);
+      console.error("Error in createTemporaryWorker service:", error);
       throw error;
     }
   }
@@ -92,7 +94,7 @@ export class TemporaryWorkersService {
         return {
           success: false,
           statusCode: 404,
-          message: 'Persona temporal no encontrada.'
+          message: "Persona temporal no encontrada.",
         };
       }
 
@@ -113,15 +115,18 @@ export class TemporaryWorkersService {
       // Mapear campos del frontend al backend
       const mappedData = this.mapFrontendToBackend(data);
 
-      const updatedWorker = await this.temporaryWorkersRepository.update(id, mappedData);
+      const updatedWorker = await this.temporaryWorkersRepository.update(
+        id,
+        mappedData,
+      );
 
       return {
         success: true,
         data: updatedWorker,
-        message: `Persona temporal '${updatedWorker.firstName} ${updatedWorker.lastName}' actualizada exitosamente.`
+        message: `Persona temporal '${updatedWorker.firstName} ${updatedWorker.lastName}' actualizada exitosamente.`,
       };
     } catch (error) {
-      console.error('Error in updateTemporaryWorker service:', error);
+      console.error("Error in updateTemporaryWorker service:", error);
       throw error;
     }
   }
@@ -136,7 +141,7 @@ export class TemporaryWorkersService {
         return {
           success: false,
           statusCode: 404,
-          message: 'Persona temporal no encontrada.'
+          message: "Persona temporal no encontrada.",
         };
       }
 
@@ -147,10 +152,10 @@ export class TemporaryWorkersService {
 
       return {
         success: true,
-        message: `La persona temporal '${personName}' ha sido eliminada permanentemente.`
+        message: `La persona temporal '${personName}' ha sido eliminada permanentemente.`,
       };
     } catch (error) {
-      console.error('Error in deleteTemporaryWorker service:', error);
+      console.error("Error in deleteTemporaryWorker service:", error);
       throw error;
     }
   }
@@ -163,10 +168,10 @@ export class TemporaryWorkersService {
       const stats = await this.temporaryWorkersRepository.getStats();
       return {
         success: true,
-        data: stats
+        data: stats,
       };
     } catch (error) {
-      console.error('Error in getTemporaryWorkerStats service:', error);
+      console.error("Error in getTemporaryWorkerStats service:", error);
       throw error;
     }
   }
@@ -179,10 +184,10 @@ export class TemporaryWorkersService {
       const data = await this.temporaryWorkersRepository.getReferenceData();
       return {
         success: true,
-        data
+        data,
       };
     } catch (error) {
-      console.error('Error in getReferenceData service:', error);
+      console.error("Error in getReferenceData service:", error);
       throw error;
     }
   }
@@ -192,13 +197,19 @@ export class TemporaryWorkersService {
    */
   async checkIdentificationAvailability(identification, excludeId = null) {
     try {
-      const existing = await this.temporaryWorkersRepository.findByIdentification(identification, excludeId);
+      const existing =
+        await this.temporaryWorkersRepository.findByIdentification(
+          identification,
+          excludeId,
+        );
       return {
         available: !existing,
-        message: existing ? 'La identificación ya está en uso.' : 'Identificación disponible.'
+        message: existing
+          ? "La identificación ya está en uso."
+          : "Identificación disponible.",
       };
     } catch (error) {
-      console.error('Error in checkIdentificationAvailability service:', error);
+      console.error("Error in checkIdentificationAvailability service:", error);
       throw error;
     }
   }
@@ -208,13 +219,16 @@ export class TemporaryWorkersService {
    */
   async checkEmailAvailability(email, excludeId = null) {
     try {
-      const existing = await this.temporaryWorkersRepository.findByEmail(email, excludeId);
+      const existing = await this.temporaryWorkersRepository.findByEmail(
+        email,
+        excludeId,
+      );
       return {
         available: !existing,
-        message: existing ? 'El email ya está en uso.' : 'Email disponible.'
+        message: existing ? "El email ya está en uso." : "Email disponible.",
       };
     } catch (error) {
-      console.error('Error in checkEmailAvailability service:', error);
+      console.error("Error in checkEmailAvailability service:", error);
       throw error;
     }
   }
@@ -227,22 +241,31 @@ export class TemporaryWorkersService {
 
     // Validar identificación si se proporciona
     if (data.identification) {
-      const identificationExists = await this.temporaryWorkersRepository.findByIdentification(data.identification, excludeId);
+      const identificationExists =
+        await this.temporaryWorkersRepository.findByIdentification(
+          data.identification,
+          excludeId,
+        );
       if (identificationExists) {
-        errors.push('La identificación ya está en uso por otra persona temporal.');
+        errors.push(
+          "La identificación ya está en uso por otra persona temporal.",
+        );
       }
     }
 
     // Validar email si se proporciona
     if (data.email) {
-      const emailExists = await this.temporaryWorkersRepository.findByEmail(data.email, excludeId);
+      const emailExists = await this.temporaryWorkersRepository.findByEmail(
+        data.email,
+        excludeId,
+      );
       if (emailExists) {
-        errors.push('El email ya está en uso por otra persona temporal.');
+        errors.push("El email ya está en uso por otra persona temporal.");
       }
     }
 
     if (errors.length > 0) {
-      throw new Error(errors.join(' '));
+      throw new Error(errors.join(" "));
     }
   }
 
@@ -255,7 +278,10 @@ export class TemporaryWorkersService {
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
 
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
       age--;
     }
 
@@ -269,19 +295,19 @@ export class TemporaryWorkersService {
     const errors = [];
 
     if (!data.firstName || !data.firstName.trim()) {
-      errors.push('El nombre es requerido');
+      errors.push("El nombre es requerido");
     }
 
     if (!data.lastName || !data.lastName.trim()) {
-      errors.push('El apellido es requerido');
+      errors.push("El apellido es requerido");
     }
 
     if (!data.personType) {
-      errors.push('El tipo de persona es requerido');
+      errors.push("El tipo de persona es requerido");
     }
 
     if (errors.length > 0) {
-      throw new Error(errors.join('. '));
+      throw new Error(errors.join(". "));
     }
   }
 
@@ -293,78 +319,112 @@ export class TemporaryWorkersService {
 
     // Validar nombre
     if (data.firstName !== undefined) {
-      if (typeof data.firstName !== 'string' || data.firstName.length < 2 || data.firstName.length > 100) {
-        errors.push('El nombre debe tener entre 2 y 100 caracteres');
+      if (
+        typeof data.firstName !== "string" ||
+        data.firstName.length < 2 ||
+        data.firstName.length > 100
+      ) {
+        errors.push("El nombre debe tener entre 2 y 100 caracteres");
       }
       if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(data.firstName)) {
-        errors.push('El nombre solo puede contener letras y espacios');
+        errors.push("El nombre solo puede contener letras y espacios");
       }
     }
 
     // Validar apellido
     if (data.lastName !== undefined) {
-      if (typeof data.lastName !== 'string' || data.lastName.length < 2 || data.lastName.length > 100) {
-        errors.push('El apellido debe tener entre 2 y 100 caracteres');
+      if (
+        typeof data.lastName !== "string" ||
+        data.lastName.length < 2 ||
+        data.lastName.length > 100
+      ) {
+        errors.push("El apellido debe tener entre 2 y 100 caracteres");
       }
       if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(data.lastName)) {
-        errors.push('El apellido solo puede contener letras y espacios');
+        errors.push("El apellido solo puede contener letras y espacios");
       }
     }
 
     // Validar tipo de persona
     if (data.personType !== undefined) {
-      const validTypes = ['Deportista', 'Entrenador'];
+      const validTypes = ["Deportista", "Entrenador"];
       if (!validTypes.includes(data.personType)) {
-        errors.push('El tipo de persona debe ser: Deportista o Entrenador');
+        errors.push("El tipo de persona debe ser: Deportista o Entrenador");
       }
     }
 
     // Validar identificación
-    if (data.identification !== undefined && data.identification !== null && data.identification !== '') {
-      if (typeof data.identification !== 'string' || data.identification.length < 6 || data.identification.length > 50) {
-        errors.push('La identificación debe tener entre 6 y 50 caracteres');
+    if (
+      data.identification !== undefined &&
+      data.identification !== null &&
+      data.identification !== ""
+    ) {
+      if (
+        typeof data.identification !== "string" ||
+        data.identification.length < 6 ||
+        data.identification.length > 50
+      ) {
+        errors.push("La identificación debe tener entre 6 y 50 caracteres");
       }
       if (!/^[a-zA-Z0-9\-]+$/.test(data.identification)) {
-        errors.push('La identificación solo puede contener letras, números y guiones');
+        errors.push(
+          "La identificación solo puede contener letras, números y guiones",
+        );
       }
     }
 
     // Validar email
-    if (data.email !== undefined && data.email !== null && data.email !== '') {
+    if (data.email !== undefined && data.email !== null && data.email !== "") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(data.email)) {
-        errors.push('El formato del email no es válido');
+        errors.push("El formato del email no es válido");
       }
       if (data.email.length > 150) {
-        errors.push('El email no puede exceder 150 caracteres');
+        errors.push("El email no puede exceder 150 caracteres");
       }
     }
 
     // Validar teléfono
-    if (data.phone !== undefined && data.phone !== null && data.phone !== '') {
+    if (data.phone !== undefined && data.phone !== null && data.phone !== "") {
       if (!/^[0-9\s\-\+\(\)]+$/.test(data.phone)) {
-        errors.push('El teléfono solo puede contener números, espacios, guiones, paréntesis y el signo +');
+        errors.push(
+          "El teléfono solo puede contener números, espacios, guiones, paréntesis y el signo +",
+        );
       }
       if (data.phone.length < 7 || data.phone.length > 20) {
-        errors.push('El teléfono debe tener entre 7 y 20 caracteres');
+        errors.push("El teléfono debe tener entre 7 y 20 caracteres");
       }
     }
 
     // Validar fecha de nacimiento
-    if (data.birthDate !== undefined && data.birthDate !== null && data.birthDate !== '') {
+    if (
+      data.birthDate !== undefined &&
+      data.birthDate !== null &&
+      data.birthDate !== ""
+    ) {
       const birthDate = new Date(data.birthDate);
       if (isNaN(birthDate.getTime())) {
-        errors.push('La fecha de nacimiento debe tener un formato válido');
+        errors.push("La fecha de nacimiento debe tener un formato válido");
       } else {
         const today = new Date();
-        const minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate());
-        const maxDate = new Date(today.getFullYear() - 5, today.getMonth(), today.getDate());
+        const minDate = new Date(
+          today.getFullYear() - 100,
+          today.getMonth(),
+          today.getDate(),
+        );
+        const maxDate = new Date(
+          today.getFullYear() - 5,
+          today.getMonth(),
+          today.getDate(),
+        );
 
         if (birthDate < minDate) {
-          errors.push('La fecha de nacimiento no puede ser anterior a 120 años');
+          errors.push(
+            "La fecha de nacimiento no puede ser anterior a 100 años",
+          );
         }
         if (birthDate > maxDate) {
-          errors.push('La persona debe tener al menos 5 años de edad');
+          errors.push("La persona debe tener al menos 5 años de edad");
         }
       }
     }
@@ -372,37 +432,45 @@ export class TemporaryWorkersService {
     // Validar edad
     if (data.age !== undefined && data.age !== null) {
       const age = parseInt(data.age);
-      if (isNaN(age) || age < 5 || age > 120) {
-        errors.push('La edad debe estar entre 5 y 120 años');
+      if (isNaN(age) || age < 5 || age > 100) {
+        errors.push("La edad debe estar entre 5 y 100 años");
       }
     }
 
     // Validar dirección
-    if (data.address !== undefined && data.address !== null && data.address !== '') {
+    if (
+      data.address !== undefined &&
+      data.address !== null &&
+      data.address !== ""
+    ) {
       if (data.address.length > 200) {
-        errors.push('La dirección no puede exceder 200 caracteres');
+        errors.push("La dirección no puede exceder 200 caracteres");
       }
     }
 
     // Validar equipo
-    if (data.team !== undefined && data.team !== null && data.team !== '') {
+    if (data.team !== undefined && data.team !== null && data.team !== "") {
       if (data.team.length > 100) {
-        errors.push('El nombre del equipo no puede exceder 100 caracteres');
+        errors.push("El nombre del equipo no puede exceder 100 caracteres");
       }
     }
 
     // Validar categoría
-    if (data.category !== undefined && data.category !== null && data.category !== '') {
+    if (
+      data.category !== undefined &&
+      data.category !== null &&
+      data.category !== ""
+    ) {
       if (data.category.length > 100) {
-        errors.push('La categoría no puede exceder 100 caracteres');
+        errors.push("La categoría no puede exceder 100 caracteres");
       }
     }
 
     // Validar estado
     if (data.status !== undefined) {
-      const validStatuses = ['Active', 'Inactive'];
+      const validStatuses = ["Active", "Inactive"];
       if (!validStatuses.includes(data.status)) {
-        errors.push('El estado debe ser Active o Inactive');
+        errors.push("El estado debe ser Active o Inactive");
       }
     }
 
@@ -410,12 +478,12 @@ export class TemporaryWorkersService {
     if (data.documentTypeId !== undefined && data.documentTypeId !== null) {
       const docTypeId = parseInt(data.documentTypeId);
       if (isNaN(docTypeId) || docTypeId < 1) {
-        errors.push('El tipo de documento debe ser un número válido');
+        errors.push("El tipo de documento debe ser un número válido");
       }
     }
 
     if (errors.length > 0) {
-      throw new Error(errors.join('. '));
+      throw new Error(errors.join(". "));
     }
   }
 
@@ -426,32 +494,57 @@ export class TemporaryWorkersService {
     const errors = [];
 
     // Obtener datos actuales (para actualizaciones)
-    const currentPersonType = data.personType || (existingData ? existingData.personType : null);
-    const currentTeam = data.team !== undefined ? data.team : (existingData ? existingData.team : null);
-    const currentCategory = data.category !== undefined ? data.category : (existingData ? existingData.category : null);
+    const currentPersonType =
+      data.personType || (existingData ? existingData.personType : null);
+    const currentTeam =
+      data.team !== undefined
+        ? data.team
+        : existingData
+          ? existingData.team
+          : null;
+    const currentCategory =
+      data.category !== undefined
+        ? data.category
+        : existingData
+          ? existingData.category
+          : null;
 
     // Validar coherencia entre fecha de nacimiento y edad
     if (data.birthDate && data.age) {
       const calculatedAge = this.calculateAge(data.birthDate);
       if (Math.abs(calculatedAge - parseInt(data.age)) > 1) {
-        errors.push('La edad proporcionada no coincide con la fecha de nacimiento');
+        errors.push(
+          "La edad proporcionada no coincide con la fecha de nacimiento",
+        );
       }
     }
 
     // Validar que si se especifica equipo o categoría, no estén vacíos
-    if (currentTeam !== null && currentTeam !== undefined && currentTeam.trim() === '') {
-      errors.push('Si se especifica un equipo, no puede estar vacío');
+    if (
+      currentTeam !== null &&
+      currentTeam !== undefined &&
+      currentTeam.trim() === ""
+    ) {
+      errors.push("Si se especifica un equipo, no puede estar vacío");
     }
 
-    if (currentCategory !== null && currentCategory !== undefined && currentCategory.trim() === '') {
-      errors.push('Si se especifica una categoría, no puede estar vacía');
+    if (
+      currentCategory !== null &&
+      currentCategory !== undefined &&
+      currentCategory.trim() === ""
+    ) {
+      errors.push("Si se especifica una categoría, no puede estar vacía");
     }
 
     // Validar que deportistas y entrenadores menores de edad tengan información adicional
-    if ((currentPersonType === 'Deportista' || currentPersonType === 'Entrenador')) {
+    if (
+      currentPersonType === "Deportista" ||
+      currentPersonType === "Entrenador"
+    ) {
       const age = data.age || (existingData ? existingData.age : null);
-      const birthDate = data.birthDate || (existingData ? existingData.birthDate : null);
-      
+      const birthDate =
+        data.birthDate || (existingData ? existingData.birthDate : null);
+
       let calculatedAge = age;
       if (birthDate && !age) {
         calculatedAge = this.calculateAge(birthDate);
@@ -464,7 +557,7 @@ export class TemporaryWorkersService {
     }
 
     if (errors.length > 0) {
-      throw new Error(errors.join('. '));
+      throw new Error(errors.join(". "));
     }
   }
 
@@ -475,46 +568,67 @@ export class TemporaryWorkersService {
     const backendData = {};
 
     // Mapeo de campos
-    if (frontendData.firstName) backendData.firstName = frontendData.firstName.trim();
-    if (frontendData.middleName) backendData.middleName = frontendData.middleName.trim();
-    if (frontendData.lastName) backendData.lastName = frontendData.lastName.trim();
-    if (frontendData.secondLastName) backendData.secondLastName = frontendData.secondLastName.trim();
-    if (frontendData.identification) backendData.identification = frontendData.identification.trim();
-    if (frontendData.email) backendData.email = frontendData.email.toLowerCase().trim();
+    if (frontendData.firstName)
+      backendData.firstName = frontendData.firstName.trim();
+    if (frontendData.middleName)
+      backendData.middleName = frontendData.middleName.trim();
+    if (frontendData.lastName)
+      backendData.lastName = frontendData.lastName.trim();
+    if (frontendData.secondLastName)
+      backendData.secondLastName = frontendData.secondLastName.trim();
+    if (frontendData.identification)
+      backendData.identification = frontendData.identification.trim();
+    if (frontendData.email)
+      backendData.email = frontendData.email.toLowerCase().trim();
     if (frontendData.phone) backendData.phone = frontendData.phone.trim();
-    if (frontendData.birthDate) backendData.birthDate = new Date(frontendData.birthDate);
-    if (frontendData.age !== undefined) backendData.age = parseInt(frontendData.age);
+    if (frontendData.birthDate)
+      backendData.birthDate = new Date(frontendData.birthDate);
+    if (frontendData.age !== undefined)
+      backendData.age = parseInt(frontendData.age);
     if (frontendData.address) backendData.address = frontendData.address.trim();
-    if (frontendData.team !== undefined) backendData.team = frontendData.team ? frontendData.team.trim() : null;
-    if (frontendData.category !== undefined) backendData.category = frontendData.category ? frontendData.category.trim() : null;
+    if (frontendData.team !== undefined)
+      backendData.team = frontendData.team ? frontendData.team.trim() : null;
+    if (frontendData.category !== undefined)
+      backendData.category = frontendData.category
+        ? frontendData.category.trim()
+        : null;
     if (frontendData.status) backendData.status = frontendData.status;
-    if (frontendData.documentTypeId) backendData.documentTypeId = parseInt(frontendData.documentTypeId);
-    if (frontendData.personType) backendData.personType = frontendData.personType;
+    if (frontendData.documentTypeId)
+      backendData.documentTypeId = parseInt(frontendData.documentTypeId);
+    if (frontendData.personType)
+      backendData.personType = frontendData.personType;
 
     // Mapeo de campos del modal actual (compatibilidad)
     if (frontendData.nombre && !backendData.firstName) {
-      const nombres = frontendData.nombre.split(' ');
+      const nombres = frontendData.nombre.split(" ");
       backendData.firstName = nombres[0];
       if (nombres.length > 1) {
-        backendData.lastName = nombres.slice(1).join(' ');
+        backendData.lastName = nombres.slice(1).join(" ");
       }
     }
-    if (frontendData.apellido && !backendData.lastName) backendData.lastName = frontendData.apellido;
-    if (frontendData.telefono && !backendData.phone) backendData.phone = frontendData.telefono;
-    if (frontendData.fechaNacimiento && !backendData.birthDate) backendData.birthDate = new Date(frontendData.fechaNacimiento);
+    if (frontendData.apellido && !backendData.lastName)
+      backendData.lastName = frontendData.apellido;
+    if (frontendData.telefono && !backendData.phone)
+      backendData.phone = frontendData.telefono;
+    if (frontendData.fechaNacimiento && !backendData.birthDate)
+      backendData.birthDate = new Date(frontendData.fechaNacimiento);
     if (frontendData.tipoPersona && !backendData.personType) {
       // Mapear tipos del frontend al backend
       const typeMap = {
-        'Deportista': 'Deportista',
-        'Entrenador': 'Entrenador'
+        Deportista: "Deportista",
+        Entrenador: "Entrenador",
       };
-      backendData.personType = typeMap[frontendData.tipoPersona] || frontendData.tipoPersona;
+      backendData.personType =
+        typeMap[frontendData.tipoPersona] || frontendData.tipoPersona;
     }
     if (frontendData.estado && !backendData.status) {
-      backendData.status = frontendData.estado === 'Activo' ? 'Active' : 'Inactive';
+      backendData.status =
+        frontendData.estado === "Activo" ? "Active" : "Inactive";
     }
-    if (frontendData.equipo !== undefined && !backendData.team) backendData.team = frontendData.equipo;
-    if (frontendData.categoria !== undefined && !backendData.category) backendData.category = frontendData.categoria;
+    if (frontendData.equipo !== undefined && !backendData.team)
+      backendData.team = frontendData.equipo;
+    if (frontendData.categoria !== undefined && !backendData.category)
+      backendData.category = frontendData.categoria;
 
     return backendData;
   }

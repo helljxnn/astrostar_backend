@@ -124,7 +124,7 @@ export class EmployeeEmailService extends BaseEmailService {
             <ol>
                 <li>Inicia sesión con tu correo y contraseña</li>
                 <li><strong>Cambia tu contraseña inmediatamente</strong> por una segura y personal</li>
-                <li>Completa tu perfil si es necesario</li>
+                <li>Edita tu perfil si es necesario</li>
                 <li>Familiarízate con el sistema</li>
             </ol>
             
@@ -168,7 +168,7 @@ IMPORTANTE - SEGURIDAD:
 PRÓXIMOS PASOS:
 1. Inicia sesión con tu correo y contraseña
 2. CAMBIA TU CONTRASEÑA INMEDIATAMENTE por una segura y personal
-3. Completa tu perfil si es necesario
+3. Edita tu perfil si es necesario
 4. Familiarízate con el sistema
 
 Accede al sistema en: ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
