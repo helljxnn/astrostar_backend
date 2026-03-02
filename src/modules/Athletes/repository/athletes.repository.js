@@ -565,22 +565,14 @@ export class AthletesRepository {
     const skip = (page - 1) * limit;
     const where = {};
 
-    if (search) {
-      where.user = {
-        OR: [
-          { firstName: { contains: search, mode: "insensitive" } },
-          { lastName: { contains: search, mode: "insensitive" } },
-          { identification: { contains: search, mode: "insensitive" } },
-          { email: { contains: search, mode: "insensitive" } },
-        ],
-      };
-    }
-
-    if (status) {
+    // NO aplicar filtros de búsqueda en el where si hay término de búsqueda
+    // Traer todo y filtrar en memoria para poder buscar en categoría y estado
+    
+    if (status && !search) {
       where.status = status === "Activo" ? "Active" : "Inactive";
     }
 
-    if (estadoInscripcion) {
+    if (estadoInscripcion && !search) {
       const statusMap = {
         Vigente: "Active",
         Suspendida: "Suspended",
@@ -589,62 +581,113 @@ export class AthletesRepository {
       where.currentInscriptionStatus = statusMap[estadoInscripcion];
     }
 
-    const [athletes, total] = await Promise.all([
-      prisma.athlete.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          user: {
-            include: {
-              documentType: true,
-            },
-          },
-          guardian: {
-            include: {
-              documentType: true,
-            },
-          },
-          inscriptions: {
-            include: {
-              sportsCategory: true,
-            },
-            orderBy: { inscriptionDate: "desc" },
-          },
-          enrollments: {
-            orderBy: { fechaMatricula: "desc" },
+    // Si hay búsqueda, traer TODOS los registros sin filtro
+    const shouldFetchAll = !!search;
+    
+    const athletes = await prisma.athlete.findMany({
+      where,
+      skip: shouldFetchAll ? undefined : skip,
+      take: shouldFetchAll ? undefined : limit,
+      include: {
+        user: {
+          include: {
+            documentType: true,
           },
         },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.athlete.count({ where }),
-    ]);
+        guardian: {
+          include: {
+            documentType: true,
+          },
+        },
+        inscriptions: {
+          include: {
+            sportsCategory: true,
+          },
+          orderBy: { inscriptionDate: "desc" },
+        },
+        enrollments: {
+          orderBy: { fechaMatricula: "desc" },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
 
-    // Filtrar por categoría si se proporciona
+    // Filtrar en memoria si hay búsqueda
     let filteredAthletes = athletes;
-    if (categoria) {
+    
+    if (search) {
+      // Normalizar el término de búsqueda (eliminar espacios extras)
+      const searchLower = search.toLowerCase().trim().replace(/\s+/g, ' ');
+      
+      // Dividir el término de búsqueda en palabras individuales
+      const searchWords = searchLower.split(' ');
+      
       filteredAthletes = athletes.filter((athlete) => {
+        const user = athlete.user;
+        const guardian = athlete.guardian;
+        const currentInscription = athlete.inscriptions[0];
+        const categoryName = currentInscription?.sportsCategory?.nombre || "";
+        const athleteStatus = athlete.status === "Active" ? "activo" : "inactivo";
+        
+        // Concatenar nombre completo para búsqueda con espacios
+        const fullName = [
+          user?.firstName,
+          user?.middleName,
+          user?.lastName,
+          user?.secondLastName
+        ].filter(Boolean).join(' ').toLowerCase();
+        
+        const guardianFullName = [
+          guardian?.firstName,
+          guardian?.lastName
+        ].filter(Boolean).join(' ').toLowerCase();
+        
+        // Búsqueda EXACTA para el estado (para evitar que "activo" encuentre "inactivo")
+        const matchesStatus = athleteStatus === searchLower;
+        
+        // Búsqueda por palabras individuales: TODAS las palabras deben estar presentes
+        const matchesAllWords = searchWords.every(word => 
+          fullName.includes(word) ||
+          guardianFullName.includes(word) ||
+          user?.identification?.toLowerCase().includes(word) ||
+          user?.email?.toLowerCase().includes(word) ||
+          user?.phoneNumber?.toLowerCase().includes(word) ||
+          user?.address?.toLowerCase().includes(word) ||
+          guardian?.identification?.toLowerCase().includes(word) ||
+          categoryName.toLowerCase().includes(word)
+        );
+        
+        return matchesStatus || matchesAllWords;
+      });
+    }
+    
+    // Filtro adicional por categoría específica (del filtro dropdown)
+    if (categoria) {
+      filteredAthletes = filteredAthletes.filter((athlete) => {
         const currentInscription = athlete.inscriptions[0];
         return currentInscription?.sportsCategory?.nombre === categoria;
       });
     }
+    
+    // Aplicar paginación manual si se trajo todo
+    const paginatedAthletes = shouldFetchAll 
+      ? filteredAthletes.slice(skip, skip + limit)
+      : filteredAthletes;
 
-    const transformedAthletes = filteredAthletes.map((athlete) =>
+    const transformedAthletes = paginatedAthletes.map((athlete) =>
       this.transformToFrontend(athlete)
     );
+
+    const finalTotal = shouldFetchAll ? filteredAthletes.length : athletes.length;
 
     return {
       athletes: transformedAthletes,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: categoria ? filteredAthletes.length : total,
-        totalPages: Math.ceil(
-          (categoria ? filteredAthletes.length : total) / limit
-        ),
-        hasNext:
-          page <
-          Math.ceil((categoria ? filteredAthletes.length : total) / limit),
+        total: finalTotal,
+        totalPages: Math.ceil(finalTotal / limit),
+        hasNext: page < Math.ceil(finalTotal / limit),
         hasPrev: page > 1,
       },
     };

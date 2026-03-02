@@ -168,7 +168,7 @@ export const preRegistrationsService = {
       message = 'Este documento ya está inscrito';
       location = 'preRegistration';
     } else if (existingUser) {
-      message = 'Este documento ya está matriculado';
+      message = 'Este documento ya está registrado en el sistema';
       location = 'user';
     }
 
@@ -212,7 +212,7 @@ export const preRegistrationsService = {
       message = 'Este email ya está inscrito';
       location = 'preRegistration';
     } else if (existingUser) {
-      message = 'Este email ya está matriculado';
+      message = 'Este email ya está registrado en el sistema';
       location = 'user';
     }
 
