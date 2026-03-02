@@ -1,6 +1,6 @@
 import cron from "node-cron";
 import prisma from "../config/database.js";
-import emailService from "../services/emailService.js";
+import eventEmailService from "../modules/Events/services/EventEmailService.js";
 
 /**
  * Job para enviar recordatorios de RSVP
@@ -22,14 +22,14 @@ export function startRSVPReminderJob() {
 
       if (!exists) {
         console.warn(
-          "⚠️ [RSVP Job] Tabla event_invitations no existe. Omitiendo job. Ejecuta migraciones si necesitas RSVP."
+          "⚠️ [RSVP Job] Tabla event_invitations no existe. Omitiendo job. Ejecuta migraciones si necesitas RSVP.",
         );
         return;
       }
 
       if (!prisma?.eventInvitation?.findMany) {
         console.warn(
-          "⚠️ [RSVP Job] Prisma client no tiene el modelo eventInvitation. Ejecuta `npm run prisma:generate` (tras detener el backend) para regenerar el cliente."
+          "⚠️ [RSVP Job] Prisma client no tiene el modelo eventInvitation. Ejecuta `npm run prisma:generate` (tras detener el backend) para regenerar el cliente.",
         );
         return;
       }
@@ -76,12 +76,16 @@ export function startRSVPReminderJob() {
 
           // Enviar recordatorio según el estado
           if (invitation.status === "PENDING") {
-            await emailService.sendRSVPReminder(invitation, event, participant);
+            await eventEmailService.sendRSVPReminder(
+              invitation,
+              event,
+              participant,
+            );
             console.log(
               `✅ [RSVP Job] Recordatorio PENDING enviado: ${invitation.recipientEmail}`,
             );
           } else if (invitation.status === "CONFIRMED") {
-            await emailService.sendConfirmedEventReminder(
+            await eventEmailService.sendConfirmedEventReminder(
               invitation,
               event,
               participant,

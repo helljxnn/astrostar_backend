@@ -7,7 +7,11 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
 export class DonationsService {
   async list(params) {
-    return DonationsRepository.findAll(params);
+    const resolved = {
+      ...params,
+      serviceId: params?.serviceId || params?.eventId || undefined,
+    };
+    return DonationsRepository.findAll(resolved);
   }
 
   async getById(id) {
@@ -23,12 +27,20 @@ export class DonationsService {
   }
 
   async create(payload) {
-    const data = await DonationsRepository.create(payload);
+    const resolved = {
+      ...payload,
+      serviceId: payload?.serviceId || payload?.eventId || null,
+    };
+    const data = await DonationsRepository.create(resolved);
     return { success: true, data };
   }
 
   async update(id, payload) {
-    const data = await DonationsRepository.update(id, payload);
+    const resolved = {
+      ...payload,
+      serviceId: payload?.serviceId || payload?.eventId || undefined,
+    };
+    const data = await DonationsRepository.update(id, resolved);
     return { success: true, data };
   }
 

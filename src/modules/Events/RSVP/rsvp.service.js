@@ -1,5 +1,5 @@
 import { RSVPRepository } from "./rsvp.repository.js";
-import emailService from "../../../services/emailService.js";
+import eventEmailService from "../services/EventEmailService.js";
 import { generateRSVPToken } from "../../../utils/tokenGenerator.js";
 import { generateICS } from "../../../utils/icsGenerator.js";
 import prisma from "../../../config/database.js";
@@ -97,7 +97,7 @@ export class RSVPService {
       const icsContent = generateICS(participant.service, invitation);
 
       // Enviar email
-      const emailResult = await emailService.sendRSVPInvitation(
+      const emailResult = await eventEmailService.sendRSVPInvitation(
         invitation,
         participant.service,
         participant,
@@ -258,7 +258,7 @@ export class RSVPService {
       );
 
       // Reenviar email
-      const emailResult = await emailService.sendRSVPInvitation(
+      const emailResult = await eventEmailService.sendRSVPInvitation(
         invitation,
         invitation.participant.service,
         invitation.participant,

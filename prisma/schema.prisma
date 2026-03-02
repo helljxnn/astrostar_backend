@@ -299,11 +299,30 @@ model PasswordResetToken {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.Text
+  attempts  Int      @default(0)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+model PasswordResetAttempt {
+  id           Int       @id @default(autoincrement())
+  email        String    @db.VarChar(255)
+  ipAddress    String    @map("ip_address") @db.VarChar(45)
+  userAgent    String?   @map("user_agent") @db.Text
+  success      Boolean   @default(false)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  blockedUntil DateTime? @map("blocked_until")
+
+  @@index([email])
+  @@index([ipAddress])
+  @@index([createdAt])
+  @@index([blockedUntil])
+  @@map("password_reset_attempts")
 }
 
 model EmailVerificationToken {
@@ -314,6 +333,9 @@ model EmailVerificationToken {
   expiresAt DateTime
   used      Boolean  @default(false)
   createdAt DateTime @default(now())
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.Text
+  attempts  Int      @default(0)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
@@ -427,25 +449,32 @@ model EmployeeScheduleNovelty {
 }
 
 model Appointment {
-  id              Int            @id @default(autoincrement())
-  athleteId       Int
-  specialistId    Int
-  appointmentDate DateTime
-  startTime       String
-  endTime         String
-  specialty       String
-  description     String?
-  status          ScheduleStatus @default(Programado)
-  cancelReason    String?
-  conclusion      String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  athlete         Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  specialist      Employee       @relation(fields: [specialistId], references: [id], onDelete: Cascade)
+  id                      Int            @id @default(autoincrement())
+  athleteId               Int
+  specialistId            Int
+  appointmentDate         DateTime
+  startTime               String
+  endTime                 String
+  specialty               String
+  description             String?
+  status                  ScheduleStatus @default(Programado)
+  cancelReason            String?
+  conclusion              String?
+  needsReschedule         Boolean        @default(false)
+  rescheduleProposedDate  DateTime?
+  rescheduleProposedStart String?
+  rescheduleProposedEnd   String?
+  rescheduleStatus        String? // 'pending', 'accepted', 'rejected'
+  rescheduleToken         String?        @unique
+  createdAt               DateTime       @default(now())
+  updatedAt               DateTime       @updatedAt
+  athlete                 Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  specialist              Employee       @relation(fields: [specialistId], references: [id], onDelete: Cascade)
 
   @@index([athleteId, appointmentDate])
   @@index([specialistId, appointmentDate])
   @@index([status])
+  @@index([rescheduleToken])
   @@map("appointments")
 }
 
@@ -742,6 +771,7 @@ model Service {
   ServiceSponsor          ServiceSponsor[]
   participants            Participant[]
   serviceSportsCategories ServiceSportsCategory[]
+  donations               Donation[]
 }
 
 model ServiceSponsor {
@@ -800,6 +830,7 @@ model Donation {
   id             Int                   @id @default(autoincrement())
   code           String                @unique
   donorSponsorId Int?
+  serviceId      Int?
   anonymous      Boolean               @default(false)
   type           DonationType
   status         DonationStatus        @default(Recibida)
@@ -812,12 +843,14 @@ model Donation {
   updatedAt      DateTime              @updatedAt
   deletedAt      DateTime?
   donorSponsor   Sponsor?              @relation(fields: [donorSponsorId], references: [id])
+  service        Service?              @relation(fields: [serviceId], references: [id])
   details        DonationDetail[]
   files          DonationFile[]
   transactions   DonationTransaction[]
 
   @@index([status, type, donationAt])
   @@index([donorSponsorId])
+  @@index([serviceId])
 }
 
 model DonationDetail {

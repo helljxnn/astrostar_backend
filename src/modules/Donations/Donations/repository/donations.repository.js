@@ -32,6 +32,7 @@ export class DonationsRepository {
       id: record.id,
       code: record.code,
       donorSponsorId: record.donorSponsorId,
+      serviceId: record.serviceId,
       anonymous: record.anonymous,
       type: record.type,
       status: record.status,
@@ -43,6 +44,16 @@ export class DonationsRepository {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       deletedAt: record.deletedAt,
+      event: record.service
+        ? {
+            id: record.service.id,
+            name: record.service.name,
+            status: record.service.status,
+            startDate: record.service.startDate,
+            endDate: record.service.endDate,
+            location: record.service.location,
+          }
+        : null,
       details: record.details || [],
       files: record.files || [],
       transactions: record.transactions || [],
@@ -66,6 +77,7 @@ export class DonationsRepository {
         data: {
           code,
           donorSponsorId: payload.donorSponsorId || null,
+          serviceId: payload.serviceId || null,
           anonymous: payload.anonymous || false,
           type: this.mapTypeToDb(payload.type),
           status: this.mapStatusToDb(payload.status),
@@ -106,7 +118,15 @@ export class DonationsRepository {
     return this.findById(created.id);
   }
 
-  async findAll({ page = 1, limit = 10, search = "", status, type, month }) {
+  async findAll({
+    page = 1,
+    limit = 10,
+    search = "",
+    status,
+    type,
+    month,
+    serviceId,
+  }) {
     const skip = (page - 1) * limit;
 
     const where = { deletedAt: null };
@@ -125,6 +145,7 @@ export class DonationsRepository {
 
     if (status) where.status = this.mapStatusToDb(status);
     if (type) where.type = this.mapTypeToDb(type);
+    if (serviceId) where.serviceId = Number(serviceId);
 
     if (month) {
       // month formato AAAA-MM
@@ -145,6 +166,16 @@ export class DonationsRepository {
         orderBy: { createdAt: "desc" },
         include: {
           donorSponsor: true,
+          service: {
+            select: {
+              id: true,
+              name: true,
+              status: true,
+              startDate: true,
+              endDate: true,
+              location: true,
+            },
+          },
           details: true,
           files: true,
           transactions: {
@@ -173,6 +204,16 @@ export class DonationsRepository {
       where: { id: parseInt(id) },
       include: {
         donorSponsor: true,
+        service: {
+          select: {
+            id: true,
+            name: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            location: true,
+          },
+        },
         details: true,
         files: true,
         transactions: {
@@ -193,6 +234,8 @@ export class DonationsRepository {
             payload.donorSponsorId !== undefined
               ? payload.donorSponsorId
               : undefined,
+          serviceId:
+            payload.serviceId !== undefined ? payload.serviceId : undefined,
           anonymous: payload.anonymous ?? undefined,
           type: payload.type ? this.mapTypeToDb(payload.type) : undefined,
           status: payload.status ? this.mapStatusToDb(payload.status) : undefined,
