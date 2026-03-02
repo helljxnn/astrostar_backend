@@ -1,13 +1,12 @@
-
-import { AppointmentRepository } from '../repository/AppointmentManagement.repository.js';
-import emailService from '../../../../services/emailService.js';
-import appointmentEmailService from './AppointmentEmail.service.js';
+import { AppointmentRepository } from "../repository/AppointmentManagement.repository.js";
+import emailService from "../../../../services/emailService.js";
+import appointmentEmailService from "./AppointmentEmail.service.js";
 
 const SPECIALTY_LABELS = {
-  psicologia: 'Psicología Deportiva',
-  fisioterapia: 'Fisioterapia',
-  nutricion: 'Nutrición',
-  medicina: 'Medicina Deportiva'
+  psicologia: "Psicología Deportiva",
+  fisioterapia: "Fisioterapia",
+  nutricion: "Nutrición",
+  medicina: "Medicina Deportiva",
 };
 
 export class AppointmentService {
@@ -24,65 +23,74 @@ export class AppointmentService {
   }
 
   formatDateKey(value) {
-    if (!value) return '';
+    if (!value) return "";
     const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('sv-SE');
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toLocaleDateString("sv-SE");
   }
 
   formatTime(value) {
-    if (!value) return '';
+    if (!value) return "";
     const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
+    if (Number.isNaN(date.getTime())) return "";
     return date.toTimeString().slice(0, 5);
   }
 
   normalizeText(value) {
-    return value ? String(value).trim().replace(/\s+/g, ' ') : '';
+    return value ? String(value).trim().replace(/\s+/g, " ") : "";
   }
 
   normalizeKey(value) {
     return value
       ? String(value)
           .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/[^a-z0-9]/g, '')
-      : '';
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "")
+      : "";
   }
 
   resolveSpecialtyKey(rawValue) {
     const key = this.normalizeKey(rawValue);
-    if (!key) return '';
-    if (key.includes('psicolog')) return 'psicologia';
-    if (key.includes('fisioterap') || key.includes('fisio')) return 'fisioterapia';
-    if (key.includes('nutric')) return 'nutricion';
-    if (key.includes('medic')) return 'medicina';
+    if (!key) return "";
+    if (key.includes("psicolog")) return "psicologia";
+    if (key.includes("fisioterap") || key.includes("fisio"))
+      return "fisioterapia";
+    if (key.includes("nutric")) return "nutricion";
+    if (key.includes("medic")) return "medicina";
     return key;
   }
 
   resolveSpecialtyLabel(key) {
-    return SPECIALTY_LABELS[key] || (key ? key.charAt(0).toUpperCase() + key.slice(1) : '');
+    return (
+      SPECIALTY_LABELS[key] ||
+      (key ? key.charAt(0).toUpperCase() + key.slice(1) : "")
+    );
   }
 
   parseDateTimePayload(data = {}) {
     let startValue = data.start || data.startDateTime || null;
     let endValue = data.end || data.endDateTime || null;
 
-    if ((!startValue || !endValue) && data.date && data.startTime && data.endTime) {
+    if (
+      (!startValue || !endValue) &&
+      data.date &&
+      data.startTime &&
+      data.endTime
+    ) {
       startValue = `${data.date}T${data.startTime}`;
       endValue = `${data.date}T${data.endTime}`;
     }
 
     if (!startValue || !endValue) {
-      throw new Error('Debe proporcionar la fecha y hora de inicio y fin.');
+      throw new Error("Debe proporcionar la fecha y hora de inicio y fin.");
     }
 
     const startDate = new Date(startValue);
     const endDate = new Date(endValue);
 
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      throw new Error('La fecha y hora de la cita no son válidas.');
+      throw new Error("La fecha y hora de la cita no son válidas.");
     }
 
     return { startDate, endDate };
@@ -90,7 +98,7 @@ export class AppointmentService {
 
   parseCustomRecurrence(value) {
     if (!value) return null;
-    if (typeof value === 'object') return value;
+    if (typeof value === "object") return value;
     try {
       return JSON.parse(value);
     } catch (error) {
@@ -98,10 +106,10 @@ export class AppointmentService {
     }
   }
 
-  normalizeFrequency(value = '') {
-    const frequency = String(value || '').toLowerCase();
-    if (frequency === 'año' || frequency === 'ano') return 'anio';
-    return frequency || 'semana';
+  normalizeFrequency(value = "") {
+    const frequency = String(value || "").toLowerCase();
+    if (frequency === "año" || frequency === "ano") return "anio";
+    return frequency || "semana";
   }
 
   isSameDate(first, second) {
@@ -113,7 +121,7 @@ export class AppointmentService {
 
   timeToMinutes(value) {
     if (!value) return null;
-    const [hours, minutes] = String(value).split(':');
+    const [hours, minutes] = String(value).split(":");
     const parsedHours = Number(hours);
     const parsedMinutes = Number(minutes);
     if (Number.isNaN(parsedHours) || Number.isNaN(parsedMinutes)) return null;
@@ -121,13 +129,18 @@ export class AppointmentService {
   }
 
   isTimeRangeOverlap(startA, endA, startB, endB) {
-    if ([startA, endA, startB, endB].some((value) => value === null)) return false;
+    if ([startA, endA, startB, endB].some((value) => value === null))
+      return false;
     return startA < endB && endA > startB;
   }
 
   getNoveltiesForDate(schedule, targetDate) {
-    const novelties = Array.isArray(schedule?.novelties) ? schedule.novelties : [];
-    return novelties.filter((novelty) => this.isSameDate(novelty?.date, targetDate));
+    const novelties = Array.isArray(schedule?.novelties)
+      ? schedule.novelties
+      : [];
+    return novelties.filter((novelty) =>
+      this.isSameDate(novelty?.date, targetDate),
+    );
   }
 
   isScheduleBlockedByNovelty(schedule, targetDate, startTime, endTime) {
@@ -139,8 +152,10 @@ export class AppointmentService {
     if (appointmentStart === null || appointmentEnd === null) return true;
 
     return novelties.some((novelty) => {
-      const type = this.normalizeKey(novelty?.type || novelty?.tipoCancelacion || 'full');
-      if (type === 'full') return true;
+      const type = this.normalizeKey(
+        novelty?.type || novelty?.tipoCancelacion || "full",
+      );
+      if (type === "full") return true;
       const noveltyStart = this.timeToMinutes(novelty?.startTime);
       const noveltyEnd = this.timeToMinutes(novelty?.endTime);
       if (noveltyStart === null || noveltyEnd === null) return true;
@@ -148,7 +163,7 @@ export class AppointmentService {
         appointmentStart,
         appointmentEnd,
         noveltyStart,
-        noveltyEnd
+        noveltyEnd,
       );
     });
   }
@@ -169,7 +184,9 @@ export class AppointmentService {
     const a = this.normalizeDateOnly(dateA);
     const b = this.normalizeDateOnly(dateB);
     if (!a || !b) return 0;
-    return (a.getFullYear() - b.getFullYear()) * 12 + (a.getMonth() - b.getMonth());
+    return (
+      (a.getFullYear() - b.getFullYear()) * 12 + (a.getMonth() - b.getMonth())
+    );
   }
 
   differenceInYears(dateA, dateB) {
@@ -184,14 +201,15 @@ export class AppointmentService {
     if (!custom) return false;
 
     const interval = Number(custom.interval) || 1;
-    const frequency = this.normalizeFrequency(custom.frequency || 'semana');
+    const frequency = this.normalizeFrequency(custom.frequency || "semana");
     const dias = Array.isArray(custom.dias) ? custom.dias : [];
-    const endType = custom.endType || '';
-    const endDateValue = endType === 'el'
-      ? custom.endDate
-      : endType === 'despues'
-        ? custom.afterDate
-        : custom.endDate || custom.afterDate;
+    const endType = custom.endType || "";
+    const endDateValue =
+      endType === "el"
+        ? custom.endDate
+        : endType === "despues"
+          ? custom.afterDate
+          : custom.endDate || custom.afterDate;
 
     if (endDateValue) {
       const limit = this.normalizeDateOnly(endDateValue);
@@ -204,31 +222,31 @@ export class AppointmentService {
       const daysDiff = this.differenceInDays(targetDate, baseDate);
       const weeksDiff = this.differenceInWeeks(targetDate, baseDate);
 
-      if (frequency === 'dia' && daysDiff % interval !== 0) return false;
-      if (frequency === 'semana' && weeksDiff % interval !== 0) return false;
-      if ((frequency === 'mes' || frequency === 'anio') && daysDiff % 7 !== 0) {
+      if (frequency === "dia" && daysDiff % interval !== 0) return false;
+      if (frequency === "semana" && weeksDiff % interval !== 0) return false;
+      if ((frequency === "mes" || frequency === "anio") && daysDiff % 7 !== 0) {
         return false;
       }
 
       return dias.includes(targetDate.getDay());
     }
 
-    if (frequency === 'dia') {
+    if (frequency === "dia") {
       return this.differenceInDays(targetDate, baseDate) % interval === 0;
     }
-    if (frequency === 'semana') {
+    if (frequency === "semana") {
       return (
         targetDate.getDay() === baseDate.getDay() &&
         this.differenceInWeeks(targetDate, baseDate) % interval === 0
       );
     }
-    if (frequency === 'mes') {
+    if (frequency === "mes") {
       return (
         targetDate.getDate() === baseDate.getDate() &&
         this.differenceInMonths(targetDate, baseDate) % interval === 0
       );
     }
-    if (frequency === 'anio') {
+    if (frequency === "anio") {
       return (
         targetDate.getDate() === baseDate.getDate() &&
         targetDate.getMonth() === baseDate.getMonth() &&
@@ -246,35 +264,41 @@ export class AppointmentService {
     if (!targetDate || !baseDate) return false;
     if (targetDate < baseDate) return false;
 
-    const recurrenceRaw = String(schedule.recurrence || schedule.repeticion || 'no').toLowerCase();
-    const recurrence = recurrenceRaw === 'año' ? 'anio' : recurrenceRaw;
+    const recurrenceRaw = String(
+      schedule.recurrence || schedule.repeticion || "no",
+    ).toLowerCase();
+    const recurrence = recurrenceRaw === "año" ? "anio" : recurrenceRaw;
     const interval = Number(schedule.intervalo) || 1;
 
-    if (recurrence === 'personalizado') {
-      return this.isCustomRecurrenceActiveOnDate(schedule, targetDate, baseDate);
+    if (recurrence === "personalizado") {
+      return this.isCustomRecurrenceActiveOnDate(
+        schedule,
+        targetDate,
+        baseDate,
+      );
     }
-    if (recurrence === 'no') return this.isSameDate(targetDate, baseDate);
-    if (recurrence === 'laboral') {
+    if (recurrence === "no") return this.isSameDate(targetDate, baseDate);
+    if (recurrence === "laboral") {
       if (this.isSameDate(targetDate, baseDate)) return true;
       const day = targetDate.getDay();
       return day >= 1 && day <= 5;
     }
-    if (recurrence === 'dia') {
+    if (recurrence === "dia") {
       return this.differenceInDays(targetDate, baseDate) % interval === 0;
     }
-    if (recurrence === 'semana') {
+    if (recurrence === "semana") {
       return (
         targetDate.getDay() === baseDate.getDay() &&
         this.differenceInWeeks(targetDate, baseDate) % interval === 0
       );
     }
-    if (recurrence === 'mes') {
+    if (recurrence === "mes") {
       return (
         targetDate.getDate() === baseDate.getDate() &&
         this.differenceInMonths(targetDate, baseDate) % interval === 0
       );
     }
-    if (recurrence === 'anio') {
+    if (recurrence === "anio") {
       return (
         targetDate.getDate() === baseDate.getDate() &&
         targetDate.getMonth() === baseDate.getMonth() &&
@@ -290,36 +314,53 @@ export class AppointmentService {
     const scheduleEnd = this.timeToMinutes(schedule.endTime);
     const appointmentStart = this.timeToMinutes(startTime);
     const appointmentEnd = this.timeToMinutes(endTime);
-    if ([scheduleStart, scheduleEnd, appointmentStart, appointmentEnd].some((value) => value === null)) {
+    if (
+      [scheduleStart, scheduleEnd, appointmentStart, appointmentEnd].some(
+        (value) => value === null,
+      )
+    ) {
       return false;
     }
     return appointmentStart >= scheduleStart && appointmentEnd <= scheduleEnd;
   }
 
-  async ensureScheduleAvailability({ specialistId, appointmentDate, startTime, endTime }) {
-    const schedules = await this.appointmentRepository.getSchedulesBySpecialistId(specialistId);
+  async ensureScheduleAvailability({
+    specialistId,
+    appointmentDate,
+    startTime,
+    endTime,
+  }) {
+    const schedules =
+      await this.appointmentRepository.getSchedulesBySpecialistId(specialistId);
     if (!schedules || schedules.length === 0) {
-      throw new Error('El especialista no tiene horarios disponibles.');
+      throw new Error("El especialista no tiene horarios disponibles.");
     }
 
     const dateOnly = this.normalizeDateOnly(appointmentDate);
     const matchingSchedules = schedules.filter(
       (schedule) =>
         this.isScheduleActiveOnDate(schedule, dateOnly) &&
-        this.isTimeWithinSchedule(schedule, startTime, endTime)
+        this.isTimeWithinSchedule(schedule, startTime, endTime),
     );
 
     if (matchingSchedules.length === 0) {
-      throw new Error('El especialista no tiene horario disponible para esa fecha y hora.');
+      throw new Error(
+        "El especialista no tiene horario disponible para esa fecha y hora.",
+      );
     }
 
     const hasAvailableSchedule = matchingSchedules.some(
       (schedule) =>
-        !this.isScheduleBlockedByNovelty(schedule, dateOnly, startTime, endTime)
+        !this.isScheduleBlockedByNovelty(
+          schedule,
+          dateOnly,
+          startTime,
+          endTime,
+        ),
     );
 
     if (!hasAvailableSchedule) {
-      throw new Error('El especialista tiene una novedad en ese horario.');
+      throw new Error("El especialista tiene una novedad en ese horario.");
     }
   }
 
@@ -330,7 +371,7 @@ export class AppointmentService {
     try {
       return await this.appointmentRepository.findAll(filters);
     } catch (error) {
-      console.error('Service error - getAllAppointments:', error);
+      console.error("Service error - getAllAppointments:", error);
       throw error;
     }
   }
@@ -345,15 +386,15 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
       return {
         success: true,
-        data: appointment
+        data: appointment,
       };
     } catch (error) {
-      console.error('Service error - getAppointmentById:', error);
+      console.error("Service error - getAppointmentById:", error);
       throw error;
     }
   }
@@ -363,74 +404,88 @@ export class AppointmentService {
    */
   async createAppointment(appointmentData) {
     try {
-      const athleteId = parseInt(appointmentData.athleteId || appointmentData.athlete);
-      const specialistId = parseInt(appointmentData.specialistId || appointmentData.specialist);
+      const athleteId = parseInt(
+        appointmentData.athleteId || appointmentData.athlete,
+      );
+      const specialistId = parseInt(
+        appointmentData.specialistId || appointmentData.specialist,
+      );
 
       if (!athleteId || !specialistId) {
-        throw new Error('El deportista y el especialista son obligatorios.');
+        throw new Error("El deportista y el especialista son obligatorios.");
       }
 
-      const athlete = await this.appointmentRepository.findAthleteById(athleteId);
+      const athlete =
+        await this.appointmentRepository.findAthleteById(athleteId);
       if (!athlete) {
-        throw new Error('El deportista no existe o no está activo.');
+        throw new Error("El deportista no existe o no está activo.");
       }
 
-      const specialist = await this.appointmentRepository.findSpecialistById(specialistId);
+      const specialist =
+        await this.appointmentRepository.findSpecialistById(specialistId);
       if (!specialist) {
-        throw new Error('El especialista no existe o no está activo.');
+        throw new Error("El especialista no existe o no está activo.");
       }
 
       const { startDate, endDate } = this.parseDateTimePayload(appointmentData);
 
       if (endDate <= startDate) {
-        throw new Error('La hora de fin debe ser mayor que la hora de inicio.');
+        throw new Error("La hora de fin debe ser mayor que la hora de inicio.");
       }
 
       const now = new Date();
       if (startDate < now) {
-        throw new Error('No se puede crear una cita en una fecha u hora pasada.');
+        throw new Error(
+          "No se puede crear una cita en una fecha u hora pasada.",
+        );
       }
 
       const startDateKey = this.formatDateKey(startDate);
       const endDateKey = this.formatDateKey(endDate);
       if (startDateKey !== endDateKey) {
-        throw new Error('La cita debe iniciar y finalizar el mismo día.');
+        throw new Error("La cita debe iniciar y finalizar el mismo día.");
       }
 
       const appointmentDate = this.normalizeDateOnly(startDate);
       const startTime = this.formatTime(startDate);
       const endTime = this.formatTime(endDate);
 
-      const specialtyInput = appointmentData.specialty || appointmentData.especialidad || '';
+      const specialtyInput =
+        appointmentData.specialty || appointmentData.especialidad || "";
       const specialtyKey =
         this.resolveSpecialtyKey(specialtyInput) ||
         this.resolveSpecialtyKey(specialist?.user?.role?.name);
 
       if (!specialtyKey) {
-        throw new Error('La especialidad es obligatoria.');
+        throw new Error("La especialidad es obligatoria.");
       }
 
       await this.ensureScheduleAvailability({
         specialistId,
         appointmentDate,
         startTime,
-        endTime
+        endTime,
       });
 
-      const conflicts = await this.appointmentRepository.checkAppointmentConflicts({
-        appointmentDate,
-        startTime,
-        endTime,
-        athleteId,
-        specialistId
-      });
+      const conflicts =
+        await this.appointmentRepository.checkAppointmentConflicts({
+          appointmentDate,
+          startTime,
+          endTime,
+          athleteId,
+          specialistId,
+        });
 
       if (conflicts.athleteConflict) {
-        throw new Error('El deportista ya tiene una cita programada en ese horario.');
+        throw new Error(
+          "El deportista ya tiene una cita programada en ese horario.",
+        );
       }
 
       if (conflicts.specialistConflict) {
-        throw new Error('El especialista ya tiene una cita programada en ese horario.');
+        throw new Error(
+          "El especialista ya tiene una cita programada en ese horario.",
+        );
       }
 
       const appointmentDataForDB = {
@@ -440,37 +495,48 @@ export class AppointmentService {
         startTime,
         endTime,
         specialty: specialtyKey,
-        description: this.normalizeText(appointmentData.description || appointmentData.motivo) || null,
-        status: appointmentData.status || 'Programado',
+        description:
+          this.normalizeText(
+            appointmentData.description || appointmentData.motivo,
+          ) || null,
+        status: appointmentData.status || "Programado",
         cancelReason: null,
-        conclusion: null
+        conclusion: null,
       };
 
-      const newAppointment = await this.appointmentRepository.create(appointmentDataForDB);
-      const athleteName = `${athlete.user.firstName} ${athlete.user.lastName}`.trim();
-      const specialistName = `${specialist.user.firstName} ${specialist.user.lastName}`.trim();
+      const newAppointment =
+        await this.appointmentRepository.create(appointmentDataForDB);
+      const athleteName =
+        `${athlete.user.firstName} ${athlete.user.lastName}`.trim();
+      const specialistName =
+        `${specialist.user.firstName} ${specialist.user.lastName}`.trim();
 
-      // Notificar al deportista y especialista por email (no bloqueante)
-      appointmentEmailService
-        .sendAppointmentCreated(
-          {
-            ...newAppointment,
-            specialty: this.resolveSpecialtyLabel(specialtyKey)
-          },
-          athlete.user.email,
+      // Notificar al deportista por email (no bloqueante)
+      emailService
+        .sendAppointmentCalendarEmail({
+          to: athlete.user.email,
           athleteName,
-          specialist.user.email,
-          specialistName
-        )
-        .catch((err) => console.warn('⚠️  Error enviando emails de cita:', err?.message));
+          appointmentData: {
+            date: newAppointment.appointmentDate,
+            startTime: newAppointment.startTime,
+            endTime: newAppointment.endTime,
+            specialistName,
+            description:
+              newAppointment.description ||
+              `Cita de ${this.resolveSpecialtyLabel(specialtyKey)}`,
+          },
+        })
+        .catch((err) =>
+          console.warn("⚠️  Error enviando email de cita:", err?.message),
+        );
 
       return {
         success: true,
         data: newAppointment,
-        message: `Cita para "${athleteName}" creada exitosamente.`
+        message: `Cita para "${athleteName}" creada exitosamente.`,
       };
     } catch (error) {
-      console.error('Service error - createAppointment:', error);
+      console.error("Service error - createAppointment:", error);
       throw error;
     }
   }
@@ -485,15 +551,18 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
 
-      if (existingAppointment.status === 'Cancelado' || existingAppointment.status === 'Completado') {
+      if (
+        existingAppointment.status === "Cancelado" ||
+        existingAppointment.status === "Completado"
+      ) {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede editar una cita cancelada o completada.'
+          message: "No se puede editar una cita cancelada o completada.",
         };
       }
 
@@ -503,24 +572,26 @@ export class AppointmentService {
       const specialistId = updateData.specialistId || updateData.specialist;
 
       if (athleteId) {
-        const athlete = await this.appointmentRepository.findAthleteById(athleteId);
+        const athlete =
+          await this.appointmentRepository.findAthleteById(athleteId);
         if (!athlete) {
           return {
             success: false,
             statusCode: 400,
-            message: 'El deportista no existe o no está activo.'
+            message: "El deportista no existe o no está activo.",
           };
         }
         payload.athleteId = parseInt(athleteId);
       }
 
       if (specialistId) {
-        const specialist = await this.appointmentRepository.findSpecialistById(specialistId);
+        const specialist =
+          await this.appointmentRepository.findSpecialistById(specialistId);
         if (!specialist) {
           return {
             success: false,
             statusCode: 400,
-            message: 'El especialista no existe o no está activo.'
+            message: "El especialista no existe o no está activo.",
           };
         }
         payload.specialistId = parseInt(specialistId);
@@ -530,8 +601,13 @@ export class AppointmentService {
         payload.specialty = this.resolveSpecialtyKey(updateData.specialty);
       }
 
-      if (updateData.description !== undefined || updateData.motivo !== undefined) {
-        payload.description = this.normalizeText(updateData.description || updateData.motivo) || null;
+      if (
+        updateData.description !== undefined ||
+        updateData.motivo !== undefined
+      ) {
+        payload.description =
+          this.normalizeText(updateData.description || updateData.motivo) ||
+          null;
       }
 
       const hasDateUpdate =
@@ -540,9 +616,15 @@ export class AppointmentService {
         (updateData.date && updateData.startTime && updateData.endTime);
 
       if (hasDateUpdate) {
-        const existingDateKey = this.formatDateKey(existingAppointment.appointmentDate);
-        const existingStart = new Date(`${existingDateKey}T${existingAppointment.startTime}`);
-        const existingEnd = new Date(`${existingDateKey}T${existingAppointment.endTime}`);
+        const existingDateKey = this.formatDateKey(
+          existingAppointment.appointmentDate,
+        );
+        const existingStart = new Date(
+          `${existingDateKey}T${existingAppointment.startTime}`,
+        );
+        const existingEnd = new Date(
+          `${existingDateKey}T${existingAppointment.endTime}`,
+        );
 
         const startCandidate =
           updateData.start ||
@@ -557,47 +639,56 @@ export class AppointmentService {
 
         const { startDate, endDate } = this.parseDateTimePayload({
           start: startCandidate,
-          end: endCandidate
+          end: endCandidate,
         });
 
         if (endDate <= startDate) {
-          throw new Error('La hora de fin debe ser mayor que la hora de inicio.');
+          throw new Error(
+            "La hora de fin debe ser mayor que la hora de inicio.",
+          );
         }
 
         const startKey = this.formatDateKey(startDate);
         const endKey = this.formatDateKey(endDate);
         if (startKey !== endKey) {
-          throw new Error('La cita debe iniciar y finalizar el mismo día.');
+          throw new Error("La cita debe iniciar y finalizar el mismo día.");
         }
 
         const now = new Date();
         if (startDate < now) {
-          throw new Error('No se puede reprogramar a una fecha u hora pasada.');
+          throw new Error("No se puede reprogramar a una fecha u hora pasada.");
         }
 
         payload.appointmentDate = this.normalizeDateOnly(startDate);
         payload.startTime = this.formatTime(startDate);
         payload.endTime = this.formatTime(endDate);
 
-        const conflicts = await this.appointmentRepository.checkAppointmentConflicts({
-          appointmentDate: payload.appointmentDate,
-          startTime: payload.startTime,
-          endTime: payload.endTime,
-          athleteId: payload.athleteId || existingAppointment.athleteId,
-          specialistId: payload.specialistId || existingAppointment.specialistId,
-          excludeAppointmentId: id
-        });
+        const conflicts =
+          await this.appointmentRepository.checkAppointmentConflicts({
+            appointmentDate: payload.appointmentDate,
+            startTime: payload.startTime,
+            endTime: payload.endTime,
+            athleteId: payload.athleteId || existingAppointment.athleteId,
+            specialistId:
+              payload.specialistId || existingAppointment.specialistId,
+            excludeAppointmentId: id,
+          });
 
         if (conflicts.athleteConflict) {
-          throw new Error('El deportista ya tiene una cita programada en ese horario.');
+          throw new Error(
+            "El deportista ya tiene una cita programada en ese horario.",
+          );
         }
 
         if (conflicts.specialistConflict) {
-          throw new Error('El especialista ya tiene una cita programada en ese horario.');
+          throw new Error(
+            "El especialista ya tiene una cita programada en ese horario.",
+          );
         }
       }
 
-      const shouldValidateSchedule = hasDateUpdate || Boolean(payload.specialistId);
+      const shouldValidateSchedule =
+        hasDateUpdate || Boolean(payload.specialistId);
       if (shouldValidateSchedule) {
         const appointmentDate =
           payload.appointmentDate || existingAppointment.appointmentDate;
@@ -605,21 +696,25 @@ export class AppointmentService {
         const endTime = payload.endTime || existingAppointment.endTime;
 
         await this.ensureScheduleAvailability({
-          specialistId: payload.specialistId || existingAppointment.specialistId,
+          specialistId:
+            payload.specialistId || existingAppointment.specialistId,
           appointmentDate,
           startTime,
-          endTime
+          endTime,
         });
       }
 
-      const updatedAppointment = await this.appointmentRepository.update(id, payload);
+      const updatedAppointment = await this.appointmentRepository.update(
+        id,
+        payload,
+      );
       return {
         success: true,
         data: updatedAppointment,
-        message: 'Cita actualizada exitosamente.'
+        message: "Cita actualizada exitosamente.",
       };
     } catch (error) {
-      console.error('Service error - updateAppointment:', error);
+      console.error("Service error - updateAppointment:", error);
       throw error;
     }
   }
@@ -634,59 +729,69 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
 
-      if (appointment.status === 'Cancelado') {
+      if (appointment.status === "Cancelado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'La cita ya está cancelada.'
+          message: "La cita ya está cancelada.",
         };
       }
 
-      if (appointment.status === 'Completado') {
+      if (appointment.status === "Completado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede cancelar una cita completada.'
+          message: "No se puede cancelar una cita completada.",
         };
       }
 
       const updatedAppointment = await this.appointmentRepository.update(id, {
-        status: 'Cancelado',
+        status: "Cancelado",
         cancelReason: this.normalizeText(cancelReason) || null,
-        conclusion: null
+        conclusion: null,
       });
 
       // Enviar correos de cancelación (no bloqueante)
-      if (appointment.athlete && appointment.athlete.user && appointment.specialist && appointment.specialist.user) {
+      if (
+        appointment.athlete &&
+        appointment.athlete.user &&
+        appointment.specialist &&
+        appointment.specialist.user
+      ) {
         const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
         const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
-        
+
         appointmentEmailService
           .sendAppointmentCancelled(
             {
               ...updatedAppointment,
-              specialty: this.resolveSpecialtyLabel(appointment.specialty)
+              specialty: this.resolveSpecialtyLabel(appointment.specialty),
             },
             appointment.athlete.user.email,
             athleteName,
             appointment.specialist.user.email,
             specialistName,
-            cancelReason
+            cancelReason,
           )
-          .catch((err) => console.warn('⚠️  Error enviando emails de cancelación:', err?.message));
+          .catch((err) =>
+            console.warn(
+              "⚠️  Error enviando emails de cancelación:",
+              err?.message,
+            ),
+          );
       }
 
       return {
         success: true,
         data: updatedAppointment,
-        message: 'Cita cancelada exitosamente.'
+        message: "Cita cancelada exitosamente.",
       };
     } catch (error) {
-      console.error('Service error - cancelAppointment:', error);
+      console.error("Service error - cancelAppointment:", error);
       throw error;
     }
   }
@@ -701,39 +806,39 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
 
-      if (appointment.status === 'Completado') {
+      if (appointment.status === "Completado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'La cita ya está completada.'
+          message: "La cita ya está completada.",
         };
       }
 
-      if (appointment.status === 'Cancelado') {
+      if (appointment.status === "Cancelado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede completar una cita cancelada.'
+          message: "No se puede completar una cita cancelada.",
         };
       }
 
       const updatedAppointment = await this.appointmentRepository.update(id, {
-        status: 'Completado',
+        status: "Completado",
         conclusion: this.normalizeText(conclusion) || null,
-        cancelReason: null
+        cancelReason: null,
       });
 
       return {
         success: true,
         data: updatedAppointment,
-        message: 'Cita marcada como completada.'
+        message: "Cita marcada como completada.",
       };
     } catch (error) {
-      console.error('Service error - completeAppointment:', error);
+      console.error("Service error - completeAppointment:", error);
       throw error;
     }
   }
@@ -748,15 +853,16 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
 
-      if (appointmentToDelete.status === 'Completado') {
+      if (appointmentToDelete.status === "Completado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se puede eliminar una cita completada. Considere cancelarla.'
+          message:
+            "No se puede eliminar una cita completada. Considere cancelarla.",
         };
       }
 
@@ -764,11 +870,11 @@ export class AppointmentService {
       if (deleted) {
         return {
           success: true,
-          message: 'Cita eliminada exitosamente.'
+          message: "Cita eliminada exitosamente.",
         };
       }
     } catch (error) {
-      console.error('Service error - deleteAppointment:', error);
+      console.error("Service error - deleteAppointment:", error);
       throw error;
     }
   }
@@ -782,20 +888,22 @@ export class AppointmentService {
       const formatted = athletes.map((athlete) => ({
         id: athlete.id,
         athleteId: athlete.id,
-        nombre: `${athlete.user.firstName} ${athlete.user.middleName || ''} ${athlete.user.lastName} ${athlete.user.secondLastName || ''}`
-          .replace(/\s+/g, ' ')
-          .trim(),
+        nombre:
+          `${athlete.user.firstName} ${athlete.user.middleName || ""} ${athlete.user.lastName} ${athlete.user.secondLastName || ""}`
+            .replace(/\s+/g, " ")
+            .trim(),
         nombres: athlete.user.firstName,
-        apellidos: `${athlete.user.lastName} ${athlete.user.secondLastName || ''}`.trim(),
+        apellidos:
+          `${athlete.user.lastName} ${athlete.user.secondLastName || ""}`.trim(),
         email: athlete.user.email,
-        identification: athlete.user.identification
+        identification: athlete.user.identification,
       }));
       return {
         success: true,
-        data: formatted
+        data: formatted,
       };
     } catch (error) {
-      console.error('Service error - getActiveAthletes:', error);
+      console.error("Service error - getActiveAthletes:", error);
       throw error;
     }
   }
@@ -803,14 +911,16 @@ export class AppointmentService {
   /**
    * Obtener especialistas activos
    */
-  async getActiveSpecialists({ specialty = '' } = {}) {
+  async getActiveSpecialists({ specialty = "" } = {}) {
     try {
-      const specialists = await this.appointmentRepository.getActiveSpecialists();
+      const specialists =
+        await this.appointmentRepository.getActiveSpecialists();
       const formatted = specialists.map((emp) => {
-        const fullName = `${emp.user.firstName} ${emp.user.middleName || ''} ${emp.user.lastName} ${emp.user.secondLastName || ''}`
-          .replace(/\s+/g, ' ')
-          .trim();
-        const roleName = emp.user.role?.name || 'Especialista';
+        const fullName =
+          `${emp.user.firstName} ${emp.user.middleName || ""} ${emp.user.lastName} ${emp.user.secondLastName || ""}`
+            .replace(/\s+/g, " ")
+            .trim();
+        const roleName = emp.user.role?.name || "Especialista";
         const specialtyKey = this.resolveSpecialtyKey(roleName);
         return {
           id: emp.id,
@@ -820,7 +930,7 @@ export class AppointmentService {
           specialty: specialtyKey,
           specialtyLabel: this.resolveSpecialtyLabel(specialtyKey),
           email: emp.user.email,
-          identification: emp.user.identification
+          identification: emp.user.identification,
         };
       });
 
@@ -831,10 +941,10 @@ export class AppointmentService {
 
       return {
         success: true,
-        data: filtered
+        data: filtered,
       };
     } catch (error) {
-      console.error('Service error - getActiveSpecialists:', error);
+      console.error("Service error - getActiveSpecialists:", error);
       throw error;
     }
   }
@@ -849,19 +959,22 @@ export class AppointmentService {
       (specialists.data || []).forEach((spec) => {
         if (!spec.specialty) return;
         if (!map.has(spec.specialty)) {
-          map.set(spec.specialty, spec.specialtyLabel || this.resolveSpecialtyLabel(spec.specialty));
+          map.set(
+            spec.specialty,
+            spec.specialtyLabel || this.resolveSpecialtyLabel(spec.specialty),
+          );
         }
       });
       const specialties = Array.from(map.entries()).map(([key, label]) => ({
         value: key,
-        label
+        label,
       }));
       return {
         success: true,
-        data: specialties
+        data: specialties,
       };
     } catch (error) {
-      console.error('Service error - getSpecialties:', error);
+      console.error("Service error - getSpecialties:", error);
       throw error;
     }
   }
@@ -871,30 +984,35 @@ export class AppointmentService {
    */
   async proposeReschedule(appointmentId, newDate, newStartTime, newEndTime) {
     try {
-      const appointment = await this.appointmentRepository.findById(appointmentId);
+      const appointment =
+        await this.appointmentRepository.findById(appointmentId);
 
       if (!appointment) {
         return {
           success: false,
           statusCode: 404,
-          message: 'Cita no encontrada.'
+          message: "Cita no encontrada.",
         };
       }
 
-      if (appointment.status !== 'Cancelado') {
+      if (appointment.status !== "Cancelado") {
         return {
           success: false,
           statusCode: 400,
-          message: 'Solo se pueden reagendar citas canceladas.'
+          message: "Solo se pueden reagendar citas canceladas.",
         };
       }
 
       // Validar que tenga la información del deportista
-      if (!appointment.athlete || !appointment.athlete.user || !appointment.athlete.user.email) {
+      if (
+        !appointment.athlete ||
+        !appointment.athlete.user ||
+        !appointment.athlete.user.email
+      ) {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se pudo obtener el email del deportista.'
+          message: "No se pudo obtener el email del deportista.",
         };
       }
 
@@ -902,14 +1020,17 @@ export class AppointmentService {
       const rescheduleToken = appointmentEmailService.generateRescheduleToken();
 
       // Actualizar la cita con la propuesta
-      const updatedAppointment = await this.appointmentRepository.update(appointmentId, {
-        needsReschedule: true,
-        rescheduleProposedDate: this.normalizeDateOnly(newDate),
-        rescheduleProposedStart: newStartTime,
-        rescheduleProposedEnd: newEndTime,
-        rescheduleStatus: 'pending',
-        rescheduleToken
-      });
+      const updatedAppointment = await this.appointmentRepository.update(
+        appointmentId,
+        {
+          needsReschedule: true,
+          rescheduleProposedDate: this.normalizeDateOnly(newDate),
+          rescheduleProposedStart: newStartTime,
+          rescheduleProposedEnd: newEndTime,
+          rescheduleStatus: "pending",
+          rescheduleToken,
+        },
+      );
 
       const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
       const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
@@ -918,20 +1039,22 @@ export class AppointmentService {
       await appointmentEmailService.sendRescheduleProposal(
         {
           ...updatedAppointment,
-          specialty: this.resolveSpecialtyLabel(updatedAppointment.specialty || appointment.specialty),
-          specialistName
+          specialty: this.resolveSpecialtyLabel(
+            updatedAppointment.specialty || appointment.specialty,
+          ),
+          specialistName,
         },
         appointment.athlete.user.email,
-        athleteName
+        athleteName,
       );
 
       return {
         success: true,
         data: updatedAppointment,
-        message: 'Propuesta de reagendamiento enviada al deportista.'
+        message: "Propuesta de reagendamiento enviada al deportista.",
       };
     } catch (error) {
-      console.error('Service error - proposeReschedule:', error);
+      console.error("Service error - proposeReschedule:", error);
       throw error;
     }
   }
@@ -941,56 +1064,64 @@ export class AppointmentService {
    */
   async acceptReschedule(token) {
     try {
-      const appointment = await this.appointmentRepository.findByRescheduleToken(token);
+      const appointment =
+        await this.appointmentRepository.findByRescheduleToken(token);
 
       if (!appointment) {
         return {
           success: false,
           statusCode: 404,
-          message: 'Token de reagendamiento inválido o expirado.'
+          message: "Token de reagendamiento inválido o expirado.",
         };
       }
 
-      if (appointment.rescheduleStatus !== 'pending') {
+      if (appointment.rescheduleStatus !== "pending") {
         return {
           success: false,
           statusCode: 400,
-          message: 'Esta propuesta ya fue procesada.'
+          message: "Esta propuesta ya fue procesada.",
         };
       }
 
       // Actualizar la cita con la nueva fecha y marcarla como programada
-      const updatedAppointment = await this.appointmentRepository.update(appointment.id, {
-        appointmentDate: appointment.rescheduleProposedDate,
-        startTime: appointment.rescheduleProposedStart,
-        endTime: appointment.rescheduleProposedEnd,
-        status: 'Programado',
-        rescheduleStatus: 'accepted',
-        needsReschedule: false,
-        cancelReason: null
-      });
+      const updatedAppointment = await this.appointmentRepository.update(
+        appointment.id,
+        {
+          appointmentDate: appointment.rescheduleProposedDate,
+          startTime: appointment.rescheduleProposedStart,
+          endTime: appointment.rescheduleProposedEnd,
+          status: "Programado",
+          rescheduleStatus: "accepted",
+          needsReschedule: false,
+          cancelReason: null,
+        },
+      );
 
       // Notificar al especialista
-      if (appointment.specialist && appointment.specialist.user && appointment.specialist.user.email) {
+      if (
+        appointment.specialist &&
+        appointment.specialist.user &&
+        appointment.specialist.user.email
+      ) {
         const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
         const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
-        
+
         await appointmentEmailService.sendRescheduleConfirmation(
           updatedAppointment,
           appointment.specialist.user.email,
           specialistName,
           athleteName,
-          true
+          true,
         );
       }
 
       return {
         success: true,
         data: updatedAppointment,
-        message: 'Cita reagendada exitosamente.'
+        message: "Cita reagendada exitosamente.",
       };
     } catch (error) {
-      console.error('Service error - acceptReschedule:', error);
+      console.error("Service error - acceptReschedule:", error);
       throw error;
     }
   }
@@ -1000,53 +1131,60 @@ export class AppointmentService {
    */
   async rejectReschedule(token) {
     try {
-      const appointment = await this.appointmentRepository.findByRescheduleToken(token);
+      const appointment =
+        await this.appointmentRepository.findByRescheduleToken(token);
 
       if (!appointment) {
         return {
           success: false,
           statusCode: 404,
-          message: 'Token de reagendamiento inválido o expirado.'
+          message: "Token de reagendamiento inválido o expirado.",
         };
       }
 
-      if (appointment.rescheduleStatus !== 'pending') {
+      if (appointment.rescheduleStatus !== "pending") {
         return {
           success: false,
           statusCode: 400,
-          message: 'Esta propuesta ya fue procesada.'
+          message: "Esta propuesta ya fue procesada.",
         };
       }
 
       // Marcar como rechazada
-      const updatedAppointment = await this.appointmentRepository.update(appointment.id, {
-        rescheduleStatus: 'rejected',
-        needsReschedule: false
-      });
+      const updatedAppointment = await this.appointmentRepository.update(
+        appointment.id,
+        {
+          rescheduleStatus: "rejected",
+          needsReschedule: false,
+        },
+      );
 
       // Notificar al especialista
-      if (appointment.specialist && appointment.specialist.user && appointment.specialist.user.email) {
+      if (
+        appointment.specialist &&
+        appointment.specialist.user &&
+        appointment.specialist.user.email
+      ) {
         const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
         const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
-        
+
         await appointmentEmailService.sendRescheduleConfirmation(
           updatedAppointment,
           appointment.specialist.user.email,
           specialistName,
           athleteName,
-          false
+          false,
         );
       }
 
       return {
         success: true,
         data: updatedAppointment,
-        message: 'Propuesta de reagendamiento rechazada.'
+        message: "Propuesta de reagendamiento rechazada.",
       };
     } catch (error) {
-      console.error('Service error - rejectReschedule:', error);
+      console.error("Service error - rejectReschedule:", error);
       throw error;
     }
   }
 }
-

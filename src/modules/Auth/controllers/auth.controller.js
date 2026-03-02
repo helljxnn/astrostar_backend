@@ -1,4 +1,4 @@
-import { AuthService } from '../services/auth.service.js';
+import { AuthService } from "../services/auth.service.js";
 
 export class AuthController {
   constructor() {
@@ -65,30 +65,31 @@ export class AuthController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       // Establecer refresh token en cookie HttpOnly
-      res.cookie('refreshToken', result.refreshToken, {
+      res.cookie("refreshToken", result.refreshToken, {
         httpOnly: true, // No accesible desde JavaScript
-        secure: process.env.NODE_ENV === 'production', // Solo HTTPS en producción
-        sameSite: 'strict', // Protección CSRF
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 días
+        secure: process.env.NODE_ENV === "production", // Solo HTTPS en producción
+        sameSite: "strict", // Protección CSRF
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
       });
 
       // Retornar solo el access token y datos del usuario
       res.json({
         success: true,
         data: result.data,
-        message: 'Login exitoso'
+        message: "Login exitoso",
       });
     } catch (error) {
-      console.error('Error en login:', error);
+      console.error("Error en login:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -130,21 +131,22 @@ export class AuthController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: 'Usuario autenticado'
+        message: "Usuario autenticado",
       });
     } catch (error) {
-      console.error('Error obteniendo usuario:', error);
+      console.error("Error obteniendo usuario:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -187,26 +189,31 @@ export class AuthController {
     try {
       const { currentPassword, newPassword } = req.body;
       const userId = req.user.id;
-      
-      const result = await this.authService.changePassword(userId, currentPassword, newPassword);
+
+      const result = await this.authService.changePassword(
+        userId,
+        currentPassword,
+        newPassword,
+      );
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
-        message: 'Contraseña cambiada exitosamente'
+        message: "Contraseña cambiada exitosamente",
       });
     } catch (error) {
-      console.error('Error cambiando contraseña:', error);
+      console.error("Error cambiando contraseña:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -241,25 +248,42 @@ export class AuthController {
   forgotPassword = async (req, res) => {
     try {
       const { email } = req.body;
-      const result = await this.authService.requestPasswordReset(email);
+
+      // Obtener IP y User Agent
+      const rateLimitService = (
+        await import("../../../services/rateLimitService.js")
+      ).default;
+      const ipAddress = rateLimitService.getClientIP(req);
+      const userAgent = rateLimitService.getUserAgent(req);
+
+      const result = await this.authService.requestPasswordReset(
+        email,
+        ipAddress,
+        userAgent,
+      );
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
+          reason: result.reason,
+          blockedUntil: result.blockedUntil,
+          minutesRemaining: result.minutesRemaining,
         });
       }
 
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
+        attemptsRemaining: result.attemptsRemaining,
       });
     } catch (error) {
-      console.error('Error en forgot-password:', error);
+      console.error("Error en forgot-password:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -298,21 +322,22 @@ export class AuthController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: 'Código verificado exitosamente'
+        message: "Código verificado exitosamente",
       });
     } catch (error) {
-      console.error('Error en verify-reset-token:', error);
+      console.error("Error en verify-reset-token:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -355,20 +380,21 @@ export class AuthController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error en reset-password:', error);
+      console.error("Error en reset-password:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -409,26 +435,30 @@ export class AuthController {
     try {
       const userId = req.user.id;
       const { newEmail } = req.body;
-      
-      const result = await this.authService.requestEmailChange(userId, newEmail);
+
+      const result = await this.authService.requestEmailChange(
+        userId,
+        newEmail,
+      );
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error solicitando cambio de email:', error);
+      console.error("Error solicitando cambio de email:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -467,27 +497,28 @@ export class AuthController {
     try {
       const userId = req.user.id;
       const { token } = req.body;
-      
+
       const result = await this.authService.verifyAndUpdateEmail(userId, token);
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error verificando cambio de email:', error);
+      console.error("Error verificando cambio de email:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -528,27 +559,28 @@ export class AuthController {
     try {
       const userId = req.user.id;
       const updateData = req.body;
-      
+
       const result = await this.authService.updateProfile(userId, updateData);
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: 'Perfil actualizado exitosamente'
+        message: "Perfil actualizado exitosamente",
       });
     } catch (error) {
-      console.error('Error actualizando perfil:', error);
+      console.error("Error actualizando perfil:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -597,11 +629,11 @@ export class AuthController {
     try {
       // Obtener refresh token desde la cookie HttpOnly
       const refreshToken = req.cookies.refreshToken;
-      
+
       if (!refreshToken) {
         return res.status(401).json({
           success: false,
-          message: 'Refresh token no encontrado'
+          message: "Refresh token no encontrado",
         });
       }
 
@@ -609,24 +641,25 @@ export class AuthController {
 
       if (!result.success) {
         // Si el refresh token es inválido, limpiar la cookie
-        res.clearCookie('refreshToken');
+        res.clearCookie("refreshToken");
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: 'Token refrescado exitosamente'
+        message: "Token refrescado exitosamente",
       });
     } catch (error) {
-      console.error('Error refrescando token:', error);
+      console.error("Error refrescando token:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -661,33 +694,34 @@ export class AuthController {
     try {
       // Obtener refresh token desde la cookie
       const refreshToken = req.cookies.refreshToken;
-      
+
       const result = await this.authService.logout(refreshToken);
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       // Limpiar la cookie del refresh token
-      res.clearCookie('refreshToken', {
+      res.clearCookie("refreshToken", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
       });
 
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error cerrando sesión:', error);
+      console.error("Error cerrando sesión:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -716,20 +750,21 @@ export class AuthController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error cerrando todas las sesiones:', error);
+      console.error("Error cerrando todas las sesiones:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };

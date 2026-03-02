@@ -7,6 +7,7 @@ import emailService from "./services/emailService.js";
 import { startEnrollmentExpirationJob } from "./jobs/enrollmentExpirationJob.js";
 import { startRSVPReminderJob } from "./jobs/rsvpReminderJob.js";
 import { startAppointmentReminderJob } from "./jobs/appointmentReminderJob.js";
+import { startRateLimitCleanupJob } from "./jobs/rateLimitCleanupJob.js";
 
 const PORT = process.env.PORT || 4000;
 
@@ -18,14 +19,19 @@ async function initializeServices() {
 
     // Verificar conexión de email (se puede omitir con EMAIL_SKIP_VERIFY_ON_START=true)
     const skipVerify =
-      String(process.env.EMAIL_SKIP_VERIFY_ON_START || "true").toLowerCase() === "true";
+      String(process.env.EMAIL_SKIP_VERIFY_ON_START || "true").toLowerCase() ===
+      "true";
     if (!skipVerify) {
       const emailOk = await emailService.verifyConnection();
       if (!emailOk) {
-        console.warn("⚠️  Servicio de email no disponible (revisa EMAIL_USER/EMAIL_PASSWORD o conectividad SMTP).");
+        console.warn(
+          "⚠️  Servicio de email no disponible (revisa EMAIL_USER/EMAIL_PASSWORD o conectividad SMTP).",
+        );
       }
     } else {
-      console.log("✉️  Verificación de email omitida al inicio (EMAIL_SKIP_VERIFY_ON_START=true).");
+      console.log(
+        "✉️  Verificación de email omitida al inicio (EMAIL_SKIP_VERIFY_ON_START=true).",
+      );
     }
 
     // Iniciar job de vencimiento de matrÃ­culas
@@ -43,6 +49,9 @@ async function initializeServices() {
 
     // Iniciar job de recordatorios de citas
     startAppointmentReminderJob();
+
+    // Iniciar job de limpieza de rate limiting
+    startRateLimitCleanupJob();
   } catch (error) {
     console.warn("âš ï¸ Error inicializando servicios:", error.message);
   }
@@ -55,4 +64,3 @@ app.listen(PORT, "0.0.0.0", async () => {
   // Inicializar servicios adicionales
   await initializeServices();
 });
-
