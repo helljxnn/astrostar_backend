@@ -1,4 +1,4 @@
-import prisma from '../../../config/database.js';
+import prisma from "../../../config/database.js";
 
 export class AuthRepository {
   /**
@@ -13,16 +13,16 @@ export class AuthRepository {
             select: {
               id: true,
               name: true,
-              description: true
-            }
+              description: true,
+            },
           },
           role: {
             select: {
               id: true,
               name: true,
               description: true,
-              permissions: true
-            }
+              permissions: true,
+            },
           },
           employee: {
             select: {
@@ -30,8 +30,8 @@ export class AuthRepository {
               status: true,
               statusAssignedAt: true,
               createdAt: true,
-              updatedAt: true
-            }
+              updatedAt: true,
+            },
           },
           athlete: {
             select: {
@@ -42,13 +42,13 @@ export class AuthRepository {
               otherRelationship: true,
               currentInscriptionStatus: true,
               createdAt: true,
-              updatedAt: true
-            }
-          }
-        }
+              updatedAt: true,
+            },
+          },
+        },
       });
     } catch (error) {
-      console.error('Repository error - findByEmail:', error);
+      console.error("Repository error - findByEmail:", error);
       throw error;
     }
   }
@@ -64,11 +64,11 @@ export class AuthRepository {
           id: true,
           passwordHash: true,
           email: true,
-          status: true
-        }
+          status: true,
+        },
       });
     } catch (error) {
-      console.error('Repository error - findById:', error);
+      console.error("Repository error - findById:", error);
       throw error;
     }
   }
@@ -84,11 +84,11 @@ export class AuthRepository {
         select: {
           id: true,
           email: true,
-          updatedAt: true
-        }
+          updatedAt: true,
+        },
       });
     } catch (error) {
-      console.error('Repository error - updatePassword:', error);
+      console.error("Repository error - updatePassword:", error);
       throw error;
     }
   }
@@ -96,17 +96,45 @@ export class AuthRepository {
   /**
    * Crear token de recuperación de contraseña
    */
-  async createPasswordResetToken(userId, token, expiresAt) {
+  async createPasswordResetToken(
+    userId,
+    token,
+    expiresAt,
+    ipAddress = null,
+    userAgent = null,
+  ) {
     try {
       return await prisma.passwordResetToken.create({
         data: {
           userId: parseInt(userId),
           token,
-          expiresAt
-        }
+          expiresAt,
+          ipAddress,
+          userAgent,
+        },
       });
     } catch (error) {
-      console.error('Repository error - createPasswordResetToken:', error);
+      console.error("Repository error - createPasswordResetToken:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar token de recuperación por valor (sin validar expiración)
+   */
+  async findResetTokenByValue(token) {
+    try {
+      return await prisma.passwordResetToken.findFirst({
+        where: { token },
+        select: {
+          id: true,
+          attempts: true,
+          used: true,
+          expiresAt: true,
+        },
+      });
+    } catch (error) {
+      console.error("Repository error - findResetTokenByValue:", error);
       throw error;
     }
   }
@@ -121,8 +149,8 @@ export class AuthRepository {
           token,
           used: false,
           expiresAt: {
-            gt: new Date()
-          }
+            gt: new Date(),
+          },
         },
         include: {
           user: {
@@ -130,13 +158,13 @@ export class AuthRepository {
               id: true,
               email: true,
               firstName: true,
-              lastName: true
-            }
-          }
-        }
+              lastName: true,
+            },
+          },
+        },
       });
     } catch (error) {
-      console.error('Repository error - findValidResetToken:', error);
+      console.error("Repository error - findValidResetToken:", error);
       throw error;
     }
   }
@@ -148,10 +176,10 @@ export class AuthRepository {
     try {
       return await prisma.passwordResetToken.update({
         where: { id: tokenId },
-        data: { used: true }
+        data: { used: true },
       });
     } catch (error) {
-      console.error('Repository error - markTokenAsUsed:', error);
+      console.error("Repository error - markTokenAsUsed:", error);
       throw error;
     }
   }
@@ -164,14 +192,11 @@ export class AuthRepository {
       return await prisma.passwordResetToken.deleteMany({
         where: {
           userId: parseInt(userId),
-          OR: [
-            { used: true },
-            { expiresAt: { lt: new Date() } }
-          ]
-        }
+          OR: [{ used: true }, { expiresAt: { lt: new Date() } }],
+        },
       });
     } catch (error) {
-      console.error('Repository error - deleteOldTokens:', error);
+      console.error("Repository error - deleteOldTokens:", error);
       throw error;
     }
   }
@@ -188,16 +213,16 @@ export class AuthRepository {
             select: {
               id: true,
               name: true,
-              description: true
-            }
+              description: true,
+            },
           },
           role: {
             select: {
               id: true,
               name: true,
               description: true,
-              permissions: true
-            }
+              permissions: true,
+            },
           },
           employee: {
             select: {
@@ -205,8 +230,8 @@ export class AuthRepository {
               status: true,
               statusAssignedAt: true,
               createdAt: true,
-              updatedAt: true
-            }
+              updatedAt: true,
+            },
           },
           athlete: {
             select: {
@@ -217,13 +242,13 @@ export class AuthRepository {
               otherRelationship: true,
               currentInscriptionStatus: true,
               createdAt: true,
-              updatedAt: true
-            }
-          }
-        }
+              updatedAt: true,
+            },
+          },
+        },
       });
     } catch (error) {
-      console.error('Repository error - findByIdComplete:', error);
+      console.error("Repository error - findByIdComplete:", error);
       throw error;
     }
   }
@@ -238,11 +263,11 @@ export class AuthRepository {
           userId: parseInt(userId),
           newEmail,
           token,
-          expiresAt
-        }
+          expiresAt,
+        },
       });
     } catch (error) {
-      console.error('Repository error - createEmailVerificationToken:', error);
+      console.error("Repository error - createEmailVerificationToken:", error);
       throw error;
     }
   }
@@ -258,12 +283,15 @@ export class AuthRepository {
           token,
           used: false,
           expiresAt: {
-            gt: new Date()
-          }
-        }
+            gt: new Date(),
+          },
+        },
       });
     } catch (error) {
-      console.error('Repository error - findValidEmailVerificationToken:', error);
+      console.error(
+        "Repository error - findValidEmailVerificationToken:",
+        error,
+      );
       throw error;
     }
   }
@@ -275,10 +303,10 @@ export class AuthRepository {
     try {
       return await prisma.emailVerificationToken.update({
         where: { id: tokenId },
-        data: { used: true }
+        data: { used: true },
       });
     } catch (error) {
-      console.error('Repository error - markEmailTokenAsUsed:', error);
+      console.error("Repository error - markEmailTokenAsUsed:", error);
       throw error;
     }
   }
@@ -291,14 +319,14 @@ export class AuthRepository {
       return await prisma.emailVerificationToken.deleteMany({
         where: {
           userId: parseInt(userId),
-          OR: [
-            { used: true },
-            { expiresAt: { lt: new Date() } }
-          ]
-        }
+          OR: [{ used: true }, { expiresAt: { lt: new Date() } }],
+        },
       });
     } catch (error) {
-      console.error('Repository error - deleteOldEmailVerificationTokens:', error);
+      console.error(
+        "Repository error - deleteOldEmailVerificationTokens:",
+        error,
+      );
       throw error;
     }
   }
@@ -316,16 +344,16 @@ export class AuthRepository {
             select: {
               id: true,
               name: true,
-              description: true
-            }
+              description: true,
+            },
           },
           role: {
             select: {
               id: true,
               name: true,
               description: true,
-              permissions: true
-            }
+              permissions: true,
+            },
           },
           employee: {
             select: {
@@ -333,8 +361,8 @@ export class AuthRepository {
               status: true,
               statusAssignedAt: true,
               createdAt: true,
-              updatedAt: true
-            }
+              updatedAt: true,
+            },
           },
           athlete: {
             select: {
@@ -345,13 +373,13 @@ export class AuthRepository {
               otherRelationship: true,
               currentInscriptionStatus: true,
               createdAt: true,
-              updatedAt: true
-            }
-          }
-        }
+              updatedAt: true,
+            },
+          },
+        },
       });
     } catch (error) {
-      console.error('Repository error - updateEmail:', error);
+      console.error("Repository error - updateEmail:", error);
       throw error;
     }
   }
@@ -369,16 +397,16 @@ export class AuthRepository {
             select: {
               id: true,
               name: true,
-              description: true
-            }
+              description: true,
+            },
           },
           role: {
             select: {
               id: true,
               name: true,
               description: true,
-              permissions: true
-            }
+              permissions: true,
+            },
           },
           employee: {
             select: {
@@ -386,8 +414,8 @@ export class AuthRepository {
               status: true,
               statusAssignedAt: true,
               createdAt: true,
-              updatedAt: true
-            }
+              updatedAt: true,
+            },
           },
           athlete: {
             select: {
@@ -398,13 +426,13 @@ export class AuthRepository {
               otherRelationship: true,
               currentInscriptionStatus: true,
               createdAt: true,
-              updatedAt: true
-            }
-          }
-        }
+              updatedAt: true,
+            },
+          },
+        },
       });
     } catch (error) {
-      console.error('Repository error - updateProfile:', error);
+      console.error("Repository error - updateProfile:", error);
       throw error;
     }
   }
@@ -418,11 +446,11 @@ export class AuthRepository {
         data: {
           userId: parseInt(userId),
           token,
-          expiresAt
-        }
+          expiresAt,
+        },
       });
     } catch (error) {
-      console.error('Repository error - createRefreshToken:', error);
+      console.error("Repository error - createRefreshToken:", error);
       throw error;
     }
   }
@@ -436,8 +464,8 @@ export class AuthRepository {
         where: {
           token,
           expiresAt: {
-            gt: new Date()
-          }
+            gt: new Date(),
+          },
         },
         include: {
           user: {
@@ -445,13 +473,13 @@ export class AuthRepository {
               id: true,
               email: true,
               status: true,
-              roleId: true
-            }
-          }
-        }
+              roleId: true,
+            },
+          },
+        },
       });
     } catch (error) {
-      console.error('Repository error - findValidRefreshToken:', error);
+      console.error("Repository error - findValidRefreshToken:", error);
       throw error;
     }
   }
@@ -462,10 +490,10 @@ export class AuthRepository {
   async deleteRefreshToken(token) {
     try {
       return await prisma.refreshToken.deleteMany({
-        where: { token }
+        where: { token },
       });
     } catch (error) {
-      console.error('Repository error - deleteRefreshToken:', error);
+      console.error("Repository error - deleteRefreshToken:", error);
       throw error;
     }
   }
@@ -476,10 +504,10 @@ export class AuthRepository {
   async deleteUserRefreshTokens(userId) {
     try {
       return await prisma.refreshToken.deleteMany({
-        where: { userId: parseInt(userId) }
+        where: { userId: parseInt(userId) },
       });
     } catch (error) {
-      console.error('Repository error - deleteUserRefreshTokens:', error);
+      console.error("Repository error - deleteUserRefreshTokens:", error);
       throw error;
     }
   }
@@ -492,12 +520,12 @@ export class AuthRepository {
       return await prisma.refreshToken.deleteMany({
         where: {
           expiresAt: {
-            lt: new Date()
-          }
-        }
+            lt: new Date(),
+          },
+        },
       });
     } catch (error) {
-      console.error('Repository error - deleteExpiredRefreshTokens:', error);
+      console.error("Repository error - deleteExpiredRefreshTokens:", error);
       throw error;
     }
   }

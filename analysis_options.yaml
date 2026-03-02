@@ -1,0 +1,12 @@
+analyzer:
+  exclude:
+    - src/scripts/**
+    - node_modules/**
+    - generated/**
+    - examples/**
+
+  errors:
+    # Ignore todos los errores de sintaxis en archivos JS
+    invalid_assignment: ignore
+    undefined_class: ignore
+    undefined_identifier: ignore
