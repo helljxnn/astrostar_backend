@@ -325,6 +325,11 @@ router.get(
  *     tags: [Providers]
  */
 router.get(
+  "/:id/check-ingresos",
+  providersController.checkHasIngresos
+);
+
+router.get(
   "/:id",
   providersValidators.getById,
   handleValidationErrors,

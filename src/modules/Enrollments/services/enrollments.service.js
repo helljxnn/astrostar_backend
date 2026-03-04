@@ -9,7 +9,7 @@ const ENROLLMENT_CONSTANTS = {
   ADULT_AGE: 18,
   ENROLLMENT_DURATION_YEARS: 1,
   ENROLLMENT_MINIMUM_AGE_MONTHS: 12,
-  DEFAULT_ROLE_NAME: 'Athlete',
+  DEFAULT_ROLE_NAME: 'Deportista',
   DEFAULT_ADDRESS: 'N/A',
   BCRYPT_SALT_ROUNDS: 10,
 };
@@ -162,13 +162,38 @@ const getOrCreateAthleteRole = async (tx) => {
   });
 
   if (!athleteRole) {
+    // Permisos básicos para deportistas
+    const athletePermissions = {
+      "Perfil": {
+        "Ver": true,
+        "Editar": true
+      },
+      "Citas": {
+        "Ver": true,
+        "Crear": true,
+        "Editar": true
+      },
+      "Matriculas": {
+        "Ver": true
+      },
+      "Inscripciones": {
+        "Ver": true
+      },
+      "Eventos": {
+        "Ver": true
+      }
+    };
+
     athleteRole = await tx.role.create({
       data: {
         name: ENROLLMENT_CONSTANTS.DEFAULT_ROLE_NAME,
         description: 'Rol de deportista',
-        status: ATHLETE_STATUS.ACTIVE
+        status: ATHLETE_STATUS.ACTIVE,
+        permissions: athletePermissions
       }
     });
+    
+    console.log('✅ [ENROLLMENT] Rol de Athlete creado con permisos básicos');
   }
 
   return athleteRole;

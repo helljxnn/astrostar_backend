@@ -203,6 +203,16 @@ export class ProvidersService {
         };
       }
 
+      // Verificar si el proveedor tiene ingresos asociados
+      const hasIngresos = await this.providersRepository.checkHasIngresos(id);
+      if (hasIngresos) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el proveedor "${providerToDelete.razonSocial}" porque está asociado a ingresos.`,
+        };
+      }
+
       const deletedProvider = await this.providersRepository.delete(id);
 
       return {
@@ -211,6 +221,21 @@ export class ProvidersService {
       };
     } catch (error) {
       console.error("Service error - deleteProvider:", error);
+      throw error;
+    }
+  }
+
+  async checkHasIngresos(providerId) {
+    try {
+      const hasIngresos = await this.providersRepository.checkHasIngresos(
+        providerId
+      );
+      return {
+        success: true,
+        hasIngresos,
+      };
+    } catch (error) {
+      console.error("Service error - checkHasIngresos:", error);
       throw error;
     }
   }

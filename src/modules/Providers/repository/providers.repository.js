@@ -247,6 +247,14 @@ export class ProvidersRepository {
         return false;
       }
 
+      // Verificar si el proveedor tiene ingresos asociados
+      const hasIngresos = await this.checkHasIngresos(id);
+      if (hasIngresos) {
+        throw new Error(
+          `No se puede eliminar el proveedor "${provider.businessName}" porque está asociado a ingresos.`
+        );
+      }
+
       await prisma.provider.delete({
         where: { id: parseInt(id) },
       });
@@ -256,6 +264,22 @@ export class ProvidersRepository {
       if (error.code === "P2025") {
         return false;
       }
+      throw error;
+    }
+  }
+
+  async checkHasIngresos(providerId) {
+    try {
+      // Verificar si el proveedor tiene movimientos de materiales (entradas/ingresos) asociados
+      const count = await prisma.materialMovement.count({
+        where: { 
+          proveedorId: parseInt(providerId),
+          tipoMovimiento: 'Entrada' // Entradas = Ingresos de materiales
+        },
+      });
+      return count > 0;
+    } catch (error) {
+      console.error("Repository error - checkHasIngresos:", error);
       throw error;
     }
   }

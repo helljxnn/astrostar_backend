@@ -492,6 +492,34 @@ export class ProvidersController {
       });
     }
   };
+
+  checkHasIngresos = async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID de proveedor inválido",
+        });
+      }
+
+      const result = await this.providersService.checkHasIngresos(id);
+
+      res.json({
+        success: true,
+        hasIngresos: result.hasIngresos,
+      });
+    } catch (error) {
+      console.error("Error in checkHasIngresos controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al verificar ingresos asociados",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 }
 
 export default new ProvidersController();
