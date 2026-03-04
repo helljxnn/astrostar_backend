@@ -257,9 +257,10 @@ export class EmployeeRepository {
   async getDocumentTypes() {
     return await prisma.documentType.findMany({
       where: {
-        NOT: {
-          name: 'Número de Identificación Tributaria'
-        }
+        NOT: [
+          { name: 'Número de Identificación Tributaria' },
+          { name: 'Registro Civil' } // Solo para deportistas
+        ]
       },
       orderBy: { name: 'asc' }
     });

@@ -3,12 +3,19 @@ import prisma from "../../../config/database.js";
 export class AthletesController {
   async getAthletes(req, res) {
     try {
-      console.log('🔍 Buscando deportistas...');
+      console.log('🔍 [AthletesController] Iniciando búsqueda de deportistas...');
+      console.log('📋 [AthletesController] Headers:', req.headers);
+      console.log('🔐 [AthletesController] Usuario autenticado:', req.user ? 'Sí' : 'No');
       
-      // 1. Deportistas de la fundación
+      // 1. Deportistas de la fundación (con inscripciones activas)
       const athletes = await prisma.athlete.findMany({
         where: {
-          status: "Active"
+          status: "Active",
+          inscriptions: {
+            some: {
+              status: "Active"
+            }
+          }
         },
         include: {
           user: true,
@@ -18,6 +25,9 @@ export class AthletesController {
             },
             include: {
               sportsCategory: true
+            },
+            orderBy: {
+              inscriptionDate: 'desc'
             }
           }
         }
@@ -33,6 +43,7 @@ export class AthletesController {
           id: athlete.id,
           name: `${athlete.user.firstName} ${athlete.user.lastName}`,
           identification: athlete.user.identification,
+          phoneNumber: athlete.user.phoneNumber,
           categoria: category,
           source: "fundacion",
           sourceLabel: "Deportistas de la Fundación",
@@ -54,7 +65,8 @@ export class AthletesController {
         id: temp.id,
         name: `${temp.firstName} ${temp.lastName}`,
         identification: temp.identification,
-        categoria: undefined,
+        phoneNumber: temp.phone,
+        categoria: temp.category || undefined,
         source: "temporal",
         sourceLabel: "Deportistas Temporales",
         type: "temporal"

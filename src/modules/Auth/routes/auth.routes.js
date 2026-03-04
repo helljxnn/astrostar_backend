@@ -1,10 +1,7 @@
-import express from "express";
-import { AuthController } from "../controllers/auth.controller.js";
-import {
-  authValidators,
-  handleValidationErrors,
-} from "../validators/auth.validator.js";
-import { authenticateToken } from "../../../middlewares/auth.js";
+import express from 'express';
+import { AuthController } from '../controllers/auth.controller.js';
+import { authValidators, handleValidationErrors } from '../validators/auth.validator.js';
+import { authenticateToken } from '../../../middlewares/auth.js';
 
 const router = express.Router();
 const authController = new AuthController();
@@ -27,43 +24,71 @@ const authController = new AuthController();
  */
 
 // Rutas públicas
-router.post(
-  "/login",
-  authValidators.login,
-  handleValidationErrors,
+router.post('/login', 
+  authValidators.login, 
+  handleValidationErrors, 
   authController.login
 );
 
-router.post("/logout", authController.logout);
-router.post("/refresh-token", authController.refreshToken);
-router.post(
-  "/verify-code",
-  handleValidationErrors,
-  authController.verifyCode
-);
-router.post(
-  "/forgot-password",
+router.post('/forgot-password',
+  authValidators.forgotPassword,
   handleValidationErrors,
   authController.forgotPassword
 );
-router.post(
-  "/reset-password",
+
+router.post('/verify-reset-token',
+  authValidators.verifyResetToken,
+  handleValidationErrors,
+  authController.verifyResetToken
+);
+
+router.post('/reset-password',
+  authValidators.resetPassword,
   handleValidationErrors,
   authController.resetPassword
 );
 
+// Refresh token desde cookie HttpOnly
+router.post('/refresh',
+  authController.refresh
+);
+
+// Logout - limpia cookie HttpOnly
+router.post('/logout',
+  authController.logout
+);
 
 // Rutas protegidas
-router.get("/profile", authController.profile);
+router.get('/me', 
+  authenticateToken, 
+  authController.me
+);
 
-router.put("/profile/:id", authenticateToken, authController.updateProfile);
-
-router.post(
-  "/change-password",
+router.post('/change-password', 
   authenticateToken,
-  authValidators.changePassword,
-  handleValidationErrors,
+  authValidators.changePassword, 
+  handleValidationErrors, 
   authController.changePassword
+);
+
+router.post('/request-email-change',
+  authenticateToken,
+  authController.requestEmailChange
+);
+
+router.post('/verify-email-change',
+  authenticateToken,
+  authController.verifyEmailChange
+);
+
+router.put('/profile',
+  authenticateToken,
+  authController.updateProfile
+);
+
+router.post('/logout-all',
+  authenticateToken,
+  authController.logoutAll
 );
 
 export default router;

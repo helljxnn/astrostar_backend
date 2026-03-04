@@ -86,6 +86,77 @@ router.get("/", usersController.getUsers); // Without checkPermission for now
 
 /**
  * @swagger
+ * /api/users/check-email:
+ *   get:
+ *     summary: Verificar disponibilidad de email
+ *     tags: [Users]
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: email
+ *         description: Email a verificar
+ *       - in: query
+ *         name: excludeUserId
+ *         schema:
+ *           type: integer
+ *         description: ID de usuario a excluir (para edición)
+ *     responses:
+ *       200:
+ *         description: Verificación completada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 available:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ */
+router.get("/check-email", usersController.checkEmailAvailability);
+
+/**
+ * @swagger
+ * /api/users/check-identification:
+ *   get:
+ *     summary: Verificar disponibilidad de identificación
+ *     tags: [Users]
+ *     parameters:
+ *       - in: query
+ *         name: identification
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Identificación a verificar
+ *       - in: query
+ *         name: excludeUserId
+ *         schema:
+ *           type: integer
+ *         description: ID de usuario a excluir (para edición)
+ *     responses:
+ *       200:
+ *         description: Verificación completada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 available:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ */
+router.get("/check-identification", usersController.checkIdentificationAvailability);
+
+/**
+ * @swagger
  * /api/users/stats:
  *   get:
  *     summary: Get user statistics

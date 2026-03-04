@@ -258,6 +258,67 @@ export class UsersRepository {
       };
     });
   }
+
+  /**
+   * Normalizar email (para Gmail, remover puntos antes del @)
+   */
+  normalizeEmail(email) {
+    if (!email) return email;
+    
+    const [localPart, domain] = email.toLowerCase().split('@');
+    
+    // Para Gmail, remover puntos del local part
+    if (domain === 'gmail.com' || domain === 'googlemail.com') {
+      return localPart.replace(/\./g, '') + '@' + domain;
+    }
+    
+    return email.toLowerCase();
+  }
+
+  /**
+   * Buscar usuario por email (con normalización para Gmail)
+   */
+  async findByEmail(email, excludeUserId = null) {
+    console.log('🔍 [UsersRepository] Buscando email:', email);
+    console.log('🔍 [UsersRepository] excludeUserId:', excludeUserId);
+    
+    const normalizedEmail = this.normalizeEmail(email);
+    console.log('🔍 [UsersRepository] Email normalizado:', normalizedEmail);
+    
+    // Buscar por email normalizado
+    const where = { email: normalizedEmail };
+    if (excludeUserId) {
+      where.id = { not: parseInt(excludeUserId) };
+    }
+    
+    console.log('🔍 [UsersRepository] Where clause:', where);
+    let user = await prisma.user.findFirst({ where });
+    console.log('🔍 [UsersRepository] Usuario encontrado (normalizado):', user ? `ID: ${user.id}, Email: ${user.email}` : 'null');
+    
+    // Si no se encuentra con email normalizado, buscar con email original
+    if (!user && normalizedEmail !== email.toLowerCase()) {
+      const whereOriginal = { email: email.toLowerCase() };
+      if (excludeUserId) {
+        whereOriginal.id = { not: parseInt(excludeUserId) };
+      }
+      console.log('🔍 [UsersRepository] Buscando con email original:', whereOriginal);
+      user = await prisma.user.findFirst({ where: whereOriginal });
+      console.log('🔍 [UsersRepository] Usuario encontrado (original):', user ? `ID: ${user.id}, Email: ${user.email}` : 'null');
+    }
+    
+    return user;
+  }
+
+  /**
+   * Buscar usuario por identificación
+   */
+  async findByIdentification(identification, excludeUserId = null) {
+    const where = { identification: identification };
+    if (excludeUserId) {
+      where.id = { not: parseInt(excludeUserId) };
+    }
+    return await prisma.user.findFirst({ where });
+  }
 }
 
 export default new UsersRepository();

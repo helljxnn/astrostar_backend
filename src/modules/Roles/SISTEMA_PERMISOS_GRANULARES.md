@@ -1,4 +1,4 @@
-# 🛡️ SISTEMA DE PERMISOS GRANULARES - GUÍA PARA DESARROLLADORES
+﻿# 🛡️ SISTEMA DE PERMISOS GRANULARES - GUÍA PARA DESARROLLADORES
 
 Hemos implementado un sistema de permisos granulares que permite controlar exactamente qué puede hacer cada usuario en cada módulo de la aplicación. **Los permisos se definen una sola vez al crear roles**, y luego cada módulo consulta automáticamente esos permisos.
 
@@ -21,7 +21,8 @@ ADMIN CREA ROL → USUARIO RECIBE ROL → MÓDULOS CONSULTAN PERMISOS → UI SE 
 Rol "Editor de Contenido" = {
   permissions: {
     users: { Ver: true, Crear: false, Editar: false, Eliminar: false },
-    sportsEquipment: { Ver: true, Crear: true, Editar: true, Eliminar: false },
+    materials: { Ver: true, Crear: true, Editar: true, Eliminar: false },
+    materialCategories: { Ver: true, Crear: true, Editar: true, Eliminar: false },
     donationsManagement: { Ver: true, Crear: true, Editar: true, Eliminar: true }
   }
 }
@@ -43,7 +44,7 @@ Usuario "Jennifer" = {
 hasPermission("users", "Crear"); // → false (botón oculto)
 
 // En el módulo de Material Deportivo
-hasPermission("sportsEquipment", "Crear"); // → true (botón visible)
+hasPermission("materials", "Crear"); // → true (botón visible)
 ```
 
 ---
@@ -125,7 +126,9 @@ const MODULOS_DISPONIBLES = [
   "dashboard", // Dashboard principal
   "users", // Usuarios
   "roles", // Roles y permisos
-  "sportsEquipment", // Material deportivo
+  "materials", // Material deportivo
+  "materialCategories", // Categorías de materiales
+  "materialsRegistry", // Ingresos de materiales
   "employees", // Empleados
   "employeesSchedule", // Horario de empleados
   "appointmentManagement", // Gestión de citas
@@ -145,7 +148,7 @@ const MODULOS_DISPONIBLES = [
 **ACCIONES DISPONIBLES:**
 
 ```javascript
-const ACCIONES_DISPONIBLES = ["Ver", "Crear", "Editar", "Eliminar"];
+const ACCIONES_DISPONIBLES = ["Ver", "Crear", "Editar", "Eliminar", "Listar"];
 ```
 
 ---
@@ -431,3 +434,4 @@ Una vez implementado completamente:
 - ✅ **Consistencia**: Comportamiento uniforme en toda la aplicación
 
 ---
+

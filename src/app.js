@@ -1,40 +1,52 @@
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
 import { swaggerUi, specs } from "./config/swagger.js";
 import routes from "./routes/index.js";
-import cookieParser from "cookie-parser";
-
-// Load environment variables
-dotenv.config();
+import { requestLogger } from "./middlewares/requestLogger.js";
 
 const app = express();
+
+// Request logger (solo en desarrollo)
+if (process.env.NODE_ENV === "development") {
+  app.use(requestLogger);
+}
 
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:5173", // El origen de tu frontend
-    credentials: true, // Permite el envío de cookies
-  })
+    origin: true, // Permitir todas las conexiones en desarrollo
+    credentials: true, // Permitir envío de cookies
+  }),
 );
-
-//Libreria para guardar en las cookies el token JWT
 app.use(cookieParser());
-app.use(express.json({ charset: 'utf-8' }));
-app.use(express.urlencoded({ extended: true, charset: 'utf-8' }));
-
-// Asegurar UTF-8 en todas las respuestas
-app.use((req, res, next) => {
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  next();
-});
+app.use(express.json({ charset: "utf-8" }));
+app.use(express.urlencoded({ extended: true, charset: "utf-8" }));
 
 // 💾 Servir imágenes subidas de categorías
-app.use('/uploads/categories', express.static('src/uploads/categories'));
+app.use("/uploads/categories", express.static("src/uploads/categories"));
 
+// 💾 Servir assets públicos (imágenes para RSVP, etc.)
+app.use("/public", express.static("src/public"));
 
-// Swagger documentation
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
+// Swagger documentation - DEBE IR ANTES de las rutas API
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(specs, {
+    customCss: ".swagger-ui .topbar { display: none }",
+    customSiteTitle: "AstroStar API Documentation",
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  }),
+);
+
+// Asegurar UTF-8 en respuestas JSON (solo para rutas /api)
+app.use("/api", (req, res, next) => {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  next();
+});
 
 // API routes
 app.use("/api", routes);

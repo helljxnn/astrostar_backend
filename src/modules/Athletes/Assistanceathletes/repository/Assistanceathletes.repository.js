@@ -1,0 +1,275 @@
+import prisma from "../../../../config/database.js";
+
+export class AssistanceathletesRepository {
+  normalizeDate(dateString) {
+    return new Date(`${dateString}T00:00:00.000Z`);
+  }
+
+  buildAthleteName(user) {
+    return [user.firstName, user.lastName].filter(Boolean).join(" ");
+  }
+
+  calculateAge(birthDate) {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
+  }
+
+  buildWhere({ search, categoria }) {
+    const where = {};
+
+    if (search) {
+      where.OR = [
+        {
+          user: {
+            OR: [
+              { firstName: { contains: search, mode: "insensitive" } },
+              { lastName: { contains: search, mode: "insensitive" } },
+              { identification: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+        {
+          inscriptions: {
+            some: {
+              sportsCategory: {
+                nombre: { contains: search, mode: "insensitive" },
+              },
+            },
+          },
+        },
+      ];
+    }
+
+    if (categoria) {
+      where.inscriptions = {
+        some: {
+          sportsCategory: {
+            nombre: { equals: categoria, mode: "insensitive" },
+          },
+        },
+      };
+    }
+
+    return where;
+  }
+
+  buildPagination(page, limit, total) {
+    return {
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      total,
+      pages: Math.ceil(total / limit),
+    };
+  }
+
+  getCategoriaNombre(athlete) {
+    const currentInscription = athlete.inscriptions[0];
+    return currentInscription?.sportsCategory?.nombre || "";
+  }
+
+  mapAttendance(athlete, attendanceMap) {
+    const attendance = attendanceMap.get(athlete.id);
+    return {
+      id: athlete.id,
+      athleteId: athlete.id,
+      nombre: this.buildAthleteName(athlete.user),
+      documento: athlete.user.identification,
+      edad: this.calculateAge(athlete.user.birthDate),
+      categoria: this.getCategoriaNombre(athlete),
+      asistencia: attendance ? attendance.asistencia : false,
+      observacion: attendance?.observacion || "",
+    };
+  }
+
+  async getAttendanceByDate({
+    date,
+    page = 1,
+    limit = 10,
+    search = "",
+    categoria = "",
+  }) {
+    const skip = (page - 1) * limit;
+    const where = this.buildWhere({ search, categoria });
+
+    const [athletes, total] = await Promise.all([
+      prisma.athlete.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: true,
+          inscriptions: {
+            include: { sportsCategory: true },
+            orderBy: { inscriptionDate: "desc" },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.athlete.count({ where }),
+    ]);
+
+    if (!athletes.length) {
+      return {
+        data: [],
+        pagination: this.buildPagination(page, limit, total),
+      };
+    }
+
+    const athleteIds = athletes.map((athlete) => athlete.id);
+    const normalizedDate = this.normalizeDate(date);
+
+    const attendanceRecords = await prisma.athleteAttendance.findMany({
+      where: {
+        date: normalizedDate,
+        athleteId: { in: athleteIds },
+      },
+    });
+
+    const attendanceMap = new Map(
+      attendanceRecords.map((record) => [record.athleteId, record])
+    );
+
+    const data = athletes.map((athlete) =>
+      this.mapAttendance(athlete, attendanceMap)
+    );
+
+    return {
+      data,
+      pagination: this.buildPagination(page, limit, total),
+    };
+  }
+
+  async saveAttendanceBulk({ date, items }) {
+    const normalizedDate = this.normalizeDate(date);
+
+    const upserts = items.map((item) =>
+      prisma.athleteAttendance.upsert({
+        where: {
+          athleteId_date: {
+            athleteId: item.athleteId,
+            date: normalizedDate,
+          },
+        },
+        update: {
+          asistencia: item.asistencia,
+          observacion: item.observacion || "",
+        },
+        create: {
+          athleteId: item.athleteId,
+          date: normalizedDate,
+          asistencia: item.asistencia,
+          observacion: item.observacion || "",
+        },
+      })
+    );
+
+    await prisma.$transaction(upserts);
+    return true;
+  }
+
+  buildHistoryRange(startDate, endDate) {
+    const end = endDate ? new Date(`${endDate}T23:59:59.999Z`) : new Date();
+    const start = startDate
+      ? new Date(`${startDate}T00:00:00.000Z`)
+      : new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return { start, end };
+  }
+
+  async getHistorySummary({
+    startDate,
+    endDate,
+    page = 1,
+    limit = 10,
+    search = "",
+    categoria = "",
+  }) {
+    const { start, end } = this.buildHistoryRange(startDate, endDate);
+    const skip = (page - 1) * limit;
+    const where = this.buildWhere({ search, categoria });
+
+    const [athletes, total] = await Promise.all([
+      prisma.athlete.findMany({
+        where,
+        skip,
+        take: limit,
+        include: {
+          user: true,
+          inscriptions: {
+            include: { sportsCategory: true },
+            orderBy: { inscriptionDate: "desc" },
+          },
+          attendances: {
+            where: {
+              date: {
+                gte: start,
+                lte: end,
+              },
+            },
+          },
+        },
+        orderBy: [{ user: { firstName: "asc" } }, { user: { lastName: "asc" } }],
+      }),
+      prisma.athlete.count({ where }),
+    ]);
+
+    const data = athletes.map((athlete) => {
+      const records = athlete.attendances || [];
+      const present = records.filter((r) => r.asistencia).length;
+      const absent = records.filter((r) => !r.asistencia).length;
+      const totalRecords = records.length;
+      const percent = totalRecords
+        ? Math.round((present / totalRecords) * 100)
+        : 0;
+
+      return {
+        athleteId: athlete.id,
+        documento: athlete.user.identification,
+        nombre: this.buildAthleteName(athlete.user),
+        categoria: this.getCategoriaNombre(athlete),
+        present,
+        absent,
+        total: totalRecords,
+        percent,
+      };
+    });
+
+    return {
+      data,
+      pagination: this.buildPagination(page, limit, total),
+      range: {
+        startDate: start.toISOString().split("T")[0],
+        endDate: end.toISOString().split("T")[0],
+      },
+    };
+  }
+
+  async getAthleteHistory({ athleteId, startDate, endDate }) {
+    const { start, end } = this.buildHistoryRange(startDate, endDate);
+
+    const records = await prisma.athleteAttendance.findMany({
+      where: {
+        athleteId,
+        date: {
+          gte: start,
+          lte: end,
+        },
+      },
+      orderBy: { date: "desc" },
+    });
+
+    return records.map((record) => ({
+      id: record.id,
+      date: record.date,
+      asistencia: record.asistencia,
+      observacion: record.observacion || "",
+    }));
+  }
+}

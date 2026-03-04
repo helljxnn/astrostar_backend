@@ -1,8 +1,8 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { sendPasswordResetEmail } from "../../../utils/mailer.js"; // <-- Deberás crear este archivo
 import { AuthRepository } from "../repository/auth.repository.js";
+import emailService from "../../../services/emailService.js";
 
 export class AuthService {
   constructor() {
@@ -55,107 +55,38 @@ export class AuthService {
         };
       }
 
-      // 5. Generar token JWT
-      const token = jwt.sign(
-        { 
+      // 5. Generar access token (corta duración - solo en memoria del cliente)
+      const accessToken = jwt.sign(
+        {
           id: user.id,
           email: user.email,
           roleId: user.roleId,
         },
-        process.env.JWT_SECRET,
-        { expiresIn: "5s" }
+        process.env.JWT_SECRET || "your-secret-key",
+        { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m" },
       );
 
+      // 6. Generar refresh token (larga duración - irá en cookie HttpOnly)
       const refreshToken = jwt.sign(
         {
           id: user.id,
+          type: "refresh",
         },
-        process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: "7d" }
+        process.env.JWT_REFRESH_SECRET ||
+          process.env.JWT_SECRET ||
+          "your-refresh-secret",
+        { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" },
       );
 
-      // Guardar el refreshToken en la base de datos para mayor seguridad
-      await this.authRepository.updateUserRefreshToken(user.id, refreshToken);
+      // 7. Guardar refresh token en la base de datos
+      const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 días
+      await this.authRepository.createRefreshToken(
+        user.id,
+        refreshToken,
+        refreshExpiresAt,
+      );
 
-      return {
-        success: true,
-        data: {
-          user: {
-            id: user.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            role: user.role,
-          },
-          accessToken,
-          refreshToken,
-        },
-      };
-    } catch (error) {
-      console.error("Service error - login:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Obtener perfil del usuario autenticado
-   */
-  async profile(accessToken) {
-    let userId;
-    try {
-      const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
-      userId = decoded.id;
-    } catch (error) {
-      if (error instanceof jwt.TokenExpiredError) {
-        return {
-          success: false,
-          statusCode: 401,
-          message: "Token de acceso expirado.",
-        };
-      }
-      if (error instanceof jwt.JsonWebTokenError) {
-        return {
-          success: false,
-          statusCode: 403,
-          message: "Token de acceso inválido.",
-        };
-      }
-      console.error("Service error - profile (token verification):", error);
-      throw error; // Re-lanzar otros errores inesperados
-    }
-
-    // Ahora que tenemos el userId, procedemos a buscar el perfil
-    try {
-      // 1. Buscar usuario por ID con datos completos
-      const user = await this.authRepository.findProfileById(userId);
-
-      if (!user) {
-        return {
-          success: false,
-          statusCode: 404,
-          message: "Usuario no encontrado",
-        };
-      }
-
-      // 2. Verificar estado del usuario
-      if (user.status !== "Active") {
-        return {
-          success: false,
-          statusCode: 401,
-          message: "Usuario inactivo. Contacte al administrador.",
-        };
-      }
-
-      // 3. Verificar rol activo
-      if (user.role.status !== "Active") {
-        return {
-          success: false,
-          statusCode: 401,
-          message: "Rol inactivo. Contacte al administrador.",
-        };
-      }
-
-      // 4. Preparar datos de respuesta (sin contraseña)
+      // 8. Preparar datos de respuesta (sin contraseña)
       const userData = {
         id: user.id,
         firstName: user.firstName,
@@ -169,164 +100,24 @@ export class AuthService {
         age: user.age,
         identification: user.identification,
         status: user.status,
-        documentType: user.documentType ? user.documentType.name : null,
-        idDocumentType: user.documentTypeId,
+        avatarColorIndex: user.avatarColorIndex || 0,
+        documentType: user.documentType,
         role: user.role,
         employee: user.employee,
         athlete: user.athlete,
       };
 
-      return { success: true, data: userData };
+      return {
+        success: true,
+        data: {
+          user: userData,
+          accessToken,
+        },
+        refreshToken, // Se enviará como cookie HttpOnly
+      };
     } catch (error) {
-      console.error("Service error - profile:", error);
+      console.error("Service error - login:", error);
       throw error;
-    }
-  }
-
-  /**
-   * Actualizar perfil de usuario
-   */
-  async updateProfile(userId, profileData) {
-    try {
-      // 1. Validar entrada
-      if (!profileData) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: "Datos de perfil son requeridos",
-        };
-      }
-
-      const {
-        firstName,
-        middleName,
-        lastName,
-        secondLastName,
-        documentTypeId,
-        identification,
-        email,
-        phoneNumber,
-        address,
-        birthDate,
-      } = profileData;
-
-      // 2. Buscar usuario
-      const user = await this.authRepository.findById(userId);
-
-      if (!user) {
-        return {
-          success: false,
-          statusCode: 404,
-          message: "Usuario no encontrado",
-        };
-      }
-
-      // 4. Preparar datos para actualizar
-      const updateData = {
-        firstName,
-        middleName,
-        lastName,
-        secondLastName,
-        identification,
-        email,
-        phoneNumber,
-        address,
-        birthDate: new Date(birthDate),
-      };
-
-      // Conexión condicional del tipo de documento
-      if (documentTypeId) {
-        updateData.documentType = {
-          connect: { id: parseInt(documentTypeId) },
-        };
-      }
-
-      // 5. Actualizar perfil
-      await this.authRepository.updateProfile(userId, updateData);
-
-      // 6. Obtener el usuario actualizado
-      const updatedUser = await this.authRepository.findProfileById(userId);
-
-      // 7. Preparar datos de respuesta
-      const userData = {
-        ...updatedUser,
-        documentType: updatedUser.documentType ? updatedUser.documentType.name : null,
-      };
-
-      return {
-        success: true,
-        data: userData,
-      };
-    } catch (error) {
-      console.error("Service error - updateProfile:", error);
-      return {
-        success: false,
-        statusCode: 500,
-        message: "Error al actualizar el perfil",
-      };
-    }
-  }
-
-  /**
-   * Iniciar proceso de olvido de contraseña
-   */
-  async forgotPassword(email) {
-    try {
-      // 1. Buscar usuario por email
-      const cleanEmail = email.toLowerCase().trim();
-      const user = await this.authRepository.findByEmail(cleanEmail);
-
-      // 2. Si no se encuentra el usuario, devolvemos éxito para no revelar si un email existe o no (seguridad).
-      if (!user) {
-        return {
-          success: true,
-          message:
-            "Si existe una cuenta con este correo, se ha enviado un enlace para restablecer la contraseña.",
-        };
-      }
-
-      // 3. Generar un token de reseteo seguro
-      const resetToken = crypto.randomBytes(32).toString("hex");
-
-      // 4. Hashear el token y guardarlo en la base de datos junto con la fecha de expiración (15 minutos)
-      const passwordResetToken = crypto
-        .createHash("sha256")
-        .update(resetToken)
-        .digest("hex");
-
-      const passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutos desde ahora
-
-      await this.authRepository.updateUserResetToken(
-        user.id,
-        passwordResetToken,
-        passwordResetExpires
-      );
-
-      // 5. Crear el enlace de reseteo para el frontend
-      // El frontend recibirá este token, y lo usará para llamar a la API de reset-password
-      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
-
-      // 6. Enviar el correo electrónico
-      await sendPasswordResetEmail({
-        to: user.email,
-        firstName: user.firstName,
-        url: resetUrl,
-      });
-
-      return {
-        success: true,
-        message:
-          "Si existe una cuenta con este correo, se ha enviado un enlace para restablecer la contraseña.",
-      };
-    } catch (error) {
-      console.error("Service error - forgotPassword:", error);
-      // No revelamos el error interno, solo un mensaje genérico
-      return {
-        success: false,
-        statusCode: 500,
-        message:
-          "Ocurrió un error al procesar la solicitud. Por favor, inténtelo de nuevo más tarde.",
-      };
     }
   }
 
@@ -465,10 +256,20 @@ export class AuthService {
         };
       }
 
+      // 2.1 PROTECCIÓN: No permitir cambiar contraseña del usuario por defecto del sistema
+      if (user.email === "astrostar.java@gmail.com") {
+        return {
+          success: false,
+          statusCode: 403,
+          message:
+            "No se puede cambiar la contraseña del usuario por defecto del sistema",
+        };
+      }
+
       // 3. Verificar contraseña actual
       const isCurrentPasswordValid = await bcrypt.compare(
         currentPassword,
-        user.passwordHash
+        user.passwordHash,
       );
 
       if (!isCurrentPasswordValid) {
@@ -495,98 +296,588 @@ export class AuthService {
   }
 
   /**
-   * Cerrar sesión de usuario
+   * Solicitar recuperación de contraseña
    */
-  async logout(refreshToken) {
+  async requestPasswordReset(email, ipAddress, userAgent) {
     try {
-      if (!refreshToken) {
-        return { success: true }; // No hay token, no hay nada que hacer.
-      }
-
-      // 1. Verificar el refresh token para obtener el id del usuario
-      const decoded = jwt.verify(
-        refreshToken,
-        process.env.REFRESH_TOKEN_SECRET
+      // 1. Verificar rate limiting
+      const rateLimitService = (
+        await import("../../../services/rateLimitService.js")
+      ).default;
+      const rateLimitCheck = await rateLimitService.checkPasswordResetRateLimit(
+        email,
+        ipAddress,
       );
-      const userId = decoded.id;
 
-      // 2. Buscar usuario para asegurarse de que el token coincide
-      const user = await this.authRepository.findById(userId);
-
-      // Si el usuario no existe o el token no coincide, no hacemos nada.
-      // Esto previene errores si el token ya fue invalidado.
-      if (!user || user.refreshToken !== refreshToken) {
-        return { success: true };
+      if (!rateLimitCheck.allowed) {
+        return {
+          success: false,
+          statusCode: 429, // Too Many Requests
+          message: rateLimitCheck.message,
+          reason: rateLimitCheck.reason,
+          blockedUntil: rateLimitCheck.blockedUntil,
+          minutesRemaining: rateLimitCheck.minutesRemaining,
+        };
       }
 
-      // 3. Limpiar el refreshToken en la base de datos
-      await this.authRepository.updateUserRefreshToken(userId, null);
+      // 2. Buscar usuario por email
+      const cleanEmail = email.toLowerCase().trim();
 
-      return { success: true };
+      // 2.1 PROTECCIÓN: No permitir recuperación de contraseña del usuario por defecto
+      if (cleanEmail === "astrostar.java@gmail.com") {
+        // Registrar intento pero no revelar que es usuario protegido
+        await rateLimitService.recordPasswordResetAttempt(
+          cleanEmail,
+          ipAddress,
+          userAgent,
+          false,
+        );
+
+        return {
+          success: true,
+          message:
+            "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
+        };
+      }
+
+      const user = await this.authRepository.findByEmail(cleanEmail);
+
+      if (!user) {
+        // Por seguridad, no revelamos si el email existe o no
+        // Pero registramos el intento
+        await rateLimitService.recordPasswordResetAttempt(
+          cleanEmail,
+          ipAddress,
+          userAgent,
+          false,
+        );
+
+        return {
+          success: true,
+          message:
+            "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
+        };
+      }
+
+      // 3. Verificar estado del usuario
+      if (user.status !== "Active") {
+        await rateLimitService.recordPasswordResetAttempt(
+          cleanEmail,
+          ipAddress,
+          userAgent,
+          false,
+        );
+
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Usuario inactivo. Contacte al administrador.",
+        };
+      }
+
+      // 4. Eliminar tokens antiguos
+      await this.authRepository.deleteOldTokens(user.id);
+
+      // 5. Generar token de 6 dígitos
+      const resetToken = crypto.randomInt(100000, 999999).toString();
+
+      // 6. Calcular expiración (15 minutos)
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      // 7. Guardar token en la base de datos con información de seguridad
+      await this.authRepository.createPasswordResetToken(
+        user.id,
+        resetToken,
+        expiresAt,
+        ipAddress,
+        userAgent,
+      );
+
+      // 8. Enviar email
+      await emailService.sendPasswordResetEmail(user.email, resetToken);
+
+      // 9. Registrar intento exitoso
+      await rateLimitService.recordPasswordResetAttempt(
+        cleanEmail,
+        ipAddress,
+        userAgent,
+        true,
+      );
+
+      return {
+        success: true,
+        message:
+          "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
+        attemptsRemaining: rateLimitCheck.attemptsRemaining,
+      };
     } catch (error) {
-      // Ignorar errores de token inválido o expirado durante el logout
-      return { success: true };
+      console.error("Service error - requestPasswordReset:", error);
+      throw error;
     }
   }
 
   /**
-   * Refrescar el token de acceso
+   * Verificar token de recuperación
    */
-  async refreshToken(token) {
+  async verifyResetToken(token) {
     try {
-      if (!token) {
+      const resetToken = await this.authRepository.findValidResetToken(token);
+
+      if (!resetToken) {
         return {
           success: false,
-          statusCode: 401,
-          message: "No se proporcionó token de refresco.",
+          statusCode: 400,
+          message: "Código inválido o expirado",
         };
       }
 
-      // 1. Verificar el refresh token
-      let decoded;
-      try {
-        decoded = jwt.verify(token, process.env.REFRESH_TOKEN_SECRET);
-      } catch (error) {
+      // Verificar intentos de verificación
+      const rateLimitService = (
+        await import("../../../services/rateLimitService.js")
+      ).default;
+      const attemptCheck =
+        await rateLimitService.checkTokenVerificationAttempts(
+          resetToken.id,
+          "password_reset",
+        );
+
+      if (!attemptCheck.allowed) {
+        return {
+          success: false,
+          statusCode: 429,
+          message: attemptCheck.message,
+          reason: attemptCheck.reason,
+        };
+      }
+
+      return {
+        success: true,
+        data: {
+          email: resetToken.user.email,
+          tokenId: resetToken.id,
+        },
+      };
+    } catch (error) {
+      console.error("Service error - verifyResetToken:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Restablecer contraseña con token
+   */
+  async resetPassword(token, newPassword) {
+    try {
+      // 1. Validar nueva contraseña
+      if (!newPassword || newPassword.length < 6) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "La contraseña debe tener al menos 6 caracteres",
+        };
+      }
+
+      // 2. Buscar token válido
+      const resetToken = await this.authRepository.findValidResetToken(token);
+
+      if (!resetToken) {
+        // Incrementar contador de intentos fallidos si el token existe
+        const rateLimitService = (
+          await import("../../../services/rateLimitService.js")
+        ).default;
+
+        const existingToken =
+          await this.authRepository.findResetTokenByValue(token);
+        if (existingToken) {
+          await rateLimitService.incrementTokenAttempts(
+            existingToken.id,
+            "password_reset",
+          );
+        }
+
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Código inválido o expirado",
+        };
+      }
+
+      // 2.1 Verificar intentos de verificación
+      const rateLimitService = (
+        await import("../../../services/rateLimitService.js")
+      ).default;
+      const attemptCheck =
+        await rateLimitService.checkTokenVerificationAttempts(
+          resetToken.id,
+          "password_reset",
+        );
+
+      if (!attemptCheck.allowed) {
+        return {
+          success: false,
+          statusCode: 429,
+          message: attemptCheck.message,
+          reason: attemptCheck.reason,
+        };
+      }
+
+      // 2.2 PROTECCIÓN: No permitir resetear contraseña del usuario por defecto
+      if (resetToken.user.email === "astrostar.java@gmail.com") {
         return {
           success: false,
           statusCode: 403,
-          message: "Token de refresco inválido o expirado.",
+          message:
+            "No se puede restablecer la contraseña del usuario por defecto del sistema",
         };
       }
 
-      const userId = decoded.id;
+      // 3. Hashear nueva contraseña
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-      // 2. Buscar usuario y comparar el token con el de la BD
+      // 4. Actualizar contraseña
+      await this.authRepository.updatePassword(
+        resetToken.userId,
+        newPasswordHash,
+      );
+
+      // 5. Marcar token como usado
+      await this.authRepository.markTokenAsUsed(resetToken.id);
+
+      return {
+        success: true,
+        message: "Contraseña restablecida exitosamente",
+      };
+    } catch (error) {
+      console.error("Service error - resetPassword:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener perfil completo del usuario
+   */
+  async getUserProfile(userId) {
+    try {
+      const user = await this.authRepository.findByIdComplete(userId);
+
+      if (!user) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Usuario no encontrado",
+        };
+      }
+
+      // Preparar datos de respuesta
+      const userData = {
+        id: user.id,
+        firstName: user.firstName,
+        middleName: user.middleName,
+        lastName: user.lastName,
+        secondLastName: user.secondLastName,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        address: user.address,
+        birthDate: user.birthDate,
+        age: user.age,
+        identification: user.identification,
+        status: user.status,
+        avatarColorIndex: user.avatarColorIndex || 0,
+        documentType: user.documentType,
+        role: user.role,
+        employee: user.employee,
+        athlete: user.athlete,
+      };
+
+      return {
+        success: true,
+        data: userData,
+      };
+    } catch (error) {
+      console.error("Service error - getUserProfile:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Solicitar cambio de email (envía código de verificación)
+   */
+  async requestEmailChange(userId, newEmail) {
+    try {
+      // 1. Buscar usuario
+      const user = await this.authRepository.findByIdComplete(userId);
+
+      if (!user) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Usuario no encontrado",
+        };
+      }
+
+      // 2. Validar que el nuevo email sea diferente
+      if (user.email === newEmail) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "El nuevo correo es igual al actual",
+        };
+      }
+
+      // 3. Verificar que el nuevo email no esté en uso
+      const existingUser = await this.authRepository.findByEmail(newEmail);
+      if (existingUser) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "El correo electrónico ya está en uso",
+        };
+      }
+
+      // 4. Eliminar tokens antiguos de cambio de email
+      await this.authRepository.deleteOldEmailVerificationTokens(userId);
+
+      // 5. Generar token de 6 dígitos
+      const verificationToken = crypto.randomInt(100000, 999999).toString();
+
+      // 6. Calcular expiración (15 minutos)
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+      // 7. Guardar token en la base de datos
+      await this.authRepository.createEmailVerificationToken(
+        userId,
+        newEmail,
+        verificationToken,
+        expiresAt,
+      );
+
+      // 8. Enviar email con el código
+      await emailService.sendEmailVerificationCode(
+        newEmail,
+        verificationToken,
+        user.firstName,
+      );
+
+      return {
+        success: true,
+        message: "Código de verificación enviado al nuevo correo electrónico",
+      };
+    } catch (error) {
+      console.error("Service error - requestEmailChange:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verificar código y actualizar email
+   */
+  async verifyAndUpdateEmail(userId, token) {
+    try {
+      // 1. Buscar token válido
+      const verificationToken =
+        await this.authRepository.findValidEmailVerificationToken(
+          userId,
+          token,
+        );
+
+      if (!verificationToken) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Código inválido o expirado",
+        };
+      }
+
+      // 2. Actualizar email del usuario
+      const updatedUser = await this.authRepository.updateEmail(
+        userId,
+        verificationToken.newEmail,
+      );
+
+      // 3. Marcar token como usado
+      await this.authRepository.markEmailTokenAsUsed(verificationToken.id);
+
+      // 4. Preparar datos de respuesta
+      const userData = {
+        id: updatedUser.id,
+        firstName: updatedUser.firstName,
+        middleName: updatedUser.middleName,
+        lastName: updatedUser.lastName,
+        secondLastName: updatedUser.secondLastName,
+        email: updatedUser.email,
+        phoneNumber: updatedUser.phoneNumber,
+        address: updatedUser.address,
+        birthDate: updatedUser.birthDate,
+        age: updatedUser.age,
+        identification: updatedUser.identification,
+        status: updatedUser.status,
+        avatarColorIndex: updatedUser.avatarColorIndex || 0,
+        documentType: updatedUser.documentType,
+        role: updatedUser.role,
+        employee: updatedUser.employee,
+        athlete: updatedUser.athlete,
+      };
+
+      return {
+        success: true,
+        data: userData,
+        message: "Correo electrónico actualizado exitosamente",
+      };
+    } catch (error) {
+      console.error("Service error - verifyAndUpdateEmail:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualizar perfil del usuario (sin email)
+   */
+  async updateProfile(userId, updateData) {
+    try {
+      // 1. Buscar usuario
       const user = await this.authRepository.findById(userId);
 
       if (!user) {
         return {
           success: false,
           statusCode: 404,
-          message: "Usuario no encontrado.",
+          message: "Usuario no encontrado",
         };
       }
 
-      if (user.refreshToken !== token) {
-        // Medida de seguridad: si el token no coincide, podría ser un intento de reutilización de un token robado.
-        // Se invalida el token actual en la BD.
-        await this.authRepository.updateUserRefreshToken(userId, null);
+      // 2. Preparar datos para actualizar (solo campos permitidos, sin email)
+      const allowedFields = {
+        phoneNumber: updateData.phoneNumber,
+        address: updateData.address,
+        avatarColorIndex: updateData.avatarColorIndex,
+      };
+
+      // Validar avatarColorIndex si se proporciona
+      if (updateData.avatarColorIndex !== undefined) {
+        const colorIndex = parseInt(updateData.avatarColorIndex);
+        if (isNaN(colorIndex) || colorIndex < 0 || colorIndex > 5) {
+          return {
+            success: false,
+            statusCode: 400,
+            message: "El índice de color debe estar entre 0 y 5",
+          };
+        }
+        allowedFields.avatarColorIndex = colorIndex;
+      }
+
+      // Filtrar campos undefined
+      const dataToUpdate = Object.fromEntries(
+        Object.entries(allowedFields).filter(
+          ([_, value]) => value !== undefined,
+        ),
+      );
+
+      // Validar que haya al menos un campo para actualizar
+      if (Object.keys(dataToUpdate).length === 0) {
         return {
           success: false,
-          statusCode: 403,
-          message: "Token de refresco no válido. Inicie sesión de nuevo.",
+          statusCode: 400,
+          message: "No hay datos para actualizar",
         };
       }
 
-      // 3. Generar un nuevo accessToken
+      // 3. Actualizar usuario
+      const updatedUser = await this.authRepository.updateProfile(
+        userId,
+        dataToUpdate,
+      );
+
+      // 4. Preparar datos de respuesta
+      const userData = {
+        id: updatedUser.id,
+        firstName: updatedUser.firstName,
+        middleName: updatedUser.middleName,
+        lastName: updatedUser.lastName,
+        secondLastName: updatedUser.secondLastName,
+        email: updatedUser.email,
+        phoneNumber: updatedUser.phoneNumber,
+        address: updatedUser.address,
+        birthDate: updatedUser.birthDate,
+        age: updatedUser.age,
+        identification: updatedUser.identification,
+        status: updatedUser.status,
+        avatarColorIndex: updatedUser.avatarColorIndex || 0,
+        documentType: updatedUser.documentType,
+        role: updatedUser.role,
+        employee: updatedUser.employee,
+        athlete: updatedUser.athlete,
+      };
+
+      return {
+        success: true,
+        data: userData,
+      };
+    } catch (error) {
+      console.error("Service error - updateProfile:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Refrescar access token usando refresh token (desde cookie)
+   */
+  async refreshAccessToken(refreshToken) {
+    try {
+      if (!refreshToken) {
+        return {
+          success: false,
+          statusCode: 401,
+          message: "Refresh token no proporcionado",
+        };
+      }
+
+      // 1. Verificar que el refresh token sea válido
+      let decoded;
+      try {
+        decoded = jwt.verify(
+          refreshToken,
+          process.env.JWT_REFRESH_SECRET ||
+            process.env.JWT_SECRET ||
+            "your-refresh-secret",
+        );
+      } catch (error) {
+        return {
+          success: false,
+          statusCode: 401,
+          message: "Refresh token inválido o expirado",
+        };
+      }
+
+      // 2. Verificar que el token exista en la base de datos
+      const storedToken =
+        await this.authRepository.findValidRefreshToken(refreshToken);
+
+      if (!storedToken) {
+        return {
+          success: false,
+          statusCode: 401,
+          message: "Refresh token no encontrado o expirado",
+        };
+      }
+
+      // 3. Verificar que el usuario esté activo
+      if (storedToken.user.status !== "Active") {
+        return {
+          success: false,
+          statusCode: 401,
+          message: "Usuario inactivo",
+        };
+      }
+
+      // 4. Generar nuevo access token
       const newAccessToken = jwt.sign(
         {
-          id: user.id,
-          email: user.email,
-          roleId: user.roleId,
+          id: storedToken.user.id,
+          email: storedToken.user.email,
+          roleId: storedToken.user.roleId,
         },
-        process.env.JWT_SECRET,
-        { expiresIn: "5s" }
+        process.env.JWT_SECRET || "your-secret-key",
+        { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m" },
       );
 
       return {
@@ -596,7 +887,45 @@ export class AuthService {
         },
       };
     } catch (error) {
-      console.error("Service error - refreshToken:", error);
+      console.error("Service error - refreshAccessToken:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cerrar sesión (invalidar refresh token desde cookie)
+   */
+  async logout(refreshToken) {
+    try {
+      if (refreshToken) {
+        // Eliminar el refresh token de la base de datos
+        await this.authRepository.deleteRefreshToken(refreshToken);
+      }
+
+      return {
+        success: true,
+        message: "Sesión cerrada exitosamente",
+      };
+    } catch (error) {
+      console.error("Service error - logout:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cerrar todas las sesiones de un usuario
+   */
+  async logoutAll(userId) {
+    try {
+      // Eliminar todos los refresh tokens del usuario
+      await this.authRepository.deleteUserRefreshTokens(userId);
+
+      return {
+        success: true,
+        message: "Todas las sesiones cerradas exitosamente",
+      };
+    } catch (error) {
+      console.error("Service error - logoutAll:", error);
       throw error;
     }
   }

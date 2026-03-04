@@ -1,4 +1,4 @@
-import { EventsService } from './events.services.js';
+import { EventsService } from "./events.services.js";
 
 /**
  * @swagger
@@ -44,7 +44,7 @@ export class EventsController {
    *         name: status
    *         schema:
    *           type: string
-   *           enum: [Programado, Finalizado, Cancelado, Pausado]
+   *           enum: [Programado, Finalizado, Cancelado]
    *         description: Filtrar por estado
    *       - in: query
    *         name: categoryId
@@ -94,7 +94,7 @@ export class EventsController {
    *                         type: string
    *                       status:
    *                         type: string
-   *                         enum: [Programado, Finalizado, Cancelado, Pausado]
+   *                         enum: [Programado, Finalizado, Cancelado]
    *                       imageUrl:
    *                         type: string
    *                       scheduleFile:
@@ -152,7 +152,15 @@ export class EventsController {
    */
   getAllEvents = async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '', status = '', categoryId = '', typeId = '' } = req.query;
+      const {
+        page = 1,
+        limit = 10,
+        search = "",
+        status = "",
+        categoryId = "",
+        typeId = "",
+        publish = "",
+      } = req.query;
 
       const result = await this.eventsService.getAllEvents({
         page: parseInt(page),
@@ -160,21 +168,31 @@ export class EventsController {
         search,
         status,
         categoryId,
-        typeId
+        typeId,
+        publish,
       });
 
       res.json({
         success: true,
         data: result.events,
         pagination: result.pagination,
-        message: `Se encontraron ${result.pagination.total} eventos.`
+        message: `Se encontraron ${result.pagination.total} eventos.`,
       });
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error("❌ Error en getAllEvents:", error);
+      console.error("Stack trace:", error.stack);
+
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener eventos.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener eventos.",
+        error:
+          process.env.NODE_ENV === "development"
+            ? {
+                message: error.message,
+                stack: error.stack,
+                name: error.name,
+              }
+            : undefined,
       });
     }
   };
@@ -273,21 +291,21 @@ export class EventsController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: 'Evento encontrado exitosamente.'
+        message: "Evento encontrado exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching event by ID:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener el evento.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener el evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -359,7 +377,7 @@ export class EventsController {
    *                 example: "+57 300 1234567"
    *               status:
    *                 type: string
-   *                 enum: [Programado, Finalizado, Cancelado, Pausado]
+   *                 enum: [Programado, Finalizado, Cancelado]
    *                 default: Programado
    *                 description: Estado del evento
    *               imageUrl:
@@ -383,7 +401,7 @@ export class EventsController {
    *               typeId:
    *                 type: integer
    *                 description: ID del tipo de evento
-   *                 example: 2
+
    *           example:
    *             name: "Festival Deportivo 2025"
    *             description: "Festival anual de deportes con múltiples disciplinas"
@@ -434,21 +452,20 @@ export class EventsController {
   createEvent = async (req, res) => {
     try {
       const eventData = req.body;
-      
+
       const result = await this.eventsService.createEvent(eventData);
 
       res.status(201).json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error creating event:', error);
-      
       res.status(400).json({
         success: false,
-        message: error.message || 'Error al crear el evento.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: error.message || "Error al crear el evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -509,7 +526,7 @@ export class EventsController {
    *                 example: "+57 300 1234567"
    *               status:
    *                 type: string
-   *                 enum: [Programado, Finalizado, Cancelado, Pausado]
+   *                 enum: [Programado, Finalizado, Cancelado]
    *                 default: Programado
    *               imageUrl:
    *                 type: string
@@ -527,7 +544,7 @@ export class EventsController {
    *                 example: 1
    *               typeId:
    *                 type: integer
-   *                 example: 2
+
    *     responses:
    *       200:
    *         description: Evento actualizado exitosamente
@@ -542,28 +559,27 @@ export class EventsController {
     try {
       const { id } = req.params;
       const updateData = req.body;
-      
+
       const result = await this.eventsService.updateEvent(id, updateData);
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error updating event:', error);
-      
       res.status(400).json({
         success: false,
-        message: error.message || 'Error al actualizar el evento.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: error.message || "Error al actualizar el evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -632,21 +648,20 @@ export class EventsController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error deleting event:', error);
-      
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al eliminar el evento.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al eliminar el evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -679,7 +694,7 @@ export class EventsController {
    *                     programado:
    *                       type: integer
    *                       description: Eventos programados
-   *                       example: 20
+
    *                     finalizado:
    *                       type: integer
    *                       description: Eventos finalizados
@@ -688,10 +703,10 @@ export class EventsController {
    *                       type: integer
    *                       description: Eventos cancelados
    *                       example: 5
-   *                     pausado:
+   *                     
    *                       type: integer
-   *                       description: Eventos pausados
-   *                       example: 2
+
+
    *                     byCategory:
    *                       type: array
    *                       description: Eventos agrupados por categoría
@@ -718,14 +733,74 @@ export class EventsController {
       res.json({
         success: true,
         data: result.data,
-        message: 'Estadísticas obtenidas exitosamente.'
+        message: "Estadísticas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching event stats:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener estadísticas.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener estadísticas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/events/by-quarter:
+   *   get:
+   *     summary: Obtener eventos agrupados por trimestre
+   *     description: Obtiene la cantidad de eventos finalizados agrupados por trimestre y año para los últimos 3 años.
+   *     tags: [Events]
+   *     responses:
+   *       200:
+   *         description: Datos obtenidos exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     type: object
+   *                     properties:
+   *                       trimestre:
+   *                         type: string
+   *                         example: "Trim 1"
+   *                       año2023:
+   *                         type: integer
+   *                         example: 21
+   *                       año2024:
+   *                         type: integer
+   *                         example: 13
+   *                       año2025:
+   *                         type: integer
+   *                         example: 18
+   *                 message:
+   *                   type: string
+   *                   example: "Datos de eventos por trimestre obtenidos exitosamente."
+   *       500:
+   *         description: Error interno del servidor
+   */
+  getEventsByQuarter = async (req, res) => {
+    try {
+      const result = await this.eventsService.getEventsByQuarter();
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: "Datos de eventos por trimestre obtenidos exitosamente.",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener datos por trimestre.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -794,14 +869,14 @@ export class EventsController {
       res.json({
         success: true,
         data: result.data,
-        message: 'Datos de referencia obtenidos exitosamente.'
+        message: "Datos de referencia obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching reference data:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener datos de referencia.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener datos de referencia.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -852,27 +927,435 @@ export class EventsController {
       if (!name || !name.trim()) {
         return res.status(400).json({
           success: false,
-          message: 'El nombre es requerido.'
+          message: "El nombre es requerido.",
         });
       }
 
-      const existingEvent = await this.eventsService.eventsRepository.findByName(name.trim());
-      
-      const isAvailable = !existingEvent || (excludeId && existingEvent.id === parseInt(excludeId));
+      const existingEvent =
+        await this.eventsService.eventsRepository.findByName(name.trim());
+
+      const isAvailable =
+        !existingEvent ||
+        (excludeId && existingEvent.id === parseInt(excludeId));
 
       res.json({
         success: true,
         available: isAvailable,
-        message: isAvailable 
-          ? 'El nombre está disponible.' 
-          : `Ya existe un evento con el nombre "${name}".`
+        message: isAvailable
+          ? "El nombre está disponible."
+          : `Ya existe un evento con el nombre "${name}".`,
       });
     } catch (error) {
-      console.error('Error checking event name:', error);
       res.status(500).json({
         success: false,
-        message: 'Error al verificar el nombre del evento.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error al verificar el nombre del evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/events/{id}/available-athletes:
+   *   get:
+   *     summary: Obtener deportistas disponibles para inscribir en un evento
+   *     description: Obtiene una lista paginada de deportistas activas que pueden inscribirse en el evento especificado
+   *     tags: [Events]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           default: 1
+   *         description: Número de página
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 100
+   *           default: 10
+   *         description: Cantidad de deportistas por página
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *         description: Búsqueda por nombre, identificación o email
+   *       - in: query
+   *         name: categoryId
+   *         schema:
+   *           type: integer
+   *         description: Filtrar por categoría deportiva
+   *     responses:
+   *       200:
+   *         description: Lista de deportistas disponibles obtenida exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     athletes:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: integer
+   *                           fullName:
+   *                             type: string
+   *                           identification:
+   *                             type: string
+   *                           email:
+   *                             type: string
+   *                           age:
+   *                             type: integer
+   *                           category:
+   *                             type: object
+   *                             properties:
+   *                               id:
+   *                                 type: integer
+   *                               name:
+   *                                 type: string
+   *                               ageRange:
+   *                                 type: string
+   *                     pagination:
+   *                       type: object
+   *                       properties:
+   *                         page:
+   *                           type: integer
+   *                         limit:
+   *                           type: integer
+   *                         total:
+   *                           type: integer
+   *                         totalPages:
+   *                           type: integer
+   *                         hasNext:
+   *                           type: boolean
+   *                         hasPrev:
+   *                           type: boolean
+   *       404:
+   *         description: Evento no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  getAvailableAthletes = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { page = 1, limit = 10, search = "", categoryId = "" } = req.query;
+
+      const result = await this.eventsService.getAvailableAthletes(id, {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        categoryId,
+      });
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.pagination.total} deportistas disponibles.`,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message:
+          "Error interno del servidor al obtener deportistas disponibles.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/events/{id}/enroll-athlete:
+   *   post:
+   *     summary: Inscribir deportista en un evento
+   *     description: Inscribe una deportista específica en el evento
+   *     tags: [Events]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - athleteId
+   *             properties:
+   *               athleteId:
+   *                 type: integer
+   *                 description: ID de la deportista a inscribir
+   *                 example: 1
+   *               sportsCategoryId:
+   *                 type: integer
+   *                 description: ID de la categoría deportiva (opcional, usa la de la inscripción activa si no se especifica)
+
+   *               notes:
+   *                 type: string
+   *                 description: Notas adicionales sobre la inscripción
+   *                 example: "Inscripción especial por invitación"
+   *     responses:
+   *       200:
+   *         description: Deportista inscrita exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     id:
+   *                       type: integer
+   *                     athlete:
+   *                       type: object
+   *                       properties:
+   *                         id:
+   *                           type: integer
+   *                         fullName:
+   *                           type: string
+   *                         identification:
+   *                           type: string
+   *                     category:
+   *                       type: object
+   *                     registrationDate:
+   *                       type: string
+   *                       format: date-time
+   *                     status:
+   *                       type: string
+   *                 message:
+   *                   type: string
+   *       400:
+   *         description: Error en los datos o reglas de negocio
+   *       404:
+   *         description: Evento o deportista no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  enrollAthlete = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { athleteId, sportsCategoryId, notes } = req.body;
+
+      if (!athleteId) {
+        return res.status(400).json({
+          success: false,
+          message: "El ID de la deportista es requerido.",
+        });
+      }
+
+      const result = await this.eventsService.enrollAthlete(id, athleteId, {
+        sportsCategoryId,
+        notes,
+      });
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: result.message,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message:
+          error.message || "Error al inscribir la deportista en el evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/events/{id}/unenroll-athlete/{athleteId}:
+   *   delete:
+   *     summary: Desinscribir deportista de un evento
+   *     description: Remueve la inscripción de una deportista del evento
+   *     tags: [Events]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *       - in: path
+   *         name: athleteId
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID de la deportista a desinscribir
+   *     responses:
+   *       200:
+   *         description: Deportista desinscrita exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 message:
+   *                   type: string
+   *                   example: "María García ha sido desinscrita del evento exitosamente."
+   *       400:
+   *         description: Error en los datos o reglas de negocio
+   *       404:
+   *         description: Evento o deportista no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  unenrollAthlete = async (req, res) => {
+    try {
+      const { id, athleteId } = req.params;
+
+      const result = await this.eventsService.unenrollAthlete(id, athleteId);
+
+      res.json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      res.status(400).json({
+        success: false,
+        message:
+          error.message || "Error al desinscribir la deportista del evento.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/events/{id}/check-affected-registrations:
+   *   post:
+   *     summary: Verificar inscripciones afectadas por cambio de categorías
+   *     description: Verifica qué equipos y deportistas serían eliminados al cambiar las categorías del evento
+   *     tags: [Events]
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: integer
+   *         description: ID del evento
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - categoryIds
+   *             properties:
+   *               categoryIds:
+   *                 type: array
+   *                 items:
+   *                   type: integer
+   *                 description: Nuevos IDs de categorías deportivas
+   *                 example: [1, 2]
+   *     responses:
+   *       200:
+   *         description: Información sobre inscripciones afectadas
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     hasAffectedRegistrations:
+   *                       type: boolean
+   *                     removedCategories:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                         properties:
+   *                           id:
+   *                             type: integer
+   *                           nombre:
+   *                             type: string
+   *                     affectedTeams:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                     affectedAthletes:
+   *                       type: array
+   *                       items:
+   *                         type: object
+   *                     totalAffected:
+   *                       type: integer
+   *       400:
+   *         description: Error en los datos
+   *       404:
+   *         description: Evento no encontrado
+   *       500:
+   *         description: Error interno del servidor
+   */
+  checkAffectedRegistrations = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { categoryIds } = req.body;
+
+      if (!categoryIds || !Array.isArray(categoryIds)) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere un array de categoryIds",
+        });
+      }
+
+      const result = await this.eventsService.checkAffectedRegistrations(
+        id,
+        categoryIds,
+      );
+
+      res.json({
+        success: true,
+        data: result.data,
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message || "Error al verificar inscripciones afectadas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };

@@ -121,4 +121,49 @@ export const registrationsValidators = {
       .isInt({ min: 1 })
       .withMessage('El ID debe ser un número entero positivo'),
   ],
+
+  // ============================================
+  // VALIDADORES PARA INSCRIPCIÓN DE DEPORTISTAS
+  // ============================================
+
+  /**
+   * Validar inscripción de deportista
+   */
+  registerAthlete: [
+    body('serviceId')
+      .notEmpty()
+      .withMessage('El ID del evento es requerido')
+      .isInt({ min: 1 })
+      .withMessage('El ID del evento debe ser un número entero positivo'),
+    body('athleteId')
+      .notEmpty()
+      .withMessage('El ID del deportista es requerido')
+      .isInt({ min: 1 })
+      .withMessage('El ID del deportista debe ser un número entero positivo'),
+    body('sportsCategoryId')
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage('El ID de categoría deportiva debe ser un número entero positivo'),
+    body('notes')
+      .optional()
+      .isString()
+      .withMessage('Las notas deben ser texto')
+      .isLength({ max: 500 })
+      .withMessage('Las notas no pueden exceder 500 caracteres'),
+  ],
+
+  /**
+   * Validar obtención de inscripciones por deportista
+   */
+  getByAthlete: [
+    param('athleteId')
+      .notEmpty()
+      .withMessage('El ID del deportista es requerido')
+      .isInt({ min: 1 })
+      .withMessage('El ID del deportista debe ser un número entero positivo'),
+    query('status')
+      .optional()
+      .isIn(['Registered', 'Confirmed', 'Cancelled', 'Attended'])
+      .withMessage('Estado inválido'),
+  ],
 };

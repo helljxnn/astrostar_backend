@@ -69,26 +69,18 @@ export class AuthController {
         });
       }
 
-      const { user, accessToken, refreshToken } = result.data;
-
-      // Guardar tokens en cookies seguras
-      res.cookie("accessToken", accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production", // true en producción
-        sameSite: "strict",
-        maxAge: 15 * 60 * 1000, // 15 minutos
-      });
-
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+      // Establecer refresh token en cookie HttpOnly
+      res.cookie("refreshToken", result.refreshToken, {
+        httpOnly: true, // No accesible desde JavaScript
+        secure: process.env.NODE_ENV === "production", // Solo HTTPS en producción
+        sameSite: "strict", // Protección CSRF
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
       });
 
+      // Retornar solo el access token y datos del usuario
       res.json({
         success: true,
-        data: { user },
+        data: result.data,
         message: "Login exitoso",
       });
     } catch (error) {
@@ -131,17 +123,10 @@ export class AuthController {
    *       500:
    *         $ref: '#/components/responses/InternalServerError'
    */
-  profile = async (req, res) => {
+  me = async (req, res) => {
     try {
-      const accessToken = req.cookies.accessToken;
-
-      if (!accessToken) {
-        return res.status(401).json({
-          success: false,
-          message: "Acceso denegado. No se proporcionó token de acceso.",
-        });
-      }
-      const result = await this.authService.profile(accessToken);
+      const userId = req.user.id;
+      const result = await this.authService.getUserProfile(userId);
 
       if (!result.success) {
         return res.status(result.statusCode).json({
@@ -163,70 +148,6 @@ export class AuthController {
         error:
           process.env.NODE_ENV === "development" ? error.message : undefined,
       });
-    }
-  };
-
-  /**
-   * @swagger
-   * /api/auth/profile:
-   *   put:
-   *     summary: Actualizar perfil de usuario
-   *     tags: [Auth]
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               firstName:
-   *                 type: string
-   *               middleName:
-   *                 type: string
-   *               lastName:
-   *                 type: string
-   *               secondLastName:
-   *                 type: string
-   *               documentTypeId:
-   *                 type: integer
-   *               identification:
-   *                 type: string
-   *               email:
-   *                 type: string
-   *                 format: email
-   *               phoneNumber:
-   *                 type: string
-   *               address:
-   *                 type: string
-   *               birthDate:
-   *                 type: string
-   *                 format: date
-   *     responses:
-   *       200:
-   *         description: Perfil actualizado exitosamente
-   *       400:
-   *         description: Datos inválidos
-   *       401:
-   *         description: No autorizado
-   *       404:
-   *         description: Usuario no encontrado
-   *       500:
-   *         description: Error interno del servidor
-   */
-  updateProfile = async (req, res) => {
-    try {
-      const userId = req.user.id; // ID del usuario autenticado (viene del middleware)
-      const profileData = req.body;
-      const result = await this.authService.updateProfile(userId, profileData);
-      if (!result.success) {
-        return res.status(result.statusCode).json({ success: false, message: result.message });
-      }
-      res.json({ success: true, message: "Perfil actualizado exitosamente", data: result.data });
-    } catch (error) {
-      console.error("Controller error - updateProfile:", error);
-      res.status(500).json({ success: false, message: "Error interno del servidor al actualizar el perfil" });
     }
   };
 
@@ -272,7 +193,7 @@ export class AuthController {
       const result = await this.authService.changePassword(
         userId,
         currentPassword,
-        newPassword
+        newPassword,
       );
 
       if (!result.success) {
@@ -299,104 +220,9 @@ export class AuthController {
 
   /**
    * @swagger
-   * /api/auth/logout:
-   *   post:
-   *     summary: Cerrar sesión
-   *     tags: [Auth]
-   *     description: Invalida el refresh token y limpia las cookies de autenticación.
-   *     responses:
-   *       200:
-   *         description: Sesión cerrada exitosamente.
-   *       500:
-   *         $ref: '#/components/responses/InternalServerError'
-   */
-  logout = async (req, res) => {
-    try {
-      const { refreshToken } = req.cookies;
-
-      if (refreshToken) {
-        await this.authService.logout(refreshToken);
-      }
-
-      res.clearCookie("accessToken");
-      res.clearCookie("refreshToken");
-
-      res.json({
-        success: true,
-        message: "Sesión cerrada exitosamente",
-      });
-    } catch (error) {
-      console.error("Error en logout:", error);
-      res.status(500).json({
-        success: false,
-        message: "Error interno del servidor",
-      });
-    }
-  };
-
-  /**
-   * @swagger
-   * /api/auth/refresh-token:
-   *   post:
-   *     summary: Refrescar el token de acceso
-   *     tags: [Auth]
-   *     description: Usa el refreshToken (almacenado en una cookie httpOnly) para obtener un nuevo accessToken.
-   *     responses:
-   *       200:
-   *         description: Nuevo accessToken generado y enviado en una cookie.
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: true
-   *                 message:
-   *                   type: string
-   *                   example: "Token de acceso refrescado."
-   *       401:
-   *         description: No se proporcionó token de refresco.
-   *       403:
-   *         description: Token de refresco inválido o expirado.
-   *       500:
-   *         $ref: '#/components/responses/InternalServerError'
-   */
-  refreshToken = async (req, res) => {
-    try {
-      const { refreshToken } = req.cookies;
-      const result = await this.authService.refreshToken(refreshToken);
-
-      if (!result.success) {
-        // Si falla el refresco, limpiar las cookies por seguridad
-        res.clearCookie("accessToken");
-        res.clearCookie("refreshToken");
-        return res.status(result.statusCode).json({ success: false, message: result.message });
-      }
-
-      const { accessToken } = result.data;
-
-      // Enviar el nuevo accessToken en una cookie segura
-      res.cookie("accessToken", accessToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-        maxAge: 15 * 60 * 1000, // 15 minutos
-      });
-
-      res.json({ success: true, message: "Token de acceso refrescado." });
-
-    } catch (error) {
-      console.error("Error en refreshToken:", error);
-      res.status(500).json({ success: false, message: "Error interno del servidor." });
-    }
-  };
-
-  /**
-   * @swagger
    * /api/auth/forgot-password:
    *   post:
-   *     summary: Iniciar proceso de olvido de contraseña
+   *     summary: Solicitar recuperación de contraseña
    *     tags: [Auth]
    *     requestBody:
    *       required: true
@@ -410,42 +236,63 @@ export class AuthController {
    *               email:
    *                 type: string
    *                 format: email
-   *                 example: "usuario@ejemplo.com"
+   *                 example: "user@example.com"
    *     responses:
    *       200:
-   *         description: Respuesta genérica para no revelar si un email existe.
-   *         content:
-   *           application/json:
-   *             schema:
-   *               type: object
-   *               properties:
-   *                 success:
-   *                   type: boolean
-   *                   example: true
-   *                 message:
-   *                   type: string
-   *                   example: "Si existe una cuenta con este correo, se ha enviado un enlace para restablecer la contraseña."
+   *         description: Instrucciones enviadas
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
    *       500:
    *         $ref: '#/components/responses/InternalServerError'
    */
   forgotPassword = async (req, res) => {
     try {
       const { email } = req.body;
-      const result = await this.authService.forgotPassword(email);
 
-      // Siempre devolvemos 200 OK para no dar pistas sobre la existencia de un email
-      res.status(result.statusCode || 200).json({ success: result.success, message: result.message });
+      // Obtener IP y User Agent
+      const rateLimitService = (
+        await import("../../../services/rateLimitService.js")
+      ).default;
+      const ipAddress = rateLimitService.getClientIP(req);
+      const userAgent = rateLimitService.getUserAgent(req);
+
+      const result = await this.authService.requestPasswordReset(
+        email,
+        ipAddress,
+        userAgent,
+      );
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+          reason: result.reason,
+          blockedUntil: result.blockedUntil,
+          minutesRemaining: result.minutesRemaining,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: result.message,
+        attemptsRemaining: result.attemptsRemaining,
+      });
     } catch (error) {
-      console.error("Controller error - forgotPassword:", error);
-      res.status(500).json({ success: false, message: "Error interno del servidor." });
+      console.error("Error en forgot-password:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
     }
   };
 
   /**
    * @swagger
-   * /api/auth/verify-code:
+   * /api/auth/verify-reset-token:
    *   post:
-   *     summary: Verificar la validez de un token de reseteo de contraseña
+   *     summary: Verificar token de recuperación
    *     tags: [Auth]
    *     requestBody:
    *       required: true
@@ -458,27 +305,40 @@ export class AuthController {
    *             properties:
    *               token:
    *                 type: string
-   *                 description: El token de reseteo recibido por correo.
+   *                 example: "123456"
    *     responses:
    *       200:
-   *         description: Token válido.
+   *         description: Token válido
    *       400:
-   *         description: Token inválido o expirado.
+   *         description: Token inválido o expirado
    *       500:
    *         $ref: '#/components/responses/InternalServerError'
    */
-  verifyCode = async (req, res) => {
+  verifyResetToken = async (req, res) => {
     try {
       const { token } = req.body;
       const result = await this.authService.verifyResetToken(token);
 
       if (!result.success) {
-        return res.status(result.statusCode).json({ success: false, message: result.message });
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
       }
-      res.json({ success: true, message: result.message });
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: "Código verificado exitosamente",
+      });
     } catch (error) {
-      console.error("Controller error - verifyCode:", error);
-      res.status(500).json({ success: false, message: "Error interno del servidor al verificar el token." });
+      console.error("Error en verify-reset-token:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
     }
   };
 
@@ -486,7 +346,7 @@ export class AuthController {
    * @swagger
    * /api/auth/reset-password:
    *   post:
-   *     summary: Restablecer la contraseña del usuario
+   *     summary: Restablecer contraseña con token
    *     tags: [Auth]
    *     requestBody:
    *       required: true
@@ -500,15 +360,15 @@ export class AuthController {
    *             properties:
    *               token:
    *                 type: string
-   *                 description: El token de reseteo recibido por correo.
+   *                 example: "123456"
    *               newPassword:
    *                 type: string
-   *                 description: La nueva contraseña del usuario.
+   *                 example: "newPassword123"
    *     responses:
    *       200:
-   *         description: Contraseña restablecida exitosamente.
+   *         description: Contraseña restablecida exitosamente
    *       400:
-   *         description: Token inválido o expirado, o datos inválidos.
+   *         description: Token inválido o contraseña no válida
    *       500:
    *         $ref: '#/components/responses/InternalServerError'
    */
@@ -518,13 +378,394 @@ export class AuthController {
       const result = await this.authService.resetPassword(token, newPassword);
 
       if (!result.success) {
-        return res.status(result.statusCode).json({ success: false, message: result.message });
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
       }
 
-      res.json({ success: true, message: result.message });
+      res.json({
+        success: true,
+        message: result.message,
+      });
     } catch (error) {
-      console.error("Controller error - resetPassword:", error);
-      res.status(500).json({ success: false, message: "Error interno del servidor al restablecer la contraseña." });
+      console.error("Error en reset-password:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/auth/request-email-change:
+   *   post:
+   *     summary: Solicitar cambio de correo electrónico
+   *     description: Envía un código de verificación al nuevo correo electrónico
+   *     tags: [Auth]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - newEmail
+   *             properties:
+   *               newEmail:
+   *                 type: string
+   *                 format: email
+   *                 example: "nuevo@ejemplo.com"
+   *     responses:
+   *       200:
+   *         description: Código enviado exitosamente
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       401:
+   *         description: No autorizado
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  requestEmailChange = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { newEmail } = req.body;
+
+      const result = await this.authService.requestEmailChange(
+        userId,
+        newEmail,
+      );
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Error solicitando cambio de email:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/auth/verify-email-change:
+   *   post:
+   *     summary: Verificar código y actualizar correo electrónico
+   *     tags: [Auth]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - token
+   *             properties:
+   *               token:
+   *                 type: string
+   *                 example: "123456"
+   *     responses:
+   *       200:
+   *         description: Email actualizado exitosamente
+   *       400:
+   *         description: Código inválido o expirado
+   *       401:
+   *         description: No autorizado
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  verifyEmailChange = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { token } = req.body;
+
+      const result = await this.authService.verifyAndUpdateEmail(userId, token);
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Error verificando cambio de email:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/auth/profile:
+   *   put:
+   *     summary: Actualizar perfil del usuario autenticado
+   *     description: Permite actualizar teléfono y dirección del usuario autenticado (el email requiere verificación)
+   *     tags: [Auth]
+   *     security:
+   *       - bearerAuth: []
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               phoneNumber:
+   *                 type: string
+   *                 example: "3001234567"
+   *               address:
+   *                 type: string
+   *                 example: "Calle 123 #45-67"
+   *     responses:
+   *       200:
+   *         description: Perfil actualizado exitosamente
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       401:
+   *         description: No autorizado
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  updateProfile = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const updateData = req.body;
+
+      const result = await this.authService.updateProfile(userId, updateData);
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: "Perfil actualizado exitosamente",
+      });
+    } catch (error) {
+      console.error("Error actualizando perfil:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/auth/refresh:
+   *   post:
+   *     summary: Refrescar access token
+   *     tags: [Auth]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - refreshToken
+   *             properties:
+   *               refreshToken:
+   *                 type: string
+   *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+   *     responses:
+   *       200:
+   *         description: Token refrescado exitosamente
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: object
+   *                   properties:
+   *                     accessToken:
+   *                       type: string
+   *                       example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+   *       403:
+   *         description: Refresh token inválido o expirado
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  refresh = async (req, res) => {
+    try {
+      // Obtener refresh token desde la cookie HttpOnly
+      const refreshToken = req.cookies.refreshToken;
+
+      if (!refreshToken) {
+        return res.status(401).json({
+          success: false,
+          message: "Refresh token no encontrado",
+        });
+      }
+
+      const result = await this.authService.refreshAccessToken(refreshToken);
+
+      if (!result.success) {
+        // Si el refresh token es inválido, limpiar la cookie
+        res.clearCookie("refreshToken");
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: "Token refrescado exitosamente",
+      });
+    } catch (error) {
+      console.error("Error refrescando token:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/auth/logout:
+   *   post:
+   *     summary: Cerrar sesión
+   *     tags: [Auth]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - refreshToken
+   *             properties:
+   *               refreshToken:
+   *                 type: string
+   *                 example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+   *     responses:
+   *       200:
+   *         description: Sesión cerrada exitosamente
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  logout = async (req, res) => {
+    try {
+      // Obtener refresh token desde la cookie
+      const refreshToken = req.cookies.refreshToken;
+
+      const result = await this.authService.logout(refreshToken);
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      // Limpiar la cookie del refresh token
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      });
+
+      res.json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Error cerrando sesión:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/auth/logout-all:
+   *   post:
+   *     summary: Cerrar todas las sesiones del usuario
+   *     tags: [Auth]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Todas las sesiones cerradas exitosamente
+   *       401:
+   *         description: No autorizado
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  logoutAll = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const result = await this.authService.logoutAll(userId);
+
+      if (!result.success) {
+        return res.status(result.statusCode).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      res.json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Error cerrando todas las sesiones:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
     }
   };
 }

@@ -86,8 +86,8 @@ export class EmployeeService {
         throw new Error(`La identificación "${employeeData.identification}" ya está en uso.`);
       }
 
-      // 3. REGLA DE NEGOCIO: Generar contraseña temporal si no se proporciona
-      const temporaryPassword = employeeData.temporaryPassword || this.generateTemporaryPassword();
+      // 3. REGLA DE NEGOCIO: Usar documento de identidad como contraseña inicial
+      const temporaryPassword = employeeData.identification?.trim();
       const passwordHash = await bcrypt.hash(temporaryPassword, 10);
 
       // 4. Preparar datos del usuario
@@ -256,16 +256,7 @@ export class EmployeeService {
         };
       }
 
-      // 3. REGLA DE NEGOCIO: No permitir eliminar empleados activos
-      if (employeeToDelete.status === 'Activo') {
-        return {
-          success: false,
-          statusCode: 400,
-          message: `No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque está en estado "Activo". Debe cambiar su estado antes de eliminarlo.`
-        };
-      }
-
-      // 4. REGLA DE NEGOCIO: Verificar si tiene compras asociadas
+      // 3. REGLA DE NEGOCIO: Verificar si tiene compras asociadas
       // Si tiene compras, no permitir eliminación
       if (employeeToDelete.purchases && employeeToDelete.purchases.length > 0) {
         return {
@@ -275,7 +266,7 @@ export class EmployeeService {
         };
       }
 
-      // 5. Proceder con la eliminación (hard delete)
+      // 4. Proceder con la eliminación (hard delete)
       const deleted = await this.employeeRepository.delete(id);
 
       if (deleted) {

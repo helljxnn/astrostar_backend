@@ -1,0 +1,596 @@
+import { PrismaClient } from '../../../../generated/prisma/index.js';
+
+const prisma = new PrismaClient();
+
+class MaterialsRepository {
+  /**
+   * Get all materials with pagination and search
+   */
+  async findAll({ page = 1, limit = 10, search = '', estado = null, categoriaId = null }) {
+    const skip = (page - 1) * limit;
+    const where = {};
+
+    if (search) {
+      where.OR = [
+        { nombre: { contains: search, mode: 'insensitive' } },
+        { categoria: { contains: search, mode: 'insensitive' } },
+        { descripcion: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (estado) {
+      where.estado = estado;
+    }
+
+    if (categoriaId) {
+      where.categoriaId = parseInt(categoriaId);
+    }
+
+    const [materials, total] = await Promise.all([
+      prisma.material.findMany({
+        where,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          nombre: true,
+          categoriaId: true,
+          categoria: true,
+          descripcion: true,
+          stockFundacion: true,
+          stockEventos: true,
+          stockEventosReservado: true,
+          estado: true,
+          createdAt: true,
+          updatedAt: true,
+          category: {
+            select: {
+              id: true,
+              nombre: true,
+              estado: true,
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      prisma.material.count({ where }),
+    ]);
+
+    // Calculate total stock and check for movements for each material
+    const materialsWithTotal = await Promise.all(
+      materials.map(async (material) => {
+        // Check if material has any movements
+        const movementsCount = await prisma.materialMovement.count({
+          where: { materialId: material.id },
+        });
+
+        return {
+          ...material,
+          stockTotal: material.stockFundacion + material.stockEventos,
+          stockEventosDisponible: material.stockEventos - (material.stockEventosReservado || 0),
+          hasMovements: movementsCount > 0,
+          movementsCount,
+        };
+      })
+    );
+
+    return {
+      materials: materialsWithTotal,
+      total,
+      page,
+      limit,
+      pages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Get material by ID
+   */
+  async findById(id) {
+    const material = await prisma.material.findUnique({
+      where: { id: parseInt(id) },
+      select: {
+        id: true,
+        nombre: true,
+        categoriaId: true,
+        categoria: true,
+        descripcion: true,
+        stockFundacion: true,
+        stockEventos: true,
+        stockEventosReservado: true,
+        estado: true,
+        createdAt: true,
+        updatedAt: true,
+        createdBy: true,
+        updatedBy: true,
+        category: {
+          select: {
+            id: true,
+            nombre: true,
+            estado: true,
+          },
+        },
+      },
+    });
+
+    if (!material) return null;
+
+    // Check if material has any movements
+    const movementsCount = await prisma.materialMovement.count({
+      where: { materialId: material.id },
+    });
+
+    // Add calculated fields
+    return {
+      ...material,
+      stockTotal: material.stockFundacion + material.stockEventos,
+      stockEventosDisponible: material.stockEventos - (material.stockEventosReservado || 0),
+      hasMovements: movementsCount > 0,
+      movementsCount,
+    };
+  }
+
+  /**
+   * Verificar si existe un material con el mismo nombre en la misma categoría
+   */
+  async existsByNameAndCategory(nombre, categoriaId, excludeId = null) {
+    const where = {
+      nombre: {
+        equals: nombre.trim(),
+        mode: 'insensitive',
+      },
+      categoriaId: parseInt(categoriaId),
+    };
+
+    if (excludeId) {
+      where.NOT = { id: parseInt(excludeId) };
+    }
+
+    const material = await prisma.material.findFirst({ where });
+    return !!material;
+  }
+
+  /**
+   * Create material
+   */
+  async create(data, userId) {
+    // Get category name
+    const category = await prisma.materialCategory.findUnique({
+      where: { id: parseInt(data.categoria_id) },
+      select: { nombre: true, estado: true },
+    });
+
+    if (!category) {
+      throw new Error('Category not found');
+    }
+
+    if (category.estado !== 'Activo') {
+      throw new Error('Cannot create material with inactive category');
+    }
+
+    const material = await prisma.material.create({
+      data: {
+        nombre: data.nombre.trim(),
+        categoriaId: parseInt(data.categoria_id),
+        categoria: category.nombre,
+        descripcion: data.descripcion?.trim() || null,
+        unidadMedida: data.unidad_medida?.trim().toLowerCase() || 'unidad',
+        stockFundacion: 0, // Starts at 0
+        stockEventos: 0, // Starts at 0
+        estado: 'Activo',
+        createdBy: userId,
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+
+    // Add calculated fields
+    return {
+      ...material,
+      stockTotal: material.stockFundacion + material.stockEventos,
+    };
+  }
+
+  /**
+   * Actualizar material
+   * IMPORTANTE: No se puede cambiar nombre ni categoría si tiene movimientos
+   */
+  async update(id, data, userId) {
+    const material = await this.findById(id);
+    if (!material) {
+      throw new Error('Material no encontrado');
+    }
+
+    // Verificar si tiene movimientos
+    const movementsCount = await prisma.materialMovement.count({
+      where: { materialId: parseInt(id) },
+    });
+
+    const updateData = {
+      descripcion: data.descripcion?.trim() || null,
+      estado: data.estado,
+      updatedBy: userId,
+    };
+
+    // Si tiene movimientos, NO permitir cambiar nombre ni categoría
+    if (movementsCount > 0) {
+      // Validar que no intenten cambiar el nombre
+      if (data.nombre && data.nombre.trim() !== material.nombre) {
+        throw new Error(
+          'No se puede cambiar el nombre del material porque tiene movimientos registrados. Para mantener la trazabilidad del inventario, el nombre debe permanecer igual.'
+        );
+      }
+
+      // Validar que no intenten cambiar la categoría
+      if (data.categoria_id && parseInt(data.categoria_id) !== material.categoriaId) {
+        throw new Error(
+          'No se puede cambiar la categoría del material porque tiene movimientos registrados. Para mantener la trazabilidad del inventario, la categoría debe permanecer igual.'
+        );
+      }
+    } else {
+      // Si NO tiene movimientos, permitir cambiar nombre y categoría
+      if (data.nombre) {
+        updateData.nombre = data.nombre.trim();
+      }
+
+      if (data.categoria_id) {
+        const category = await prisma.materialCategory.findUnique({
+          where: { id: parseInt(data.categoria_id) },
+          select: { nombre: true, estado: true },
+        });
+
+        if (!category) {
+          throw new Error('Categoría no encontrada');
+        }
+
+        if (category.estado !== 'Activo') {
+          throw new Error('No se puede asignar una categoría inactiva');
+        }
+
+        updateData.categoriaId = parseInt(data.categoria_id);
+        updateData.categoria = category.nombre;
+      }
+    }
+
+    // La unidad de medida siempre es "unidad", no se actualiza
+
+    const materialActualizado = await prisma.material.update({
+      where: { id: parseInt(id) },
+      data: updateData,
+      include: {
+        category: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+    });
+
+    // Add calculated total stock
+    return {
+      ...materialActualizado,
+      stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
+    };
+  }
+
+  /**
+   * Toggle material status
+   */
+  async toggleStatus(id, userId) {
+    const material = await this.findById(id);
+    if (!material) {
+      throw new Error('Material not found');
+    }
+
+    const newStatus = material.estado === 'Activo' ? 'Inactivo' : 'Activo';
+
+    const materialActualizado = await prisma.material.update({
+      where: { id: parseInt(id) },
+      data: {
+        estado: newStatus,
+        updatedBy: userId,
+      },
+    });
+
+    // Add calculated total stock
+    return {
+      ...materialActualizado,
+      stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
+    };
+  }
+
+  /**
+   * Eliminar material (solo si no tiene stock ni movimientos)
+   */
+  async delete(id) {
+    // Obtener el material con su stock actual
+    const material = await prisma.material.findUnique({
+      where: { id: parseInt(id) },
+      select: {
+        id: true,
+        nombre: true,
+        stockFundacion: true,
+        stockEventos: true,
+        stockEventosReservado: true,
+      },
+    });
+
+    if (!material) {
+      throw new Error('Material no encontrado');
+    }
+
+    // Verificar si tiene stock actual
+    const stockTotal = material.stockFundacion + material.stockEventos + material.stockEventosReservado;
+    if (stockTotal > 0) {
+      throw new Error(
+        `No se puede eliminar el material porque tiene stock registrado (Fundación: ${material.stockFundacion}, Eventos: ${material.stockEventos}, Reservado: ${material.stockEventosReservado}). Debe agotar el stock primero.`
+      );
+    }
+
+    // Verificar si tiene movimientos históricos
+    const movementsCount = await prisma.materialMovement.count({
+      where: { materialId: parseInt(id) },
+    });
+
+    if (movementsCount > 0) {
+      throw new Error(
+        `No se puede eliminar el material porque tiene ${movementsCount} movimiento(s) histórico(s). Cambie el estado a Inactivo en su lugar para mantener la integridad del historial.`
+      );
+    }
+
+    // Solo se puede eliminar si no tiene stock ni movimientos
+    return await prisma.material.delete({
+      where: { id: parseInt(id) },
+    });
+  }
+
+  /**
+   * Calcular stock actual desde movimientos
+   */
+  async calculateStock(materialId) {
+    const movements = await prisma.materialMovement.findMany({
+      where: { materialId: parseInt(materialId) },
+      select: {
+        tipoMovimiento: true,
+        cantidad: true,
+      },
+    });
+
+    let stock = 0;
+    movements.forEach((mov) => {
+      if (mov.tipoMovimiento === 'Entrada') {
+        stock += mov.cantidad;
+      } else if (mov.tipoMovimiento === 'Salida') {
+        stock -= mov.cantidad;
+      }
+    });
+
+    return stock;
+  }
+
+  /**
+   * Register material discharge (atomic transaction)
+   */
+  async registerDischarge(materialId, data, userId, userName) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Get material with lock
+      const material = await tx.material.findUnique({
+        where: { id: parseInt(materialId) },
+      });
+
+      if (!material) {
+        throw new Error('Material not found');
+      }
+
+      if (material.estado !== 'Activo') {
+        throw new Error('Cannot register discharge on inactive materials');
+      }
+
+      // 2. Determine which inventory to deduct from
+      const inventoryType = data.inventario_origen || 'FUNDACION';
+      const stockField = inventoryType === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const currentStock = material[stockField];
+
+      // 3. Validate sufficient stock
+      if (currentStock < data.cantidad) {
+        throw new Error(
+          `Insufficient stock in ${inventoryType}. Available: ${currentStock}, Requested: ${data.cantidad}`
+        );
+      }
+
+      const stockAnterior = material.stockFundacion + material.stockEventos;
+      const newStockValue = currentStock - data.cantidad;
+      const stockNuevo = inventoryType === 'FUNDACION' 
+        ? newStockValue + material.stockEventos
+        : material.stockFundacion + newStockValue;
+
+      // 4. Update material stock
+      const materialActualizado = await tx.material.update({
+        where: { id: parseInt(materialId) },
+        data: {
+          [stockField]: newStockValue,
+        },
+        include: {
+          category: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      // 5. Map discharge type to enum value
+      let tipoBajaEnum;
+      const tipoBajaNormalizado = data.tipo_baja.toUpperCase().trim();
+      
+      switch (tipoBajaNormalizado) {
+        case 'DAÑO O DETERIORO':
+        case 'DANO O DETERIORO':
+          tipoBajaEnum = 'DanoDeterioro';
+          break;
+        case 'PÉRDIDA':
+        case 'PERDIDA':
+          tipoBajaEnum = 'Perdida';
+          break;
+        case 'ROBO':
+          tipoBajaEnum = 'Robo';
+          break;
+        case 'AJUSTE DE INVENTARIO':
+          tipoBajaEnum = 'AjusteInventario';
+          break;
+        default:
+          tipoBajaEnum = 'Otro';
+      }
+
+      // 6. Create discharge movement
+      await tx.materialMovement.create({
+        data: {
+          materialId: parseInt(materialId),
+          materialNombre: material.nombre,
+          categoria: material.categoria,
+          tipoMovimiento: 'Baja',
+          cantidad: data.cantidad,
+          inventarioOrigen: inventoryType,
+          tipoBaja: tipoBajaEnum,
+          observaciones: data.descripcion,
+          stockAnterior: stockAnterior,
+          stockNuevo: stockNuevo,
+          createdBy: userId,
+          createdByName: userName,
+        },
+      });
+
+      // 7. Return updated material with calculated total
+      return {
+        ...materialActualizado,
+        stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
+      };
+    });
+  }
+
+  /**
+   * Mapear tipo de baja a valor del enum
+   */
+  mapTipoBajaToEnum(tipoBaja) {
+    // Normalizar el valor recibido
+    const tipoBajaNormalizado = tipoBaja.toUpperCase().trim();
+    
+    const mapeo = {
+      'DAÑO O DETERIORO': 'DanoDeterioro',
+      'DANO O DETERIORO': 'DanoDeterioro',
+      'PÉRDIDA': 'Perdida',
+      'PERDIDA': 'Perdida',
+      'ROBO': 'Robo',
+      'AJUSTE DE INVENTARIO': 'AjusteInventario',
+      'OTRO': 'Otro',
+    };
+    
+    return mapeo[tipoBajaNormalizado] || 'Otro';
+  }
+
+  /**
+   * Transfer stock between inventories (atomic transaction)
+   */
+  async transferStock(materialId, data, userId, userName) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Get material with lock
+      const material = await tx.material.findUnique({
+        where: { id: parseInt(materialId) },
+      });
+
+      if (!material) {
+        throw new Error('Material not found');
+      }
+
+      if (material.estado !== 'Activo') {
+        throw new Error('Cannot transfer stock on inactive materials');
+      }
+
+      // 2. Validate different inventories
+      if (data.from === data.to) {
+        throw new Error('Source and destination inventories must be different');
+      }
+
+      // 3. Determine stock fields
+      const fromField = data.from === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const toField = data.to === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const fromStock = material[fromField];
+      const toStock = material[toField];
+
+      // 4. Validate sufficient stock in source
+      if (fromStock < data.cantidad) {
+        throw new Error(
+          `Insufficient stock in ${data.from}. Available: ${fromStock}, Requested: ${data.cantidad}`
+        );
+      }
+
+      const stockAnterior = material.stockFundacion + material.stockEventos;
+      const newFromStock = fromStock - data.cantidad;
+      const newToStock = toStock + data.cantidad;
+
+      // 5. Update material stock
+      const materialActualizado = await tx.material.update({
+        where: { id: parseInt(materialId) },
+        data: {
+          [fromField]: newFromStock,
+          [toField]: newToStock,
+        },
+        include: {
+          category: {
+            select: {
+              id: true,
+              nombre: true,
+            },
+          },
+        },
+      });
+
+      // 6. Create transfer movement
+      await tx.materialMovement.create({
+        data: {
+          materialId: parseInt(materialId),
+          materialNombre: material.nombre,
+          categoria: material.categoria,
+          tipoMovimiento: 'TRANSFERENCIA',
+          cantidad: data.cantidad,
+          inventarioOrigen: data.from,
+          inventarioDestino: data.to,
+          observaciones: data.observaciones || `Transfer from ${data.from} to ${data.to}`,
+          stockAnterior: stockAnterior,
+          stockNuevo: stockAnterior, // Total doesn't change in transfers
+          createdBy: userId,
+          createdByName: userName,
+        },
+      });
+
+      // 7. Return updated material with calculated total
+      return {
+        ...materialActualizado,
+        stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
+      };
+    });
+  }
+
+  /**
+   * Obtener historial de movimientos de un material (para futuro)
+   */
+  async getMovementHistory(materialId, limit = 10) {
+    return await prisma.materialMovement.findMany({
+      where: { materialId: parseInt(materialId) },
+      orderBy: { fecha: 'desc' },
+      take: limit,
+    });
+  }
+}
+
+export default new MaterialsRepository();

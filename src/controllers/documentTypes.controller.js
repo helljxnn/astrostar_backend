@@ -1,11 +1,16 @@
-// src/controllers/documentTypes.controller.js
-import prisma from "../config/database.js";
-import jwt from "jsonwebtoken";
+import prisma from '../config/database.js';
 
 class DocumentTypesController {
   async getDocumentTypes(req, res) {
     try {
+      // Excluir "Registro Civil" del endpoint global
+      // Este tipo solo debe estar disponible en el módulo de deportistas
       const documentTypes = await prisma.documentType.findMany({
+        where: {
+          NOT: {
+            name: 'Registro Civil'
+          }
+        },
         select: {
           id: true,
           name: true,

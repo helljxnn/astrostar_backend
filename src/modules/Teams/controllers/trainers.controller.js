@@ -3,7 +3,9 @@ import prisma from "../../../config/database.js";
 export class TrainersController {
   async getTrainers(req, res) {
     try {
-      console.log('🔍 Buscando entrenadores...');
+      console.log('🔍 [TrainersController] Iniciando búsqueda de entrenadores...');
+      console.log('📋 [TrainersController] Headers:', req.headers);
+      console.log('🔐 [TrainersController] Usuario autenticado:', req.user ? 'Sí' : 'No');
       
       // 1. Entrenadores de la fundación (empleados)
       const employees = await prisma.employee.findMany({
@@ -30,6 +32,7 @@ export class TrainersController {
           id: emp.id,
           name: `${emp.user.firstName} ${emp.user.lastName}`,
           identification: emp.user.identification,
+          phoneNumber: emp.user.phoneNumber,
           categoria: undefined,
           source: "fundacion",
           sourceLabel: "Entrenadores de la Fundación",
@@ -52,7 +55,8 @@ export class TrainersController {
         id: temp.id,
         name: `${temp.firstName} ${temp.lastName}`,
         identification: temp.identification,
-        categoria: undefined,
+        phoneNumber: temp.phone,
+        categoria: temp.category || undefined,
         source: "temporal",
         sourceLabel: "Entrenadores Temporales",
         type: "temporal"

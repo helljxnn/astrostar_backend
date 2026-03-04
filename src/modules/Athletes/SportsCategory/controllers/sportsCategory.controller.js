@@ -1,157 +1,343 @@
 import { SportsCategoryService } from "../services/sportsCategory.service.js";
-import { uploadToCloudinary } from "../../../../shared/cloudinary.service.js";
+import { uploadToCloudinary } from "../../../../services/shared/cloudinary.service.js";
 
 export class SportsCategoryController {
   constructor() {
     this.sportsCategoryService = new SportsCategoryService();
   }
 
-  /* --------------------------------------------------------
-   🟢 OBTENER TODAS LAS CATEGORÍAS
-  -------------------------------------------------------- */
+  /**
+   * GET: Obtener todas las categorías (con paginación y filtros)
+   */
   getAllSportsCategories = async (req, res) => {
     try {
-      const result = await this.sportsCategoryService.getAllSportsCategories(req.query);
-      res.json(result);
+      const { page = 1, limit = 10, search = "", status = "" } = req.query;
+
+      const result = await this.sportsCategoryService.getAllSportsCategories({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search: search.trim(),
+        status: status.trim(),
+      });
+
+      res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("❌ Error al obtener categorías:", error);
-      res.status(500).json({ success: false, message: "Error al obtener categorías." });
+      console.error("Error en getAllSportsCategories:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener categorías.",
+        statusCode: 500,
+      });
     }
   };
 
-  /* --------------------------------------------------------
-   🟢 OBTENER DETALLE DE UNA CATEGORÍA
-  -------------------------------------------------------- */
+  /**
+   * GET: Obtener categorías públicas para el landing
+   * Retorna categorías activas y publicadas con sus imágenes
+   */
+  getPublicCategories = async (req, res) => {
+    try {
+      const result = await this.sportsCategoryService.getPublicCategories();
+      res.status(result.statusCode || 200).json(result);
+    } catch (error) {
+      console.error("Error en getPublicCategories:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener categorías públicas.",
+        statusCode: 500,
+      });
+    }
+  };
+
+  /**
+   * GET: Obtener categoría por ID
+   */
   getSportsCategoryById = async (req, res) => {
     try {
       const { id } = req.params;
-
       const result = await this.sportsCategoryService.getSportsCategoryById(id);
-
-      // Si el servicio devuelve error o no encuentra la categoría
-      if (!result.success) {
-        return res.status(result.statusCode).json(result);
-      }
-
-      res.status(200).json(result);
+      res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("❌ Error al obtener la categoría:", error);
-      res.status(500).json({ success: false, message: "Error al obtener la categoría." });
+      console.error("Error en getSportsCategoryById:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener la categoría.",
+        statusCode: 500,
+      });
     }
   };
 
-  /* --------------------------------------------------------
-   🟢 ESTADÍSTICAS DE CATEGORÍAS
-  -------------------------------------------------------- */
-  getSportsCategoryStats = async (req, res) => {
-    try {
-      const result = await this.sportsCategoryService.getSportsCategoryStats();
-      res.json(result);
-    } catch (error) {
-      console.error("❌ Error al obtener estadísticas:", error);
-      res.status(500).json({ success: false, message: "Error al obtener estadísticas." });
-    }
-  };
-
-  /* --------------------------------------------------------
-   🟢 VALIDAR DISPONIBILIDAD DE NOMBRE
-  -------------------------------------------------------- */
+  /**
+   * GET: Verificar disponibilidad de nombre
+   */
   checkCategoryNameAvailability = async (req, res) => {
     try {
-      const result = await this.sportsCategoryService.checkCategoryNameExists(
-        req.query.name,
-        req.query.excludeId
-      );
-      res.json(result);
-    } catch (error) {
-      console.error("❌ Error al verificar nombre:", error);
-      res.status(500).json({ success: false, message: "Error al verificar nombre." });
-    }
-  };
+      const { name, excludeId } = req.query;
 
-  /* --------------------------------------------------------
-   🟢 CREAR NUEVA CATEGORÍA
-  -------------------------------------------------------- */
-  createSportsCategory = async (req, res) => {
-    try {
-      const { name, description, minAge, maxAge, status = "Active", publicar = false } = req.body;
-      const statusMap = { Active: "Activo", Inactive: "Inactivo" };
-
-      let archivo = null;
-      if (req.file) {
-        archivo = await uploadToCloudinary(req.file.buffer, "sports-categories", {
-          folder: "sports-categories",
+      if (!name || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "El nombre es obligatorio.",
+          statusCode: 400,
         });
       }
 
-      const data = {
-        nombre: name.trim(),
-        descripcion: description?.trim() || null,
-        edadMinima: +minAge,
-        edadMaxima: +maxAge,
-        estado: statusMap[status] || "Activo",
-        publicar: Boolean(publicar),
-        ...(archivo && { archivo }),
-      };
+      const result = await this.sportsCategoryService.checkCategoryNameExists(
+        name.trim(),
+        excludeId ? Number(excludeId) : null
+      );
 
-      const result = await this.sportsCategoryService.createSportsCategory(data);
-      res.status(result.statusCode).json(result);
+      res.json(result);
     } catch (error) {
-      console.error("❌ Error creando categoría:", error);
-      res.status(500).json({ success: false, message: error.message || "Error interno." });
+      console.error("Error en checkCategoryNameAvailability:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al verificar disponibilidad.",
+        statusCode: 500,
+      });
     }
   };
 
-  /* --------------------------------------------------------
-   🟢 ACTUALIZAR CATEGORÍA EXISTENTE
-  -------------------------------------------------------- */
+  /**
+   * GET: Estadísticas de categorías
+   */
+  getSportsCategoryStats = async (req, res) => {
+    try {
+      const result = await this.sportsCategoryService.getSportsCategoryStats();
+      res.status(result.statusCode || 200).json(result);
+    } catch (error) {
+      console.error("Error en getSportsCategoryStats:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener estadísticas.",
+        statusCode: 500,
+      });
+    }
+  };
+
+  /**
+   * POST: Crear nueva categoría
+   * Soporta carga de imagen a Cloudinary
+   */
+  createSportsCategory = async (req, res) => {
+    try {
+      const {
+        name,
+        description,
+        minAge,
+        maxAge,
+        status = "Activo",
+        publicar = false,
+      } = req.body;
+
+      // Validaciones básicas
+      if (!name || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: "El nombre de la categoría es obligatorio.",
+          statusCode: 400,
+        });
+      }
+
+      const hasMin =
+        minAge !== undefined && minAge !== null && String(minAge).trim() !== "";
+      const hasMax =
+        maxAge !== undefined && maxAge !== null && String(maxAge).trim() !== "";
+
+      if (!hasMin || !hasMax) {
+        return res.status(400).json({
+          success: false,
+          message: "Las edades mínima y máxima son obligatorias.",
+          statusCode: 400,
+        });
+      }
+
+      const minAgeNum = Number(minAge);
+      const maxAgeNum = Number(maxAge);
+      if (!Number.isFinite(minAgeNum) || !Number.isFinite(maxAgeNum)) {
+        return res.status(400).json({
+          success: false,
+          message: "Las edades deben ser números válidos.",
+          statusCode: 400,
+        });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "La imagen es obligatoria para crear una categoría.",
+          statusCode: 400,
+        });
+      }
+
+      // Subir imagen a Cloudinary
+      let imageUrl = null;
+      try {
+        imageUrl = await uploadToCloudinary(
+          req.file.buffer,
+          `sports-category-${name.trim().replace(/\s+/g, "-").toLowerCase()}`,
+          { folder: "astrostar/sports-categories" }
+        );
+      } catch (uploadError) {
+        console.error("Error al subir a Cloudinary:", uploadError);
+        return res.status(500).json({
+          success: false,
+          message:
+            "Error al subir la imagen. Verifica tus credenciales de Cloudinary.",
+          statusCode: 500,
+        });
+      }
+
+      // Preparar datos
+      const categoryData = {
+        nombre: name.trim(),
+        descripcion: description || null,
+        edadMinima: Number(minAge),
+        edadMaxima: Number(maxAge),
+        estado: status || "Activo",
+        publicar: publicar === "true" || publicar === true,
+        archivo: imageUrl, // URL de Cloudinary
+      };
+
+      // Crear categoría
+      const result = await this.sportsCategoryService.createSportsCategory(
+        categoryData
+      );
+      res.status(result.statusCode || 201).json(result);
+    } catch (error) {
+      console.error("Error en createSportsCategory:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Error al crear la categoría.",
+        statusCode: 500,
+      });
+    }
+  };
+
+  /**
+   * PUT: Actualizar categoría
+   * Permite cambiar imagen o mantener la existente
+   */
   updateSportsCategory = async (req, res) => {
     try {
       const { id } = req.params;
       const { name, description, minAge, maxAge, status, publicar } = req.body;
-      const statusMap = { Active: "Activo", Inactive: "Inactivo" };
 
-      let archivo = null;
-      if (req.file) {
-        archivo = await uploadToCloudinary(req.file.buffer, "sports-categories", {
-          folder: "sports-categories",
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "El ID de la categoría es requerido.",
+          statusCode: 400,
         });
       }
 
-      const data = {};
-      if (name !== undefined) data.nombre = name.trim();
-      if (description !== undefined) data.descripcion = description?.trim() || null;
-      if (minAge !== undefined) data.edadMinima = +minAge;
-      if (maxAge !== undefined) data.edadMaxima = +maxAge;
-      if (status !== undefined) data.estado = statusMap[status] || "Activo";
-      if (publicar !== undefined) data.publicar = Boolean(publicar);
-      if (archivo) data.archivo = archivo;
+      // Preparar datos de actualización
+      const updateData = {};
 
-      const result = await this.sportsCategoryService.updateSportsCategory(id, data);
-      res.status(result.statusCode).json(result);
+      if (name !== undefined && name.trim()) updateData.nombre = name.trim();
+      if (description !== undefined) updateData.descripcion = description;
+      if (minAge !== undefined) updateData.edadMinima = Number(minAge);
+      if (maxAge !== undefined) updateData.edadMaxima = Number(maxAge);
+      if (status !== undefined) updateData.estado = status;
+      if (publicar !== undefined)
+        updateData.publicar = publicar === "true" || publicar === true;
+
+      // Si se proporciona nueva imagen, subirla a Cloudinary
+      if (req.file) {
+        try {
+          const imageUrl = await uploadToCloudinary(
+            req.file.buffer,
+            `sports-category-${(name || "update")
+              .trim()
+              .replace(/\s+/g, "-")
+              .toLowerCase()}`,
+            { folder: "astrostar/sports-categories" }
+          );
+          updateData.archivo = imageUrl;
+        } catch (uploadError) {
+          console.error("Error al subir a Cloudinary:", uploadError);
+          return res.status(500).json({
+            success: false,
+            message: "Error al subir la imagen a Cloudinary.",
+            statusCode: 500,
+          });
+        }
+      }
+
+      // Si se debe eliminar la imagen existente
+      if (req.body.removeImage === "true") {
+        updateData.archivo = null;
+      }
+
+      // Actualizar categoría
+      const result = await this.sportsCategoryService.updateSportsCategory(
+        id,
+        updateData
+      );
+      res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("❌ Error actualizando categoría:", error);
-      res.status(500).json({ success: false, message: error.message || "Error interno." });
+      console.error("Error en updateSportsCategory:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Error al actualizar la categoría.",
+        statusCode: 500,
+      });
     }
   };
 
-  /* --------------------------------------------------------
-   🟢 ELIMINAR CATEGORÍA
-  -------------------------------------------------------- */
+  /**
+   * DELETE: Eliminar categoría
+   */
   deleteSportsCategory = async (req, res) => {
     try {
-      const result = await this.sportsCategoryService.deleteSportsCategory(req.params.id);
-      res.status(result.statusCode).json(result);
+      const { id } = req.params;
+      console.log(`Attempting to delete sports category with ID: ${id}`);
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "El ID de la categoría es requerido.",
+          statusCode: 400,
+        });
+      }
+
+      const result = await this.sportsCategoryService.deleteSportsCategory(id);
+      console.log(`Delete result:`, result);
+      res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("❌ Error al eliminar categoría:", error);
-      res.status(500).json({ success: false, message: "Error al eliminar categoría." });
+      console.error("Error en deleteSportsCategory controller:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "Error al eliminar la categoría.",
+        statusCode: 500,
+      });
     }
   };
 
-  /* --------------------------------------------------------
-   🔴 NO IMPLEMENTADO AÚN
-  -------------------------------------------------------- */
+  /**
+   * GET: Obtener atletas de una categoría
+   */
   getAthletesByCategory = async (req, res) => {
-    res.status(501).json({ success: false, message: "Endpoint no implementado aún." });
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: "El ID de la categoría es requerido.",
+          statusCode: 400,
+        });
+      }
+
+      const result = await this.sportsCategoryService.getAthletesByCategory(id);
+      res.status(result.statusCode || 200).json(result);
+    } catch (error) {
+      console.error("Error en getAthletesByCategory:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener atletas.",
+        statusCode: 500,
+      });
+    }
   };
 }

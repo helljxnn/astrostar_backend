@@ -3,9 +3,14 @@ node_modules
 /prisma/migrations
 
 .env
+.env.production.example
 
 SETUP_ROLES.md
 ROLES_DETAILS.md
 BACKEND_ARCHITECTURE.md
 
 astrostar_db_querys.sql
+
+Doc
+
+scripts

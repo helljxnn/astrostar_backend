@@ -220,8 +220,7 @@ export class TemporaryWorkersRepository {
       active,
       inactive,
       deportista: typeStats.deportista || 0,
-      entrenador: typeStats.entrenador || 0,
-      participante: typeStats.participante || 0
+      entrenador: typeStats.entrenador || 0
     };
   }
 
@@ -231,9 +230,10 @@ export class TemporaryWorkersRepository {
   async getReferenceData() {
     const documentTypes = await prisma.documentType.findMany({
       where: {
-        NOT: {
-          name: 'Número de Identificación Tributaria'
-        }
+        NOT: [
+          { name: 'Número de Identificación Tributaria' },
+          { name: 'Registro Civil' } // Solo para deportistas
+        ]
       },
       select: {
         id: true,
