@@ -28,7 +28,11 @@
     "seed:providers": "node prisma/seed-providers.js",
     "clean:teams": "node src/scripts/cleanTeamsData.js",
     "reset:teams": "npm run clean:teams && npm run seed:teams",
-    "test:registrations": "node src/scripts/testRegistrations.js"
+    "test:registrations": "node src/scripts/testRegistrations.js",
+    "security:check": "node scripts/check-security.js",
+    "security:generate-secrets": "node scripts/generate-secrets.js",
+    "security:audit": "npm audit",
+    "deployment:prepare": "node scripts/prepare-deployment.js"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -44,6 +48,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
     "express-validator": "^7.3.0",
+    "helmet": "^8.1.0",
     "joi": "^18.0.2",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
@@ -52,7 +57,9 @@
     "nodemailer": "^7.0.10",
     "streamifier": "^0.1.1",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
