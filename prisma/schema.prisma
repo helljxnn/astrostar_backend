@@ -358,10 +358,11 @@ model RefreshToken {
 
 model Employee {
   id                  Int                  @id @default(autoincrement())
-  status              EmployeeStatus       @default(Activo)
+  status              EmployeeStatus       @default(Active)
   statusAssignedAt    DateTime             @default(now())
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
+  employeeTypeId      Int
   userId              Int                  @unique
   appointments        Appointment[]
   employeePermissions EmployeePermission[]
@@ -623,23 +624,19 @@ model TemporaryPerson {
   id             Int                   @id @default(autoincrement())
   firstName      String
   lastName       String
-  identification String                @unique
-  email          String
-  phone          String
-  birthDate      DateTime
+  identification String?
+  email          String?
+  phone          String?
+  birthDate      DateTime?
   age            Int?
-  address        String
+  address        String?
+  organization   String?
   status         TemporaryPersonStatus @default(Active)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
-  documentTypeId Int
-  personType     TemporaryPersonType   @default(Participante)
-  category       String?
-  team           String?
-  middleName     String?
-  secondLastName String?
+  documentTypeId Int?
   teamMembers    TeamMember[]
-  documentType   DocumentType          @relation(fields: [documentTypeId], references: [id])
+  documentType   DocumentType?         @relation(fields: [documentTypeId], references: [id])
 
   @@map("temporary_persons")
 }
@@ -683,13 +680,13 @@ model TeamMember {
 }
 
 model Participant {
-  id               Int               @id @default(autoincrement())
+  id               Int             @id @default(autoincrement())
   type             ParticipantType
   registrationDate DateTime          @default(now())
   status           String            @default("Registered")
   notes            String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
   serviceId        Int
   sportsCategoryId Int?
   athleteId        Int?
