@@ -772,6 +772,8 @@ model Service {
   participants            Participant[]
   serviceSportsCategories ServiceSportsCategory[]
   donations               Donation[]
+  eventMaterials          EventMaterial[]
+  eventMaterialsReusable  EventMaterialReusable[]
 }
 
 model ServiceSponsor {
@@ -847,6 +849,7 @@ model Donation {
   details        DonationDetail[]
   files          DonationFile[]
   transactions   DonationTransaction[]
+  eventMaterials EventMaterial[]
 
   @@index([status, type, donationAt])
   @@index([donorSponsorId])
@@ -975,23 +978,25 @@ model MaterialCategory {
 }
 
 model Material {
-  id                    Int                @id @default(autoincrement())
-  nombre                String             @db.VarChar(255)
-  categoriaId           Int                @map("categoria_id")
-  categoria             String             @db.VarChar(100)
-  descripcion           String?
-  estado                MaterialStatus     @default(Activo)
-  createdAt             DateTime           @default(now()) @map("created_at")
-  updatedAt             DateTime           @updatedAt @map("updated_at")
-  createdBy             Int?               @map("created_by")
-  updatedBy             Int?               @map("updated_by")
-  unidadMedida          String             @default("unidad") @map("unidad_medida") @db.VarChar(20)
-  stockFundacion        Int                @default(0) @map("stock_fundacion")
-  stockEventos          Int                @default(0) @map("stock_eventos")
-  stockEventosReservado Int                @default(0) @map("stock_eventos_reservado")
-  eventMaterials        EventMaterial[]
-  movements             MaterialMovement[]
-  category              MaterialCategory   @relation(fields: [categoriaId], references: [id], map: "materials_categoriaId_fkey")
+  id                     Int                     @id @default(autoincrement())
+  nombre                 String                  @db.VarChar(255)
+  categoriaId            Int                     @map("categoria_id")
+  categoria              String                  @db.VarChar(100)
+  descripcion            String?
+  estado                 MaterialStatus          @default(Activo)
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+  createdBy              Int?                    @map("created_by")
+  updatedBy              Int?                    @map("updated_by")
+  unidadMedida           String                  @default("unidad") @map("unidad_medida") @db.VarChar(20)
+  stockFundacion         Int                     @default(0) @map("stock_fundacion")
+  stockEventos           Int                     @default(0) @map("stock_eventos")
+  stockEventosReservado  Int                     @default(0) @map("stock_eventos_reservado")
+  esReutilizable         Boolean                 @default(false) @map("es_reutilizable")
+  eventMaterials         EventMaterial[]
+  eventMaterialsReusable EventMaterialReusable[]
+  movements              MaterialMovement[]
+  category               MaterialCategory        @relation(fields: [categoriaId], references: [id], map: "materials_categoriaId_fkey")
 
   @@unique([nombre, categoriaId], name: "unique_material_per_category", map: "unique_material_per_category")
   @@index([categoriaId])
@@ -1002,6 +1007,7 @@ model Material {
   @@index([stockFundacion])
   @@index([stockEventos])
   @@index([stockEventosReservado])
+  @@index([esReutilizable])
   @@map("materials")
 }
 
@@ -1051,6 +1057,30 @@ model MaterialMovement {
 }
 
 model EventMaterial {
+  id              Int               @id @default(autoincrement())
+  materialId      Int               @map("material_id")
+  eventoId        Int               @map("evento_id")
+  cantidad        Int
+  fechaAsignacion DateTime          @default(now()) @map("fecha_asignacion")
+  observaciones   String?
+  createdBy       Int               @map("created_by")
+  createdByName   String?           @map("created_by_name") @db.VarChar(255)
+  tipo            EventMaterialType @default(CONSUMIBLE) @map("tipo")
+  donacionId      Int?              @map("donacion_id")
+  bloqueado       Boolean           @default(false) @map("bloqueado")
+  material        Material          @relation(fields: [materialId], references: [id])
+  evento          Service           @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  donacion        Donation?         @relation(fields: [donacionId], references: [id])
+
+  @@index([materialId])
+  @@index([eventoId])
+  @@index([fechaAsignacion])
+  @@index([donacionId])
+  @@index([tipo])
+  @@map("event_materials")
+}
+
+model EventMaterialReusable {
   id              Int      @id @default(autoincrement())
   materialId      Int      @map("material_id")
   eventoId        Int      @map("evento_id")
@@ -1060,11 +1090,12 @@ model EventMaterial {
   createdBy       Int      @map("created_by")
   createdByName   String?  @map("created_by_name") @db.VarChar(255)
   material        Material @relation(fields: [materialId], references: [id])
+  evento          Service  @relation(fields: [eventoId], references: [id], onDelete: Cascade)
 
   @@index([materialId])
   @@index([eventoId])
   @@index([fechaAsignacion])
-  @@map("event_materials")
+  @@map("event_materials_reusable")
 }
 
 model purchases {
@@ -1092,6 +1123,11 @@ model purchases {
 enum MaterialStatus {
   Activo
   Inactivo
+}
+
+enum EventMaterialType {
+  CONSUMIBLE
+  REUTILIZABLE
 }
 
 enum CategoryStatus {

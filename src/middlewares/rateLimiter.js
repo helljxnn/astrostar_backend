@@ -1,12 +1,14 @@
 import rateLimit from "express-rate-limit";
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 /**
  * Rate Limiter General para toda la API
  * Previene abuso y ataques DDoS
  */
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Máximo 100 requests por IP en la ventana
+  max: isDevelopment ? 10000 : 100, // En desarrollo: 10000, en producción: 100
   message: {
     success: false,
     message:
@@ -15,10 +17,6 @@ export const apiLimiter = rateLimit({
   },
   standardHeaders: true, // Retorna info de rate limit en headers `RateLimit-*`
   legacyHeaders: false, // Deshabilita headers `X-RateLimit-*`
-  // Función para generar key única por IP
-  keyGenerator: (req) => {
-    return req.ip || req.connection.remoteAddress;
-  },
   // Handler cuando se excede el límite
   handler: (req, res) => {
     console.warn(`⚠️  Rate limit excedido para IP: ${req.ip}`);
@@ -41,7 +39,7 @@ export const apiLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // Máximo 5 intentos de login
+  max: isDevelopment ? 1000 : 5, // En desarrollo: 1000, en producción: 5
   message: {
     success: false,
     message:
@@ -70,7 +68,7 @@ export const authLimiter = rateLimit({
  */
 export const createLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: 20, // Máximo 20 creaciones por hora
+  max: isDevelopment ? 1000 : 20, // En desarrollo: 1000, en producción: 20
   message: {
     success: false,
     message: "Límite de creación alcanzado. Por favor intenta más tarde.",
@@ -94,7 +92,7 @@ export const createLimiter = rateLimit({
  */
 export const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 200, // Máximo 200 requests por IP
+  max: isDevelopment ? 10000 : 200, // En desarrollo: 10000, en producción: 200
   message: {
     success: false,
     message: "Demasiadas peticiones. Por favor intenta más tarde.",
@@ -110,7 +108,7 @@ export const publicLimiter = rateLimit({
  */
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: 10, // Máximo 10 uploads por hora
+  max: isDevelopment ? 1000 : 10, // En desarrollo: 1000, en producción: 10
   message: {
     success: false,
     message:
