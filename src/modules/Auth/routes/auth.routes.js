@@ -1,7 +1,11 @@
-import express from 'express';
-import { AuthController } from '../controllers/auth.controller.js';
-import { authValidators, handleValidationErrors } from '../validators/auth.validator.js';
-import { authenticateToken } from '../../../middlewares/auth.js';
+import express from "express";
+import { AuthController } from "../controllers/auth.controller.js";
+import {
+  authValidators,
+  handleValidationErrors,
+} from "../validators/auth.validator.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
+import { authLimiter } from "../../../middlewares/rateLimiter.js";
 
 const router = express.Router();
 const authController = new AuthController();
@@ -23,72 +27,70 @@ const authController = new AuthController();
  *       bearerFormat: JWT
  */
 
-// Rutas públicas
-router.post('/login', 
-  authValidators.login, 
-  handleValidationErrors, 
-  authController.login
+// Rutas públicas (con rate limiting estricto)
+router.post(
+  "/login",
+  authLimiter, // Rate limiting: 5 intentos por 15 minutos
+  authValidators.login,
+  handleValidationErrors,
+  authController.login,
 );
 
-router.post('/forgot-password',
+router.post(
+  "/forgot-password",
+  authLimiter, // Rate limiting: 5 intentos por 15 minutos
   authValidators.forgotPassword,
   handleValidationErrors,
-  authController.forgotPassword
+  authController.forgotPassword,
 );
 
-router.post('/verify-reset-token',
+router.post(
+  "/verify-reset-token",
+  authLimiter, // Rate limiting: 5 intentos por 15 minutos
   authValidators.verifyResetToken,
   handleValidationErrors,
-  authController.verifyResetToken
+  authController.verifyResetToken,
 );
 
-router.post('/reset-password',
+router.post(
+  "/reset-password",
+  authLimiter, // Rate limiting: 5 intentos por 15 minutos
   authValidators.resetPassword,
   handleValidationErrors,
-  authController.resetPassword
+  authController.resetPassword,
 );
 
 // Refresh token desde cookie HttpOnly
-router.post('/refresh',
-  authController.refresh
-);
+router.post("/refresh", authController.refresh);
 
 // Logout - limpia cookie HttpOnly
-router.post('/logout',
-  authController.logout
-);
+router.post("/logout", authController.logout);
 
 // Rutas protegidas
-router.get('/me', 
-  authenticateToken, 
-  authController.me
+router.get("/me", authenticateToken, authController.me);
+
+router.post(
+  "/change-password",
+  authenticateToken,
+  authValidators.changePassword,
+  handleValidationErrors,
+  authController.changePassword,
 );
 
-router.post('/change-password', 
+router.post(
+  "/request-email-change",
   authenticateToken,
-  authValidators.changePassword, 
-  handleValidationErrors, 
-  authController.changePassword
+  authController.requestEmailChange,
 );
 
-router.post('/request-email-change',
+router.post(
+  "/verify-email-change",
   authenticateToken,
-  authController.requestEmailChange
+  authController.verifyEmailChange,
 );
 
-router.post('/verify-email-change',
-  authenticateToken,
-  authController.verifyEmailChange
-);
+router.put("/profile", authenticateToken, authController.updateProfile);
 
-router.put('/profile',
-  authenticateToken,
-  authController.updateProfile
-);
-
-router.post('/logout-all',
-  authenticateToken,
-  authController.logoutAll
-);
+router.post("/logout-all", authenticateToken, authController.logoutAll);
 
 export default router;

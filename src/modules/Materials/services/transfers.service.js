@@ -1,4 +1,4 @@
-import materialsRepository from '../repository/materials.repository.js';
+import materialsRepository from "../repository/materials.repository.js";
 
 class TransfersService {
   /**
@@ -6,8 +6,6 @@ class TransfersService {
    */
   async transferStock(materialId, data, userId, userName) {
     try {
-      console.log('🔄 Starting stock transfer...');
-
       // 1. Validate transfer data
       this.validateTransferData(data);
 
@@ -17,15 +15,15 @@ class TransfersService {
         return {
           success: false,
           statusCode: 404,
-          message: 'Material not found',
+          message: "Material not found",
         };
       }
 
-      if (material.estado !== 'Activo') {
+      if (material.estado !== "Activo") {
         return {
           success: false,
           statusCode: 400,
-          message: 'Cannot transfer stock on inactive materials',
+          message: "Cannot transfer stock on inactive materials",
         };
       }
 
@@ -34,13 +32,16 @@ class TransfersService {
         return {
           success: false,
           statusCode: 400,
-          message: 'Source and destination inventories must be different',
+          message: "Source and destination inventories must be different",
         };
       }
 
       // 4. Validate sufficient stock in source
-      const sourceStock = data.from === 'FUNDACION' ? material.stockFundacion : material.stockEventos;
-      
+      const sourceStock =
+        data.from === "FUNDACION"
+          ? material.stockFundacion
+          : material.stockEventos;
+
       if (sourceStock < data.cantidad) {
         return {
           success: false,
@@ -54,7 +55,8 @@ class TransfersService {
         from: data.from,
         to: data.to,
         cantidad: parseInt(data.cantidad),
-        observaciones: data.observaciones || `Transfer from ${data.from} to ${data.to}`,
+        observaciones:
+          data.observaciones || `Transfer from ${data.from} to ${data.to}`,
       };
 
       // 6. Execute transfer (atomic transaction)
@@ -62,10 +64,8 @@ class TransfersService {
         materialId,
         transferData,
         userId,
-        userName
+        userName,
       );
-
-      console.log('✅ Stock transferred successfully');
 
       return {
         success: true,
@@ -73,10 +73,13 @@ class TransfersService {
         message: `Successfully transferred ${data.cantidad} units from ${data.from} to ${data.to}`,
       };
     } catch (error) {
-      console.error('❌ Error transferring stock:', error.message);
+      console.error("❌ Error transferring stock:", error.message);
 
       // Specific errors
-      if (error.message.includes('Insufficient stock') || error.message.includes('insuficiente')) {
+      if (
+        error.message.includes("Insufficient stock") ||
+        error.message.includes("insuficiente")
+      ) {
         return {
           success: false,
           statusCode: 400,
@@ -84,7 +87,10 @@ class TransfersService {
         };
       }
 
-      if (error.message.includes('not found') || error.message.includes('no encontrado')) {
+      if (
+        error.message.includes("not found") ||
+        error.message.includes("no encontrado")
+      ) {
         return {
           success: false,
           statusCode: 404,
@@ -92,7 +98,7 @@ class TransfersService {
         };
       }
 
-      if (error.message.includes('must be different')) {
+      if (error.message.includes("must be different")) {
         return {
           success: false,
           statusCode: 400,
@@ -110,35 +116,35 @@ class TransfersService {
   validateTransferData(data) {
     // Source inventory
     if (!data.from) {
-      throw new Error('Source inventory is required');
+      throw new Error("Source inventory is required");
     }
 
-    if (!['FUNDACION', 'EVENTOS'].includes(data.from)) {
-      throw new Error('Source must be FUNDACION or EVENTOS');
+    if (!["FUNDACION", "EVENTOS"].includes(data.from)) {
+      throw new Error("Source must be FUNDACION or EVENTOS");
     }
 
     // Destination inventory
     if (!data.to) {
-      throw new Error('Destination inventory is required');
+      throw new Error("Destination inventory is required");
     }
 
-    if (!['FUNDACION', 'EVENTOS'].includes(data.to)) {
-      throw new Error('Destination must be FUNDACION or EVENTOS');
+    if (!["FUNDACION", "EVENTOS"].includes(data.to)) {
+      throw new Error("Destination must be FUNDACION or EVENTOS");
     }
 
     // Quantity
     if (!data.cantidad) {
-      throw new Error('Quantity is required');
+      throw new Error("Quantity is required");
     }
 
     const cantidad = parseInt(data.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
-      throw new Error('Quantity must be a positive number');
+      throw new Error("Quantity must be a positive number");
     }
 
     // Observations
     if (data.observaciones && data.observaciones.length > 1000) {
-      throw new Error('Observations cannot exceed 1000 characters');
+      throw new Error("Observations cannot exceed 1000 characters");
     }
   }
 }
