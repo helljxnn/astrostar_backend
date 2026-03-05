@@ -1,4 +1,4 @@
-import materialsService from '../services/materials.service.js';
+import materialsService from "../services/materials.service.js";
 
 class MaterialsController {
   /**
@@ -7,7 +7,14 @@ class MaterialsController {
    */
   async getAll(req, res) {
     try {
-      const { page = 1, limit = 10, search = '', estado, categoriaId } = req.query;
+      const {
+        page = 1,
+        limit = 10,
+        search = "",
+        estado,
+        categoriaId,
+        stockType,
+      } = req.query;
 
       const result = await materialsService.getAll({
         page: parseInt(page),
@@ -15,15 +22,17 @@ class MaterialsController {
         search,
         estado,
         categoriaId: categoriaId ? parseInt(categoriaId) : null,
+        stockType,
       });
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getAll:', error);
+      console.error("Controller error - getAll:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener materiales',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al obtener materiales",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -39,7 +48,7 @@ class MaterialsController {
       if (isNaN(id)) {
         return res.status(400).json({
           success: false,
-          message: 'ID inválido',
+          message: "ID inválido",
         });
       }
 
@@ -51,11 +60,12 @@ class MaterialsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getById:', error);
+      console.error("Controller error - getById:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -71,7 +81,7 @@ class MaterialsController {
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: 'Usuario no autenticado',
+          message: "Usuario no autenticado",
         });
       }
 
@@ -83,11 +93,12 @@ class MaterialsController {
 
       return res.status(201).json(result);
     } catch (error) {
-      console.error('Controller error - create:', error);
+      console.error("Controller error - create:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al crear material',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al crear material",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -104,18 +115,22 @@ class MaterialsController {
       if (isNaN(id)) {
         return res.status(400).json({
           success: false,
-          message: 'ID inválido',
+          message: "ID inválido",
         });
       }
 
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: 'Usuario no autenticado',
+          message: "Usuario no autenticado",
         });
       }
 
-      const result = await materialsService.update(parseInt(id), req.body, userId);
+      const result = await materialsService.update(
+        parseInt(id),
+        req.body,
+        userId,
+      );
 
       if (!result.success) {
         return res.status(result.statusCode || 400).json(result);
@@ -123,11 +138,12 @@ class MaterialsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - update:', error);
+      console.error("Controller error - update:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al actualizar material',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al actualizar material",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -144,14 +160,14 @@ class MaterialsController {
       if (isNaN(id)) {
         return res.status(400).json({
           success: false,
-          message: 'ID inválido',
+          message: "ID inválido",
         });
       }
 
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: 'Usuario no autenticado',
+          message: "Usuario no autenticado",
         });
       }
 
@@ -163,11 +179,12 @@ class MaterialsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - toggleStatus:', error);
+      console.error("Controller error - toggleStatus:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -183,7 +200,7 @@ class MaterialsController {
       if (isNaN(id)) {
         return res.status(400).json({
           success: false,
-          message: 'ID inválido',
+          message: "ID inválido",
         });
       }
 
@@ -195,11 +212,12 @@ class MaterialsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - delete:', error);
+      console.error("Controller error - delete:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al eliminar material',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al eliminar material",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -216,19 +234,23 @@ class MaterialsController {
       if (isNaN(id)) {
         return res.status(400).json({
           success: false,
-          message: 'ID inválido',
+          message: "ID inválido",
         });
       }
 
-      const result = await materialsService.getMovementHistory(parseInt(id), parseInt(limit));
+      const result = await materialsService.getMovementHistory(
+        parseInt(id),
+        parseInt(limit),
+      );
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getHistory:', error);
+      console.error("Controller error - getHistory:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -244,30 +266,31 @@ class MaterialsController {
       if (!nombre) {
         return res.status(400).json({
           success: false,
-          message: 'El nombre es requerido',
+          message: "El nombre es requerido",
         });
       }
 
       if (!categoriaId) {
         return res.status(400).json({
           success: false,
-          message: 'La categoría es requerida',
+          message: "La categoría es requerida",
         });
       }
 
       const result = await materialsService.checkNameAvailability(
         nombre,
         parseInt(categoriaId),
-        excludeId ? parseInt(excludeId) : null
+        excludeId ? parseInt(excludeId) : null,
       );
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - checkName:', error);
+      console.error("Controller error - checkName:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -280,19 +303,21 @@ class MaterialsController {
     try {
       const { id } = req.params;
       const userId = req.user?.id;
-      const userName = req.user ? `${req.user.firstName} ${req.user.lastName}` : null;
+      const userName = req.user
+        ? `${req.user.firstName} ${req.user.lastName}`
+        : null;
 
       if (isNaN(id)) {
         return res.status(400).json({
           success: false,
-          message: 'ID inválido',
+          message: "ID inválido",
         });
       }
 
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: 'Usuario no autenticado',
+          message: "Usuario no autenticado",
         });
       }
 
@@ -300,7 +325,7 @@ class MaterialsController {
         parseInt(id),
         req.body,
         userId,
-        userName
+        userName,
       );
 
       if (!result.success) {
@@ -309,11 +334,12 @@ class MaterialsController {
 
       return res.status(201).json(result);
     } catch (error) {
-      console.error('Controller error - registerDischarge:', error);
+      console.error("Controller error - registerDischarge:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al registrar baja',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al registrar baja",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }
@@ -329,21 +355,24 @@ class MaterialsController {
       if (isNaN(id)) {
         return res.status(400).json({
           success: false,
-          message: 'ID inválido',
+          message: "ID inválido",
         });
       }
 
       // Importar el servicio de reservations
-      const reservationsService = (await import('../services/reservations.service.js')).default;
+      const reservationsService = (
+        await import("../services/reservations.service.js")
+      ).default;
       const result = await reservationsService.getByMaterial(parseInt(id));
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getReservations:', error);
+      console.error("Controller error - getReservations:", error);
       return res.status(500).json({
         success: false,
-        message: 'Error interno del servidor',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }

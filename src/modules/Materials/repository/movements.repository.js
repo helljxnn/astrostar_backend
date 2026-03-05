@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../../../generated/prisma/index.js';
+import { PrismaClient } from "../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
@@ -6,7 +6,14 @@ class MovementsRepository {
   /**
    * Obtener todos los movimientos con paginación y filtros
    */
-  async findAll({ page = 1, limit = 10, materialId = null, tipo = null, origen = null, search = '' }) {
+  async findAll({
+    page = 1,
+    limit = 10,
+    materialId = null,
+    tipo = null,
+    origen = null,
+    search = "",
+  }) {
     const skip = (page - 1) * limit;
     const where = {};
 
@@ -17,12 +24,15 @@ class MovementsRepository {
     // Filtrar por tipo de movimiento
     if (tipo) {
       const tipoLower = tipo.toLowerCase();
-      
-      if (tipoLower === 'entrada') {
-        where.tipoMovimiento = 'Entrada';
-      } else if (tipoLower === 'salida') {
-        // Para salida, excluir solo Entrada (así incluye Salida, Baja, etc.)
-        where.tipoMovimiento = { not: 'Entrada' };
+
+      if (tipoLower === "entrada") {
+        // Incluir tanto Entrada como REVERSION_ASIGNACION (son ingresos)
+        where.tipoMovimiento = { in: ["Entrada", "REVERSION_ASIGNACION"] };
+      } else if (tipoLower === "salida") {
+        // Para salida, excluir Entrada y REVERSION_ASIGNACION
+        where.tipoMovimiento = {
+          notIn: ["Entrada", "REVERSION_ASIGNACION"],
+        };
       } else {
         // Si se envía el tipo exacto (Entrada, Salida, Baja)
         where.tipoMovimiento = tipo;
@@ -35,9 +45,9 @@ class MovementsRepository {
 
     if (search) {
       where.OR = [
-        { materialNombre: { contains: search, mode: 'insensitive' } },
-        { categoria: { contains: search, mode: 'insensitive' } },
-        { observaciones: { contains: search, mode: 'insensitive' } },
+        { materialNombre: { contains: search, mode: "insensitive" } },
+        { categoria: { contains: search, mode: "insensitive" } },
+        { observaciones: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -73,7 +83,7 @@ class MovementsRepository {
           },
         },
         orderBy: {
-          fecha: 'desc',
+          fecha: "desc",
         },
       }),
       prisma.materialMovement.count({ where }),
@@ -155,67 +165,71 @@ class MovementsRepository {
    */
   async registerMovement(data, userId) {
     return await prisma.$transaction(async (tx) => {
-      console.log('🔍 DEBUG registerMovement - data received:', JSON.stringify(data, null, 2));
-      
       // 1. Get material with lock
       const material = await tx.material.findUnique({
         where: { id: parseInt(data.material_id) },
       });
 
       if (!material) {
-        throw new Error('Material not found');
+        throw new Error("Material not found");
       }
 
-      if (material.estado !== 'Activo') {
-        throw new Error('Cannot register movements on inactive materials');
+      if (material.estado !== "Activo") {
+        throw new Error("Cannot register movements on inactive materials");
       }
 
       // 2. Determine which inventory to update
-      const inventoryType = data.inventario_destino || 'FUNDACION';
-      const stockField = inventoryType === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const inventoryType = data.inventario_destino || "FUNDACION";
+      const stockField =
+        inventoryType === "FUNDACION" ? "stockFundacion" : "stockEventos";
       const currentStock = material[stockField];
-
-      console.log(`📊 Current stock in ${inventoryType}:`, currentStock);
 
       // 3. Calculate new stock based on movement type
       let newStockValue = currentStock;
-      
-      console.log('🎯 Movement type:', data.tipo_movimiento);
-      
-      if (data.tipo_movimiento === 'Entrada') {
+
+      if (data.tipo_movimiento === "Entrada") {
         // For entries, add to the specified inventory
         newStockValue += parseInt(data.cantidad);
-        console.log('✅ Adding to stock:', parseInt(data.cantidad));
-      } else if (data.tipo_movimiento === 'Salida') {
+      } else if (data.tipo_movimiento === "Salida") {
         // For exits, subtract from stock
         newStockValue -= parseInt(data.cantidad);
-        console.log('➖ Subtracting from stock:', parseInt(data.cantidad));
       }
 
-      console.log('📊 New stock value:', newStockValue);
-
       // 4. Validate sufficient stock for exits
-      if (data.tipo_movimiento === 'Salida' && newStockValue < 0) {
+      if (data.tipo_movimiento === "Salida" && newStockValue < 0) {
         throw new Error(
-          `Insufficient stock. Available: ${currentStock}, Requested: ${data.cantidad}`
+          `Insufficient stock. Available: ${currentStock}, Requested: ${data.cantidad}`,
         );
       }
 
       // 5. Calculate total stock before and after
       const stockAnterior = material.stockFundacion + material.stockEventos;
-      const stockNuevo = inventoryType === 'FUNDACION'
-        ? newStockValue + material.stockEventos
-        : material.stockFundacion + newStockValue;
+      const stockNuevo =
+        inventoryType === "FUNDACION"
+          ? newStockValue + material.stockEventos
+          : material.stockFundacion + newStockValue;
 
-      // 6. Update material stock
+      // 6. Update material stock and esReutilizable flag
+      const updateData = {
+        [stockField]: newStockValue,
+      };
+
+      // Si es una entrada a FUNDACION, marcar como reutilizable
+      if (data.tipo_movimiento === "Entrada" && inventoryType === "FUNDACION") {
+        updateData.esReutilizable = true;
+      }
+      // Si es una entrada a EVENTOS, marcar como NO reutilizable (consumible)
+      else if (
+        data.tipo_movimiento === "Entrada" &&
+        inventoryType === "EVENTOS"
+      ) {
+        updateData.esReutilizable = false;
+      }
+
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(data.material_id) },
-        data: {
-          [stockField]: newStockValue,
-        },
+        data: updateData,
       });
-      
-      console.log(`✅ Material updated in DB - ${stockField}:`, materialActualizado[stockField]);
 
       // 7. Create movement record
       const movement = await tx.materialMovement.create({
@@ -226,8 +240,10 @@ class MovementsRepository {
           tipoMovimiento: data.tipo_movimiento,
           cantidad: parseInt(data.cantidad),
           destino: data.destino || null,
-          inventarioOrigen: data.tipo_movimiento === 'Salida' ? inventoryType : null,
-          inventarioDestino: data.tipo_movimiento === 'Entrada' ? inventoryType : null,
+          inventarioOrigen:
+            data.tipo_movimiento === "Salida" ? inventoryType : null,
+          inventarioDestino:
+            data.tipo_movimiento === "Entrada" ? inventoryType : null,
           eventoId: data.evento_id ? parseInt(data.evento_id) : null,
           donacionId: data.donacion_id ? parseInt(data.donacion_id) : null,
           observaciones: data.observaciones || null,
@@ -237,7 +253,9 @@ class MovementsRepository {
           referenceType: data.reference_type || null,
           createdBy: userId,
           createdByName: data.created_by_name || null,
-          fechaIngreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
+          fechaIngreso: data.fecha_ingreso
+            ? new Date(data.fecha_ingreso)
+            : null,
           proveedorId: data.proveedor_id || null,
         },
       });
@@ -257,18 +275,18 @@ class MovementsRepository {
       });
 
       if (!material) {
-        throw new Error('Material no encontrado');
+        throw new Error("Material no encontrado");
       }
 
-      if (material.estado !== 'Activo') {
-        throw new Error('No se pueden registrar bajas en materiales inactivos');
+      if (material.estado !== "Activo") {
+        throw new Error("No se pueden registrar bajas en materiales inactivos");
       }
 
       // 2. Validar stock suficiente
       const cantidad = parseInt(data.cantidad);
       if (cantidad > material.stockDisponible) {
         throw new Error(
-          `Stock insuficiente. Stock disponible: ${material.stockDisponible}, Cantidad solicitada: ${cantidad}`
+          `Stock insuficiente. Stock disponible: ${material.stockDisponible}, Cantidad solicitada: ${cantidad}`,
         );
       }
 
@@ -294,7 +312,7 @@ class MovementsRepository {
           materialId: parseInt(data.material_id),
           materialNombre: data.material_nombre,
           categoria: data.categoria,
-          tipoMovimiento: 'Baja',
+          tipoMovimiento: "Baja",
           cantidad: cantidad,
           origen: data.origen,
           destino: null,
@@ -317,18 +335,18 @@ class MovementsRepository {
   mapTipoBajaToEnum(tipoBaja) {
     // Normalizar el valor recibido
     const tipoBajaNormalizado = tipoBaja.toUpperCase().trim();
-    
+
     const mapeo = {
-      'DAÑO O DETERIORO': 'DanoDeterioro',
-      'DANO O DETERIORO': 'DanoDeterioro',
-      'PÉRDIDA': 'Perdida',
-      'PERDIDA': 'Perdida',
-      'ROBO': 'Robo',
-      'AJUSTE DE INVENTARIO': 'AjusteInventario',
-      'OTRO': 'Otro',
+      "DAÑO O DETERIORO": "DanoDeterioro",
+      "DANO O DETERIORO": "DanoDeterioro",
+      PÉRDIDA: "Perdida",
+      PERDIDA: "Perdida",
+      ROBO: "Robo",
+      "AJUSTE DE INVENTARIO": "AjusteInventario",
+      OTRO: "Otro",
     };
-    
-    return mapeo[tipoBajaNormalizado] || 'Otro';
+
+    return mapeo[tipoBajaNormalizado] || "Otro";
   }
 
   /**
@@ -338,9 +356,13 @@ class MovementsRepository {
     return await prisma.materialMovement.update({
       where: { id: parseInt(id) },
       data: {
-        observaciones: data.observaciones !== undefined ? data.observaciones : undefined,
-        fechaIngreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : undefined,
-        proveedorId: data.proveedor_id !== undefined ? data.proveedor_id : undefined,
+        observaciones:
+          data.observaciones !== undefined ? data.observaciones : undefined,
+        fechaIngreso: data.fecha_ingreso
+          ? new Date(data.fecha_ingreso)
+          : undefined,
+        proveedorId:
+          data.proveedor_id !== undefined ? data.proveedor_id : undefined,
       },
       include: {
         material: {
@@ -381,7 +403,7 @@ class MovementsRepository {
       },
       take: limit,
       orderBy: {
-        fecha: 'desc',
+        fecha: "desc",
       },
     });
   }
@@ -402,20 +424,25 @@ class MovementsRepository {
       if (endDate) where.fecha.lte = new Date(endDate);
     }
 
-    const [totalEntradas, totalSalidas, totalMovimientos, movimientosPorOrigen] = await Promise.all([
+    const [
+      totalEntradas,
+      totalSalidas,
+      totalMovimientos,
+      movimientosPorOrigen,
+    ] = await Promise.all([
       prisma.materialMovement.aggregate({
-        where: { ...where, tipoMovimiento: 'Entrada' },
+        where: { ...where, tipoMovimiento: "Entrada" },
         _sum: { cantidad: true },
         _count: true,
       }),
       prisma.materialMovement.aggregate({
-        where: { ...where, tipoMovimiento: 'Salida' },
+        where: { ...where, tipoMovimiento: "Salida" },
         _sum: { cantidad: true },
         _count: true,
       }),
       prisma.materialMovement.count({ where }),
       prisma.materialMovement.groupBy({
-        by: ['origen'],
+        by: ["origen"],
         where,
         _sum: { cantidad: true },
         _count: true,
@@ -428,7 +455,8 @@ class MovementsRepository {
       totalSalidas: totalSalidas._sum.cantidad || 0,
       cantidadSalidas: totalSalidas._count || 0,
       totalMovimientos,
-      stockNeto: (totalEntradas._sum.cantidad || 0) - (totalSalidas._sum.cantidad || 0),
+      stockNeto:
+        (totalEntradas._sum.cantidad || 0) - (totalSalidas._sum.cantidad || 0),
       movimientosPorOrigen: movimientosPorOrigen.map((item) => ({
         origen: item.origen,
         cantidad: item._sum.cantidad,
@@ -461,7 +489,7 @@ class MovementsRepository {
         },
       },
       orderBy: {
-        fecha: 'desc',
+        fecha: "desc",
       },
     });
   }
@@ -473,7 +501,7 @@ class MovementsRepository {
     return await prisma.materialMovement.findMany({
       take: limit,
       orderBy: {
-        fecha: 'desc',
+        fecha: "desc",
       },
       include: {
         material: {
@@ -498,7 +526,7 @@ class MovementsRepository {
       });
 
       if (!movement) {
-        throw new Error('Movement not found');
+        throw new Error("Movement not found");
       }
 
       // 2. Get the material
@@ -507,18 +535,23 @@ class MovementsRepository {
       });
 
       if (!material) {
-        throw new Error('Material not found');
+        throw new Error("Material not found");
       }
 
       // 3. Determine which inventory to reverse
-      const inventoryType = movement.inventarioDestino || movement.inventarioOrigen || 'FUNDACION';
-      const stockField = inventoryType === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const inventoryType =
+        movement.inventarioDestino || movement.inventarioOrigen || "FUNDACION";
+      const stockField =
+        inventoryType === "FUNDACION" ? "stockFundacion" : "stockEventos";
       let newStockValue = material[stockField];
-      
-      if (movement.tipoMovimiento === 'Entrada') {
+
+      if (movement.tipoMovimiento === "Entrada") {
         // If it was an entry, subtract the quantity
         newStockValue -= movement.cantidad;
-      } else if (movement.tipoMovimiento === 'Salida' || movement.tipoMovimiento === 'Baja') {
+      } else if (
+        movement.tipoMovimiento === "Salida" ||
+        movement.tipoMovimiento === "Baja"
+      ) {
         // If it was an exit/discharge, add the quantity back
         newStockValue += movement.cantidad;
       }
@@ -526,7 +559,7 @@ class MovementsRepository {
       // 4. Validate that stock won't go negative
       if (newStockValue < 0) {
         throw new Error(
-          `Cannot delete movement because it would leave stock negative (${newStockValue})`
+          `Cannot delete movement because it would leave stock negative (${newStockValue})`,
         );
       }
 

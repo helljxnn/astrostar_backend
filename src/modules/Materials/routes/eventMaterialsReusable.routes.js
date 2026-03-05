@@ -132,4 +132,43 @@ router.get(
   eventMaterialsReusableController.checkAvailability,
 );
 
+/**
+ * @swagger
+ * /api/materials/reusables/{materialId}/assignments:
+ *   get:
+ *     summary: Get all event assignments for a specific reusable material
+ *     tags: [Materials - Events - Reusables]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: materialId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: includeCompleted
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *     responses:
+ *       200:
+ *         description: List of assignments with summary
+ */
+router.get(
+  "/reusables/:materialId/assignments",
+  authenticateToken,
+  eventMaterialsReusableController.getMaterialAssignments,
+);
+
 export default router;

@@ -114,6 +114,34 @@ class EventMaterialsReusableController {
       });
     }
   }
+
+  /**
+   * Get all assignments for a specific material
+   */
+  async getMaterialAssignments(req, res) {
+    try {
+      const { materialId } = req.params;
+      const { includeCompleted, startDate, endDate } = req.query;
+
+      const result = await eventMaterialsReusableService.getMaterialAssignments(
+        materialId,
+        {
+          includeCompleted: includeCompleted === "true",
+          startDate: startDate || null,
+          endDate: endDate || null,
+        },
+      );
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error("Controller error - getMaterialAssignments:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error retrieving material assignments",
+        error: error.message,
+      });
+    }
+  }
 }
 
 export default new EventMaterialsReusableController();

@@ -1,5 +1,5 @@
-import materialsRepository from '../repository/materials.repository.js';
-import { PrismaClient } from '../../../../generated/prisma/index.js';
+import materialsRepository from "../repository/materials.repository.js";
+import { PrismaClient } from "../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
@@ -26,7 +26,7 @@ class EventMaterialsService {
           },
         },
         orderBy: {
-          fechaAsignacion: 'desc',
+          fechaAsignacion: "desc",
         },
       });
 
@@ -35,7 +35,7 @@ class EventMaterialsService {
         data: materials,
       };
     } catch (error) {
-      console.error('Service error - getByEvent:', error);
+      console.error("Service error - getByEvent:", error);
       throw error;
     }
   }
@@ -45,8 +45,6 @@ class EventMaterialsService {
    */
   async assignMaterial(eventoId, data, userId, userName) {
     try {
-      console.log('🔄 Starting material assignment to event (RESERVATION)...');
-
       // 1. Validate data
       this.validateAssignmentData(data);
 
@@ -56,22 +54,23 @@ class EventMaterialsService {
         return {
           success: false,
           statusCode: 404,
-          message: 'Material not found',
+          message: "Material not found",
         };
       }
 
-      if (material.estado !== 'Activo') {
+      if (material.estado !== "Activo") {
         return {
           success: false,
           statusCode: 400,
-          message: 'Cannot assign inactive materials to events',
+          message: "Cannot assign inactive materials to events",
         };
       }
 
       // 3. Calculate available stock (stock - reserved)
       const cantidad = parseInt(data.cantidad);
-      const stockDisponible = material.stockEventos - material.stockEventosReservado;
-      
+      const stockDisponible =
+        material.stockEventos - material.stockEventosReservado;
+
       if (stockDisponible < cantidad) {
         return {
           success: false,
@@ -126,17 +125,18 @@ class EventMaterialsService {
         return assignment;
       });
 
-      console.log('✅ Material reserved for event successfully (stock NOT deducted yet)');
-
       return {
         success: true,
         data: result,
         message: `Successfully reserved ${cantidad} units of "${material.nombre}" for event`,
       };
     } catch (error) {
-      console.error('❌ Error assigning material to event:', error.message);
+      console.error("❌ Error assigning material to event:", error.message);
 
-      if (error.message.includes('Insufficient') || error.message.includes('insuficiente')) {
+      if (
+        error.message.includes("Insufficient") ||
+        error.message.includes("insuficiente")
+      ) {
         return {
           success: false,
           statusCode: 400,
@@ -153,8 +153,6 @@ class EventMaterialsService {
    */
   async removeAssignment(assignmentId, userId, userName) {
     try {
-      console.log('🔄 Starting assignment removal (UNRESERVE)...');
-
       // 1. Get assignment
       const assignment = await prisma.eventMaterial.findUnique({
         where: { id: parseInt(assignmentId) },
@@ -167,7 +165,7 @@ class EventMaterialsService {
         return {
           success: false,
           statusCode: 404,
-          message: 'Assignment not found',
+          message: "Assignment not found",
         };
       }
 
@@ -193,14 +191,12 @@ class EventMaterialsService {
         return true;
       });
 
-      console.log('✅ Assignment removed successfully (stock unreserved)');
-
       return {
         success: true,
         message: `Successfully unreserved ${assignment.cantidad} units`,
       };
     } catch (error) {
-      console.error('❌ Error removing assignment:', error.message);
+      console.error("❌ Error removing assignment:", error.message);
       throw error;
     }
   }
@@ -210,8 +206,6 @@ class EventMaterialsService {
    */
   async finalizeEvent(eventoId, userId, userName) {
     try {
-      console.log('🔄 Starting event finalization (DEDUCTING REAL STOCK)...');
-
       // Execute in atomic transaction
       const result = await prisma.$transaction(async (tx) => {
         // 1. Get all assignments for this event
@@ -223,7 +217,7 @@ class EventMaterialsService {
         });
 
         if (assignments.length === 0) {
-          throw new Error('No materials assigned to this event');
+          throw new Error("No materials assigned to this event");
         }
 
         const processedMaterials = [];
@@ -235,14 +229,15 @@ class EventMaterialsService {
           // 2.1. Validate sufficient real stock
           if (material.stockEventos < assignment.cantidad) {
             throw new Error(
-              `Insufficient real stock for "${material.nombre}". Available: ${material.stockEventos}, Required: ${assignment.cantidad}`
+              `Insufficient real stock for "${material.nombre}". Available: ${material.stockEventos}, Required: ${assignment.cantidad}`,
             );
           }
 
           // 2.2. Calculate stock before and after
           const stockAnterior = material.stockFundacion + material.stockEventos;
           const newStockEventos = material.stockEventos - assignment.cantidad;
-          const newStockReservado = material.stockEventosReservado - assignment.cantidad;
+          const newStockReservado =
+            material.stockEventosReservado - assignment.cantidad;
           const stockNuevo = material.stockFundacion + newStockEventos;
 
           // 2.3. Deduct REAL stock AND decrement reserved
@@ -260,11 +255,12 @@ class EventMaterialsService {
               materialId: material.id,
               materialNombre: material.nombre,
               categoria: material.categoria,
-              tipoMovimiento: 'SALIDA_EVENTO',
+              tipoMovimiento: "SALIDA_EVENTO",
               cantidad: assignment.cantidad,
-              inventarioOrigen: 'EVENTOS',
+              inventarioOrigen: "EVENTOS",
               eventoId: parseInt(eventoId),
-              observaciones: assignment.observaciones || `Event finalized - stock deducted`,
+              observaciones:
+                assignment.observaciones || `Event finalized - stock deducted`,
               stockAnterior: stockAnterior,
               stockNuevo: stockNuevo,
               createdBy: userId,
@@ -284,17 +280,18 @@ class EventMaterialsService {
         return processedMaterials;
       });
 
-      console.log('✅ Event finalized successfully - Real stock deducted');
-
       return {
         success: true,
         data: result,
         message: `Event finalized successfully. ${result.length} material(s) deducted from real stock.`,
       };
     } catch (error) {
-      console.error('❌ Error finalizing event:', error.message);
+      console.error("❌ Error finalizing event:", error.message);
 
-      if (error.message.includes('Insufficient') || error.message.includes('No materials')) {
+      if (
+        error.message.includes("Insufficient") ||
+        error.message.includes("No materials")
+      ) {
         return {
           success: false,
           statusCode: 400,
@@ -312,22 +309,22 @@ class EventMaterialsService {
   validateAssignmentData(data) {
     // Material
     if (!data.material_id) {
-      throw new Error('Material is required');
+      throw new Error("Material is required");
     }
 
     // Quantity
     if (!data.cantidad) {
-      throw new Error('Quantity is required');
+      throw new Error("Quantity is required");
     }
 
     const cantidad = parseInt(data.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
-      throw new Error('Quantity must be a positive number');
+      throw new Error("Quantity must be a positive number");
     }
 
     // Observations
     if (data.observaciones && data.observaciones.length > 1000) {
-      throw new Error('Observations cannot exceed 1000 characters');
+      throw new Error("Observations cannot exceed 1000 characters");
     }
   }
 }

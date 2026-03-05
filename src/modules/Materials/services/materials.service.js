@@ -1,11 +1,18 @@
-import materialsRepository from '../repository/materials.repository.js';
-import categoriesRepository from '../repository/categories.repository.js';
+import materialsRepository from "../repository/materials.repository.js";
+import categoriesRepository from "../repository/categories.repository.js";
 
 class MaterialsService {
   /**
    * Obtener todos los materiales con paginación
    */
-  async getAll({ page = 1, limit = 10, search = '', estado = null, categoriaId = null }) {
+  async getAll({
+    page = 1,
+    limit = 10,
+    search = "",
+    estado = null,
+    categoriaId = null,
+    stockType = null,
+  }) {
     try {
       const result = await materialsRepository.findAll({
         page: parseInt(page),
@@ -13,6 +20,7 @@ class MaterialsService {
         search: search.toString().trim(),
         estado,
         categoriaId,
+        stockType,
       });
 
       return {
@@ -26,7 +34,7 @@ class MaterialsService {
         },
       };
     } catch (error) {
-      console.error('Service error - getAll:', error);
+      console.error("Service error - getAll:", error);
       throw error;
     }
   }
@@ -42,7 +50,7 @@ class MaterialsService {
         return {
           success: false,
           statusCode: 404,
-          message: 'Material no encontrado',
+          message: "Material no encontrado",
         };
       }
 
@@ -51,7 +59,7 @@ class MaterialsService {
         data: material,
       };
     } catch (error) {
-      console.error('Service error - getById:', error);
+      console.error("Service error - getById:", error);
       throw error;
     }
   }
@@ -70,29 +78,29 @@ class MaterialsService {
         return {
           success: false,
           statusCode: 404,
-          message: 'La categoría no existe',
+          message: "La categoría no existe",
         };
       }
 
-      if (category.estado !== 'Activo') {
+      if (category.estado !== "Activo") {
         return {
           success: false,
           statusCode: 400,
-          message: 'No se pueden crear materiales en categorías inactivas',
+          message: "No se pueden crear materiales en categorías inactivas",
         };
       }
 
       // Verificar nombre único por categoría
       const exists = await materialsRepository.existsByNameAndCategory(
         data.nombre,
-        data.categoria_id
+        data.categoria_id,
       );
 
       if (exists) {
         return {
           success: false,
           statusCode: 400,
-          message: 'Ya existe un material con este nombre en esta categoría',
+          message: "Ya existe un material con este nombre en esta categoría",
         };
       }
 
@@ -105,7 +113,7 @@ class MaterialsService {
         message: `Material "${material.nombre}" creado exitosamente`,
       };
     } catch (error) {
-      console.error('Service error - create:', error);
+      console.error("Service error - create:", error);
       throw error;
     }
   }
@@ -125,7 +133,7 @@ class MaterialsService {
         return {
           success: false,
           statusCode: 404,
-          message: 'Material no encontrado',
+          message: "Material no encontrado",
         };
       }
 
@@ -137,14 +145,14 @@ class MaterialsService {
         const exists = await materialsRepository.existsByNameAndCategory(
           nombre,
           categoriaId,
-          id
+          id,
         );
 
         if (exists) {
           return {
             success: false,
             statusCode: 400,
-            message: 'Ya existe un material con este nombre en esta categoría',
+            message: "Ya existe un material con este nombre en esta categoría",
           };
         }
       }
@@ -156,7 +164,7 @@ class MaterialsService {
           return {
             success: false,
             statusCode: 404,
-            message: 'La categoría no existe',
+            message: "La categoría no existe",
           };
         }
       }
@@ -171,14 +179,14 @@ class MaterialsService {
       };
     } catch (error) {
       // Errores específicos de validación
-      if (error.message.includes('tiene movimientos registrados')) {
+      if (error.message.includes("tiene movimientos registrados")) {
         return {
           success: false,
           statusCode: 400,
           message: error.message,
         };
       }
-      console.error('Service error - update:', error);
+      console.error("Service error - update:", error);
       throw error;
     }
   }
@@ -196,7 +204,7 @@ class MaterialsService {
         message: `Estado actualizado a "${material.estado}"`,
       };
     } catch (error) {
-      console.error('Service error - toggleStatus:', error);
+      console.error("Service error - toggleStatus:", error);
       throw error;
     }
   }
@@ -210,29 +218,29 @@ class MaterialsService {
 
       return {
         success: true,
-        message: 'Material eliminado exitosamente',
+        message: "Material eliminado exitosamente",
       };
     } catch (error) {
       // Errores de validación de negocio
-      if (error.message.includes('tiene stock registrado')) {
+      if (error.message.includes("tiene stock registrado")) {
         return {
           success: false,
           statusCode: 400,
           message: error.message,
-          reason: 'HAS_STOCK',
-        };
-      }
-      
-      if (error.message.includes('movimiento(s) histórico(s)')) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: error.message,
-          reason: 'HAS_MOVEMENTS',
+          reason: "HAS_STOCK",
         };
       }
 
-      if (error.message.includes('no encontrado')) {
+      if (error.message.includes("movimiento(s) histórico(s)")) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: error.message,
+          reason: "HAS_MOVEMENTS",
+        };
+      }
+
+      if (error.message.includes("no encontrado")) {
         return {
           success: false,
           statusCode: 404,
@@ -240,7 +248,7 @@ class MaterialsService {
         };
       }
 
-      console.error('Service error - delete:', error);
+      console.error("Service error - delete:", error);
       throw error;
     }
   }
@@ -250,14 +258,17 @@ class MaterialsService {
    */
   async getMovementHistory(materialId, limit = 10) {
     try {
-      const history = await materialsRepository.getMovementHistory(materialId, limit);
+      const history = await materialsRepository.getMovementHistory(
+        materialId,
+        limit,
+      );
 
       return {
         success: true,
         data: history,
       };
     } catch (error) {
-      console.error('Service error - getMovementHistory:', error);
+      console.error("Service error - getMovementHistory:", error);
       throw error;
     }
   }
@@ -270,16 +281,18 @@ class MaterialsService {
       const exists = await materialsRepository.existsByNameAndCategory(
         nombre,
         categoriaId,
-        excludeId
+        excludeId,
       );
 
       return {
         success: true,
         available: !exists,
-        message: exists ? 'El nombre ya está en uso en esta categoría' : 'Nombre disponible',
+        message: exists
+          ? "El nombre ya está en uso en esta categoría"
+          : "Nombre disponible",
       };
     } catch (error) {
-      console.error('Service error - checkNameAvailability:', error);
+      console.error("Service error - checkNameAvailability:", error);
       throw error;
     }
   }
@@ -289,23 +302,23 @@ class MaterialsService {
    */
   validateMaterialData(data) {
     if (!data.nombre || !data.nombre.trim()) {
-      throw new Error('El nombre es obligatorio');
+      throw new Error("El nombre es obligatorio");
     }
 
     if (data.nombre.trim().length < 3) {
-      throw new Error('El nombre debe tener al menos 3 caracteres');
+      throw new Error("El nombre debe tener al menos 3 caracteres");
     }
 
     if (data.nombre.trim().length > 255) {
-      throw new Error('El nombre no puede exceder 255 caracteres');
+      throw new Error("El nombre no puede exceder 255 caracteres");
     }
 
     if (!data.categoria_id) {
-      throw new Error('La categoría es obligatoria');
+      throw new Error("La categoría es obligatoria");
     }
 
     if (data.descripcion && data.descripcion.length > 1000) {
-      throw new Error('La descripción no puede exceder 1000 caracteres');
+      throw new Error("La descripción no puede exceder 1000 caracteres");
     }
 
     // La unidad de medida siempre será "unidad" por defecto
@@ -326,23 +339,24 @@ class MaterialsService {
         return {
           success: false,
           statusCode: 404,
-          message: 'Material not found',
+          message: "Material not found",
         };
       }
 
-      if (existingMaterial.estado !== 'Activo') {
+      if (existingMaterial.estado !== "Activo") {
         return {
           success: false,
           statusCode: 400,
-          message: 'Cannot register discharges on inactive materials',
+          message: "Cannot register discharges on inactive materials",
         };
       }
 
       // Determine which inventory to deduct from
-      const inventoryType = data.inventario_origen || 'FUNDACION';
-      const availableStock = inventoryType === 'FUNDACION' 
-        ? existingMaterial.stockFundacion 
-        : existingMaterial.stockEventos;
+      const inventoryType = data.inventario_origen || "FUNDACION";
+      const availableStock =
+        inventoryType === "FUNDACION"
+          ? existingMaterial.stockFundacion
+          : existingMaterial.stockEventos;
 
       // Validate sufficient stock
       if (availableStock < data.cantidad) {
@@ -354,7 +368,12 @@ class MaterialsService {
       }
 
       // Register discharge (atomic transaction)
-      const material = await materialsRepository.registerDischarge(id, data, userId, userName);
+      const material = await materialsRepository.registerDischarge(
+        id,
+        data,
+        userId,
+        userName,
+      );
 
       return {
         success: true,
@@ -362,10 +381,13 @@ class MaterialsService {
         message: `Discharge registered successfully. ${data.cantidad} unit(s) of "${material.nombre}" discharged.`,
       };
     } catch (error) {
-      console.error('Service error - registerDischarge:', error);
+      console.error("Service error - registerDischarge:", error);
 
       // Specific errors
-      if (error.message.includes('Insufficient stock') || error.message.includes('insuficiente')) {
+      if (
+        error.message.includes("Insufficient stock") ||
+        error.message.includes("insuficiente")
+      ) {
         return {
           success: false,
           statusCode: 400,
@@ -383,41 +405,54 @@ class MaterialsService {
   validateDischargeData(data) {
     // Quantity
     if (!data.cantidad) {
-      throw new Error('Quantity is required');
+      throw new Error("Quantity is required");
     }
 
     const cantidad = parseInt(data.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
-      throw new Error('Quantity must be a positive number');
+      throw new Error("Quantity must be a positive number");
     }
 
     // Discharge type
     if (!data.tipo_baja) {
-      throw new Error('Discharge type is required');
+      throw new Error("Discharge type is required");
     }
 
-    const validTypes = ['Daño o Deterioro', 'Pérdida', 'Robo', 'Ajuste de Inventario', 'Otro'];
+    const validTypes = [
+      "Daño o Deterioro",
+      "Pérdida",
+      "Robo",
+      "Ajuste de Inventario",
+      "Otro",
+    ];
     if (!validTypes.includes(data.tipo_baja)) {
-      throw new Error(`Invalid discharge type. Must be one of: ${validTypes.join(', ')}`);
+      throw new Error(
+        `Invalid discharge type. Must be one of: ${validTypes.join(", ")}`,
+      );
     }
 
     // Description
     if (!data.descripcion || !data.descripcion.trim()) {
-      throw new Error('Description is required');
+      throw new Error("Description is required");
     }
 
     // If "Otro", validate more detailed description
-    if (data.tipo_baja === 'Otro' && data.descripcion.trim().length < 10) {
-      throw new Error('For type "Otro", description must be at least 10 characters');
+    if (data.tipo_baja === "Otro" && data.descripcion.trim().length < 10) {
+      throw new Error(
+        'For type "Otro", description must be at least 10 characters',
+      );
     }
 
     if (data.descripcion.length > 1000) {
-      throw new Error('Description cannot exceed 1000 characters');
+      throw new Error("Description cannot exceed 1000 characters");
     }
 
     // Inventory origin (optional, defaults to FUNDACION)
-    if (data.inventario_origen && !['FUNDACION', 'EVENTOS'].includes(data.inventario_origen)) {
-      throw new Error('Inventory origin must be FUNDACION or EVENTOS');
+    if (
+      data.inventario_origen &&
+      !["FUNDACION", "EVENTOS"].includes(data.inventario_origen)
+    ) {
+      throw new Error("Inventory origin must be FUNDACION or EVENTOS");
     }
   }
 }

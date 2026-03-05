@@ -45,8 +45,6 @@ class EventMaterialsReusableService {
    */
   async assignMaterial(eventoId, data, userId, userName) {
     try {
-      console.log("🔄 Assigning reusable material to event (planning)...");
-
       // 1. Validate data
       this.validateAssignmentData(data);
 
@@ -125,8 +123,6 @@ class EventMaterialsReusableService {
           material: true,
         },
       });
-
-      console.log("✅ Reusable material assigned successfully (planning only)");
 
       return {
         success: true,
@@ -244,8 +240,6 @@ class EventMaterialsReusableService {
    */
   async removeAssignment(assignmentId, userId, userName) {
     try {
-      console.log("🔄 Removing reusable material assignment...");
-
       // 1. Get assignment
       const assignment = await prisma.eventMaterialReusable.findUnique({
         where: { id: parseInt(assignmentId) },
@@ -264,8 +258,6 @@ class EventMaterialsReusableService {
       await prisma.eventMaterialReusable.delete({
         where: { id: parseInt(assignmentId) },
       });
-
-      console.log("✅ Assignment removed successfully");
 
       return {
         success: true,
@@ -303,6 +295,163 @@ class EventMaterialsReusableService {
       console.error("❌ Error getting availability:", error.message);
       throw error;
     }
+  }
+
+  /**
+   * Get all assignments for a specific material (to see which events are using it)
+   */
+  async getMaterialAssignments(materialId, options = {}) {
+    try {
+      const {
+        includeCompleted = false,
+        startDate = null,
+        endDate = null,
+      } = options;
+
+      const whereClause = {
+        materialId: parseInt(materialId),
+      };
+
+      // Filter by date range if provided
+      if (startDate || endDate) {
+        whereClause.evento = {};
+        if (startDate) {
+          whereClause.evento.endDate = { gte: new Date(startDate) };
+        }
+        if (endDate) {
+          whereClause.evento.startDate = { lte: new Date(endDate) };
+        }
+      }
+
+      // Filter out completed events if requested
+      if (!includeCompleted) {
+        whereClause.evento = {
+          ...whereClause.evento,
+          endDate: { gte: new Date() },
+        };
+      }
+
+      const assignments = await prisma.eventMaterialReusable.findMany({
+        where: whereClause,
+        include: {
+          evento: {
+            select: {
+              id: true,
+              name: true,
+              startDate: true,
+              endDate: true,
+              status: true,
+              location: true,
+            },
+          },
+          material: {
+            select: {
+              id: true,
+              nombre: true,
+              stockFundacion: true,
+              unidadMedida: true,
+            },
+          },
+        },
+        orderBy: {
+          evento: {
+            startDate: "asc",
+          },
+        },
+      });
+
+      // Calculate availability summary
+      const material = await prisma.material.findUnique({
+        where: { id: parseInt(materialId) },
+        select: {
+          stockFundacion: true,
+          nombre: true,
+        },
+      });
+
+      const totalAssigned = assignments.reduce((sum, a) => sum + a.cantidad, 0);
+      const maxConcurrent = this.calculateMaxConcurrentUsage(assignments);
+
+      return {
+        success: true,
+        data: {
+          material: {
+            id: parseInt(materialId),
+            nombre: material?.nombre,
+            stockTotal: material?.stockFundacion || 0,
+          },
+          assignments: assignments.map((a) => ({
+            id: a.id,
+            cantidad: a.cantidad,
+            observaciones: a.observaciones,
+            fechaAsignacion: a.fechaAsignacion,
+            evento: {
+              id: a.evento.id,
+              nombre: a.evento.name,
+              fechaInicio: a.evento.startDate,
+              fechaFin: a.evento.endDate,
+              estado: a.evento.status,
+              ubicacion: a.evento.location,
+            },
+          })),
+          summary: {
+            totalAsignaciones: assignments.length,
+            totalUnidadesAsignadas: totalAssigned,
+            usoMaximoConcurrente: maxConcurrent,
+            disponibleMinimo: (material?.stockFundacion || 0) - maxConcurrent,
+          },
+        },
+      };
+    } catch (error) {
+      console.error("Error getting material assignments:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate maximum concurrent usage across all assignments
+   */
+  calculateMaxConcurrentUsage(assignments) {
+    if (assignments.length === 0) return 0;
+
+    // Create events for start and end dates
+    const events = [];
+    assignments.forEach((assignment) => {
+      events.push({
+        date: new Date(assignment.evento.startDate),
+        type: "start",
+        cantidad: assignment.cantidad,
+      });
+      events.push({
+        date: new Date(assignment.evento.endDate),
+        type: "end",
+        cantidad: assignment.cantidad,
+      });
+    });
+
+    // Sort events by date
+    events.sort((a, b) => {
+      if (a.date.getTime() !== b.date.getTime()) {
+        return a.date.getTime() - b.date.getTime();
+      }
+      // If same date, process 'end' before 'start'
+      return a.type === "end" ? -1 : 1;
+    });
+
+    // Calculate maximum concurrent usage
+    let currentUsage = 0;
+    let maxUsage = 0;
+
+    events.forEach((event) => {
+      if (event.type === "start") {
+        currentUsage += event.cantidad;
+        maxUsage = Math.max(maxUsage, currentUsage);
+      } else {
+        currentUsage -= event.cantidad;
+      }
+    });
+
+    return maxUsage;
   }
 
   /**
