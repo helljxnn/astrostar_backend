@@ -593,6 +593,9 @@ export class TeamsRepository {
         id,
       );
 
+      await this.validateMembersAvailability(deportistasIds, currentTeam.teamType, id);
+      await this.validateTrainerAvailability(entrenadorId, currentTeam.teamType, id);
+
       return await prisma.$transaction(async (tx) => {
         if (currentTeam.teamType === "Temporal") {
           const currentIds = currentTeam.members

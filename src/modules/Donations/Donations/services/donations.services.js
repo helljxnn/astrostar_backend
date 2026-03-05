@@ -1,5 +1,7 @@
 import DonationsRepository from "../repository/donations.repository.js";
 import cloudinary from "../../../../services/shared/cloudinary.js";
+import movementsRepository from "../../../Materials/repository/movements.repository.js";
+import materialsRepository from "../../../Materials/repository/materials.repository.js";
 
 const ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 const ALLOWED_FILE_TYPES = ["comprobante", "soporte", "factura", "evidencia"];
@@ -105,6 +107,148 @@ export class DonationsService {
 
     const data = await DonationsRepository.addFiles(donationId, uploads);
     return { success: true, data };
+  }
+
+  /**
+   * Convert donation details to material entries
+   * Links donation items (ESPECIE type) to material inventory
+   */
+  async convertToMaterials(donationId, items, userId, userName) {
+    try {
+      // 1. Validate donation exists and is type ESPECIE
+      const donation = await DonationsRepository.findById(donationId);
+      if (!donation) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Donación no encontrada",
+        };
+      }
+
+      if (donation.type !== "ESPECIE") {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Solo donaciones de tipo ESPECIE pueden convertirse en materiales",
+        };
+      }
+
+      // 2. Process each item
+      const results = [];
+      const errors = [];
+
+      for (const item of items) {
+        try {
+          // Validate required fields
+          if (!item.materialId || !item.cantidad) {
+            errors.push({
+              item,
+              error: "materialId y cantidad son requeridos",
+            });
+            continue;
+          }
+
+          // Get material info
+          const material = await materialsRepository.findById(item.materialId);
+          if (!material) {
+            errors.push({
+              item,
+              error: `Material con ID ${item.materialId} no encontrado`,
+            });
+            continue;
+          }
+
+          if (material.estado !== "Activo") {
+            errors.push({
+              item,
+              error: `Material ${material.nombre} no está activo`,
+            });
+            continue;
+          }
+
+          // Create material movement (entry)
+          const movementData = {
+            material_id: item.materialId,
+            material_nombre: material.nombre,
+            categoria: material.categoria,
+            tipo_movimiento: "Entrada",
+            cantidad: parseInt(item.cantidad),
+            inventario_destino: item.inventarioDestino || "FUNDACION",
+            donacion_id: parseInt(donationId),
+            observaciones: item.observaciones || `Donación ${donation.code}`,
+            fecha_ingreso: donation.donationAt,
+            created_by_name: userName || null,
+          };
+
+          const movement = await movementsRepository.registerMovement(
+            movementData,
+            userId
+          );
+
+          results.push({
+            materialId: item.materialId,
+            materialNombre: material.nombre,
+            cantidad: item.cantidad,
+            movementId: movement.id,
+          });
+        } catch (error) {
+          errors.push({
+            item,
+            error: error.message,
+          });
+        }
+      }
+
+      return {
+        success: true,
+        data: {
+          donationId,
+          donationCode: donation.code,
+          processed: results.length,
+          failed: errors.length,
+          results,
+          errors,
+        },
+      };
+    } catch (error) {
+      console.error("Error converting donation to materials:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get materials linked to a donation
+   */
+  async getMaterialsByDonation(donationId) {
+    try {
+      const donation = await DonationsRepository.findById(donationId);
+      if (!donation) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Donación no encontrada",
+        };
+      }
+
+      const movements = await movementsRepository.findByDonationId(donationId);
+
+      return {
+        success: true,
+        data: {
+          donation: {
+            id: donation.id,
+            code: donation.code,
+            type: donation.type,
+            status: donation.status,
+            donationAt: donation.donationAt,
+          },
+          materials: movements,
+        },
+      };
+    } catch (error) {
+      console.error("Error getting materials by donation:", error);
+      throw error;
+    }
   }
 }
 

@@ -144,6 +144,69 @@ export class DonationsController {
       });
     }
   };
+
+  /**
+   * Convert donation to materials
+   * POST /api/donations/:id/convert-to-materials
+   * Body: { items: [{ materialId, cantidad, inventarioDestino?, observaciones? }] }
+   */
+  convertToMaterials = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { items } = req.body;
+      const userId = req.user?.id || 1;
+      const userName = req.user?.name || req.user?.username || "Sistema";
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere un array de items con materialId y cantidad",
+        });
+      }
+
+      const result = await DonationsService.convertToMaterials(
+        id,
+        items,
+        userId,
+        userName
+      );
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json(result);
+      }
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error converting donation to materials", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al convertir donación en materiales",
+      });
+    }
+  };
+
+  /**
+   * Get materials linked to a donation
+   * GET /api/donations/:id/materials
+   */
+  getMaterials = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const result = await DonationsService.getMaterialsByDonation(id);
+
+      if (!result.success) {
+        return res.status(result.statusCode || 404).json(result);
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error getting materials by donation", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al obtener materiales de la donación",
+      });
+    }
+  };
 }
 
 export default new DonationsController();

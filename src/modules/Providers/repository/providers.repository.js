@@ -301,7 +301,48 @@ export class ProvidersRepository {
   }
 
   transformToFrontend(provider) {
-    if (!provider) return null;
+  if (!provider) return null;
+
+  // Mapeo de nombres de tipos de documento a códigos
+  const documentTypeNameToCode = {
+    'Cédula de Ciudadanía': 'CC',
+    'Tarjeta de Identidad': 'TI',
+    'Cédula de Extranjería': 'CE',
+    'Pasaporte': 'PAS',
+    'NIT': 'NIT'
+  };
+
+  // Obtener el código del tipo de documento
+  const getDocumentTypeCode = (documentType) => {
+    if (!documentType) return "";
+    return documentTypeNameToCode[documentType.name] || "";
+  };
+
+  return {
+    id: provider.id,
+    tipoEntidad: provider.entityType === "legal" ? "juridica" : "natural",
+    razonSocial: provider.businessName,
+    nit: provider.nit,
+    tipoDocumento: getDocumentTypeCode(provider.documentType),
+    contactoPrincipal: provider.mainContact,
+    correo: provider.email,
+    telefono: provider.phone,
+    direccion: provider.address,
+    ciudad: provider.city,
+    descripcion: provider.description,
+    estado: provider.status === "Active" ? "Activo" : "Inactivo",
+    createdAt: provider.createdAt,
+    updatedAt: provider.updatedAt,
+    statusAssignedAt: provider.statusAssignedAt,
+    fechaRegistro: provider.createdAt,
+    documentos: null,
+    terminosPago: null,
+    servicios: null,
+    observaciones: null,
+    // Para compatibilidad
+    documentTypeId: provider.documentType?.id || null
+  };
+}
 
     let tipoDocumento = "";
     if (provider.documentType?.id) {
@@ -338,6 +379,36 @@ export class ProvidersRepository {
     };
   }
 
+  const documentTypeCodeToName = {
+    'CC': 'Cédula de Ciudadanía',
+    'TI': 'Tarjeta de Identidad',
+    'CE': 'Cédula de Extranjería',
+    'PAS': 'Pasaporte',
+    'NIT': 'NIT'
+  };
+
+  const transformed = {
+    entityType: providerData.tipoEntidad === "juridica" ? "legal" : "natural",
+    businessName: providerData.razonSocial,
+    ...(cleanedNit && { nit: cleanedNit }),
+    mainContact: providerData.contactoPrincipal,
+    email: providerData.correo,
+    phone: providerData.telefono,
+    address: providerData.direccion,
+    city: providerData.ciudad,
+    description: providerData.descripcion || "",
+    status: providerData.estado === "Activo" ? "Active" : "Inactive",
+  };
+
+  if (providerData.tipoEntidad === "natural" && providerData.tipoDocumento) {
+    const documentTypeName = documentTypeCodeToName[providerData.tipoDocumento];
+    if (documentTypeName) {
+      transformed.documentTypeId = this.getDocumentTypeIdByName(documentTypeName);
+    }
+  }
+
+  return transformed;
+}
   transformToBackend(providerData) {
     let cleanedNit = providerData.nit;
 
@@ -373,6 +444,17 @@ export class ProvidersRepository {
     }
 
     return transformed;
+  }
+
+  getDocumentTypeIdByName(documentTypeName) {
+    const documentTypeMap = {
+      'Cédula de Ciudadanía': 1,
+      'Tarjeta de Identidad': 2,
+      'Cédula de Extranjería': 3,
+      'Pasaporte': 4,
+      'NIT': 5
+    };
+    return documentTypeMap[documentTypeName] || null;
   }
 }
 
