@@ -546,6 +546,33 @@ class MovementsRepository {
       return true;
     });
   }
+
+  /**
+   * Find movements by donation ID
+   */
+  async findByDonationId(donationId) {
+    return await prisma.materialMovement.findMany({
+      where: {
+        donacionId: parseInt(donationId),
+      },
+      include: {
+        material: {
+          select: {
+            id: true,
+            nombre: true,
+            categoria: true,
+            estado: true,
+            unidadMedida: true,
+            stockFundacion: true,
+            stockEventos: true,
+          },
+        },
+      },
+      orderBy: {
+        fecha: 'desc',
+      },
+    });
+  }
 }
 
 export default new MovementsRepository();

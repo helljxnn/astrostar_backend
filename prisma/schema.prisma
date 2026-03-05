@@ -461,12 +461,6 @@ model Appointment {
   status                  ScheduleStatus @default(Programado)
   cancelReason            String?
   conclusion              String?
-  needsReschedule         Boolean        @default(false)
-  rescheduleProposedDate  DateTime?
-  rescheduleProposedStart String?
-  rescheduleProposedEnd   String?
-  rescheduleStatus        String? // 'pending', 'accepted', 'rejected'
-  rescheduleToken         String?        @unique
   createdAt               DateTime       @default(now())
   updatedAt               DateTime       @updatedAt
   athlete                 Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
@@ -475,7 +469,6 @@ model Appointment {
   @@index([athleteId, appointmentDate])
   @@index([specialistId, appointmentDate])
   @@index([status])
-  @@index([rescheduleToken])
   @@map("appointments")
 }
 
@@ -857,7 +850,7 @@ model DonationDetail {
   recordType     String
   description    String?
   quantity       Decimal?       @db.Decimal(10, 2)
-  amount         Decimal?       @db.Decimal(12, 2)
+  amount         Decimal?       @db.Decimal(15, 2)
   channel        String?
   classification String?
   expiresAt      DateTime?

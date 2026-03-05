@@ -100,7 +100,7 @@ const detailValidators = (typeField = "type") =>
 export const donationValidators = {
   list: [
     query("page").optional().isInt({ min: 1 }).toInt(),
-    query("limit").optional().isInt({ min: 1, max: 100 }).toInt(),
+    query("limit").optional().isInt({ min: 1, max: 10000 }).toInt(),
     query("search").optional().isString().trim().isLength({ max: 100 }),
     query("status").optional().isIn(allowedStatus),
     query("type").optional().isIn(allowedTypes),
