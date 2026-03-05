@@ -77,4 +77,18 @@ router.post(
   DonationsController.uploadFiles
 );
 
+router.post(
+  "/:id/convert-to-materials",
+  donationValidators.getById,
+  handleDonationValidation,
+  DonationsController.convertToMaterials
+);
+
+router.get(
+  "/:id/materials",
+  donationValidators.getById,
+  handleDonationValidation,
+  DonationsController.getMaterials
+);
+
 export default router;

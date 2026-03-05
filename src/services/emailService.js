@@ -97,36 +97,6 @@ class EmailService extends BaseEmailService {
     );
   }
 
-  async sendRescheduleProposal(
-    appointment,
-    athleteEmail,
-    athleteName,
-    specialistName,
-    rescheduleToken,
-  ) {
-    return appointmentEmailService.sendRescheduleProposal(
-      appointment,
-      athleteEmail,
-      athleteName,
-      specialistName,
-      rescheduleToken,
-    );
-  }
-
-  async sendRescheduleConfirmation(
-    appointment,
-    athleteEmail,
-    athleteName,
-    specialistName,
-  ) {
-    return appointmentEmailService.sendRescheduleConfirmation(
-      appointment,
-      athleteEmail,
-      athleteName,
-      specialistName,
-    );
-  }
-
   // ============================================
   // MÉTODOS DE AUTENTICACIÓN (Delegados)
   // ============================================
