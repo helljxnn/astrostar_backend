@@ -84,6 +84,14 @@ class MaterialsRepository {
           where: { materialId: material.id },
         });
 
+        // Check if material has active event assignments
+        const activeAssignmentsCount = await prisma.eventMaterial.count({
+          where: {
+            materialId: material.id,
+            bloqueado: false,
+          },
+        });
+
         return {
           ...material,
           stockTotal: material.stockFundacion + material.stockEventos,
@@ -91,6 +99,8 @@ class MaterialsRepository {
             material.stockEventos - (material.stockEventosReservado || 0),
           hasMovements: movementsCount > 0,
           movementsCount,
+          hasActiveAssignments: activeAssignmentsCount > 0,
+          activeAssignmentsCount,
         };
       }),
     );
@@ -143,6 +153,14 @@ class MaterialsRepository {
       where: { materialId: material.id },
     });
 
+    // Check if material has active event assignments
+    const activeAssignmentsCount = await prisma.eventMaterial.count({
+      where: {
+        materialId: material.id,
+        bloqueado: false,
+      },
+    });
+
     // Add calculated fields
     return {
       ...material,
@@ -151,6 +169,8 @@ class MaterialsRepository {
         material.stockEventos - (material.stockEventosReservado || 0),
       hasMovements: movementsCount > 0,
       movementsCount,
+      hasActiveAssignments: activeAssignmentsCount > 0,
+      activeAssignmentsCount,
     };
   }
 

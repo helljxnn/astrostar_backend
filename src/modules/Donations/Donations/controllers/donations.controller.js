@@ -60,7 +60,10 @@ export class DonationsController {
         ...req.body,
         serviceId: req.body.serviceId || req.body.eventId || null,
       };
-      const result = await DonationsService.create(payload);
+      const userId = req.user?.id || 1;
+      const userName = req.user?.name || req.user?.username || "Sistema";
+
+      const result = await DonationsService.create(payload, userId, userName);
       res.status(201).json(result);
     } catch (error) {
       console.error("Error create donation", error);
@@ -130,7 +133,7 @@ export class DonationsController {
       const result = await DonationsService.uploadFiles(
         parseInt(id),
         files,
-        fileType || "soporte"
+        fileType || "soporte",
       );
       res.status(201).json(result);
     } catch (error) {
@@ -168,7 +171,7 @@ export class DonationsController {
         id,
         items,
         userId,
-        userName
+        userName,
       );
 
       if (!result.success) {
@@ -204,6 +207,57 @@ export class DonationsController {
       res.status(500).json({
         success: false,
         message: "Error al obtener materiales de la donación",
+      });
+    }
+  };
+
+  /**
+   * Convert donation to materials and assign to event
+   * POST /api/donations/:id/convert-and-assign-to-event
+   * Body: {
+   *   eventoId: number,
+   *   items: [{ materialId, cantidad, observaciones? }]
+   * }
+   */
+  convertAndAssignToEvent = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { eventoId, items } = req.body;
+      const userId = req.user?.id || 1;
+      const userName = req.user?.name || req.user?.username || "Sistema";
+
+      if (!eventoId) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere eventoId",
+        });
+      }
+
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Se requiere un array de items con materialId y cantidad",
+        });
+      }
+
+      const result = await DonationsService.convertAndAssignToEvent(
+        id,
+        eventoId,
+        items,
+        userId,
+        userName,
+      );
+
+      if (!result.success) {
+        return res.status(result.statusCode || 400).json(result);
+      }
+
+      res.status(201).json(result);
+    } catch (error) {
+      console.error("Error converting and assigning donation to event", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al convertir y asignar donación al evento",
       });
     }
   };

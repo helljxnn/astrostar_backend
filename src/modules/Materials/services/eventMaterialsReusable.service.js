@@ -310,28 +310,40 @@ class EventMaterialsReusableService {
 
       const whereClause = {
         materialId: parseInt(materialId),
+        bloqueado: false,
+        // No filtrar por tipo aquí, ya que algunos materiales reutilizables
+        // pueden tener asignaciones guardadas como CONSUMIBLE
       };
 
       // Filter by date range if provided
       if (startDate || endDate) {
-        whereClause.evento = {};
+        const eventoFilter = {};
         if (startDate) {
-          whereClause.evento.endDate = { gte: new Date(startDate) };
+          eventoFilter.endDate = { gte: new Date(startDate) };
         }
         if (endDate) {
-          whereClause.evento.startDate = { lte: new Date(endDate) };
+          eventoFilter.startDate = { lte: new Date(endDate) };
         }
+        whereClause.evento = { is: eventoFilter };
       }
 
       // Filter out completed events if requested
       if (!includeCompleted) {
-        whereClause.evento = {
-          ...whereClause.evento,
-          endDate: { gte: new Date() },
-        };
+        if (whereClause.evento) {
+          whereClause.evento.is = {
+            ...whereClause.evento.is,
+            endDate: { gte: new Date() },
+          };
+        } else {
+          whereClause.evento = {
+            is: {
+              endDate: { gte: new Date() },
+            },
+          };
+        }
       }
 
-      const assignments = await prisma.eventMaterialReusable.findMany({
+      const assignments = await prisma.eventMaterial.findMany({
         where: whereClause,
         include: {
           evento: {
@@ -365,6 +377,7 @@ class EventMaterialsReusableService {
         where: { id: parseInt(materialId) },
         select: {
           stockFundacion: true,
+          stockEventos: true,
           nombre: true,
         },
       });
@@ -378,7 +391,8 @@ class EventMaterialsReusableService {
           material: {
             id: parseInt(materialId),
             nombre: material?.nombre,
-            stockTotal: material?.stockFundacion || 0,
+            stockTotal:
+              (material?.stockFundacion || 0) + (material?.stockEventos || 0),
           },
           assignments: assignments.map((a) => ({
             id: a.id,

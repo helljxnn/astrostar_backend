@@ -292,16 +292,70 @@ class EventMaterialsConsumableService {
         };
       }
 
-      // 2. Check if locked (from donation)
+      // 2. Check if locked (from donation) - Special handling
       if (assignment.bloqueado) {
+        // Materials from donations CAN be removed if event is cancelled
+        // They will be added to event stock for future use
+
+        // Check if event has started
+        const now = new Date();
+        const eventStartDate = new Date(assignment.evento.startDate);
+
+        if (eventStartDate <= now) {
+          return {
+            success: false,
+            statusCode: 400,
+            message:
+              "Cannot remove materials from events that have already started",
+          };
+        }
+
+        // Remove assignment and ADD to event stock (first time in stock)
+        await prisma.$transaction(async (tx) => {
+          const material = assignment.material;
+          const stockAnterior = material.stockEventos;
+          const newStockEventos = material.stockEventos + assignment.cantidad;
+
+          // ADD to event stock (material is now available)
+          await tx.material.update({
+            where: { id: assignment.materialId },
+            data: {
+              stockEventos: newStockEventos,
+            },
+          });
+
+          // Create movement record (entry to stock from cancelled event)
+          await tx.materialMovement.create({
+            data: {
+              materialId: assignment.materialId,
+              materialNombre: material.nombre,
+              categoria: material.categoria,
+              tipoMovimiento: "Entrada",
+              cantidad: assignment.cantidad,
+              inventarioDestino: "EVENTOS",
+              eventoId: assignment.eventoId,
+              donacionId: assignment.donacionId,
+              observaciones: `Ingreso al stock desde evento cancelado "${assignment.evento.name}" (Donación)`,
+              stockAnterior: stockAnterior,
+              stockNuevo: newStockEventos,
+              createdBy: userId,
+              createdByName: userName || null,
+            },
+          });
+
+          // Delete assignment
+          await tx.eventMaterial.delete({
+            where: { id: parseInt(assignmentId) },
+          });
+        });
+
         return {
-          success: false,
-          statusCode: 400,
-          message: "Cannot remove donation materials",
+          success: true,
+          message: `Successfully removed ${assignment.cantidad} units from donation and added to event stock`,
         };
       }
 
-      // 3. Check if event has started
+      // 3. Check if event has started (for non-donation materials)
       const now = new Date();
       const eventStartDate = new Date(assignment.evento.startDate);
 
