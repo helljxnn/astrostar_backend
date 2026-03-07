@@ -335,6 +335,15 @@ class MaterialsController {
       return res.status(201).json(result);
     } catch (error) {
       console.error("Controller error - registerDischarge:", error);
+
+      // Si el error es de validación de negocio, devolver el mensaje específico
+      if (error.message && error.message.includes("planificado en")) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
+
       return res.status(500).json({
         success: false,
         message: "Error interno del servidor al registrar baja",
@@ -345,10 +354,10 @@ class MaterialsController {
   }
 
   /**
-   * GET /api/materials/materials/:id/reservations
-   * Obtener reservas activas de un material
+   * GET /api/materials/materials/:id/future-assignments
+   * Verificar si un material tiene asignaciones futuras
    */
-  async getReservations(req, res) {
+  async checkFutureAssignments(req, res) {
     try {
       const { id } = req.params;
 
@@ -359,18 +368,16 @@ class MaterialsController {
         });
       }
 
-      // Importar el servicio de reservations
-      const reservationsService = (
-        await import("../services/reservations.service.js")
-      ).default;
-      const result = await reservationsService.getByMaterial(parseInt(id));
+      const result = await materialsService.checkFutureAssignments(
+        parseInt(id),
+      );
 
       return res.json(result);
     } catch (error) {
-      console.error("Controller error - getReservations:", error);
+      console.error("Controller error - checkFutureAssignments:", error);
       return res.status(500).json({
         success: false,
-        message: "Error interno del servidor",
+        message: "Error al verificar asignaciones",
         error:
           process.env.NODE_ENV === "development" ? error.message : undefined,
       });
