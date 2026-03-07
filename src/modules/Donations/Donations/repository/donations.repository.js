@@ -23,7 +23,11 @@ export class DonationsRepository {
 
   mapStatusToDb(status) {
     if (!status) return "Recibida";
-    return STATUS_MAP[status] || STATUS_MAP[String(status).replace(/\s+/g, "")] || "Recibida";
+    return (
+      STATUS_MAP[status] ||
+      STATUS_MAP[String(status).replace(/\s+/g, "")] ||
+      "Recibida"
+    );
   }
 
   mapDonation(record) {
@@ -99,6 +103,7 @@ export class DonationsRepository {
             channel: d.channel || null,
             classification: d.classification || null,
             expiresAt: d.expiresAt || null,
+            materialId: d.materialId ? Number(d.materialId) : null,
           })),
         });
       }
@@ -238,7 +243,9 @@ export class DonationsRepository {
             payload.serviceId !== undefined ? payload.serviceId : undefined,
           anonymous: payload.anonymous ?? undefined,
           type: payload.type ? this.mapTypeToDb(payload.type) : undefined,
-          status: payload.status ? this.mapStatusToDb(payload.status) : undefined,
+          status: payload.status
+            ? this.mapStatusToDb(payload.status)
+            : undefined,
           program: payload.program ?? undefined,
           donationAt: payload.donationAt ?? undefined,
           notes: payload.notes ?? undefined,
@@ -261,6 +268,7 @@ export class DonationsRepository {
               channel: d.channel || null,
               classification: d.classification || null,
               expiresAt: d.expiresAt || null,
+              materialId: d.materialId ? Number(d.materialId) : null,
             })),
           });
         }

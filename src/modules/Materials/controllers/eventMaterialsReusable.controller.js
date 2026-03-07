@@ -116,7 +116,51 @@ class EventMaterialsReusableController {
   }
 
   /**
-   * Get all assignments for a specific material
+   * Check availability for multiple materials at once (optimized)
+   */
+  async checkBulkAvailability(req, res) {
+    try {
+      const { materialIds, startDate, endDate, excludeEventoId } = req.body;
+
+      if (
+        !materialIds ||
+        !Array.isArray(materialIds) ||
+        materialIds.length === 0
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "materialIds array is required",
+        });
+      }
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          success: false,
+          message: "startDate and endDate are required",
+        });
+      }
+
+      const result =
+        await eventMaterialsReusableService.getBulkMaterialAvailability(
+          materialIds,
+          startDate,
+          endDate,
+          excludeEventoId,
+        );
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error("Controller error - checkBulkAvailability:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error checking bulk availability",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get all assignments for a specific material (consumables from EventMaterial table)
    */
   async getMaterialAssignments(req, res) {
     try {
@@ -138,6 +182,38 @@ class EventMaterialsReusableController {
       return res.status(500).json({
         success: false,
         message: "Error retrieving material assignments",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * Get all reusable assignments for a specific material (from EventMaterialReusable table)
+   */
+  async getReusableMaterialAssignments(req, res) {
+    try {
+      const { materialId } = req.params;
+      const { includeCompleted, startDate, endDate } = req.query;
+
+      const result =
+        await eventMaterialsReusableService.getReusableMaterialAssignments(
+          materialId,
+          {
+            includeCompleted: includeCompleted === "true",
+            startDate: startDate || null,
+            endDate: endDate || null,
+          },
+        );
+
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error(
+        "Controller error - getReusableMaterialAssignments:",
+        error,
+      );
+      return res.status(500).json({
+        success: false,
+        message: "Error retrieving reusable material assignments",
         error: error.message,
       });
     }

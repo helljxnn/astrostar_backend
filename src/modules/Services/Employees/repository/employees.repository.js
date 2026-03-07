@@ -1,11 +1,8 @@
-import { PrismaClient } from '../../../../../generated/prisma/index.js';
+import { PrismaClient } from "../../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
-
-
 export class EmployeeRepository {
-  
   /**
    * Obtener todos los empleados con paginación y búsqueda
    */
@@ -17,12 +14,14 @@ export class EmployeeRepository {
       ...(status && { status }),
       ...(search && {
         OR: [
-          { user: { firstName: { contains: search, mode: 'insensitive' } } },
-          { user: { lastName: { contains: search, mode: 'insensitive' } } },
-          { user: { email: { contains: search, mode: 'insensitive' } } },
-          { user: { identification: { contains: search, mode: 'insensitive' } } }
-        ]
-      })
+          { user: { firstName: { contains: search, mode: "insensitive" } } },
+          { user: { lastName: { contains: search, mode: "insensitive" } } },
+          { user: { email: { contains: search, mode: "insensitive" } } },
+          {
+            user: { identification: { contains: search, mode: "insensitive" } },
+          },
+        ],
+      }),
     };
 
     // Ejecutar consultas en paralelo para optimizar performance
@@ -35,13 +34,13 @@ export class EmployeeRepository {
           user: {
             include: {
               role: true,
-              documentType: true
-            }
-          }
+              documentType: true,
+            },
+          },
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: "desc" },
       }),
-      prisma.employee.count({ where })
+      prisma.employee.count({ where }),
     ]);
 
     return {
@@ -51,8 +50,8 @@ export class EmployeeRepository {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -66,16 +65,16 @@ export class EmployeeRepository {
         user: {
           include: {
             role: true,
-            documentType: true
-          }
+            documentType: true,
+          },
         },
         employeePermissions: {
           include: {
-            permission: true
-          }
+            permission: true,
+          },
         },
-        purchases: true
-      }
+        purchases: true,
+      },
     });
   }
 
@@ -89,10 +88,10 @@ export class EmployeeRepository {
         user: {
           include: {
             role: true,
-            documentType: true
-          }
-        }
-      }
+            documentType: true,
+          },
+        },
+      },
     });
   }
 
@@ -106,24 +105,24 @@ export class EmployeeRepository {
         data: userData,
         include: {
           role: true,
-          documentType: true
-        }
+          documentType: true,
+        },
       });
 
       // 2. Crear el empleado vinculado al usuario
       const newEmployee = await tx.employee.create({
         data: {
           ...employeeData,
-          userId: newUser.id
+          userId: newUser.id,
         },
         include: {
           user: {
             include: {
               role: true,
-              documentType: true
-            }
-          }
-        }
+              documentType: true,
+            },
+          },
+        },
       });
 
       return newEmployee;
@@ -139,7 +138,7 @@ export class EmployeeRepository {
       if (userData && Object.keys(userData).length > 0) {
         await tx.user.update({
           where: { id: employeeData.userId },
-          data: userData
+          data: userData,
         });
       }
 
@@ -151,10 +150,10 @@ export class EmployeeRepository {
           user: {
             include: {
               role: true,
-              documentType: true
-            }
-          }
-        }
+              documentType: true,
+            },
+          },
+        },
       });
 
       return updatedEmployee;
@@ -168,37 +167,30 @@ export class EmployeeRepository {
     try {
       const employee = await prisma.employee.findUnique({
         where: { id: parseInt(id) },
-        include: { user: true }
+        include: { user: true },
       });
 
       if (!employee) {
         return false;
       }
 
-      // Verificar si el empleado tiene estado "Active"
-      if (employee.status === 'Active') {
-        throw new Error(
-          `No se puede eliminar el empleado "${employee.user.firstName} ${employee.user.lastName}" porque tiene estado "Activo". Primero cambie el estado a "Deshabilitado" y luego inténtelo de nuevo.`
-        );
-      }
-
       // Hard delete: eliminar empleado y usuario completamente
       await prisma.$transaction(async (tx) => {
         // Primero eliminar el empleado
         await tx.employee.delete({
-          where: { id: parseInt(id) }
+          where: { id: parseInt(id) },
         });
 
         // Luego eliminar el usuario (esto se hace automáticamente por onDelete: Cascade)
         // Pero lo hacemos explícito para mayor claridad
         await tx.user.delete({
-          where: { id: employee.userId }
+          where: { id: employee.userId },
         });
       });
 
       return true;
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (error.code === "P2025") {
         return false; // Empleado no encontrado
       }
       throw error;
@@ -211,7 +203,7 @@ export class EmployeeRepository {
   async findByEmail(email) {
     return await prisma.user.findUnique({
       where: { email },
-      include: { employee: true }
+      include: { employee: true },
     });
   }
 
@@ -221,7 +213,7 @@ export class EmployeeRepository {
   async findByIdentification(identification) {
     return await prisma.user.findUnique({
       where: { identification },
-      include: { employee: true }
+      include: { employee: true },
     });
   }
 
@@ -231,23 +223,21 @@ export class EmployeeRepository {
   async getStats() {
     const [total, active, disabled, onVacation, retired] = await Promise.all([
       prisma.employee.count(),
-      prisma.employee.count({ where: { status: 'Active' } }),
-      prisma.employee.count({ where: { status: 'Disabled' } }),
-      prisma.employee.count({ where: { status: 'OnVacation' } }),
-      prisma.employee.count({ where: { status: 'Retired' } })
+      prisma.employee.count({ where: { status: "Activo" } }),
+      prisma.employee.count({ where: { status: "Desvinculado" } }),
+      prisma.employee.count({ where: { status: "Licencia" } }),
+      prisma.employee.count({ where: { status: "Fallecido" } }),
     ]);
 
     return { total, active, disabled, onVacation, retired };
   }
-
-
 
   /**
    * Obtener roles disponibles para empleados
    */
   async getAvailableRoles() {
     return await prisma.role.findMany({
-      orderBy: { name: 'asc' }
+      orderBy: { name: "asc" },
     });
   }
 
@@ -258,11 +248,11 @@ export class EmployeeRepository {
     return await prisma.documentType.findMany({
       where: {
         NOT: [
-          { name: 'Número de Identificación Tributaria' },
-          { name: 'Registro Civil' } // Solo para deportistas
-        ]
+          { name: "Número de Identificación Tributaria" },
+          { name: "Registro Civil" }, // Solo para deportistas
+        ],
       },
-      orderBy: { name: 'asc' }
+      orderBy: { name: "asc" },
     });
   }
 
@@ -272,7 +262,7 @@ export class EmployeeRepository {
   async updateUserPassword(userId, hashedPassword) {
     return await prisma.user.update({
       where: { id: userId },
-      data: { passwordHash: hashedPassword }
+      data: { passwordHash: hashedPassword },
     });
   }
 }

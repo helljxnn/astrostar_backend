@@ -94,6 +94,47 @@ router.delete(
 
 /**
  * @swagger
+ * /api/materials/reusables/bulk-availability:
+ *   post:
+ *     summary: Check availability for multiple materials at once (optimized)
+ *     tags: [Materials - Events - Reusables]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - materialIds
+ *               - startDate
+ *               - endDate
+ *             properties:
+ *               materialIds:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *               startDate:
+ *                 type: string
+ *                 format: date-time
+ *               endDate:
+ *                 type: string
+ *                 format: date-time
+ *               excludeEventoId:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Availability map for all materials
+ */
+router.post(
+  "/reusables/bulk-availability",
+  authenticateToken,
+  eventMaterialsReusableController.checkBulkAvailability,
+);
+
+/**
+ * @swagger
  * /api/materials/reusables/{materialId}/availability:
  *   get:
  *     summary: Check reusable material availability for date range
@@ -167,6 +208,45 @@ router.get(
  */
 router.get(
   "/reusables/:materialId/assignments",
+  authenticateToken,
+  eventMaterialsReusableController.getReusableMaterialAssignments,
+);
+
+/**
+ * @swagger
+ * /api/materials/consumables/{materialId}/assignments:
+ *   get:
+ *     summary: Get all event assignments for a specific consumable material
+ *     tags: [Materials - Events - Consumables]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: materialId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: includeCompleted
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *       - in: query
+ *         name: startDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: endDate
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *     responses:
+ *       200:
+ *         description: List of assignments with summary
+ */
+router.get(
+  "/consumables/:materialId/assignments",
   authenticateToken,
   eventMaterialsReusableController.getMaterialAssignments,
 );

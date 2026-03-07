@@ -339,7 +339,7 @@ class MaterialsService {
         return {
           success: false,
           statusCode: 404,
-          message: "Material not found",
+          message: "Material no encontrado",
         };
       }
 
@@ -347,7 +347,7 @@ class MaterialsService {
         return {
           success: false,
           statusCode: 400,
-          message: "Cannot register discharges on inactive materials",
+          message: "No se pueden registrar bajas en materiales inactivos",
         };
       }
 
@@ -360,10 +360,12 @@ class MaterialsService {
 
       // Validate sufficient stock
       if (availableStock < data.cantidad) {
+        const inventoryLabel =
+          inventoryType === "FUNDACION" ? "Fundación" : "Eventos";
         return {
           success: false,
           statusCode: 400,
-          message: `Insufficient stock in ${inventoryType}. Available: ${availableStock}, Requested: ${data.cantidad}`,
+          message: `Stock insuficiente en ${inventoryLabel}. Disponible: ${availableStock}, Solicitado: ${data.cantidad}`,
         };
       }
 
@@ -378,14 +380,14 @@ class MaterialsService {
       return {
         success: true,
         data: material,
-        message: `Discharge registered successfully. ${data.cantidad} unit(s) of "${material.nombre}" discharged.`,
+        message: `Baja registrada exitosamente. ${data.cantidad} unidad(es) de "${material.nombre}" dadas de baja.`,
       };
     } catch (error) {
       console.error("Service error - registerDischarge:", error);
 
       // Specific errors
       if (
-        error.message.includes("Insufficient stock") ||
+        error.message.includes("Stock insuficiente") ||
         error.message.includes("insuficiente")
       ) {
         return {
@@ -405,17 +407,17 @@ class MaterialsService {
   validateDischargeData(data) {
     // Quantity
     if (!data.cantidad) {
-      throw new Error("Quantity is required");
+      throw new Error("La cantidad es obligatoria");
     }
 
     const cantidad = parseInt(data.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
-      throw new Error("Quantity must be a positive number");
+      throw new Error("La cantidad debe ser un número positivo");
     }
 
     // Discharge type
     if (!data.tipo_baja) {
-      throw new Error("Discharge type is required");
+      throw new Error("El tipo de baja es obligatorio");
     }
 
     const validTypes = [
@@ -427,24 +429,24 @@ class MaterialsService {
     ];
     if (!validTypes.includes(data.tipo_baja)) {
       throw new Error(
-        `Invalid discharge type. Must be one of: ${validTypes.join(", ")}`,
+        `Tipo de baja inválido. Debe ser uno de: ${validTypes.join(", ")}`,
       );
     }
 
     // Description
     if (!data.descripcion || !data.descripcion.trim()) {
-      throw new Error("Description is required");
+      throw new Error("La descripción es obligatoria");
     }
 
     // If "Otro", validate more detailed description
     if (data.tipo_baja === "Otro" && data.descripcion.trim().length < 10) {
       throw new Error(
-        'For type "Otro", description must be at least 10 characters',
+        'Para el tipo "Otro", la descripción debe tener al menos 10 caracteres',
       );
     }
 
     if (data.descripcion.length > 1000) {
-      throw new Error("Description cannot exceed 1000 characters");
+      throw new Error("La descripción no puede exceder 1000 caracteres");
     }
 
     // Inventory origin (optional, defaults to FUNDACION)
@@ -452,7 +454,90 @@ class MaterialsService {
       data.inventario_origen &&
       !["FUNDACION", "EVENTOS"].includes(data.inventario_origen)
     ) {
-      throw new Error("Inventory origin must be FUNDACION or EVENTOS");
+      throw new Error("El origen del inventario debe ser FUNDACION o EVENTOS");
+    }
+  }
+
+  /**
+   * Check if material has future event assignments
+   */
+  async checkFutureAssignments(materialId) {
+    const prismaInstance = new (
+      await import("../../../../generated/prisma/index.js")
+    ).PrismaClient();
+
+    try {
+      // Get material stock
+      const material = await prismaInstance.material.findUnique({
+        where: { id: parseInt(materialId) },
+        select: {
+          stockFundacion: true,
+          stockEventos: true,
+        },
+      });
+
+      if (!material) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Material no encontrado",
+        };
+      }
+
+      // Get active event assignments (exclude Finalizado and Cancelado)
+      const activeAssignments =
+        await prismaInstance.eventMaterialReusable.findMany({
+          where: {
+            materialId: parseInt(materialId),
+            evento: {
+              NOT: {
+                status: {
+                  in: ["Finalizado", "Cancelado"],
+                },
+              },
+            },
+          },
+          include: {
+            evento: {
+              select: {
+                id: true,
+                name: true,
+                startDate: true,
+                endDate: true,
+                status: true,
+              },
+            },
+          },
+        });
+
+      // Calculate total planned (sum all quantities)
+      let maxConcurrentUsage = 0;
+      if (activeAssignments.length > 0) {
+        maxConcurrentUsage = activeAssignments.reduce(
+          (sum, assignment) => sum + assignment.cantidad,
+          0,
+        );
+      }
+
+      const availableForDischarge =
+        material.stockFundacion - maxConcurrentUsage;
+
+      return {
+        success: true,
+        data: {
+          hasAssignments: activeAssignments.length > 0,
+          count: activeAssignments.length,
+          totalPlanned: maxConcurrentUsage,
+          stockFundacion: material.stockFundacion,
+          stockEventos: material.stockEventos,
+          availableForDischarge: Math.max(0, availableForDischarge),
+        },
+      };
+    } catch (error) {
+      console.error("Service error - checkFutureAssignments:", error);
+      throw error;
+    } finally {
+      await prismaInstance.$disconnect();
     }
   }
 }

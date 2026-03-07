@@ -154,17 +154,14 @@ class EventMaterialsReusableService {
       if (!material) {
         return {
           available: false,
+          availableQuantity: 0,
+          totalStock: 0,
+          usedInConflicts: 0,
           message: "Material not found",
         };
       }
 
-      // Check if enough stock in foundation
-      if (material.stockFundacion < cantidad) {
-        return {
-          available: false,
-          message: `Insufficient stock. Available: ${material.stockFundacion}, Requested: ${cantidad}`,
-        };
-      }
+      const totalStock = material.stockFundacion;
 
       // Find overlapping events
       const overlappingAssignments =
@@ -197,24 +194,23 @@ class EventMaterialsReusableService {
           },
         });
 
-      if (overlappingAssignments.length === 0) {
-        return {
-          available: true,
-          message: "Material is available",
-        };
-      }
-
       // Calculate total quantity used in overlapping events
       const totalUsed = overlappingAssignments.reduce(
         (sum, assignment) => sum + assignment.cantidad,
         0,
       );
-      const availableQuantity = material.stockFundacion - totalUsed;
+      const availableQuantity = totalStock - totalUsed;
 
-      if (availableQuantity < cantidad) {
+      // If cantidad is 0, we're just checking availability (not reserving)
+      const requestedQuantity = cantidad || 0;
+
+      if (requestedQuantity > 0 && availableQuantity < requestedQuantity) {
         return {
           available: false,
-          message: `Material not available for these dates. Available: ${availableQuantity}, Requested: ${cantidad}`,
+          availableQuantity: Math.max(0, availableQuantity),
+          totalStock: totalStock,
+          usedInConflicts: totalUsed,
+          message: `Material not available for these dates. Available: ${availableQuantity}, Requested: ${requestedQuantity}`,
           conflictingEvents: overlappingAssignments.map((a) => ({
             id: a.evento.id,
             name: a.evento.name,
@@ -227,7 +223,17 @@ class EventMaterialsReusableService {
 
       return {
         available: true,
+        availableQuantity: Math.max(0, availableQuantity),
+        totalStock: totalStock,
+        usedInConflicts: totalUsed,
         message: "Material is available",
+        conflictingEvents: overlappingAssignments.map((a) => ({
+          id: a.evento.id,
+          name: a.evento.name,
+          startDate: a.evento.startDate,
+          endDate: a.evento.endDate,
+          cantidad: a.cantidad,
+        })),
       };
     } catch (error) {
       console.error("❌ Error checking availability:", error.message);
@@ -298,9 +304,218 @@ class EventMaterialsReusableService {
   }
 
   /**
+   * Get availability for multiple materials at once (optimized)
+   */
+  async getBulkMaterialAvailability(
+    materialIds,
+    startDate,
+    endDate,
+    excludeEventoId = null,
+  ) {
+    try {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      // Get all materials in one query
+      const materials = await prisma.material.findMany({
+        where: {
+          id: { in: materialIds.map((id) => parseInt(id)) },
+        },
+        select: {
+          id: true,
+          stockFundacion: true,
+        },
+      });
+
+      // Get all overlapping assignments in one query
+      const overlappingAssignments =
+        await prisma.eventMaterialReusable.findMany({
+          where: {
+            materialId: { in: materialIds.map((id) => parseInt(id)) },
+            eventoId: {
+              not: excludeEventoId ? parseInt(excludeEventoId) : undefined,
+            },
+            evento: {
+              AND: [{ startDate: { lte: end } }, { endDate: { gte: start } }],
+            },
+          },
+          select: {
+            materialId: true,
+            cantidad: true,
+            evento: {
+              select: {
+                id: true,
+                name: true,
+                startDate: true,
+                endDate: true,
+              },
+            },
+          },
+        });
+
+      // Calculate availability for each material
+      const availabilityMap = {};
+
+      materials.forEach((material) => {
+        const totalStock = material.stockFundacion || 0;
+        const conflicts = overlappingAssignments.filter(
+          (a) => a.materialId === material.id,
+        );
+        const usedInConflicts = conflicts.reduce(
+          (sum, a) => sum + a.cantidad,
+          0,
+        );
+        const available = Math.max(0, totalStock - usedInConflicts);
+
+        availabilityMap[material.id] = {
+          available,
+          availableQuantity: available,
+          totalStock,
+          usedInConflicts,
+          conflictingEvents: conflicts.map((c) => ({
+            id: c.evento.id,
+            name: c.evento.name,
+            startDate: c.evento.startDate,
+            endDate: c.evento.endDate,
+            cantidad: c.cantidad,
+          })),
+        };
+      });
+
+      return {
+        success: true,
+        data: availabilityMap,
+      };
+    } catch (error) {
+      console.error("❌ Error getting bulk availability:", error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Get all assignments for a specific material (to see which events are using it)
+   * This queries the EventMaterial table (consumables/deliverables)
    */
   async getMaterialAssignments(materialId, options = {}) {
+    try {
+      const {
+        includeCompleted = false,
+        startDate = null,
+        endDate = null,
+      } = options;
+
+      const whereClause = {
+        materialId: parseInt(materialId),
+        bloqueado: false,
+      };
+
+      // Filter by date range if provided
+      if (startDate || endDate) {
+        const eventoFilter = {};
+        if (startDate) {
+          eventoFilter.endDate = { gte: new Date(startDate) };
+        }
+        if (endDate) {
+          eventoFilter.startDate = { lte: new Date(endDate) };
+        }
+        whereClause.evento = { is: eventoFilter };
+      }
+
+      // Filter out completed events if requested
+      if (!includeCompleted) {
+        if (whereClause.evento) {
+          whereClause.evento.is = {
+            ...whereClause.evento.is,
+            endDate: { gte: new Date() },
+          };
+        } else {
+          whereClause.evento = {
+            is: {
+              endDate: { gte: new Date() },
+            },
+          };
+        }
+      }
+
+      const assignments = await prisma.eventMaterial.findMany({
+        where: whereClause,
+        include: {
+          evento: {
+            select: {
+              id: true,
+              name: true,
+              startDate: true,
+              endDate: true,
+              status: true,
+              location: true,
+            },
+          },
+          material: {
+            select: {
+              id: true,
+              nombre: true,
+              stockEventos: true,
+              unidadMedida: true,
+            },
+          },
+        },
+        orderBy: {
+          evento: {
+            startDate: "asc",
+          },
+        },
+      });
+
+      // Calculate availability summary
+      const material = await prisma.material.findUnique({
+        where: { id: parseInt(materialId) },
+        select: {
+          stockEventos: true,
+          nombre: true,
+        },
+      });
+
+      const totalAssigned = assignments.reduce((sum, a) => sum + a.cantidad, 0);
+
+      return {
+        success: true,
+        data: {
+          material: {
+            id: parseInt(materialId),
+            nombre: material?.nombre,
+            stockTotal: material?.stockEventos || 0,
+          },
+          assignments: assignments.map((a) => ({
+            id: a.id,
+            cantidad: a.cantidad,
+            observaciones: a.observaciones,
+            fechaAsignacion: a.fechaAsignacion,
+            evento: {
+              id: a.evento.id,
+              nombre: a.evento.name,
+              fechaInicio: a.evento.startDate,
+              fechaFin: a.evento.endDate,
+              estado: a.evento.status,
+              ubicacion: a.evento.location,
+            },
+          })),
+          summary: {
+            totalAsignaciones: assignments.length,
+            totalUnidadesAsignadas: totalAssigned,
+          },
+        },
+      };
+    } catch (error) {
+      console.error("Error getting material assignments:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all reusable assignments for a specific material
+   * This queries the EventMaterialReusable table (planificados/fundación)
+   */
+  async getReusableMaterialAssignments(materialId, options = {}) {
     try {
       const {
         includeCompleted = false,
@@ -314,21 +529,30 @@ class EventMaterialsReusableService {
 
       // Filter by date range if provided
       if (startDate || endDate) {
-        whereClause.evento = {};
+        const eventoFilter = {};
         if (startDate) {
-          whereClause.evento.endDate = { gte: new Date(startDate) };
+          eventoFilter.endDate = { gte: new Date(startDate) };
         }
         if (endDate) {
-          whereClause.evento.startDate = { lte: new Date(endDate) };
+          eventoFilter.startDate = { lte: new Date(endDate) };
         }
+        whereClause.evento = { is: eventoFilter };
       }
 
       // Filter out completed events if requested
       if (!includeCompleted) {
-        whereClause.evento = {
-          ...whereClause.evento,
-          endDate: { gte: new Date() },
-        };
+        if (whereClause.evento) {
+          whereClause.evento.is = {
+            ...whereClause.evento.is,
+            endDate: { gte: new Date() },
+          };
+        } else {
+          whereClause.evento = {
+            is: {
+              endDate: { gte: new Date() },
+            },
+          };
+        }
       }
 
       const assignments = await prisma.eventMaterialReusable.findMany({
@@ -403,7 +627,7 @@ class EventMaterialsReusableService {
         },
       };
     } catch (error) {
-      console.error("Error getting material assignments:", error);
+      console.error("Error getting reusable material assignments:", error);
       throw error;
     }
   }

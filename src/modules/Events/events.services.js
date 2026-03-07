@@ -1,4 +1,5 @@
 import { EventsRepository } from "./events.repository.js";
+import prisma from "../../config/database.js";
 
 export class EventsService {
   constructor() {
@@ -151,22 +152,64 @@ export class EventsService {
         };
       }
 
-      const eventName = existing.name;
+      // Validar estado del evento
+      if (existing.status === "En Curso" || existing.status === "en_curso") {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "No se puede eliminar un evento que está en curso.",
+        };
+      }
+
+      if (
+        existing.status === "Finalizado" ||
+        existing.status === "finalizado"
+      ) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "No se puede eliminar un evento que ya finalizó.",
+        };
+      }
+
+      // Validar si tiene inscritos
       const participantCount = existing.participants
         ? existing.participants.length
         : 0;
 
+      if (participantCount > 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el evento porque tiene ${participantCount} inscrito(s).`,
+        };
+      }
+
+      // Validar si tiene materiales a entregar asignados
+      const deliverableMaterials = await prisma.eventMaterial.count({
+        where: {
+          eventoId: parseInt(id),
+          tipo: "CONSUMIBLE",
+        },
+      });
+
+      if (deliverableMaterials > 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "No se puede eliminar el evento porque tiene materiales a entregar asignados.",
+        };
+      }
+
+      const eventName = existing.name;
+
       // Eliminar el evento (los participantes y patrocinadores se eliminarán en cascada)
       await this.eventsRepository.delete(id);
 
-      const message =
-        participantCount > 0
-          ? `El evento '${eventName}' y sus ${participantCount} participante(s) han sido eliminados exitosamente.`
-          : `El evento '${eventName}' ha sido eliminado exitosamente.`;
-
       return {
         success: true,
-        message,
+        message: `El evento '${eventName}' ha sido eliminado exitosamente.`,
       };
     } catch (error) {
       // Manejar errores específicos de Prisma

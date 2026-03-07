@@ -84,6 +84,26 @@ class MaterialsRepository {
           where: { materialId: material.id },
         });
 
+        // Check if material has active event assignments (consumables)
+        const consumableAssignmentsCount = await prisma.eventMaterial.count({
+          where: {
+            materialId: material.id,
+            bloqueado: false,
+          },
+        });
+
+        // Check if material has active event assignments (reusables)
+        const reusableAssignmentsCount =
+          await prisma.eventMaterialReusable.count({
+            where: {
+              materialId: material.id,
+            },
+          });
+
+        // Total active assignments (both types)
+        const activeAssignmentsCount =
+          consumableAssignmentsCount + reusableAssignmentsCount;
+
         return {
           ...material,
           stockTotal: material.stockFundacion + material.stockEventos,
@@ -91,6 +111,8 @@ class MaterialsRepository {
             material.stockEventos - (material.stockEventosReservado || 0),
           hasMovements: movementsCount > 0,
           movementsCount,
+          hasActiveAssignments: activeAssignmentsCount > 0,
+          activeAssignmentsCount,
         };
       }),
     );
@@ -143,6 +165,25 @@ class MaterialsRepository {
       where: { materialId: material.id },
     });
 
+    // Check if material has active event assignments (consumables)
+    const consumableAssignmentsCount = await prisma.eventMaterial.count({
+      where: {
+        materialId: material.id,
+        bloqueado: false,
+      },
+    });
+
+    // Check if material has active event assignments (reusables)
+    const reusableAssignmentsCount = await prisma.eventMaterialReusable.count({
+      where: {
+        materialId: material.id,
+      },
+    });
+
+    // Total active assignments (both types)
+    const activeAssignmentsCount =
+      consumableAssignmentsCount + reusableAssignmentsCount;
+
     // Add calculated fields
     return {
       ...material,
@@ -151,6 +192,8 @@ class MaterialsRepository {
         material.stockEventos - (material.stockEventosReservado || 0),
       hasMovements: movementsCount > 0,
       movementsCount,
+      hasActiveAssignments: activeAssignmentsCount > 0,
+      activeAssignmentsCount,
     };
   }
 
@@ -431,10 +474,54 @@ class MaterialsRepository {
         inventoryType === "FUNDACION" ? "stockFundacion" : "stockEventos";
       const currentStock = material[stockField];
 
-      // 3. Validate sufficient stock
+      // 3. If discharging from FUNDACION, check available stock (not planned)
+      if (inventoryType === "FUNDACION") {
+        // Get active event assignments (exclude Finalizado and Cancelado)
+        const activeAssignments = await tx.eventMaterialReusable.findMany({
+          where: {
+            materialId: parseInt(materialId),
+            evento: {
+              NOT: {
+                status: {
+                  in: ["Finalizado", "Cancelado"],
+                },
+              },
+            },
+          },
+          include: {
+            evento: {
+              select: {
+                id: true,
+                name: true,
+                startDate: true,
+                endDate: true,
+                status: true,
+              },
+            },
+          },
+        });
+
+        // Calculate total planned (sum all quantities)
+        const maxConcurrentUsage = activeAssignments.reduce(
+          (sum, assignment) => sum + assignment.cantidad,
+          0,
+        );
+
+        // Calculate available stock (not planned)
+        const availableStock = currentStock - maxConcurrentUsage;
+
+        // Validate that discharge doesn't exceed available stock
+        if (data.cantidad > availableStock) {
+          throw new Error(
+            `No se puede dar de baja ${data.cantidad} unidades del stock de Fundación. Stock total: ${currentStock}, Planificado en eventos: ${maxConcurrentUsage}, Disponible para baja: ${availableStock}. Reduce las planificaciones en eventos para poder dar de baja esta cantidad.`,
+          );
+        }
+      }
+
+      // 4. Validate sufficient stock
       if (currentStock < data.cantidad) {
         throw new Error(
-          `Insufficient stock in ${inventoryType}. Available: ${currentStock}, Requested: ${data.cantidad}`,
+          `Stock insuficiente en ${inventoryType}. Disponible: ${currentStock}, Solicitado: ${data.cantidad}`,
         );
       }
 
@@ -445,7 +532,7 @@ class MaterialsRepository {
           ? newStockValue + material.stockEventos
           : material.stockFundacion + newStockValue;
 
-      // 4. Update material stock
+      // 5. Update material stock
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(materialId) },
         data: {
@@ -461,7 +548,7 @@ class MaterialsRepository {
         },
       });
 
-      // 5. Map discharge type to enum value
+      // 6. Map discharge type to enum value
       let tipoBajaEnum;
       const tipoBajaNormalizado = data.tipo_baja.toUpperCase().trim();
 
@@ -484,7 +571,7 @@ class MaterialsRepository {
           tipoBajaEnum = "Otro";
       }
 
-      // 6. Create discharge movement
+      // 7. Create discharge movement
       await tx.materialMovement.create({
         data: {
           materialId: parseInt(materialId),
@@ -502,7 +589,7 @@ class MaterialsRepository {
         },
       });
 
-      // 7. Return updated material with calculated total
+      // 8. Return updated material with calculated total
       return {
         ...materialActualizado,
         stockTotal:
@@ -562,10 +649,52 @@ class MaterialsRepository {
       const fromStock = material[fromField];
       const toStock = material[toField];
 
-      // 4. Validate sufficient stock in source
+      // 4. If transferring FROM FUNDACION, check available stock (not planned)
+      if (data.from === "FUNDACION") {
+        // Get active event assignments (exclude Finalizado and Cancelado)
+        const activeAssignments = await tx.eventMaterialReusable.findMany({
+          where: {
+            materialId: parseInt(materialId),
+            evento: {
+              NOT: {
+                status: {
+                  in: ["Finalizado", "Cancelado"],
+                },
+              },
+            },
+          },
+          include: {
+            evento: {
+              select: {
+                startDate: true,
+                endDate: true,
+                status: true,
+              },
+            },
+          },
+        });
+
+        // Calculate total planned (sum all quantities)
+        const maxConcurrentUsage = activeAssignments.reduce(
+          (sum, assignment) => sum + assignment.cantidad,
+          0,
+        );
+
+        // Calculate available stock (not planned)
+        const availableStock = fromStock - maxConcurrentUsage;
+
+        // Validate that transfer doesn't exceed available stock
+        if (data.cantidad > availableStock) {
+          throw new Error(
+            `No se puede transferir ${data.cantidad} unidades del stock de Fundación. Stock total: ${fromStock}, Planificado en eventos: ${maxConcurrentUsage}, Disponible para transferir: ${availableStock}. Reduce las planificaciones en eventos para poder transferir esta cantidad.`,
+          );
+        }
+      }
+
+      // 5. Validate sufficient stock in source
       if (fromStock < data.cantidad) {
         throw new Error(
-          `Insufficient stock in ${data.from}. Available: ${fromStock}, Requested: ${data.cantidad}`,
+          `Stock insuficiente en ${data.from}. Disponible: ${fromStock}, Solicitado: ${data.cantidad}`,
         );
       }
 
@@ -573,7 +702,7 @@ class MaterialsRepository {
       const newFromStock = fromStock - data.cantidad;
       const newToStock = toStock + data.cantidad;
 
-      // 5. Update material stock
+      // 6. Update material stock
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(materialId) },
         data: {
@@ -590,7 +719,7 @@ class MaterialsRepository {
         },
       });
 
-      // 6. Create transfer movement
+      // 7. Create transfer movement
       await tx.materialMovement.create({
         data: {
           materialId: parseInt(materialId),
@@ -609,7 +738,7 @@ class MaterialsRepository {
         },
       });
 
-      // 7. Return updated material with calculated total
+      // 8. Return updated material with calculated total
       return {
         ...materialActualizado,
         stockTotal:

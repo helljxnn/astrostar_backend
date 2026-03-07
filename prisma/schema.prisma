@@ -131,11 +131,11 @@ model RefreshToken {
 
 model Employee {
   id                  Int                  @id @default(autoincrement())
-  status              EmployeeStatus       @default(Active)
+  status              EmployeeStatus       @default(Activo)
   statusAssignedAt    DateTime             @default(now())
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
-  employeeTypeId      Int
+  employeeTypeId      Int?
   userId              Int                  @unique
   appointments        Appointment[]
   employeePermissions EmployeePermission[]
@@ -223,21 +223,21 @@ model EmployeeScheduleNovelty {
 }
 
 model Appointment {
-  id                      Int            @id @default(autoincrement())
-  athleteId               Int
-  specialistId            Int
-  appointmentDate         DateTime
-  startTime               String
-  endTime                 String
-  specialty               String
-  description             String?
-  status                  ScheduleStatus @default(Programado)
-  cancelReason            String?
-  conclusion              String?
-  createdAt               DateTime       @default(now())
-  updatedAt               DateTime       @updatedAt
-  athlete                 Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  specialist              Employee       @relation(fields: [specialistId], references: [id], onDelete: Cascade)
+  id              Int            @id @default(autoincrement())
+  athleteId       Int
+  specialistId    Int
+  appointmentDate DateTime
+  startTime       String
+  endTime         String
+  specialty       String
+  description     String?
+  status          ScheduleStatus @default(Programado)
+  cancelReason    String?
+  conclusion      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  athlete         Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  specialist      Employee       @relation(fields: [specialistId], references: [id], onDelete: Cascade)
 
   @@index([athleteId, appointmentDate])
   @@index([specialistId, appointmentDate])
@@ -430,13 +430,13 @@ model TeamMember {
 }
 
 model Participant {
-  id               Int             @id @default(autoincrement())
+  id               Int               @id @default(autoincrement())
   type             ParticipantType
   registrationDate DateTime          @default(now())
   status           String            @default("Registered")
   notes            String?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   serviceId        Int
   sportsCategoryId Int?
   athleteId        Int?
@@ -611,6 +611,7 @@ model DonationDetail {
   channel        String?
   classification String?
   expiresAt      DateTime?
+  materialId     Int?           @map("material_id")
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   donation       Donation       @relation(fields: [donationId], references: [id], onDelete: Cascade)
