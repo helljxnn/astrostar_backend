@@ -585,6 +585,8 @@ export class TemporaryWorkersService {
     if (frontendData.age !== undefined)
       backendData.age = parseInt(frontendData.age);
     if (frontendData.address) backendData.address = frontendData.address.trim();
+    if (frontendData.personType)
+      backendData.personType = frontendData.personType;
     if (frontendData.team !== undefined)
       backendData.organization = frontendData.team
         ? frontendData.team.trim()

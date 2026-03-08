@@ -381,6 +381,7 @@ model TemporaryPerson {
   age            Int?
   address        String?
   organization   String?
+  personType     TemporaryPersonType?  @map("person_type")
   status         TemporaryPersonStatus @default(Active)
   createdAt      DateTime              @default(now())
   updatedAt      DateTime              @updatedAt
