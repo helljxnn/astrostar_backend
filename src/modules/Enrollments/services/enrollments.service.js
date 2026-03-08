@@ -17,7 +17,6 @@ const ENROLLMENT_CONSTANTS = {
 const ENROLLMENT_STATUS = {
   ACTIVE: 'Vigente',
   EXPIRED: 'Vencida',
-  SUSPENDED: 'Suspendida',
 };
 
 const ATHLETE_STATUS = {
@@ -555,17 +554,11 @@ export const enrollmentsService = {
 
       for (const enrollment of expiredEnrollments) {
         try {
+          // SOLO cambiar matrícula a VENCIDA (simple)
+          // NO cambiar estado del atleta - eso lo maneja el sistema de pagos dinámicamente
           await tx.enrollment.update({
             where: { id: enrollment.id },
             data: { estado: ENROLLMENT_STATUS.EXPIRED }
-          });
-
-          await tx.athlete.update({
-            where: { id: enrollment.athleteId },
-            data: {
-              status: ATHLETE_STATUS.INACTIVE,
-              inactivityReason: 'Inactiva por vencimiento de matrícula'
-            }
           });
 
           results.push({

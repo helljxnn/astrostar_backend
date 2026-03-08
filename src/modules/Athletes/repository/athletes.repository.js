@@ -282,13 +282,13 @@ export class AthletesRepository {
 
       // Buscar o crear rol de atleta
       let athleteRole = await prisma.role.findFirst({
-        where: { name: "Athlete" },
+        where: { name: "Deportista" },
       });
 
       if (!athleteRole) {
         athleteRole = await prisma.role.create({
           data: {
-            name: "Athlete",
+            name: "Deportista",
             description: "Rol de deportista",
             status: "Active",
           },

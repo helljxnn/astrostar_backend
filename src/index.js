@@ -8,6 +8,7 @@ import { startEnrollmentExpirationJob } from "./jobs/enrollmentExpirationJob.js"
 import { startRSVPReminderJob } from "./jobs/rsvpReminderJob.js";
 import { startAppointmentReminderJob } from "./jobs/appointmentReminderJob.js";
 import { startRateLimitCleanupJob } from "./jobs/rateLimitCleanupJob.js";
+import { initializePaymentJobs } from "./jobs/generateMonthlyPayments.js";
 
 const PORT = process.env.PORT || 4000;
 
@@ -52,6 +53,9 @@ async function initializeServices() {
 
     // Iniciar job de limpieza de rate limiting
     startRateLimitCleanupJob();
+
+    // Iniciar jobs de gestión de pagos
+    initializePaymentJobs();
   } catch (error) {
     console.warn("âš ï¸ Error inicializando servicios:", error.message);
   }

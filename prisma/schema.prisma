@@ -20,9 +20,7 @@ enum PreRegistrationStatus {
 
 enum EnrollmentStatus {
   Vigente
-  Suspendida
   Vencida
-  Cancelada
 }
 
 enum SponsorStatus {
@@ -548,6 +546,8 @@ model Athlete {
   inscriptions             Inscription[]
   participants             Participant[]
   teamMembers              TeamMember[]
+  paymentObligations       PaymentObligation[]
+  payments                 Payment[]
 
   @@index([guardianId])
   @@index([currentInscriptionStatus])
@@ -1151,4 +1151,84 @@ enum OrigenMovimiento {
 enum TipoMovimiento {
   Entrada
   Salida
+}
+
+// ============================================
+// ENUMS PARA GESTIÓN DE PAGOS
+// ============================================
+
+enum PaymentType {
+  MONTHLY
+  ENROLLMENT_RENEWAL
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ============================================
+// CONFIGURACIÓN DE PAGOS
+// ============================================
+
+model PaymentSettings {
+  id                 Int      @id @default(1)
+  monthlyAmount      Int      // Valor mensualidad - VARIABLE
+  enrollmentAmount   Int      // Valor renovación matrícula - VARIABLE
+  graceDays          Int      // Días del 1 al X para pagar sin mora - VARIABLE
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  
+  @@map("payment_settings")
+}
+
+// ============================================
+// MODELOS PARA GESTIÓN DE PAGOS
+// ============================================
+
+model PaymentObligation {
+  id        Int         @id @default(autoincrement())
+  athleteId Int
+  type      PaymentType
+  period    String?     // "2026-03" para mensualidades, null para renovaciones
+  baseAmount Int        // Valor base sin mora - ESTE SÍ se congela
+  dueStart  DateTime    // Fecha inicio para pagar
+  dueEnd    DateTime    // Fecha límite sin mora
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  
+  athlete   Athlete     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  payments  Payment[]
+  
+  @@unique([athleteId, type, period], name: "unique_obligation_per_athlete_period")
+  @@index([athleteId])
+  @@index([type])
+  @@index([period])
+  @@index([dueEnd])
+  @@map("payment_obligations")
+}
+
+model Payment {
+  id           Int               @id @default(autoincrement())
+  obligationId Int
+  athleteId    Int               // Redundante a propósito para consultas rápidas
+  receiptUrl   String
+  receiptName  String?
+  status       PaymentStatus     @default(PENDING)
+  uploadedAt   DateTime          @default(now())
+  reviewedAt   DateTime?
+  reviewedBy   Int?              // ID del admin que revisó
+  rejectionReason String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  
+  obligation   PaymentObligation @relation(fields: [obligationId], references: [id], onDelete: Cascade)
+  athlete      Athlete           @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  
+  @@index([obligationId])
+  @@index([athleteId])
+  @@index([status])
+  @@index([uploadedAt])
+  @@map("payments")
 }
