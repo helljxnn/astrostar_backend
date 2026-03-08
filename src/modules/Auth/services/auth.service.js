@@ -122,6 +122,108 @@ export class AuthService {
   }
 
   /**
+   * Verificar la validez de un token de reseteo de contraseña
+   */
+  async verifyResetToken(token) {
+    try {
+      // 1. Validar entrada
+      if (!token) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Token de reseteo es requerido.",
+        };
+      }
+
+      // 2. Hashear el token recibido para buscarlo en la base de datos
+      const hashedToken = crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+
+      // 3. Buscar usuario por el token hasheado y verificar expiración
+      const user = await this.authRepository.findByPasswordResetToken(
+        hashedToken
+      );
+
+      if (!user) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "El enlace de recuperación es inválido o ha expirado.",
+        };
+      }
+
+      return { success: true, message: "Token válido." };
+    } catch (error) {
+      console.error("Service error - verifyResetToken:", error);
+      return { success: false, statusCode: 500, message: "Error al verificar el token." };
+    }
+  }
+
+  /**
+   * Resetear la contraseña del usuario usando el token
+   */
+  async resetPassword(token, newPassword) {
+    try {
+      // 1. Validar entrada
+      if (!token || !newPassword) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "Token y nueva contraseña son requeridos.",
+        };
+      }
+
+      if (newPassword.length < 6) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "La nueva contraseña debe tener al menos 6 caracteres.",
+        };
+      }
+
+      // 2. Hashear el token para buscarlo en la base de datos
+      const hashedToken = crypto
+        .createHash("sha256")
+        .update(token)
+        .digest("hex");
+
+      // 3. Buscar usuario por el token y verificar expiración
+      const user = await this.authRepository.findByPasswordResetToken(
+        hashedToken
+      );
+
+      if (!user) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "El enlace de recuperación es inválido o ha expirado.",
+        };
+      }
+
+      // 4. Hashear la nueva contraseña
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+      // 5. Resetear la contraseña y limpiar los campos de reseteo
+      await this.authRepository.resetPassword(user.id, newPasswordHash);
+
+      return {
+        success: true,
+        message: "Contraseña restablecida exitosamente.",
+      };
+    } catch (error) {
+      console.error("Service error - resetPassword:", error);
+      return {
+        success: false,
+        statusCode: 500,
+        message: "Error al restablecer la contraseña.",
+      };
+    }
+  }
+
+
+  /**
    * Cambiar contraseña
    */
   async changePassword(userId, currentPassword, newPassword) {

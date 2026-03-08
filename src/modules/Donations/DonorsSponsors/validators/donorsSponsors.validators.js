@@ -25,8 +25,8 @@ export const donorsSponsorsValidators = {
     query("page").optional().isInt({ min: 1 }).toInt(),
     query("limit")
       .optional()
-      .isInt({ min: 1, max: 100 })
-      .withMessage("El límite debe estar entre 1 y 100.")
+      .isInt({ min: 1, max: 5000 })
+      .withMessage("El límite debe estar entre 1 y 5000.")
       .toInt(),
     query("search").optional().isLength({ max: 100 }).trim(),
     query("status")

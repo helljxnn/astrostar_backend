@@ -10,63 +10,59 @@ const router = Router();
 
 const storage = multer.memoryStorage();
 const fileFilter = (req, file, cb) => {
-  const allowed = [
-    "application/pdf",
-    "image/jpeg",
-    "image/png",
-  ];
+  const allowed = ["application/pdf", "image/jpeg", "image/png"];
   if (allowed.includes(file.mimetype)) return cb(null, true);
   return cb(
-    new Error("Archivo invalido. Solo PDF, JPG o PNG de maximo 5MB."),
-    false
+    new Error("Archivo invalido. Solo PDF, JPG o PNG de maximo 10MB."),
+    false,
   );
 };
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 router.get(
   "/",
   donationValidators.list,
   handleDonationValidation,
-  DonationsController.list
+  DonationsController.list,
 );
 
 router.get(
   "/:id",
   donationValidators.getById,
   handleDonationValidation,
-  DonationsController.getById
+  DonationsController.getById,
 );
 
 router.post(
   "/",
   donationValidators.create,
   handleDonationValidation,
-  DonationsController.create
+  DonationsController.create,
 );
 
 router.put(
   "/:id",
   donationValidators.update,
   handleDonationValidation,
-  DonationsController.update
+  DonationsController.update,
 );
 
 router.patch(
   "/:id/status",
   donationValidators.changeStatus,
   handleDonationValidation,
-  DonationsController.changeStatus
+  DonationsController.changeStatus,
 );
 
 router.delete(
   "/:id",
   donationValidators.softDelete,
   handleDonationValidation,
-  DonationsController.softDelete
+  DonationsController.softDelete,
 );
 
 router.post(
@@ -74,7 +70,28 @@ router.post(
   donationValidators.uploadFiles,
   handleDonationValidation,
   upload.array("files"),
-  DonationsController.uploadFiles
+  DonationsController.uploadFiles,
+);
+
+router.post(
+  "/:id/convert-to-materials",
+  donationValidators.getById,
+  handleDonationValidation,
+  DonationsController.convertToMaterials,
+);
+
+router.post(
+  "/:id/convert-and-assign-to-event",
+  donationValidators.getById,
+  handleDonationValidation,
+  DonationsController.convertAndAssignToEvent,
+);
+
+router.get(
+  "/:id/materials",
+  donationValidators.getById,
+  handleDonationValidation,
+  DonationsController.getMaterials,
 );
 
 export default router;

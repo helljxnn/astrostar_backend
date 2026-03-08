@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../../../generated/prisma/index.js';
+import { PrismaClient } from "../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
@@ -6,15 +6,22 @@ class MaterialsRepository {
   /**
    * Get all materials with pagination and search
    */
-  async findAll({ page = 1, limit = 10, search = '', estado = null, categoriaId = null }) {
+  async findAll({
+    page = 1,
+    limit = 10,
+    search = "",
+    estado = null,
+    categoriaId = null,
+    stockType = null,
+  }) {
     const skip = (page - 1) * limit;
     const where = {};
 
     if (search) {
       where.OR = [
-        { nombre: { contains: search, mode: 'insensitive' } },
-        { categoria: { contains: search, mode: 'insensitive' } },
-        { descripcion: { contains: search, mode: 'insensitive' } },
+        { nombre: { contains: search, mode: "insensitive" } },
+        { categoria: { contains: search, mode: "insensitive" } },
+        { descripcion: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -24,6 +31,15 @@ class MaterialsRepository {
 
     if (categoriaId) {
       where.categoriaId = parseInt(categoriaId);
+    }
+
+    // Filter by stock type
+    if (stockType === "eventos") {
+      where.stockEventos = { gt: 0 };
+      // Don't filter by esReutilizable for eventos - can show all materials with stock
+    } else if (stockType === "fundacion") {
+      where.stockFundacion = { gt: 0 };
+      where.esReutilizable = true; // Only reusables for fundacion
     }
 
     const [materials, total] = await Promise.all([
@@ -40,6 +56,8 @@ class MaterialsRepository {
           stockFundacion: true,
           stockEventos: true,
           stockEventosReservado: true,
+          unidadMedida: true,
+          esReutilizable: true,
           estado: true,
           createdAt: true,
           updatedAt: true,
@@ -52,7 +70,7 @@ class MaterialsRepository {
           },
         },
         orderBy: {
-          createdAt: 'desc',
+          createdAt: "desc",
         },
       }),
       prisma.material.count({ where }),
@@ -66,14 +84,37 @@ class MaterialsRepository {
           where: { materialId: material.id },
         });
 
+        // Check if material has active event assignments (consumables)
+        const consumableAssignmentsCount = await prisma.eventMaterial.count({
+          where: {
+            materialId: material.id,
+            bloqueado: false,
+          },
+        });
+
+        // Check if material has active event assignments (reusables)
+        const reusableAssignmentsCount =
+          await prisma.eventMaterialReusable.count({
+            where: {
+              materialId: material.id,
+            },
+          });
+
+        // Total active assignments (both types)
+        const activeAssignmentsCount =
+          consumableAssignmentsCount + reusableAssignmentsCount;
+
         return {
           ...material,
           stockTotal: material.stockFundacion + material.stockEventos,
-          stockEventosDisponible: material.stockEventos - (material.stockEventosReservado || 0),
+          stockEventosDisponible:
+            material.stockEventos - (material.stockEventosReservado || 0),
           hasMovements: movementsCount > 0,
           movementsCount,
+          hasActiveAssignments: activeAssignmentsCount > 0,
+          activeAssignmentsCount,
         };
-      })
+      }),
     );
 
     return {
@@ -100,6 +141,8 @@ class MaterialsRepository {
         stockFundacion: true,
         stockEventos: true,
         stockEventosReservado: true,
+        unidadMedida: true,
+        esReutilizable: true,
         estado: true,
         createdAt: true,
         updatedAt: true,
@@ -122,13 +165,35 @@ class MaterialsRepository {
       where: { materialId: material.id },
     });
 
+    // Check if material has active event assignments (consumables)
+    const consumableAssignmentsCount = await prisma.eventMaterial.count({
+      where: {
+        materialId: material.id,
+        bloqueado: false,
+      },
+    });
+
+    // Check if material has active event assignments (reusables)
+    const reusableAssignmentsCount = await prisma.eventMaterialReusable.count({
+      where: {
+        materialId: material.id,
+      },
+    });
+
+    // Total active assignments (both types)
+    const activeAssignmentsCount =
+      consumableAssignmentsCount + reusableAssignmentsCount;
+
     // Add calculated fields
     return {
       ...material,
       stockTotal: material.stockFundacion + material.stockEventos,
-      stockEventosDisponible: material.stockEventos - (material.stockEventosReservado || 0),
+      stockEventosDisponible:
+        material.stockEventos - (material.stockEventosReservado || 0),
       hasMovements: movementsCount > 0,
       movementsCount,
+      hasActiveAssignments: activeAssignmentsCount > 0,
+      activeAssignmentsCount,
     };
   }
 
@@ -139,7 +204,7 @@ class MaterialsRepository {
     const where = {
       nombre: {
         equals: nombre.trim(),
-        mode: 'insensitive',
+        mode: "insensitive",
       },
       categoriaId: parseInt(categoriaId),
     };
@@ -163,11 +228,11 @@ class MaterialsRepository {
     });
 
     if (!category) {
-      throw new Error('Category not found');
+      throw new Error("Category not found");
     }
 
-    if (category.estado !== 'Activo') {
-      throw new Error('Cannot create material with inactive category');
+    if (category.estado !== "Activo") {
+      throw new Error("Cannot create material with inactive category");
     }
 
     const material = await prisma.material.create({
@@ -176,10 +241,10 @@ class MaterialsRepository {
         categoriaId: parseInt(data.categoria_id),
         categoria: category.nombre,
         descripcion: data.descripcion?.trim() || null,
-        unidadMedida: data.unidad_medida?.trim().toLowerCase() || 'unidad',
+        unidadMedida: data.unidad_medida?.trim().toLowerCase() || "unidad",
         stockFundacion: 0, // Starts at 0
         stockEventos: 0, // Starts at 0
-        estado: 'Activo',
+        estado: "Activo",
         createdBy: userId,
       },
       include: {
@@ -206,7 +271,7 @@ class MaterialsRepository {
   async update(id, data, userId) {
     const material = await this.findById(id);
     if (!material) {
-      throw new Error('Material no encontrado');
+      throw new Error("Material no encontrado");
     }
 
     // Verificar si tiene movimientos
@@ -225,14 +290,17 @@ class MaterialsRepository {
       // Validar que no intenten cambiar el nombre
       if (data.nombre && data.nombre.trim() !== material.nombre) {
         throw new Error(
-          'No se puede cambiar el nombre del material porque tiene movimientos registrados. Para mantener la trazabilidad del inventario, el nombre debe permanecer igual.'
+          "No se puede cambiar el nombre del material porque tiene movimientos registrados. Para mantener la trazabilidad del inventario, el nombre debe permanecer igual.",
         );
       }
 
       // Validar que no intenten cambiar la categoría
-      if (data.categoria_id && parseInt(data.categoria_id) !== material.categoriaId) {
+      if (
+        data.categoria_id &&
+        parseInt(data.categoria_id) !== material.categoriaId
+      ) {
         throw new Error(
-          'No se puede cambiar la categoría del material porque tiene movimientos registrados. Para mantener la trazabilidad del inventario, la categoría debe permanecer igual.'
+          "No se puede cambiar la categoría del material porque tiene movimientos registrados. Para mantener la trazabilidad del inventario, la categoría debe permanecer igual.",
         );
       }
     } else {
@@ -248,11 +316,11 @@ class MaterialsRepository {
         });
 
         if (!category) {
-          throw new Error('Categoría no encontrada');
+          throw new Error("Categoría no encontrada");
         }
 
-        if (category.estado !== 'Activo') {
-          throw new Error('No se puede asignar una categoría inactiva');
+        if (category.estado !== "Activo") {
+          throw new Error("No se puede asignar una categoría inactiva");
         }
 
         updateData.categoriaId = parseInt(data.categoria_id);
@@ -278,7 +346,8 @@ class MaterialsRepository {
     // Add calculated total stock
     return {
       ...materialActualizado,
-      stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
+      stockTotal:
+        materialActualizado.stockFundacion + materialActualizado.stockEventos,
     };
   }
 
@@ -288,10 +357,10 @@ class MaterialsRepository {
   async toggleStatus(id, userId) {
     const material = await this.findById(id);
     if (!material) {
-      throw new Error('Material not found');
+      throw new Error("Material not found");
     }
 
-    const newStatus = material.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    const newStatus = material.estado === "Activo" ? "Inactivo" : "Activo";
 
     const materialActualizado = await prisma.material.update({
       where: { id: parseInt(id) },
@@ -304,7 +373,8 @@ class MaterialsRepository {
     // Add calculated total stock
     return {
       ...materialActualizado,
-      stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
+      stockTotal:
+        materialActualizado.stockFundacion + materialActualizado.stockEventos,
     };
   }
 
@@ -325,14 +395,17 @@ class MaterialsRepository {
     });
 
     if (!material) {
-      throw new Error('Material no encontrado');
+      throw new Error("Material no encontrado");
     }
 
     // Verificar si tiene stock actual
-    const stockTotal = material.stockFundacion + material.stockEventos + material.stockEventosReservado;
+    const stockTotal =
+      material.stockFundacion +
+      material.stockEventos +
+      material.stockEventosReservado;
     if (stockTotal > 0) {
       throw new Error(
-        `No se puede eliminar el material porque tiene stock registrado (Fundación: ${material.stockFundacion}, Eventos: ${material.stockEventos}, Reservado: ${material.stockEventosReservado}). Debe agotar el stock primero.`
+        `No se puede eliminar el material porque tiene stock registrado (Fundación: ${material.stockFundacion}, Eventos: ${material.stockEventos}, Reservado: ${material.stockEventosReservado}). Debe agotar el stock primero.`,
       );
     }
 
@@ -343,7 +416,7 @@ class MaterialsRepository {
 
     if (movementsCount > 0) {
       throw new Error(
-        `No se puede eliminar el material porque tiene ${movementsCount} movimiento(s) histórico(s). Cambie el estado a Inactivo en su lugar para mantener la integridad del historial.`
+        `No se puede eliminar el material porque tiene ${movementsCount} movimiento(s) histórico(s). Cambie el estado a Inactivo en su lugar para mantener la integridad del historial.`,
       );
     }
 
@@ -367,9 +440,9 @@ class MaterialsRepository {
 
     let stock = 0;
     movements.forEach((mov) => {
-      if (mov.tipoMovimiento === 'Entrada') {
+      if (mov.tipoMovimiento === "Entrada") {
         stock += mov.cantidad;
-      } else if (mov.tipoMovimiento === 'Salida') {
+      } else if (mov.tipoMovimiento === "Salida") {
         stock -= mov.cantidad;
       }
     });
@@ -388,32 +461,78 @@ class MaterialsRepository {
       });
 
       if (!material) {
-        throw new Error('Material not found');
+        throw new Error("Material not found");
       }
 
-      if (material.estado !== 'Activo') {
-        throw new Error('Cannot register discharge on inactive materials');
+      if (material.estado !== "Activo") {
+        throw new Error("Cannot register discharge on inactive materials");
       }
 
       // 2. Determine which inventory to deduct from
-      const inventoryType = data.inventario_origen || 'FUNDACION';
-      const stockField = inventoryType === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const inventoryType = data.inventario_origen || "FUNDACION";
+      const stockField =
+        inventoryType === "FUNDACION" ? "stockFundacion" : "stockEventos";
       const currentStock = material[stockField];
 
-      // 3. Validate sufficient stock
+      // 3. If discharging from FUNDACION, check available stock (not planned)
+      if (inventoryType === "FUNDACION") {
+        // Get active event assignments (exclude Finalizado and Cancelado)
+        const activeAssignments = await tx.eventMaterialReusable.findMany({
+          where: {
+            materialId: parseInt(materialId),
+            evento: {
+              NOT: {
+                status: {
+                  in: ["Finalizado", "Cancelado"],
+                },
+              },
+            },
+          },
+          include: {
+            evento: {
+              select: {
+                id: true,
+                name: true,
+                startDate: true,
+                endDate: true,
+                status: true,
+              },
+            },
+          },
+        });
+
+        // Calculate total planned (sum all quantities)
+        const maxConcurrentUsage = activeAssignments.reduce(
+          (sum, assignment) => sum + assignment.cantidad,
+          0,
+        );
+
+        // Calculate available stock (not planned)
+        const availableStock = currentStock - maxConcurrentUsage;
+
+        // Validate that discharge doesn't exceed available stock
+        if (data.cantidad > availableStock) {
+          throw new Error(
+            `No se puede dar de baja ${data.cantidad} unidades del stock de Fundación. Stock total: ${currentStock}, Planificado en eventos: ${maxConcurrentUsage}, Disponible para baja: ${availableStock}. Reduce las planificaciones en eventos para poder dar de baja esta cantidad.`,
+          );
+        }
+      }
+
+      // 4. Validate sufficient stock
       if (currentStock < data.cantidad) {
         throw new Error(
-          `Insufficient stock in ${inventoryType}. Available: ${currentStock}, Requested: ${data.cantidad}`
+          `Stock insuficiente en ${inventoryType}. Disponible: ${currentStock}, Solicitado: ${data.cantidad}`,
         );
       }
 
       const stockAnterior = material.stockFundacion + material.stockEventos;
       const newStockValue = currentStock - data.cantidad;
-      const stockNuevo = inventoryType === 'FUNDACION' 
-        ? newStockValue + material.stockEventos
-        : material.stockFundacion + newStockValue;
+      const stockNuevo =
+        inventoryType === "FUNDACION"
+          ? newStockValue + material.stockEventos
+          : material.stockFundacion + newStockValue;
 
-      // 4. Update material stock
+      // 5. Update material stock
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(materialId) },
         data: {
@@ -429,36 +548,36 @@ class MaterialsRepository {
         },
       });
 
-      // 5. Map discharge type to enum value
+      // 6. Map discharge type to enum value
       let tipoBajaEnum;
       const tipoBajaNormalizado = data.tipo_baja.toUpperCase().trim();
-      
+
       switch (tipoBajaNormalizado) {
-        case 'DAÑO O DETERIORO':
-        case 'DANO O DETERIORO':
-          tipoBajaEnum = 'DanoDeterioro';
+        case "DAÑO O DETERIORO":
+        case "DANO O DETERIORO":
+          tipoBajaEnum = "DanoDeterioro";
           break;
-        case 'PÉRDIDA':
-        case 'PERDIDA':
-          tipoBajaEnum = 'Perdida';
+        case "PÉRDIDA":
+        case "PERDIDA":
+          tipoBajaEnum = "Perdida";
           break;
-        case 'ROBO':
-          tipoBajaEnum = 'Robo';
+        case "ROBO":
+          tipoBajaEnum = "Robo";
           break;
-        case 'AJUSTE DE INVENTARIO':
-          tipoBajaEnum = 'AjusteInventario';
+        case "AJUSTE DE INVENTARIO":
+          tipoBajaEnum = "AjusteInventario";
           break;
         default:
-          tipoBajaEnum = 'Otro';
+          tipoBajaEnum = "Otro";
       }
 
-      // 6. Create discharge movement
+      // 7. Create discharge movement
       await tx.materialMovement.create({
         data: {
           materialId: parseInt(materialId),
           materialNombre: material.nombre,
           categoria: material.categoria,
-          tipoMovimiento: 'Baja',
+          tipoMovimiento: "Baja",
           cantidad: data.cantidad,
           inventarioOrigen: inventoryType,
           tipoBaja: tipoBajaEnum,
@@ -470,10 +589,11 @@ class MaterialsRepository {
         },
       });
 
-      // 7. Return updated material with calculated total
+      // 8. Return updated material with calculated total
       return {
         ...materialActualizado,
-        stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
+        stockTotal:
+          materialActualizado.stockFundacion + materialActualizado.stockEventos,
       };
     });
   }
@@ -484,18 +604,18 @@ class MaterialsRepository {
   mapTipoBajaToEnum(tipoBaja) {
     // Normalizar el valor recibido
     const tipoBajaNormalizado = tipoBaja.toUpperCase().trim();
-    
+
     const mapeo = {
-      'DAÑO O DETERIORO': 'DanoDeterioro',
-      'DANO O DETERIORO': 'DanoDeterioro',
-      'PÉRDIDA': 'Perdida',
-      'PERDIDA': 'Perdida',
-      'ROBO': 'Robo',
-      'AJUSTE DE INVENTARIO': 'AjusteInventario',
-      'OTRO': 'Otro',
+      "DAÑO O DETERIORO": "DanoDeterioro",
+      "DANO O DETERIORO": "DanoDeterioro",
+      PÉRDIDA: "Perdida",
+      PERDIDA: "Perdida",
+      ROBO: "Robo",
+      "AJUSTE DE INVENTARIO": "AjusteInventario",
+      OTRO: "Otro",
     };
-    
-    return mapeo[tipoBajaNormalizado] || 'Otro';
+
+    return mapeo[tipoBajaNormalizado] || "Otro";
   }
 
   /**
@@ -509,28 +629,72 @@ class MaterialsRepository {
       });
 
       if (!material) {
-        throw new Error('Material not found');
+        throw new Error("Material not found");
       }
 
-      if (material.estado !== 'Activo') {
-        throw new Error('Cannot transfer stock on inactive materials');
+      if (material.estado !== "Activo") {
+        throw new Error("Cannot transfer stock on inactive materials");
       }
 
       // 2. Validate different inventories
       if (data.from === data.to) {
-        throw new Error('Source and destination inventories must be different');
+        throw new Error("Source and destination inventories must be different");
       }
 
       // 3. Determine stock fields
-      const fromField = data.from === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
-      const toField = data.to === 'FUNDACION' ? 'stockFundacion' : 'stockEventos';
+      const fromField =
+        data.from === "FUNDACION" ? "stockFundacion" : "stockEventos";
+      const toField =
+        data.to === "FUNDACION" ? "stockFundacion" : "stockEventos";
       const fromStock = material[fromField];
       const toStock = material[toField];
 
-      // 4. Validate sufficient stock in source
+      // 4. If transferring FROM FUNDACION, check available stock (not planned)
+      if (data.from === "FUNDACION") {
+        // Get active event assignments (exclude Finalizado and Cancelado)
+        const activeAssignments = await tx.eventMaterialReusable.findMany({
+          where: {
+            materialId: parseInt(materialId),
+            evento: {
+              NOT: {
+                status: {
+                  in: ["Finalizado", "Cancelado"],
+                },
+              },
+            },
+          },
+          include: {
+            evento: {
+              select: {
+                startDate: true,
+                endDate: true,
+                status: true,
+              },
+            },
+          },
+        });
+
+        // Calculate total planned (sum all quantities)
+        const maxConcurrentUsage = activeAssignments.reduce(
+          (sum, assignment) => sum + assignment.cantidad,
+          0,
+        );
+
+        // Calculate available stock (not planned)
+        const availableStock = fromStock - maxConcurrentUsage;
+
+        // Validate that transfer doesn't exceed available stock
+        if (data.cantidad > availableStock) {
+          throw new Error(
+            `No se puede transferir ${data.cantidad} unidades del stock de Fundación. Stock total: ${fromStock}, Planificado en eventos: ${maxConcurrentUsage}, Disponible para transferir: ${availableStock}. Reduce las planificaciones en eventos para poder transferir esta cantidad.`,
+          );
+        }
+      }
+
+      // 5. Validate sufficient stock in source
       if (fromStock < data.cantidad) {
         throw new Error(
-          `Insufficient stock in ${data.from}. Available: ${fromStock}, Requested: ${data.cantidad}`
+          `Stock insuficiente en ${data.from}. Disponible: ${fromStock}, Solicitado: ${data.cantidad}`,
         );
       }
 
@@ -538,7 +702,7 @@ class MaterialsRepository {
       const newFromStock = fromStock - data.cantidad;
       const newToStock = toStock + data.cantidad;
 
-      // 5. Update material stock
+      // 6. Update material stock
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(materialId) },
         data: {
@@ -555,17 +719,18 @@ class MaterialsRepository {
         },
       });
 
-      // 6. Create transfer movement
+      // 7. Create transfer movement
       await tx.materialMovement.create({
         data: {
           materialId: parseInt(materialId),
           materialNombre: material.nombre,
           categoria: material.categoria,
-          tipoMovimiento: 'TRANSFERENCIA',
+          tipoMovimiento: "TRANSFERENCIA",
           cantidad: data.cantidad,
           inventarioOrigen: data.from,
           inventarioDestino: data.to,
-          observaciones: data.observaciones || `Transfer from ${data.from} to ${data.to}`,
+          observaciones:
+            data.observaciones || `Transfer from ${data.from} to ${data.to}`,
           stockAnterior: stockAnterior,
           stockNuevo: stockAnterior, // Total doesn't change in transfers
           createdBy: userId,
@@ -573,10 +738,11 @@ class MaterialsRepository {
         },
       });
 
-      // 7. Return updated material with calculated total
+      // 8. Return updated material with calculated total
       return {
         ...materialActualizado,
-        stockTotal: materialActualizado.stockFundacion + materialActualizado.stockEventos,
+        stockTotal:
+          materialActualizado.stockFundacion + materialActualizado.stockEventos,
       };
     });
   }
@@ -587,7 +753,7 @@ class MaterialsRepository {
   async getMovementHistory(materialId, limit = 10) {
     return await prisma.materialMovement.findMany({
       where: { materialId: parseInt(materialId) },
-      orderBy: { fecha: 'desc' },
+      orderBy: { fecha: "desc" },
       take: limit,
     });
   }

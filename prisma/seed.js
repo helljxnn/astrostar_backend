@@ -1,4 +1,4 @@
-﻿/**
+/**
  * SEED DE DATOS MAESTROS DEL SISTEMA ASTROSTAR
  *
  * Este archivo carga los datos esenciales que el sistema necesita para funcionar:
@@ -16,43 +16,17 @@ import bcrypt from "bcrypt";
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Iniciando seed de datos maestros del sistema...\n");
-  // TIPOS DE DOCUMENTO VÁLIDOS EN COLOMBIA
-  console.log("📄 Configurando tipos de documento...");
+  // Seed document types
   await prisma.documentType.createMany({
     data: [
-      {
-        name: "Cédula de Ciudadanía",
-        description: "Documento de identidad para ciudadanos colombianos",
-      },
-      {
-        name: "Tarjeta de Identidad",
-        description: "Documento de identidad para menores de edad",
-      },
-      {
-        name: "Permiso de Permanencia",
-        description: "Documento para extranjeros con permiso de permanencia",
-      },
-      {
-        name: "Tarjeta de Extranjería",
-        description: "Documento de identidad para extranjeros",
-      },
-      {
-        name: "Cédula de Extranjería",
-        description: "Documento de identidad para extranjeros residentes",
-      },
-      {
-        name: "Número de Identificación Tributaria",
-        description: "Documento de identificación tributaria",
-      },
-      {
-        name: "Pasaporte",
-        description: "Documento de identidad internacional",
-      },
-      {
-        name: "Número de Identificación Extranjero",
-        description: "Documento de identificación para extranjeros",
-      },
+      { name: 'Cédula de Ciudadanía', description: 'Documento de identidad para ciudadanos colombianos' },
+      { name: 'Tarjeta de Identidad', description: 'Documento de identidad para menores de edad' },
+      { name: 'Permiso de Permanencia', description: 'Documento para extranjeros con permiso de permanencia' },
+      { name: 'Tarjeta de Extranjería', description: 'Documento de identidad para extranjeros' },
+      { name: 'Cédula de Extranjería', description: 'Documento de identidad para extranjeros residentes' },
+      { name: 'Número de Identificación Tributaria', description: 'Documento de identificación tributaria' },
+      { name: 'Pasaporte', description: 'Documento de identidad internacional' },
+      { name: 'Número de Identificación Extranjero', description: 'Documento de identificación para extranjeros' },
     ],
     skipDuplicates: true,
   });
@@ -384,7 +358,7 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.error("❌ Error seeding database:", e);
+    console.error('❌ Error seeding database:', e);
     process.exit(1);
   })
   .finally(async () => {

@@ -1,7 +1,7 @@
-import express from 'express';
-import materialsController from '../controllers/materials.controller.js';
-import { authenticateToken } from '../../../middlewares/auth.js';
-import { checkPermissions } from '../../../middlewares/checkPermissions.js';
+import express from "express";
+import materialsController from "../controllers/materials.controller.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = express.Router();
 
@@ -21,20 +21,9 @@ router.use(authenticateToken);
  * Permiso: materials.Ver
  */
 router.get(
-  '/check-name',
-  checkPermissions('materials', 'Ver'),
-  materialsController.checkName
-);
-
-/**
- * GET /api/materials/:id/reservations
- * Obtener reservas activas de un material
- * Permiso: materials.Ver
- */
-router.get(
-  '/:id/reservations',
-  checkPermissions('materials', 'Ver'),
-  materialsController.getReservations
+  "/check-name",
+  checkPermissions("materials", "Ver"),
+  materialsController.checkName,
 );
 
 /**
@@ -43,9 +32,20 @@ router.get(
  * Permiso: materials.Ver
  */
 router.get(
-  '/:id/history',
-  checkPermissions('materials', 'Ver'),
-  materialsController.getHistory
+  "/:id/history",
+  checkPermissions("materials", "Ver"),
+  materialsController.getHistory,
+);
+
+/**
+ * GET /api/materials/:id/future-assignments
+ * Verificar si un material tiene asignaciones futuras
+ * Permiso: materials.Ver
+ */
+router.get(
+  "/:id/future-assignments",
+  checkPermissions("materials", "Ver"),
+  materialsController.checkFutureAssignments,
 );
 
 /**
@@ -54,9 +54,9 @@ router.get(
  * Permiso: materials.Ver
  */
 router.get(
-  '/',
-  checkPermissions('materials', 'Ver'),
-  materialsController.getAll
+  "/",
+  checkPermissions("materials", "Ver"),
+  materialsController.getAll,
 );
 
 /**
@@ -65,9 +65,9 @@ router.get(
  * Permiso: materials.Ver
  */
 router.get(
-  '/:id',
-  checkPermissions('materials', 'Ver'),
-  materialsController.getById
+  "/:id",
+  checkPermissions("materials", "Ver"),
+  materialsController.getById,
 );
 
 /**
@@ -76,9 +76,9 @@ router.get(
  * Permiso: materials.Editar
  */
 router.post(
-  '/:id/discharge',
-  checkPermissions('materials', 'Editar'),
-  materialsController.registerDischarge
+  "/:id/discharge",
+  checkPermissions("materials", "Editar"),
+  materialsController.registerDischarge,
 );
 
 /**
@@ -87,9 +87,9 @@ router.post(
  * Permiso: materials.Crear
  */
 router.post(
-  '/',
-  checkPermissions('materials', 'Crear'),
-  materialsController.create
+  "/",
+  checkPermissions("materials", "Crear"),
+  materialsController.create,
 );
 
 /**
@@ -98,9 +98,9 @@ router.post(
  * Permiso: materials.Editar
  */
 router.put(
-  '/:id',
-  checkPermissions('materials', 'Editar'),
-  materialsController.update
+  "/:id",
+  checkPermissions("materials", "Editar"),
+  materialsController.update,
 );
 
 /**
@@ -109,9 +109,9 @@ router.put(
  * Permiso: materials.Editar
  */
 router.patch(
-  '/:id/status',
-  checkPermissions('materials', 'Editar'),
-  materialsController.toggleStatus
+  "/:id/status",
+  checkPermissions("materials", "Editar"),
+  materialsController.toggleStatus,
 );
 
 /**
@@ -120,9 +120,9 @@ router.patch(
  * Permiso: materials.Eliminar
  */
 router.delete(
-  '/:id',
-  checkPermissions('materials', 'Eliminar'),
-  materialsController.delete
+  "/:id",
+  checkPermissions("materials", "Eliminar"),
+  materialsController.delete,
 );
 
 export default router;
