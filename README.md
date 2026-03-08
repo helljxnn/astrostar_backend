@@ -362,3 +362,23 @@ npm start
 ---
 
 **ASTROSTAR**
+
+## Pruebas Automatizadas con Jest (Taller)
+
+Pruebas mínimas implementadas para el taller:
+
+- `tests/auth.test.js` (3 pruebas de login)
+- `tests/permissions.test.js` (3 pruebas de permisos 401/403)
+- `tests/crud.test.js` (2 pruebas CRUD de personas temporales)
+
+Comandos:
+
+```bash
+npm test
+npm run test:watch
+npm run test:coverage
+```
+
+Evidencia de ejecución:
+
+- Los resultados se guardan en `astrostar_backend/test-results/`.

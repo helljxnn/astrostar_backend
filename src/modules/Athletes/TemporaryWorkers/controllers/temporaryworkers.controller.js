@@ -1,4 +1,4 @@
-import { TemporaryWorkersService } from '../services/temporaryworkers.service.js';
+import { TemporaryWorkersService } from "../services/temporaryworkers.service.js";
 
 /**
  * @swagger
@@ -79,28 +79,35 @@ export class TemporaryWorkersController {
    */
   getAllTemporaryWorkers = async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '', status = '', personType = '' } = req.query;
+      const {
+        page = 1,
+        limit = 10,
+        search = "",
+        status = "",
+        personType = "",
+      } = req.query;
 
       const result = await this.temporaryWorkersService.getAllTemporaryWorkers({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
         status,
-        personType
+        personType,
       });
 
       res.json({
         success: true,
         data: result.temporaryPersons,
         pagination: result.pagination,
-        message: `Se encontraron ${result.pagination.total} personas temporales.`
+        message: `Se encontraron ${result.pagination.total} personas temporales.`,
       });
     } catch (error) {
-      console.error('Error fetching temporary workers:', error);
+      console.error("Error fetching temporary workers:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener personas temporales.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener personas temporales.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -143,26 +150,28 @@ export class TemporaryWorkersController {
   getTemporaryWorkerById = async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await this.temporaryWorkersService.getTemporaryWorkerById(id);
+      const result =
+        await this.temporaryWorkersService.getTemporaryWorkerById(id);
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: 'Persona temporal encontrada exitosamente.'
+        message: "Persona temporal encontrada exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching temporary worker by ID:', error);
+      console.error("Error fetching temporary worker by ID:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener la persona temporal.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener la persona temporal.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -204,37 +213,40 @@ export class TemporaryWorkersController {
     try {
       const workerData = req.body;
       const warnings = req.validationWarnings || [];
-      
-      const result = await this.temporaryWorkersService.createTemporaryWorker(workerData);
+
+      const result =
+        await this.temporaryWorkersService.createTemporaryWorker(workerData);
 
       res.status(201).json({
         success: true,
         data: result.data,
         message: result.message,
-        warnings: warnings.length > 0 ? warnings : undefined
+        warnings: warnings.length > 0 ? warnings : undefined,
       });
     } catch (error) {
-      console.error('Error creating temporary worker:', error);
-      
+      console.error("Error creating temporary worker:", error);
+
       // Manejar errores específicos
-      if (error.message.includes('ya está en uso')) {
+      if (error.message.includes("ya está en uso")) {
         return res.status(400).json({
           success: false,
-          message: error.message
+          message: error.message,
         });
       }
 
-      if (error.code === 'P2002') {
+      if (error.code === "P2002") {
         return res.status(400).json({
           success: false,
-          message: 'La identificación o email ya están en uso por otra persona temporal.'
+          message:
+            "La identificación o email ya están en uso por otra persona temporal.",
         });
       }
 
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al crear la persona temporal.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al crear la persona temporal.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -287,13 +299,16 @@ export class TemporaryWorkersController {
       const { id } = req.params;
       const updateData = req.body;
       const warnings = req.validationWarnings || [];
-      
-      const result = await this.temporaryWorkersService.updateTemporaryWorker(id, updateData);
+
+      const result = await this.temporaryWorkersService.updateTemporaryWorker(
+        id,
+        updateData,
+      );
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
@@ -301,23 +316,25 @@ export class TemporaryWorkersController {
         success: true,
         data: result.data,
         message: result.message,
-        warnings: warnings.length > 0 ? warnings : undefined
+        warnings: warnings.length > 0 ? warnings : undefined,
       });
     } catch (error) {
-      console.error('Error updating temporary worker:', error);
-      
+      console.error("Error updating temporary worker:", error);
+
       // Manejar errores específicos
-      if (error.message.includes('ya está en uso')) {
+      if (error.message.includes("ya está en uso")) {
         return res.status(400).json({
           success: false,
-          message: error.message
+          message: error.message,
         });
       }
 
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al actualizar la persona temporal.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message:
+          "Error interno del servidor al actualizar la persona temporal.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -360,33 +377,35 @@ export class TemporaryWorkersController {
   deleteTemporaryWorker = async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await this.temporaryWorkersService.deleteTemporaryWorker(id);
+      const result =
+        await this.temporaryWorkersService.deleteTemporaryWorker(id);
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error deleting temporary worker:', error);
-      
-      if (error.message.includes('ya está inactiva')) {
+      console.error("Error deleting temporary worker:", error);
+
+      if (error.message.includes("ya está inactiva")) {
         return res.status(400).json({
           success: false,
-          message: error.message
+          message: error.message,
         });
       }
 
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al eliminar la persona temporal.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al eliminar la persona temporal.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -437,19 +456,21 @@ export class TemporaryWorkersController {
    */
   getTemporaryWorkerStats = async (req, res) => {
     try {
-      const result = await this.temporaryWorkersService.getTemporaryWorkerStats();
+      const result =
+        await this.temporaryWorkersService.getTemporaryWorkerStats();
 
       res.json({
         success: true,
         data: result.data,
-        message: 'Estadísticas obtenidas exitosamente.'
+        message: "Estadísticas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching temporary worker stats:', error);
+      console.error("Error fetching temporary worker stats:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener estadísticas.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener estadísticas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -491,14 +512,15 @@ export class TemporaryWorkersController {
       res.json({
         success: true,
         data: result.data,
-        message: 'Datos de referencia obtenidos exitosamente.'
+        message: "Datos de referencia obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching reference data:', error);
+      console.error("Error fetching reference data:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener datos de referencia.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener datos de referencia.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -549,19 +571,24 @@ export class TemporaryWorkersController {
   checkIdentificationAvailability = async (req, res) => {
     try {
       const { identification, excludeId } = req.query;
-      const result = await this.temporaryWorkersService.checkIdentificationAvailability(identification, excludeId);
+      const result =
+        await this.temporaryWorkersService.checkIdentificationAvailability(
+          identification,
+          excludeId,
+        );
 
       res.json({
         success: true,
         available: result.available,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error checking identification availability:', error);
+      console.error("Error checking identification availability:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al verificar identificación.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al verificar identificación.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -611,19 +638,23 @@ export class TemporaryWorkersController {
   checkEmailAvailability = async (req, res) => {
     try {
       const { email, excludeId } = req.query;
-      const result = await this.temporaryWorkersService.checkEmailAvailability(email, excludeId);
+      const result = await this.temporaryWorkersService.checkEmailAvailability(
+        email,
+        excludeId,
+      );
 
       res.json({
         success: true,
         available: result.available,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error checking email availability:', error);
+      console.error("Error checking email availability:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al verificar email.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al verificar email.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -654,11 +685,6 @@ export class TemporaryWorkersController {
  *           type: string
  *           description: Primer apellido
  *           example: "Pérez"
- *         secondLastName:
- *           type: string
- *           nullable: true
- *           description: Segundo apellido (opcional)
- *           example: "García"
  *         identification:
  *           type: string
  *           description: Número de identificación
@@ -757,13 +783,6 @@ export class TemporaryWorkersController {
  *           maxLength: 100
  *           description: Primer apellido (requerido)
  *           example: "Pérez"
- *         secondLastName:
- *           type: string
- *           minLength: 2
- *           maxLength: 100
- *           nullable: true
- *           description: Segundo apellido (opcional)
- *           example: "García"
  *         personType:
  *           type: string
  *           enum: [Deportista, Entrenador, Participante]
@@ -851,13 +870,6 @@ export class TemporaryWorkersController {
  *           maxLength: 100
  *           description: Primer apellido
  *           example: "Pérez"
- *         secondLastName:
- *           type: string
- *           minLength: 2
- *           maxLength: 100
- *           nullable: true
- *           description: Segundo apellido
- *           example: "García"
  *         personType:
  *           type: string
  *           enum: [Deportista, Entrenador, Participante]
