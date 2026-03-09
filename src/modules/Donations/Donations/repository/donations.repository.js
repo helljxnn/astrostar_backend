@@ -37,6 +37,7 @@ export class DonationsRepository {
       code: record.code,
       donorSponsorId: record.donorSponsorId,
       serviceId: record.serviceId,
+      responsibleId: record.responsibleId,
       anonymous: record.anonymous,
       type: record.type,
       status: record.status,
@@ -48,6 +49,8 @@ export class DonationsRepository {
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
       deletedAt: record.deletedAt,
+      donorSponsor: record.donorSponsor || null,
+      responsible: record.responsible || null,
       event: record.service
         ? {
             id: record.service.id,
@@ -82,6 +85,7 @@ export class DonationsRepository {
           code,
           donorSponsorId: payload.donorSponsorId || null,
           serviceId: payload.serviceId || null,
+          responsibleId: payload.responsibleId || null,
           anonymous: payload.anonymous || false,
           type: this.mapTypeToDb(payload.type),
           status: this.mapStatusToDb(payload.status),
@@ -219,6 +223,30 @@ export class DonationsRepository {
             location: true,
           },
         },
+        responsible: {
+          select: {
+            id: true,
+            signatureUrl: true,
+            signaturePublicId: true,
+            user: {
+              select: {
+                id: true,
+                firstName: true,
+                middleName: true,
+                lastName: true,
+                secondLastName: true,
+                email: true,
+                identification: true,
+                role: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
         details: true,
         files: true,
         transactions: {
@@ -241,6 +269,10 @@ export class DonationsRepository {
               : undefined,
           serviceId:
             payload.serviceId !== undefined ? payload.serviceId : undefined,
+          responsibleId:
+            payload.responsibleId !== undefined
+              ? payload.responsibleId
+              : undefined,
           anonymous: payload.anonymous ?? undefined,
           type: payload.type ? this.mapTypeToDb(payload.type) : undefined,
           status: payload.status

@@ -3,6 +3,7 @@ import cloudinary from "../../../../services/shared/cloudinary.js";
 import movementsRepository from "../../../Materials/repository/movements.repository.js";
 import materialsRepository from "../../../Materials/repository/materials.repository.js";
 import { PrismaClient } from "../../../../../generated/prisma/index.js";
+import { CertificateService } from "./certificate.service.js";
 
 const ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 const ALLOWED_FILE_TYPES = ["comprobante", "soporte", "factura", "evidencia"];
@@ -523,6 +524,62 @@ export class DonationsService {
       };
     } catch (error) {
       console.error("Error converting and assigning donation to event:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate donation certificate PDF
+   */
+  async generateCertificate(donationId) {
+    try {
+      // 1. Get donation with all details
+      const donation = await DonationsRepository.findById(donationId);
+
+      if (!donation) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Donación no encontrada",
+        };
+      }
+
+      // 2. Verify donation has a responsible
+      if (!donation.responsible) {
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "La donación no tiene un responsable asignado. No se puede generar el certificado.",
+        };
+      }
+
+      // 3. Verify responsible has signature
+      if (!donation.responsible.signatureUrl) {
+        return {
+          success: false,
+          statusCode: 400,
+          message:
+            "El responsable no tiene firma registrada. No se puede generar el certificado.",
+        };
+      }
+
+      // 4. Generate PDF
+      const certificateService = new CertificateService();
+      const pdfBuffer = await certificateService.generateCertificate(donation);
+
+      // 5. Generate filename
+      const date = new Date(donation.donationAt);
+      const dateStr = date.toISOString().split("T")[0].replace(/-/g, "");
+      const filename = `${donation.code}_${dateStr}`;
+
+      return {
+        success: true,
+        pdfBuffer,
+        filename,
+      };
+    } catch (error) {
+      console.error("Error generating donation certificate:", error);
       throw error;
     }
   }

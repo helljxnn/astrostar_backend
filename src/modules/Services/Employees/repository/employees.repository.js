@@ -74,6 +74,7 @@ export class EmployeeRepository {
           },
         },
         purchases: true,
+        donationsResponsible: true,
       },
     });
   }
@@ -237,6 +238,11 @@ export class EmployeeRepository {
    */
   async getAvailableRoles() {
     return await prisma.role.findMany({
+      where: {
+        name: {
+          not: "Deportista", // Excluir rol Deportista para empleados
+        },
+      },
       orderBy: { name: "asc" },
     });
   }
@@ -263,6 +269,71 @@ export class EmployeeRepository {
     return await prisma.user.update({
       where: { id: userId },
       data: { passwordHash: hashedPassword },
+    });
+  }
+
+  /**
+   * Update employee signature
+   */
+  async updateSignature(employeeId, signatureUrl, signaturePublicId) {
+    return await prisma.employee.update({
+      where: { id: parseInt(employeeId) },
+      data: {
+        signatureUrl,
+        signaturePublicId,
+      },
+      include: {
+        user: {
+          include: {
+            role: true,
+            documentType: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Find administrators with signature (for donation responsible selection)
+   */
+  async findAdministratorsWithSignature() {
+    return await prisma.employee.findMany({
+      where: {
+        status: "Activo",
+        signatureUrl: { not: null },
+        user: {
+          role: {
+            name: "Administrador",
+          },
+          status: "Active",
+        },
+      },
+      select: {
+        id: true,
+        signatureUrl: true,
+        user: {
+          select: {
+            id: true,
+            firstName: true,
+            middleName: true,
+            lastName: true,
+            secondLastName: true,
+            email: true,
+            identification: true,
+            role: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        user: {
+          firstName: "asc",
+        },
+      },
     });
   }
 }

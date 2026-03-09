@@ -49,7 +49,7 @@ export class DonationsController {
       console.error("Error get donation", error);
       res.status(500).json({
         success: false,
-        message: "Error al obtener la donacion",
+        message: "Error al obtener la donación",
       });
     }
   };
@@ -59,6 +59,9 @@ export class DonationsController {
       const payload = {
         ...req.body,
         serviceId: req.body.serviceId || req.body.eventId || null,
+        responsibleId: req.body.responsibleId
+          ? parseInt(req.body.responsibleId)
+          : null,
       };
       const userId = req.user?.id || 1;
       const userName = req.user?.name || req.user?.username || "Sistema";
@@ -69,7 +72,7 @@ export class DonationsController {
       console.error("Error create donation", error);
       res.status(500).json({
         success: false,
-        message: "Error al crear la donacion",
+        message: "Error al crear la donación",
       });
     }
   };
@@ -87,7 +90,7 @@ export class DonationsController {
       console.error("Error update donation", error);
       res.status(500).json({
         success: false,
-        message: "Error al actualizar la donacion",
+        message: "Error al actualizar la donación",
       });
     }
   };
@@ -102,7 +105,7 @@ export class DonationsController {
       console.error("Error change status donation", error);
       res.status(500).json({
         success: false,
-        message: "Error al cambiar estado de la donacion",
+        message: "Error al cambiar estado de la donación",
       });
     }
   };
@@ -116,7 +119,7 @@ export class DonationsController {
       console.error("Error delete donation", error);
       res.status(500).json({
         success: false,
-        message: "Error al eliminar la donacion",
+        message: "Error al eliminar la donación",
       });
     }
   };
@@ -258,6 +261,41 @@ export class DonationsController {
       res.status(500).json({
         success: false,
         message: "Error al convertir y asignar donación al evento",
+      });
+    }
+  };
+
+  /**
+   * Generate donation certificate PDF
+   * GET /api/donations/:id/certificate
+   */
+  generateCertificate = async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const result = await DonationsService.generateCertificate(id);
+
+      if (!result.success) {
+        return res.status(result.statusCode || 404).json({
+          success: false,
+          message: result.message,
+        });
+      }
+
+      // Set headers for PDF download
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="Certificado_Donación_${result.filename}.pdf"`,
+      );
+
+      // Send PDF buffer
+      res.send(result.pdfBuffer);
+    } catch (error) {
+      console.error("Error generating donation certificate", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al generar el certificado de donación",
       });
     }
   };

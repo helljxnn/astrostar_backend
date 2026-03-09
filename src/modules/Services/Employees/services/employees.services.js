@@ -1,10 +1,12 @@
 import bcrypt from "bcrypt";
 import { EmployeeRepository } from "../repository/employees.repository.js";
+import { SignatureService } from "./signature.service.js";
 import emailService from "../../../../services/emailService.js";
 
 export class EmployeeService {
   constructor() {
     this.employeeRepository = new EmployeeRepository();
+    this.signatureService = new SignatureService();
   }
 
   /**
@@ -75,7 +77,7 @@ export class EmployeeService {
   /**
    * Crear empleado con usuario
    */
-  async createEmployee(employeeData) {
+  async createEmployee(employeeData, signatureFile = null) {
     try {
       // 1. REGLA DE NEGOCIO: Verificar email único
       const existingUserByEmail = await this.employeeRepository.findByEmail(
@@ -136,7 +138,23 @@ export class EmployeeService {
         userData,
       );
 
-      // 7. REGLA DE NEGOCIO: Enviar credenciales por email
+      // 7. Upload signature if provided
+      if (signatureFile) {
+        try {
+          await this.signatureService.uploadSignature(
+            newEmployee.id,
+            signatureFile,
+          );
+        } catch (signatureError) {
+          console.error(
+            "Error uploading signature during employee creation:",
+            signatureError,
+          );
+          // Don't fail employee creation if signature upload fails
+        }
+      }
+
+      // 8. REGLA DE NEGOCIO: Enviar credenciales por email
       const emailResult = await this.sendWelcomeEmail(
         newEmployee,
         temporaryPassword,
@@ -333,7 +351,6 @@ export class EmployeeService {
       }
 
       // 3. REGLA DE NEGOCIO: Verificar si tiene compras asociadas
-      // Si tiene compras, no permitir eliminación
       if (employeeToDelete.purchases && employeeToDelete.purchases.length > 0) {
         return {
           success: false,
@@ -342,7 +359,19 @@ export class EmployeeService {
         };
       }
 
-      // 4. Proceder con la eliminación (hard delete)
+      // 4. REGLA DE NEGOCIO: Verificar si tiene donaciones como responsable
+      if (
+        employeeToDelete.donationsResponsible &&
+        employeeToDelete.donationsResponsible.length > 0
+      ) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque es responsable de ${employeeToDelete.donationsResponsible.length} donación(es).`,
+        };
+      }
+
+      // 5. Proceder con la eliminación (hard delete)
       const deleted = await this.employeeRepository.delete(id);
 
       if (deleted) {
