@@ -64,11 +64,13 @@ const calculateLateDays = (dueEnd) => {
 };
 
 /**
- * Calcula la mora total usando constantes fijas del negocio
+ * Calcula la mora total usando la tarifa diaria de la configuración
+ * @param {number} lateDays - Días de mora
+ * @param {number} [lateFeeDailyAmount] - Tarifa diaria (lee de BD). Fallback: constante.
  */
-const calculateLateFee = (lateDays) => {
+const calculateLateFee = (lateDays, lateFeeDailyAmount = BUSINESS_CONSTANTS.LATE_FEE_DAILY) => {
   if (lateDays <= 0) return 0;
-  return lateDays * BUSINESS_CONSTANTS.LATE_FEE_DAILY; // ✅ Constante fija
+  return lateDays * lateFeeDailyAmount;
 };
 
 /**
@@ -270,13 +272,16 @@ export const paymentsService = {
   async getAthleteFinancialStatus(athleteId) {
     const now = new Date();
     const currentMonth = getCurrentPeriod();
+    const settings = await getPaymentSettings();
 
     // Buscar TODAS las obligaciones sin pago aprobado
     const pendingObligations = await paymentsRepository.getAllPendingObligations(athleteId);
     
     // Separar por tipo
     const monthlyObligations = pendingObligations.filter(o => o.type === 'MONTHLY');
-    const enrollmentObligation = pendingObligations.find(o => o.type === 'ENROLLMENT_RENEWAL');
+    const enrollmentObligation = pendingObligations.find(
+      o => o.type === 'ENROLLMENT_RENEWAL' || o.type === 'ENROLLMENT_INITIAL'
+    );
     
     // Calcular deuda total mensual
     let totalMonthlyDebt = 0;
@@ -287,7 +292,7 @@ export const paymentsService = {
     
     for (const obligation of monthlyObligations) {
       const daysLate = calculateLateDays(obligation.dueEnd);
-      const lateFee = calculateLateFee(daysLate); // ✅ Usa constante fija
+      const lateFee = calculateLateFee(daysLate, settings.lateFeeDailyAmount); // ✅ Lee de BD
       
       totalMonthlyDebt += obligation.baseAmount;
       totalLateFee += lateFee;
@@ -521,13 +526,18 @@ export const paymentsService = {
       }
     }
 
-    // Verificar bloqueo por matrícula
-    const enrollmentOverdue = overdueObligations.find(o => o.type === 'ENROLLMENT_RENEWAL');
+    // Verificar bloqueo por matrícula (inicial o renovación pendiente)
+    const enrollmentOverdue = overdueObligations.find(
+      o => o.type === 'ENROLLMENT_RENEWAL' || o.type === 'ENROLLMENT_INITIAL'
+    );
     if (enrollmentOverdue) {
+      const isInitial = enrollmentOverdue.type === 'ENROLLMENT_INITIAL';
       return {
         restricted: true,
-        reason: 'ENROLLMENT_PENDING',
-        message: 'Tu matrícula anual está pendiente de renovación',
+        reason: isInitial ? 'ENROLLMENT_INITIAL_PENDING' : 'ENROLLMENT_PENDING',
+        message: isInitial
+          ? 'Tu matrícula está pendiente de pago inicial'
+          : 'Tu matrícula anual está pendiente de renovación',
         obligation: enrollmentOverdue
       };
     }
