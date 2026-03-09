@@ -273,5 +273,32 @@ export const paymentsController = {
     } catch (error) {
       return handleError(res, error, "Error al verificar acceso");
     }
+  },
+
+  /**
+   * POST /payments/athletes/:athleteId/enrollment-initial
+   * Generar obligación de pago inicial de matrícula (admin - manual fallback)
+   */
+  async generateInitialEnrollmentObligation(req, res) {
+    try {
+      const validationError = handleValidationErrors(req, res);
+      if (validationError) return validationError;
+
+      const { athleteId } = req.params;
+      const { enrollmentId } = req.body;
+
+      const obligation = await paymentsService.generateInitialEnrollmentObligation(
+        parseInt(athleteId),
+        enrollmentId ? parseInt(enrollmentId) : undefined
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Obligación de pago inicial de matrícula creada exitosamente",
+        data: obligation
+      });
+    } catch (error) {
+      return handleError(res, error, "Error al generar obligación de pago inicial");
+    }
   }
 };

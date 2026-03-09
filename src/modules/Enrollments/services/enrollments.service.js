@@ -1,6 +1,7 @@
 import prisma from "../../../config/database.js";
 import { enrollmentsRepository } from "../repository/enrollments.repository.js";
 import emailService from "../../../services/emailService.js";
+import { paymentsService } from "../../Payments/services/payments.service.js";
 
 // ============================================================================
 // CONSTANTES Y CONFIGURACIÓN
@@ -15,6 +16,7 @@ const ENROLLMENT_CONSTANTS = {
 };
 
 const ENROLLMENT_STATUS = {
+  PENDING_PAYMENT: 'Pending_Payment',
   ACTIVE: 'Vigente',
   EXPIRED: 'Vencida',
 };
@@ -301,7 +303,7 @@ const createEnrollment = async (tx, athleteId, enrollmentData) => {
       fechaInicio: fechaInicio,
       fechaVencimiento: fechaVencimiento,
       fechaMatricula: fechaInicio,
-      estado: ENROLLMENT_STATUS.ACTIVE,
+      estado: ENROLLMENT_STATUS.PENDING_PAYMENT, // Empieza en Pending_Payment hasta aprobar pago inicial
       observaciones: enrollmentData?.observaciones || null,
       comprobantePago: enrollmentData?.comprobantePago || null,
     },
@@ -406,7 +408,7 @@ export const enrollmentsService = {
     console.log('🔍 [ENROLLMENT] preRegistrationId:', preRegistrationId, 'Tipo:', typeof preRegistrationId);
     console.log('🔍 [ENROLLMENT] ========================================');
     
-    return await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // 1. Normalizar campos del atleta
       const normalizedAthlete = normalizeAthleteFields(athlete);
       const cleanEmail = normalizeEmail(normalizedAthlete.email);
@@ -451,23 +453,26 @@ export const enrollmentsService = {
       );
       console.log('✅ [ENROLLMENT] Atleta creado, ID:', newAthlete.id);
 
-      // 8. Crear matrícula
+      // 8. Crear matrícula (empieza en Pending_Payment)
       const newEnrollment = await createEnrollment(tx, newAthlete.id, enrollment);
-      console.log('✅ [ENROLLMENT] Matrícula creada, ID:', newEnrollment.id);
+      console.log('✅ [ENROLLMENT] Matrícula creada en Pending_Payment, ID:', newEnrollment.id);
 
-      // 9. Enviar email de bienvenida
+      // 9. Generar obligación de pago inicial automáticamente (fuera de la tx para evitar deadlock)
+      // Se ejecuta después de la transacción principal
+
+      // 10. Enviar email de bienvenida
       await sendWelcomeEmail(newUser, tempPassword);
 
-      // 10. Marcar pre-inscripción como procesada
+      // 11. Marcar pre-inscripción como procesada
       await markPreRegistrationAsProcessed(
-        tx, 
-        preRegistrationId, 
-        cleanEmail, 
+        tx,
+        preRegistrationId,
+        cleanEmail,
         cleanIdentification
       );
 
       console.log('✅ [ENROLLMENT] Proceso completado exitosamente');
-      
+
       return {
         athlete: newAthlete,
         enrollment: newEnrollment,
@@ -475,6 +480,22 @@ export const enrollmentsService = {
         emailSent: true
       };
     });
+
+    // Generar la obligación de pago inicial FUERA de la transacción principal
+    // para evitar deadlocks. Se ejecuta solo si la transacción fue exitosa.
+    try {
+      await paymentsService.generateInitialEnrollmentObligation(
+        result.athlete.id,
+        result.enrollment.id
+      );
+      console.log('✅ [ENROLLMENT] Obligación de pago inicial generada');
+    } catch (paymentError) {
+      // Log el error pero no falla el proceso de matrícula
+      // La admin puede generar la obligación manualmente si es necesario
+      console.error('⚠️ [ENROLLMENT] Error generando obligación inicial (no crítico):', paymentError.message);
+    }
+
+    return result;
   },
 
   async findAll(filters) {

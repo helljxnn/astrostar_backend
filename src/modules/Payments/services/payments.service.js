@@ -6,8 +6,9 @@ import prisma from "../../../config/database.js";
 // CONSTANTES FIJAS DEL NEGOCIO (según especificaciones del cliente)
 // ============================================================================
 const BUSINESS_CONSTANTS = {
-  LATE_FEE_DAILY: 2000,        // Mora diaria FIJA: 2,000 pesos
+  LATE_FEE_DAILY: 1000,        // Mora diaria FIJA: 1,000 pesos (ACTUALIZADO)
   MAX_LATE_DAYS_MONTHLY: 15,   // Días máximos FIJOS: 15 días
+  GRACE_DAYS: 5,               // Días de gracia FIJOS: del 1 al 5 de cada mes
 };
 
 // ============================================================================
@@ -79,12 +80,11 @@ const getCurrentPeriod = () => {
 };
 
 /**
- * Calcula fechas de vencimiento para mensualidad usando configuración dinámica
+ * Calcula fechas de vencimiento para mensualidad usando días de gracia fijos
  */
 const calculateMonthlyDueDates = async (year, month) => {
-  const settings = await getPaymentSettings();
   const dueStart = new Date(year, month - 1, 1); // Día 1 del mes
-  const dueEnd = new Date(year, month - 1, settings.graceDays); // Configurable
+  const dueEnd = new Date(year, month - 1, BUSINESS_CONSTANTS.GRACE_DAYS); // Día 5 fijo
   
   return { dueStart, dueEnd };
 };
@@ -110,10 +110,11 @@ export const paymentsService = {
     console.log(`🔄 [PAYMENTS] Generando mensualidades para periodo: ${currentPeriod}`);
 
     return await prisma.$transaction(async (tx) => {
-      // Buscar atletas activos con matrícula vigente
+      // Buscar atletas activos, NO becados, con matrícula vigente
       const activeAthletes = await tx.athlete.findMany({
         where: {
           status: 'Active',
+          isScholarship: false,
           enrollments: {
             some: {
               estado: 'Vigente',
@@ -204,10 +205,9 @@ export const paymentsService = {
    * Generar obligación de renovación de matrícula
    */
   async generateEnrollmentRenewalObligation(athleteId) {
-    const now = new Date();
     const settings = await getPaymentSettings();
-    const dueStart = now;
-    const dueEnd = new Date(now.getTime() + (settings.graceDays * 24 * 60 * 60 * 1000)); // Dinámico
+    const now = new Date();
+    const dueEnd = new Date(now.getTime() + (BUSINESS_CONSTANTS.GRACE_DAYS * 24 * 60 * 60 * 1000));
 
     // Verificar si ya existe obligación de renovación pendiente
     const existing = await paymentsRepository.findExistingObligation(
@@ -223,9 +223,39 @@ export const paymentsService = {
       athleteId,
       type: 'ENROLLMENT_RENEWAL',
       period: null,
-      baseAmount: settings.enrollmentAmount, // ✅ Variable - se congela
-      dueStart,
+      baseAmount: settings.enrollmentAmount,
+      dueStart: now,
       dueEnd
+    });
+  },
+
+  /**
+   * Generar obligación de pago inicial de matrícula (nueva matrícula)
+   * Se llama cuando la admin crea la matrícula. La matrícula empieza en Pending_Payment.
+   */
+  async generateInitialEnrollmentObligation(athleteId, enrollmentId) {
+    const settings = await getPaymentSettings();
+    const now = new Date();
+    const dueEnd = new Date(now.getTime() + (BUSINESS_CONSTANTS.GRACE_DAYS * 24 * 60 * 60 * 1000));
+
+    // Verificar que no exista ya una obligación inicial pendiente
+    const existing = await paymentsRepository.findExistingObligation(
+      athleteId,
+      'ENROLLMENT_INITIAL'
+    );
+
+    if (existing) {
+      throw new Error('Ya existe una obligación de pago inicial de matrícula pendiente');
+    }
+
+    return await paymentsRepository.createObligation({
+      athleteId,
+      type: 'ENROLLMENT_INITIAL',
+      period: null,
+      baseAmount: settings.enrollmentAmount,
+      dueStart: now,
+      dueEnd,
+      metadata: enrollmentId ? { enrollmentId } : undefined
     });
   },
 
@@ -333,69 +363,6 @@ export const paymentsService = {
     return null;
   },
 
-  /**
-   * Obtener estado financiero completo de un atleta (MÉTODO ORIGINAL - MANTENER COMPATIBILIDAD)
-   */
-  async getAthleteFinancialStatus(athleteId) {
-    const financialStatus = await paymentsRepository.getAthleteFinancialStatus(athleteId);
-    const now = new Date();
-
-    const result = {
-      monthly: null,
-      enrollment: null,
-      isBlocked: false,
-      blockReason: null
-    };
-
-    // Procesar mensualidad
-    if (financialStatus.monthly) {
-      const lateDays = calculateLateDays(financialStatus.monthly.dueEnd);
-      const lateFee = calculateLateFee(lateDays);
-      const isPaid = financialStatus.monthly.payments.length > 0;
-
-      result.monthly = {
-        period: financialStatus.monthly.period,
-        baseAmount: financialStatus.monthly.baseAmount,
-        dueEnd: financialStatus.monthly.dueEnd,
-        lateDays,
-        lateFee,
-        totalToPay: financialStatus.monthly.baseAmount + lateFee,
-        isPaid,
-        paymentStatus: isPaid ? 'PAID' : 'PENDING'
-      };
-
-      // Verificar bloqueo por mensualidad
-      if (!isPaid && lateDays > PAYMENT_CONSTANTS.MAX_LATE_DAYS_MONTHLY) {
-        result.isBlocked = true;
-        result.blockReason = 'MONTHLY_OVERDUE';
-      }
-    }
-
-    // Procesar renovación de matrícula
-    if (financialStatus.enrollment) {
-      const lateDays = calculateLateDays(financialStatus.enrollment.dueEnd);
-      const lateFee = calculateLateFee(lateDays);
-      const isPaid = financialStatus.enrollment.payments.length > 0;
-
-      result.enrollment = {
-        baseAmount: financialStatus.enrollment.baseAmount,
-        dueEnd: financialStatus.enrollment.dueEnd,
-        lateDays,
-        lateFee,
-        totalToPay: financialStatus.enrollment.baseAmount + lateFee,
-        isPaid,
-        paymentStatus: isPaid ? 'PAID' : 'PENDING'
-      };
-
-      // Verificar bloqueo por matrícula
-      if (!isPaid) {
-        result.isBlocked = true;
-        result.blockReason = 'ENROLLMENT_PENDING';
-      }
-    }
-
-    return result;
-  },
 
   // ============================================================================
   // GESTIÓN DE COMPROBANTES
@@ -485,9 +452,13 @@ export const paymentsService = {
         reviewedBy
       );
 
-      // Si es renovación de matrícula, actualizar el estado de la matrícula
-      if (payment.obligation.type === 'ENROLLMENT_RENEWAL') {
-        await this._processEnrollmentRenewal(payment.athleteId);
+      // Manejar lógica post-aprobación según tipo de obligación
+      if (currentPayment.obligation.type === 'ENROLLMENT_INITIAL') {
+        // Pago inicial: activar la matrícula que estaba en Pending_Payment
+        await this._processInitialEnrollmentPayment(currentPayment.athleteId);
+      } else if (currentPayment.obligation.type === 'ENROLLMENT_RENEWAL') {
+        // Renovación: crear nueva matrícula por 1 año
+        await this._processEnrollmentRenewal(currentPayment.athleteId);
       }
 
       return payment;
@@ -589,11 +560,11 @@ export const paymentsService = {
   // ============================================================================
 
   /**
-   * Procesar renovación de matrícula después de pago aprobado
+   * Procesar renovación de matrícula después de pago aprobado.
+   * Crea una nueva matrícula vigente por 1 año.
    */
   async _processEnrollmentRenewal(athleteId) {
     return await prisma.$transaction(async (tx) => {
-      // Crear nueva matrícula
       const now = new Date();
       const expirationDate = new Date(now);
       expirationDate.setFullYear(expirationDate.getFullYear() + 1);
@@ -609,16 +580,50 @@ export const paymentsService = {
         }
       });
 
-      // Actualizar atleta a activo
       await tx.athlete.update({
         where: { id: athleteId },
-        data: {
-          status: 'Active',
-          inactivityReason: null
-        }
+        data: { status: 'Active', inactivityReason: null }
       });
 
       console.log(`✅ [PAYMENTS] Matrícula renovada automáticamente para atleta ${athleteId}`);
+    });
+  },
+
+  /**
+   * Procesar pago inicial de matrícula después de que fue aprobado.
+   * Activa la matrícula que estaba en estado Pending_Payment → Vigente.
+   */
+  async _processInitialEnrollmentPayment(athleteId) {
+    return await prisma.$transaction(async (tx) => {
+      const now = new Date();
+      const expirationDate = new Date(now);
+      expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+
+      const pendingEnrollment = await tx.enrollment.findFirst({
+        where: { athleteId, estado: 'Pending_Payment' },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (!pendingEnrollment) {
+        throw new Error(`No se encontró matrícula en Pending_Payment para el atleta ${athleteId}`);
+      }
+
+      await tx.enrollment.update({
+        where: { id: pendingEnrollment.id },
+        data: {
+          estado: 'Vigente',
+          fechaInicio: now,
+          fechaVencimiento: expirationDate,
+          observaciones: 'Activada automáticamente al aprobarse el pago inicial de matrícula'
+        }
+      });
+
+      await tx.athlete.update({
+        where: { id: athleteId },
+        data: { status: 'Active' }
+      });
+
+      console.log(`✅ [PAYMENTS] Matrícula inicial activada para atleta ${athleteId} — vigente hasta ${expirationDate.toISOString().split('T')[0]}`);
     });
   }
 };

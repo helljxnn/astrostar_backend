@@ -306,6 +306,7 @@ model Athlete {
   relationship             GuardianRelationship?
   otherRelationship        String?               @db.VarChar(100)
   currentInscriptionStatus InscriptionStatus?
+  isScholarship            Boolean               @default(false)
   createdAt                DateTime              @default(now())
   updatedAt                DateTime              @updatedAt
   inactivityReason         String?               @db.VarChar(200)
@@ -920,7 +921,7 @@ model PaymentSettings {
   id               Int      @id @default(1)
   monthlyAmount    Int
   enrollmentAmount Int
-  graceDays        Int
+  lateFeeDailyAmount Int   @default(1000)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -980,6 +981,7 @@ enum PreRegistrationStatus {
 }
 
 enum EnrollmentStatus {
+  Pending_Payment
   Vigente
   Suspendida
   Vencida
@@ -1274,6 +1276,7 @@ enum EventAssignmentStatus {
 
 enum PaymentType {
   MONTHLY
+  ENROLLMENT_INITIAL
   ENROLLMENT_RENEWAL
 }
 

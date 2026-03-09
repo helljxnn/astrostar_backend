@@ -115,4 +115,16 @@ router.post(
   paymentsController.generateEnrollmentRenewal
 );
 
+/**
+ * POST /payments/athletes/:athleteId/enrollment-initial
+ * Generar obligación de pago inicial de matrícula (fallback manual para admin)
+ */
+router.post(
+  '/athletes/:athleteId/enrollment-initial',
+  authenticateToken,
+  requirePaymentAdminPermissions,
+  paymentsValidator.validateAthleteId,
+  paymentsController.generateInitialEnrollmentObligation
+);
+
 export default router;
