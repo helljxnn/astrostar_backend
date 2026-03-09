@@ -1,0 +1,126 @@
+/**
+ * Configuración de PM2 para AstroStar Backend
+ * 
+ * INSTRUCCIONES:
+ * 1. Copiar este archivo a ecosystem.config.js
+ * 2. Reemplazar todos los valores CAMBIAR_ESTO con valores reales
+ * 3. NO subir ecosystem.config.js a Git (ya está en .gitignore)
+ * 
+ * Comandos:
+ * - Iniciar: pm2 start ecosystem.config.js
+ * - Detener: pm2 stop astrostar-backend
+ * - Reiniciar: pm2 restart astrostar-backend
+ * - Ver logs: pm2 logs astrostar-backend
+ * - Monitorear: pm2 monit
+ */
+
+module.exports = {
+  apps: [
+    {
+      name: "astrostar-backend",
+      script: "src/index.js",
+      
+      // Modo cluster para aprovechar todos los CPUs
+      instances: "max",
+      exec_mode: "cluster",
+      
+      // Reiniciar si usa más de 500MB
+      max_memory_restart: "500M",
+      
+      // Variables de entorno
+      env: {
+        // ═══════════════════════════════════════════════════════
+        // ENTORNO
+        // ═══════════════════════════════════════════════════════
+        NODE_ENV: "production",
+        PORT: 4000,
+
+        // ═══════════════════════════════════════════════════════
+        // BASE DE DATOS
+        // ⚠️  IMPORTANTE: Usar usuario astrostar_app (NO postgres)
+        // ⚠️  Cambiar CONTRASEÑA_BD por la contraseña real
+        // ═══════════════════════════════════════════════════════
+        DATABASE_URL: "postgresql://astrostar_app:CAMBIAR_CONTRASEÑA_BD@localhost:5432/astrostar?schema=public",
+
+        // ═══════════════════════════════════════════════════════
+        // JWT - AUTENTICACIÓN
+        // ⚠️  CRÍTICO: Generar con: npm run security:generate-secrets
+        // ⚠️  Copiar los secretos generados aquí
+        // ═══════════════════════════════════════════════════════
+        JWT_SECRET: "CAMBIAR_ESTO_SECRETO_128_CARACTERES_GENERADO_CON_SCRIPT",
+        JWT_REFRESH_SECRET: "CAMBIAR_ESTO_SECRETO_128_CARACTERES_GENERADO_CON_SCRIPT",
+        JWT_ACCESS_EXPIRES_IN: "30m",
+        JWT_REFRESH_EXPIRES_IN: "7d",
+
+        // ═══════════════════════════════════════════════════════
+        // URLs
+        // ⚠️  Cambiar por tus dominios reales con HTTPS
+        // ═══════════════════════════════════════════════════════
+        FRONTEND_URL: "https://CAMBIAR_ESTO_tudominio.com",
+        BACKEND_URL: "https://CAMBIAR_ESTO_api.tudominio.com",
+
+        // ═══════════════════════════════════════════════════════
+        // EMAIL
+        // ⚠️  Usar App Password de Gmail (no la contraseña normal)
+        // ⚠️  Generar en: https://myaccount.google.com/apppasswords
+        // ═══════════════════════════════════════════════════════
+        EMAIL_USER: "CAMBIAR_ESTO_astrostar.java@gmail.com",
+        EMAIL_PASSWORD: "CAMBIAR_ESTO_app_password_de_gmail",
+        SMTP_HOST: "smtp.gmail.com",
+        SMTP_PORT: "587",
+
+        // ═══════════════════════════════════════════════════════
+        // CLOUDINARY
+        // ⚠️  Obtener de: https://cloudinary.com/console
+        // ═══════════════════════════════════════════════════════
+        CLOUDINARY_CLOUD_NAME: "CAMBIAR_ESTO_cloud_name",
+        CLOUDINARY_API_KEY: "CAMBIAR_ESTO_api_key",
+        CLOUDINARY_API_SECRET: "CAMBIAR_ESTO_api_secret",
+
+        // ═══════════════════════════════════════════════════════
+        // ALERTAS
+        // ⚠️  Email donde se enviarán las alertas de seguridad
+        // ═══════════════════════════════════════════════════════
+        ALERT_EMAIL: "CAMBIAR_ESTO_admin@tudominio.com",
+
+        // ═══════════════════════════════════════════════════════
+        // LOGGING
+        // ⚠️  Usar 'error' en producción para reducir logs
+        // ═══════════════════════════════════════════════════════
+        LOG_LEVEL: "error",
+
+        // ═══════════════════════════════════════════════════════
+        // JOBS
+        // ═══════════════════════════════════════════════════════
+        DISABLE_RSVP_JOB: "false",
+      },
+
+      // Configuración de logs de PM2
+      error_file: "./logs/pm2-error.log",
+      out_file: "./logs/pm2-out.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss Z",
+      
+      // Merge logs de todos los clusters
+      merge_logs: true,
+      
+      // Reiniciar automáticamente si falla
+      autorestart: true,
+      
+      // Esperar 1 segundo antes de reiniciar
+      restart_delay: 1000,
+      
+      // Máximo 10 reinicios en 1 minuto
+      max_restarts: 10,
+      min_uptime: "10s",
+      
+      // Tiempo de espera para shutdown graceful
+      kill_timeout: 5000,
+      
+      // Escuchar cambios en archivos (desactivado en producción)
+      watch: false,
+      
+      // Ignorar estos directorios si watch está activado
+      ignore_watch: ["node_modules", "logs", ".git"],
+    },
+  ],
+};

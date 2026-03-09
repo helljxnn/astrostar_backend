@@ -1,10 +1,33 @@
-import express from 'express';
-import { EmployeeController } from '../controllers/employees.controller.js';
-import { employeeValidators, handleValidationErrors } from '../validators/employee.validator.js';
-import { authenticateToken } from '../../../../middlewares/auth.js';
+import express from "express";
+import multer from "multer";
+import { EmployeeController } from "../controllers/employees.controller.js";
+import { SignatureController } from "../controllers/signature.controller.js";
+import {
+  employeeValidators,
+  handleValidationErrors,
+  parseEmployeeData,
+} from "../validators/employee.validator.js";
+import { authenticateToken } from "../../../../middlewares/auth.js";
 
 const router = express.Router();
 const employeeController = new EmployeeController();
+const signatureController = new SignatureController();
+
+// Multer configuration for signature upload
+const storage = multer.memoryStorage();
+const fileFilter = (req, file, cb) => {
+  const allowed = ["image/png", "image/jpeg", "image/jpg"];
+  if (allowed.includes(file.mimetype)) return cb(null, true);
+  return cb(
+    new Error("Archivo inválido. Solo PNG o JPG de máximo 2MB."),
+    false,
+  );
+};
+const upload = multer({
+  storage,
+  fileFilter,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
+});
 
 /**
  * @swagger
@@ -378,65 +401,92 @@ const employeeController = new EmployeeController();
  */
 
 // Rutas específicas PRIMERO (antes de rutas con parámetros)
-router.get('/stats', 
+router.get("/stats", authenticateToken, employeeController.getEmployeeStats);
+
+router.get(
+  "/reference-data",
   authenticateToken,
-  employeeController.getEmployeeStats
+  employeeController.getReferenceData,
 );
 
-router.get('/reference-data', 
+router.get(
+  "/administrators/with-signature",
   authenticateToken,
-  employeeController.getReferenceData
+  signatureController.getAdministratorsWithSignature,
 );
 
-router.get('/check-email', 
+router.get(
+  "/check-email",
   authenticateToken,
   employeeValidators.checkEmail,
   handleValidationErrors,
-  employeeController.checkEmailAvailability
+  employeeController.checkEmailAvailability,
 );
 
-router.get('/check-identification',
+router.get(
+  "/check-identification",
   authenticateToken,
   employeeValidators.checkIdentification,
   handleValidationErrors,
-  employeeController.checkIdentificationAvailability
+  employeeController.checkIdentificationAvailability,
 );
 
 // CRUD básico
-router.get('/',
+router.get(
+  "/",
   authenticateToken,
   employeeValidators.getAll,
   handleValidationErrors,
-  employeeController.getAllEmployees
+  employeeController.getAllEmployees,
 );
 
-router.post('/',
+router.post(
+  "/",
   authenticateToken,
+  upload.single("signature"), // Optional signature file
+  parseEmployeeData, // Parse employeeData from FormData if present
   employeeValidators.create,
   handleValidationErrors,
-  employeeController.createEmployee
+  employeeController.createEmployee,
 );
 
 // Rutas con parámetros AL FINAL
-router.get('/:id',
+router.get(
+  "/:id",
   authenticateToken,
   employeeValidators.getById,
   handleValidationErrors,
-  employeeController.getEmployeeById
+  employeeController.getEmployeeById,
 );
 
-router.put('/:id',
+router.put(
+  "/:id",
   authenticateToken,
   employeeValidators.update,
   handleValidationErrors,
-  employeeController.updateEmployee
+  employeeController.updateEmployee,
 );
 
-router.delete('/:id',
+router.delete(
+  "/:id",
   authenticateToken,
   employeeValidators.delete,
   handleValidationErrors,
-  employeeController.deleteEmployee
+  employeeController.deleteEmployee,
+);
+
+// Signature routes
+router.post(
+  "/:id/signature",
+  authenticateToken,
+  upload.single("signature"),
+  signatureController.uploadSignature,
+);
+
+router.delete(
+  "/:id/signature",
+  authenticateToken,
+  signatureController.deleteSignature,
 );
 
 export default router;

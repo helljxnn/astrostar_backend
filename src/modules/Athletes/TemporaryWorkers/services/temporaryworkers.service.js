@@ -1,4 +1,4 @@
-import { TemporaryWorkersRepository } from "../repository/temporaryworkers.repository.js";
+﻿import { TemporaryWorkersRepository } from "../repository/temporaryworkers.repository.js";
 
 export class TemporaryWorkersService {
   constructor() {
@@ -55,10 +55,10 @@ export class TemporaryWorkersService {
       // Validar formato de datos
       this.validateDataFormats(data);
 
-      // Validar datos únicos
+      // Validar datos Ãºnicos
       await this.validateUniqueFields(data);
 
-      // Validar lógica de negocio
+      // Validar lÃ³gica de negocio
       this.validateBusinessRules(data);
 
       // Calcular edad si se proporciona fecha de nacimiento
@@ -98,13 +98,13 @@ export class TemporaryWorkersService {
         };
       }
 
-      // Validar formato de datos (solo los campos que se están actualizando)
+      // Validar formato de datos (solo los campos que se estÃ¡n actualizando)
       this.validateDataFormats(data, false);
 
-      // Validar datos únicos (excluyendo el registro actual)
+      // Validar datos Ãºnicos (excluyendo el registro actual)
       await this.validateUniqueFields(data, id);
 
-      // Validar lógica de negocio
+      // Validar lÃ³gica de negocio
       this.validateBusinessRules(data, existing);
 
       // Calcular edad si se proporciona fecha de nacimiento
@@ -132,7 +132,7 @@ export class TemporaryWorkersService {
   }
 
   /**
-   * Eliminar persona temporal (solo si está inactiva)
+   * Eliminar persona temporal (solo si estÃ¡ inactiva)
    */
   async deleteTemporaryWorker(id) {
     try {
@@ -147,7 +147,7 @@ export class TemporaryWorkersService {
 
       const personName = `${existing.firstName} ${existing.lastName}`;
 
-      // Permitir eliminación independientemente del estado
+      // Permitir eliminaciÃ³n independientemente del estado
       await this.temporaryWorkersRepository.hardDelete(id);
 
       return {
@@ -161,7 +161,7 @@ export class TemporaryWorkersService {
   }
 
   /**
-   * Obtener estadísticas
+   * Obtener estadÃ­sticas
    */
   async getTemporaryWorkerStats() {
     try {
@@ -193,7 +193,7 @@ export class TemporaryWorkersService {
   }
 
   /**
-   * Verificar disponibilidad de identificación
+   * Verificar disponibilidad de identificaciÃ³n
    */
   async checkIdentificationAvailability(identification, excludeId = null) {
     try {
@@ -205,8 +205,8 @@ export class TemporaryWorkersService {
       return {
         available: !existing,
         message: existing
-          ? "La identificación ya está en uso."
-          : "Identificación disponible.",
+          ? "La identificaciÃ³n ya estÃ¡ en uso."
+          : "IdentificaciÃ³n disponible.",
       };
     } catch (error) {
       console.error("Error in checkIdentificationAvailability service:", error);
@@ -225,7 +225,7 @@ export class TemporaryWorkersService {
       );
       return {
         available: !existing,
-        message: existing ? "El email ya está en uso." : "Email disponible.",
+        message: existing ? "El email ya estÃ¡ en uso." : "Email disponible.",
       };
     } catch (error) {
       console.error("Error in checkEmailAvailability service:", error);
@@ -234,12 +234,12 @@ export class TemporaryWorkersService {
   }
 
   /**
-   * Validar campos únicos
+   * Validar campos Ãºnicos
    */
   async validateUniqueFields(data, excludeId = null) {
     const errors = [];
 
-    // Validar identificación si se proporciona
+    // Validar identificaciÃ³n si se proporciona
     if (data.identification) {
       const identificationExists =
         await this.temporaryWorkersRepository.findByIdentification(
@@ -248,7 +248,7 @@ export class TemporaryWorkersService {
         );
       if (identificationExists) {
         errors.push(
-          "La identificación ya está en uso por otra persona temporal.",
+          "La identificaciÃ³n ya estÃ¡ en uso por otra persona temporal.",
         );
       }
     }
@@ -260,7 +260,7 @@ export class TemporaryWorkersService {
         excludeId,
       );
       if (emailExists) {
-        errors.push("El email ya está en uso por otra persona temporal.");
+        errors.push("El email ya estÃ¡ en uso por otra persona temporal.");
       }
     }
 
@@ -326,7 +326,7 @@ export class TemporaryWorkersService {
       ) {
         errors.push("El nombre debe tener entre 2 y 100 caracteres");
       }
-      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(data.firstName)) {
+      if (!/^[a-zA-ZÃ¡Ã©Ã­Ã³ÃºÃÃ‰ÃÃ“ÃšÃ±Ã‘\s]+$/.test(data.firstName)) {
         errors.push("El nombre solo puede contener letras y espacios");
       }
     }
@@ -340,7 +340,7 @@ export class TemporaryWorkersService {
       ) {
         errors.push("El apellido debe tener entre 2 y 100 caracteres");
       }
-      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(data.lastName)) {
+      if (!/^[a-zA-ZÃ¡Ã©Ã­Ã³ÃºÃÃ‰ÃÃ“ÃšÃ±Ã‘\s]+$/.test(data.lastName)) {
         errors.push("El apellido solo puede contener letras y espacios");
       }
     }
@@ -353,7 +353,7 @@ export class TemporaryWorkersService {
       }
     }
 
-    // Validar identificación
+    // Validar identificaciÃ³n
     if (
       data.identification !== undefined &&
       data.identification !== null &&
@@ -364,11 +364,11 @@ export class TemporaryWorkersService {
         data.identification.length < 6 ||
         data.identification.length > 50
       ) {
-        errors.push("La identificación debe tener entre 6 y 50 caracteres");
+        errors.push("La identificaciÃ³n debe tener entre 6 y 50 caracteres");
       }
       if (!/^[a-zA-Z0-9\-]+$/.test(data.identification)) {
         errors.push(
-          "La identificación solo puede contener letras, números y guiones",
+          "La identificaciÃ³n solo puede contener letras, nÃºmeros y guiones",
         );
       }
     }
@@ -377,22 +377,22 @@ export class TemporaryWorkersService {
     if (data.email !== undefined && data.email !== null && data.email !== "") {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(data.email)) {
-        errors.push("El formato del email no es válido");
+        errors.push("El formato del email no es vÃ¡lido");
       }
       if (data.email.length > 150) {
         errors.push("El email no puede exceder 150 caracteres");
       }
     }
 
-    // Validar teléfono
+    // Validar telÃ©fono
     if (data.phone !== undefined && data.phone !== null && data.phone !== "") {
       if (!/^[0-9\s\-\+\(\)]+$/.test(data.phone)) {
         errors.push(
-          "El teléfono solo puede contener números, espacios, guiones, paréntesis y el signo +",
+          "El telÃ©fono solo puede contener nÃºmeros, espacios, guiones, parÃ©ntesis y el signo +",
         );
       }
       if (data.phone.length < 7 || data.phone.length > 20) {
-        errors.push("El teléfono debe tener entre 7 y 20 caracteres");
+        errors.push("El telÃ©fono debe tener entre 7 y 20 caracteres");
       }
     }
 
@@ -404,7 +404,7 @@ export class TemporaryWorkersService {
     ) {
       const birthDate = new Date(data.birthDate);
       if (isNaN(birthDate.getTime())) {
-        errors.push("La fecha de nacimiento debe tener un formato válido");
+        errors.push("La fecha de nacimiento debe tener un formato vÃ¡lido");
       } else {
         const today = new Date();
         const minDate = new Date(
@@ -420,11 +420,11 @@ export class TemporaryWorkersService {
 
         if (birthDate < minDate) {
           errors.push(
-            "La fecha de nacimiento no puede ser anterior a 100 años",
+            "La fecha de nacimiento no puede ser anterior a 100 aÃ±os",
           );
         }
         if (birthDate > maxDate) {
-          errors.push("La persona debe tener al menos 5 años de edad");
+          errors.push("La persona debe tener al menos 5 aÃ±os de edad");
         }
       }
     }
@@ -433,18 +433,18 @@ export class TemporaryWorkersService {
     if (data.age !== undefined && data.age !== null) {
       const age = parseInt(data.age);
       if (isNaN(age) || age < 5 || age > 100) {
-        errors.push("La edad debe estar entre 5 y 100 años");
+        errors.push("La edad debe estar entre 5 y 100 aÃ±os");
       }
     }
 
-    // Validar dirección
+    // Validar direcciÃ³n
     if (
       data.address !== undefined &&
       data.address !== null &&
       data.address !== ""
     ) {
       if (data.address.length > 200) {
-        errors.push("La dirección no puede exceder 200 caracteres");
+        errors.push("La direcciÃ³n no puede exceder 200 caracteres");
       }
     }
 
@@ -455,14 +455,14 @@ export class TemporaryWorkersService {
       }
     }
 
-    // Validar categoría
+    // Validar categorÃ­a
     if (
       data.category !== undefined &&
       data.category !== null &&
       data.category !== ""
     ) {
       if (data.category.length > 100) {
-        errors.push("La categoría no puede exceder 100 caracteres");
+        errors.push("La categorÃ­a no puede exceder 100 caracteres");
       }
     }
 
@@ -478,7 +478,7 @@ export class TemporaryWorkersService {
     if (data.documentTypeId !== undefined && data.documentTypeId !== null) {
       const docTypeId = parseInt(data.documentTypeId);
       if (isNaN(docTypeId) || docTypeId < 1) {
-        errors.push("El tipo de documento debe ser un número válido");
+        errors.push("El tipo de documento debe ser un nÃºmero vÃ¡lido");
       }
     }
 
@@ -519,13 +519,13 @@ export class TemporaryWorkersService {
       }
     }
 
-    // Validar que si se especifica equipo o categoría, no estén vacíos
+    // Validar que si se especifica equipo o categorÃ­a, no estÃ©n vacÃ­os
     if (
       currentTeam !== null &&
       currentTeam !== undefined &&
       currentTeam.trim() === ""
     ) {
-      errors.push("Si se especifica un equipo, no puede estar vacío");
+      errors.push("Si se especifica un equipo, no puede estar vacÃ­o");
     }
 
     if (
@@ -533,10 +533,10 @@ export class TemporaryWorkersService {
       currentCategory !== undefined &&
       currentCategory.trim() === ""
     ) {
-      errors.push("Si se especifica una categoría, no puede estar vacía");
+      errors.push("Si se especifica una categorÃ­a, no puede estar vacÃ­a");
     }
 
-    // Validar que deportistas y entrenadores menores de edad tengan información adicional
+    // Validar que deportistas y entrenadores menores de edad tengan informaciÃ³n adicional
     if (
       currentPersonType === "Deportista" ||
       currentPersonType === "Entrenador"
@@ -551,7 +551,7 @@ export class TemporaryWorkersService {
       }
 
       if (calculatedAge && calculatedAge < 18) {
-        // Para menores de edad deportistas/entrenadores, se recomienda tener más información
+        // Para menores de edad deportistas/entrenadores, se recomienda tener mÃ¡s informaciÃ³n
         // Esto es solo una advertencia, no un error bloqueante
       }
     }
@@ -574,8 +574,7 @@ export class TemporaryWorkersService {
       backendData.middleName = frontendData.middleName.trim();
     if (frontendData.lastName)
       backendData.lastName = frontendData.lastName.trim();
-    if (frontendData.secondLastName)
-      backendData.secondLastName = frontendData.secondLastName.trim();
+    // secondLastName no existe en el modelo TemporaryPerson
     if (frontendData.identification)
       backendData.identification = frontendData.identification.trim();
     if (frontendData.email)
@@ -586,17 +585,18 @@ export class TemporaryWorkersService {
     if (frontendData.age !== undefined)
       backendData.age = parseInt(frontendData.age);
     if (frontendData.address) backendData.address = frontendData.address.trim();
-    if (frontendData.team !== undefined)
-      backendData.team = frontendData.team ? frontendData.team.trim() : null;
-    if (frontendData.category !== undefined)
-      backendData.category = frontendData.category
-        ? frontendData.category.trim()
-        : null;
-    if (frontendData.status) backendData.status = frontendData.status;
-    if (frontendData.documentTypeId)
-      backendData.documentTypeId = parseInt(frontendData.documentTypeId);
     if (frontendData.personType)
       backendData.personType = frontendData.personType;
+    if (frontendData.team !== undefined)
+      backendData.organization = frontendData.team
+        ? frontendData.team.trim()
+        : null;
+    if (frontendData.status) backendData.status = frontendData.status;
+    if (frontendData.documentTypeId) {
+      backendData.documentType = {
+        connect: { id: parseInt(frontendData.documentTypeId) },
+      };
+    }
 
     // Mapeo de campos del modal actual (compatibilidad)
     if (frontendData.nombre && !backendData.firstName) {
@@ -612,23 +612,12 @@ export class TemporaryWorkersService {
       backendData.phone = frontendData.telefono;
     if (frontendData.fechaNacimiento && !backendData.birthDate)
       backendData.birthDate = new Date(frontendData.fechaNacimiento);
-    if (frontendData.tipoPersona && !backendData.personType) {
-      // Mapear tipos del frontend al backend
-      const typeMap = {
-        Deportista: "Deportista",
-        Entrenador: "Entrenador",
-      };
-      backendData.personType =
-        typeMap[frontendData.tipoPersona] || frontendData.tipoPersona;
-    }
     if (frontendData.estado && !backendData.status) {
       backendData.status =
         frontendData.estado === "Activo" ? "Active" : "Inactive";
     }
-    if (frontendData.equipo !== undefined && !backendData.team)
-      backendData.team = frontendData.equipo;
-    if (frontendData.categoria !== undefined && !backendData.category)
-      backendData.category = frontendData.categoria;
+    if (frontendData.equipo !== undefined && !backendData.organization)
+      backendData.organization = frontendData.equipo;
 
     return backendData;
   }

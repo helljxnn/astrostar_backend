@@ -2,7 +2,6 @@ import express from 'express';
 import { RoleController } from '../controllers/roles.controller.js';
 import { roleValidators, handleValidationErrors } from '../validators/role.validator.js';
 import { canReadRoles, canCreateRoles, canManageRoles, canDeleteRoles } from '../../../middlewares/checkRole.js';
-import { authenticateToken } from '../../../middlewares/auth.js';
 
 const router = express.Router();
 const roleController = new RoleController();

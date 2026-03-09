@@ -1,10 +1,12 @@
-import bcrypt from 'bcrypt';
-import { EmployeeRepository } from '../repository/employees.repository.js';
-import emailService from '../../../../services/emailService.js';
+import bcrypt from "bcrypt";
+import { EmployeeRepository } from "../repository/employees.repository.js";
+import { SignatureService } from "./signature.service.js";
+import emailService from "../../../../services/emailService.js";
 
 export class EmployeeService {
   constructor() {
     this.employeeRepository = new EmployeeRepository();
+    this.signatureService = new SignatureService();
   }
 
   /**
@@ -12,34 +14,37 @@ export class EmployeeService {
    */
   calculateAge(birthDate) {
     if (!birthDate) return null;
-    
+
     const today = new Date();
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
       age--;
     }
-    
+
     return age >= 0 ? age : null;
   }
 
   /**
    * Obtener todos los empleados con filtros
    */
-  async getAllEmployees({ page = 1, limit = 10, search = '', status = '' }) {
+  async getAllEmployees({ page = 1, limit = 10, search = "", status = "" }) {
     try {
       const result = await this.employeeRepository.findAll({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
-        status
+        status,
       });
 
       return result;
     } catch (error) {
-      console.error('Service error - getAllEmployees:', error);
+      console.error("Service error - getAllEmployees:", error);
       throw error;
     }
   }
@@ -50,21 +55,21 @@ export class EmployeeService {
   async getEmployeeById(id) {
     try {
       const employee = await this.employeeRepository.findById(id);
-      
+
       if (!employee) {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el empleado con ID ${id}.`
+          message: `No se encontró el empleado con ID ${id}.`,
         };
       }
 
       return {
         success: true,
-        data: employee
+        data: employee,
       };
     } catch (error) {
-      console.error('Service error - getEmployeeById:', error);
+      console.error("Service error - getEmployeeById:", error);
       throw error;
     }
   }
@@ -72,18 +77,25 @@ export class EmployeeService {
   /**
    * Crear empleado con usuario
    */
-  async createEmployee(employeeData) {
+  async createEmployee(employeeData, signatureFile = null) {
     try {
       // 1. REGLA DE NEGOCIO: Verificar email único
-      const existingUserByEmail = await this.employeeRepository.findByEmail(employeeData.email);
+      const existingUserByEmail = await this.employeeRepository.findByEmail(
+        employeeData.email,
+      );
       if (existingUserByEmail) {
         throw new Error(`El email "${employeeData.email}" ya está en uso.`);
       }
 
       // 2. REGLA DE NEGOCIO: Verificar identificación única
-      const existingUserByIdentification = await this.employeeRepository.findByIdentification(employeeData.identification);
+      const existingUserByIdentification =
+        await this.employeeRepository.findByIdentification(
+          employeeData.identification,
+        );
       if (existingUserByIdentification) {
-        throw new Error(`La identificación "${employeeData.identification}" ya está en uso.`);
+        throw new Error(
+          `La identificación "${employeeData.identification}" ya está en uso.`,
+        );
       }
 
       // 3. REGLA DE NEGOCIO: Usar documento de identidad como contraseña inicial
@@ -91,46 +103,75 @@ export class EmployeeService {
       const passwordHash = await bcrypt.hash(temporaryPassword, 10);
 
       // 4. Preparar datos del usuario
-      const birthDate = employeeData.birthDate ? new Date(employeeData.birthDate) : new Date();
+      const birthDate = employeeData.birthDate
+        ? new Date(employeeData.birthDate)
+        : new Date();
       const age = this.calculateAge(birthDate);
-      
+
       const userData = {
-        firstName: employeeData.firstName?.trim() || '',
+        firstName: employeeData.firstName?.trim() || "",
         middleName: employeeData.middleName?.trim() || null,
-        lastName: employeeData.lastName?.trim() || '',
+        lastName: employeeData.lastName?.trim() || "",
         secondLastName: employeeData.secondLastName?.trim() || null,
-        email: employeeData.email?.trim().toLowerCase() || '',
+        email: employeeData.email?.trim().toLowerCase() || "",
         passwordHash,
         phoneNumber: employeeData.phoneNumber?.trim() || null,
         address: employeeData.address?.trim() || null,
         birthDate: birthDate,
         age: age,
-        identification: employeeData.identification?.trim() || '',
-        status: 'Active',
-        documentTypeId: employeeData.documentTypeId ? parseInt(employeeData.documentTypeId) : null,
-        roleId: employeeData.roleId ? parseInt(employeeData.roleId) : null
+        identification: employeeData.identification?.trim() || "",
+        status: "Active",
+        documentTypeId: employeeData.documentTypeId
+          ? parseInt(employeeData.documentTypeId)
+          : null,
+        roleId: employeeData.roleId ? parseInt(employeeData.roleId) : null,
       };
 
       // 5. Preparar datos del empleado
       const employeeDataForDB = {
-        status: employeeData.status || 'Active'
+        status: employeeData.status || "Activo",
       };
 
       // 6. Crear empleado y usuario en transacción
-      const newEmployee = await this.employeeRepository.create(employeeDataForDB, userData);
+      const newEmployee = await this.employeeRepository.create(
+        employeeDataForDB,
+        userData,
+      );
 
-      // 7. REGLA DE NEGOCIO: Enviar credenciales por email
-      const emailResult = await this.sendWelcomeEmail(newEmployee, temporaryPassword);
+      // 7. Upload signature if provided
+      if (signatureFile) {
+        try {
+          await this.signatureService.uploadSignature(
+            newEmployee.id,
+            signatureFile,
+          );
+        } catch (signatureError) {
+          console.error(
+            "Error uploading signature during employee creation:",
+            signatureError,
+          );
+          // Don't fail employee creation if signature upload fails
+        }
+      }
+
+      // 8. REGLA DE NEGOCIO: Enviar credenciales por email
+      const emailResult = await this.sendWelcomeEmail(
+        newEmployee,
+        temporaryPassword,
+      );
 
       return {
         success: true,
         data: newEmployee,
-        temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined,
+        temporaryPassword:
+          process.env.NODE_ENV === "development"
+            ? temporaryPassword
+            : undefined,
         emailSent: emailResult.success,
-        message: `Empleado "${newEmployee.user.firstName} ${newEmployee.user.lastName}" creado exitosamente. ${emailResult.success ? 'Credenciales enviadas por email.' : 'Error enviando credenciales por email.'}`
+        message: `Empleado "${newEmployee.user.firstName} ${newEmployee.user.lastName}" creado exitosamente. ${emailResult.success ? "Credenciales enviadas por email." : "Error enviando credenciales por email."}`,
       };
     } catch (error) {
-      console.error('Service error - createEmployee:', error);
+      console.error("Service error - createEmployee:", error);
       throw error;
     }
   }
@@ -146,32 +187,53 @@ export class EmployeeService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el empleado con ID ${id}.`
+          message: `No se encontró el empleado con ID ${id}.`,
         };
       }
 
       // 2. REGLA DE NEGOCIO: No permitir editar el usuario por defecto del sistema
-      if (existingEmployee.user.email === 'astrostar.java@gmail.com') {
+      if (existingEmployee.user.email === "astrostar.java@gmail.com") {
         return {
           success: false,
           statusCode: 400,
-          message: `No se puede editar el usuario "${existingEmployee.user.firstName} ${existingEmployee.user.lastName}" porque es el usuario por defecto del sistema.`
+          message: `No se puede editar el usuario "${existingEmployee.user.firstName} ${existingEmployee.user.lastName}" porque es el usuario por defecto del sistema.`,
         };
       }
 
       // 3. REGLA DE NEGOCIO: Verificar email único (si se está actualizando)
-      if (updateData.email && updateData.email !== existingEmployee.user.email) {
-        const existingUserByEmail = await this.employeeRepository.findByEmail(updateData.email);
-        if (existingUserByEmail && existingUserByEmail.id !== existingEmployee.userId) {
-          throw new Error(`El email "${updateData.email}" ya está en uso por otro usuario.`);
+      if (
+        updateData.email &&
+        updateData.email !== existingEmployee.user.email
+      ) {
+        const existingUserByEmail = await this.employeeRepository.findByEmail(
+          updateData.email,
+        );
+        if (
+          existingUserByEmail &&
+          existingUserByEmail.id !== existingEmployee.userId
+        ) {
+          throw new Error(
+            `El email "${updateData.email}" ya está en uso por otro usuario.`,
+          );
         }
       }
 
       // 4. REGLA DE NEGOCIO: Verificar identificación única (si se está actualizando)
-      if (updateData.identification && updateData.identification !== existingEmployee.user.identification) {
-        const existingUserByIdentification = await this.employeeRepository.findByIdentification(updateData.identification);
-        if (existingUserByIdentification && existingUserByIdentification.id !== existingEmployee.userId) {
-          throw new Error(`La identificación "${updateData.identification}" ya está en uso por otro usuario.`);
+      if (
+        updateData.identification &&
+        updateData.identification !== existingEmployee.user.identification
+      ) {
+        const existingUserByIdentification =
+          await this.employeeRepository.findByIdentification(
+            updateData.identification,
+          );
+        if (
+          existingUserByIdentification &&
+          existingUserByIdentification.id !== existingEmployee.userId
+        ) {
+          throw new Error(
+            `La identificación "${updateData.identification}" ya está en uso por otro usuario.`,
+          );
         }
       }
 
@@ -180,43 +242,75 @@ export class EmployeeService {
       const employeeData = { userId: existingEmployee.userId };
 
       // Campos de usuario
-      if (updateData.firstName !== undefined) userData.firstName = updateData.firstName?.trim() || '';
-      if (updateData.middleName !== undefined) userData.middleName = updateData.middleName?.trim() || null;
-      if (updateData.lastName !== undefined) userData.lastName = updateData.lastName?.trim() || '';
-      if (updateData.secondLastName !== undefined) userData.secondLastName = updateData.secondLastName?.trim() || null;
-      if (updateData.email !== undefined) userData.email = updateData.email?.trim().toLowerCase() || '';
-      if (updateData.phoneNumber !== undefined) userData.phoneNumber = updateData.phoneNumber?.trim() || null;
-      if (updateData.address !== undefined) userData.address = updateData.address?.trim() || null;
+      if (updateData.firstName !== undefined)
+        userData.firstName = updateData.firstName?.trim() || "";
+      if (updateData.middleName !== undefined)
+        userData.middleName = updateData.middleName?.trim() || null;
+      if (updateData.lastName !== undefined)
+        userData.lastName = updateData.lastName?.trim() || "";
+      if (updateData.secondLastName !== undefined)
+        userData.secondLastName = updateData.secondLastName?.trim() || null;
+      if (updateData.email !== undefined)
+        userData.email = updateData.email?.trim().toLowerCase() || "";
+      if (updateData.phoneNumber !== undefined)
+        userData.phoneNumber = updateData.phoneNumber?.trim() || null;
+      if (updateData.address !== undefined)
+        userData.address = updateData.address?.trim() || null;
       if (updateData.birthDate !== undefined) {
-        userData.birthDate = updateData.birthDate ? new Date(updateData.birthDate) : null;
-        userData.age = userData.birthDate ? this.calculateAge(userData.birthDate) : null;
+        userData.birthDate = updateData.birthDate
+          ? new Date(updateData.birthDate)
+          : null;
+        userData.age = userData.birthDate
+          ? this.calculateAge(userData.birthDate)
+          : null;
       }
-      if (updateData.identification !== undefined) userData.identification = updateData.identification?.trim() || '';
-      if (updateData.documentTypeId !== undefined) userData.documentTypeId = updateData.documentTypeId ? parseInt(updateData.documentTypeId) : null;
-      if (updateData.roleId !== undefined) userData.roleId = updateData.roleId ? parseInt(updateData.roleId) : null;
+      if (updateData.identification !== undefined)
+        userData.identification = updateData.identification?.trim() || "";
+      if (updateData.documentTypeId !== undefined)
+        userData.documentTypeId = updateData.documentTypeId
+          ? parseInt(updateData.documentTypeId)
+          : null;
+      if (updateData.roleId !== undefined)
+        userData.roleId = updateData.roleId
+          ? parseInt(updateData.roleId)
+          : null;
 
       // Campos de empleado
-      if (updateData.status !== undefined) employeeData.status = updateData.status || 'Active';
+      if (updateData.status !== undefined)
+        employeeData.status = updateData.status || "Activo";
 
       // 6. Actualizar empleado
-      const updatedEmployee = await this.employeeRepository.update(id, employeeData, userData);
+      const updatedEmployee = await this.employeeRepository.update(
+        id,
+        employeeData,
+        userData,
+      );
 
       // 7. REGLA DE NEGOCIO: Si se actualizó el email o se solicita reenvío, generar nueva contraseña y enviar correo
       let emailSent = false;
-      if (updateData.sendWelcomeEmail || (updateData.email && updateData.email !== existingEmployee.user.email)) {
+      if (
+        updateData.sendWelcomeEmail ||
+        (updateData.email && updateData.email !== existingEmployee.user.email)
+      ) {
         try {
           // Generar nueva contraseña temporal
           const temporaryPassword = this.generateTemporaryPassword();
           const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
-          
+
           // Actualizar contraseña en la base de datos
-          await this.employeeRepository.updateUserPassword(existingEmployee.userId, hashedPassword);
-          
+          await this.employeeRepository.updateUserPassword(
+            existingEmployee.userId,
+            hashedPassword,
+          );
+
           // Enviar email con nuevas credenciales
-          const emailResult = await this.sendWelcomeEmail(updatedEmployee, temporaryPassword);
+          const emailResult = await this.sendWelcomeEmail(
+            updatedEmployee,
+            temporaryPassword,
+          );
           emailSent = emailResult.success;
         } catch (emailError) {
-          console.error('Error enviando email de actualización:', emailError);
+          console.error("Error enviando email de actualización:", emailError);
           // No fallar la actualización si el email falla
         }
       }
@@ -224,10 +318,10 @@ export class EmployeeService {
       return {
         success: true,
         data: updatedEmployee,
-        message: `Empleado "${updatedEmployee.user.firstName} ${updatedEmployee.user.lastName}" actualizado exitosamente.${emailSent ? ' Se ha enviado un correo con las nuevas credenciales.' : ''}`
+        message: `Empleado "${updatedEmployee.user.firstName} ${updatedEmployee.user.lastName}" actualizado exitosamente.${emailSent ? " Se ha enviado un correo con las nuevas credenciales." : ""}`,
       };
     } catch (error) {
-      console.error('Service error - updateEmployee:', error);
+      console.error("Service error - updateEmployee:", error);
       throw error;
     }
   }
@@ -243,40 +337,51 @@ export class EmployeeService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el empleado con ID ${id}.`
+          message: `No se encontró el empleado con ID ${id}.`,
         };
       }
 
       // 2. REGLA DE NEGOCIO: No permitir eliminar el usuario por defecto del sistema
-      if (employeeToDelete.user.email === 'astrostar.java@gmail.com') {
+      if (employeeToDelete.user.email === "astrostar.java@gmail.com") {
         return {
           success: false,
           statusCode: 400,
-          message: `No se puede eliminar el usuario "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque es el usuario por defecto del sistema.`
+          message: `No se puede eliminar el usuario "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque es el usuario por defecto del sistema.`,
         };
       }
 
       // 3. REGLA DE NEGOCIO: Verificar si tiene compras asociadas
-      // Si tiene compras, no permitir eliminación
       if (employeeToDelete.purchases && employeeToDelete.purchases.length > 0) {
         return {
           success: false,
           statusCode: 400,
-          message: `No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque tiene compras asociadas.`
+          message: `No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque tiene compras asociadas.`,
         };
       }
 
-      // 4. Proceder con la eliminación (hard delete)
+      // 4. REGLA DE NEGOCIO: Verificar si tiene donaciones como responsable
+      if (
+        employeeToDelete.donationsResponsible &&
+        employeeToDelete.donationsResponsible.length > 0
+      ) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque es responsable de ${employeeToDelete.donationsResponsible.length} donación(es).`,
+        };
+      }
+
+      // 5. Proceder con la eliminación (hard delete)
       const deleted = await this.employeeRepository.delete(id);
 
       if (deleted) {
         return {
           success: true,
-          message: `El empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" ha sido eliminado exitosamente.`
+          message: `El empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" ha sido eliminado exitosamente.`,
         };
       }
     } catch (error) {
-      console.error('Service error - deleteEmployee:', error);
+      console.error("Service error - deleteEmployee:", error);
       throw error;
     }
   }
@@ -289,10 +394,10 @@ export class EmployeeService {
       const stats = await this.employeeRepository.getStats();
       return {
         success: true,
-        data: stats
+        data: stats,
       };
     } catch (error) {
-      console.error('Service error - getEmployeeStats:', error);
+      console.error("Service error - getEmployeeStats:", error);
       throw error;
     }
   }
@@ -304,18 +409,18 @@ export class EmployeeService {
     try {
       const [roles, documentTypes] = await Promise.all([
         this.employeeRepository.getAvailableRoles(),
-        this.employeeRepository.getDocumentTypes()
+        this.employeeRepository.getDocumentTypes(),
       ]);
 
       return {
         success: true,
         data: {
           roles,
-          documentTypes
-        }
+          documentTypes,
+        },
       };
     } catch (error) {
-      console.error('Service error - getReferenceData:', error);
+      console.error("Service error - getReferenceData:", error);
       throw error;
     }
   }
@@ -326,7 +431,7 @@ export class EmployeeService {
   async checkEmailAvailability(email, excludeUserId = null) {
     try {
       const existingUser = await this.employeeRepository.findByEmail(email);
-      
+
       if (!existingUser) {
         return { available: true };
       }
@@ -335,12 +440,12 @@ export class EmployeeService {
         return { available: true };
       }
 
-      return { 
-        available: false, 
-        message: `El email "${email}" ya está en uso.` 
+      return {
+        available: false,
+        message: `El email "${email}" ya está en uso.`,
       };
     } catch (error) {
-      console.error('Service error - checkEmailAvailability:', error);
+      console.error("Service error - checkEmailAvailability:", error);
       throw error;
     }
   }
@@ -350,8 +455,9 @@ export class EmployeeService {
    */
   async checkIdentificationAvailability(identification, excludeUserId = null) {
     try {
-      const existingUser = await this.employeeRepository.findByIdentification(identification);
-      
+      const existingUser =
+        await this.employeeRepository.findByIdentification(identification);
+
       if (!existingUser) {
         return { available: true };
       }
@@ -360,12 +466,12 @@ export class EmployeeService {
         return { available: true };
       }
 
-      return { 
-        available: false, 
-        message: `La identificación "${identification}" ya está en uso.` 
+      return {
+        available: false,
+        message: `La identificación "${identification}" ya está en uso.`,
       };
     } catch (error) {
-      console.error('Service error - checkIdentificationAvailability:', error);
+      console.error("Service error - checkIdentificationAvailability:", error);
       throw error;
     }
   }
@@ -375,27 +481,30 @@ export class EmployeeService {
    */
   generateTemporaryPassword() {
     // Caracteres seguros (sin caracteres ambiguos como 0, O, l, I)
-    const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lowercase = 'abcdefghijkmnpqrstuvwxyz';
-    const numbers = '23456789';
-    const symbols = '!@#$%&*';
-    
-    let password = '';
-    
+    const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lowercase = "abcdefghijkmnpqrstuvwxyz";
+    const numbers = "23456789";
+    const symbols = "!@#$%&*";
+
+    let password = "";
+
     // Asegurar al menos un carácter de cada tipo
     password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
     password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
     password += numbers.charAt(Math.floor(Math.random() * numbers.length));
     password += symbols.charAt(Math.floor(Math.random() * symbols.length));
-    
+
     // Completar con caracteres aleatorios
     const allChars = uppercase + lowercase + numbers + symbols;
     for (let i = 4; i < 12; i++) {
       password += allChars.charAt(Math.floor(Math.random() * allChars.length));
     }
-    
+
     // Mezclar la contraseña
-    return password.split('').sort(() => Math.random() - 0.5).join('');
+    return password
+      .split("")
+      .sort(() => Math.random() - 0.5)
+      .join("");
   }
 
   /**
@@ -406,17 +515,18 @@ export class EmployeeService {
       const employeeInfo = {
         email: employeeData.user.email,
         firstName: employeeData.user.firstName,
-        lastName: employeeData.user.lastName
+        lastName: employeeData.user.lastName,
       };
 
       const credentials = {
         email: employeeData.user.email,
-        temporaryPassword
+        temporaryPassword,
       };
 
-      const result = await emailService.sendWelcomeEmail(employeeInfo, credentials);
-      
-
+      const result = await emailService.sendWelcomeEmail(
+        employeeInfo,
+        credentials,
+      );
 
       return result;
     } catch (error) {

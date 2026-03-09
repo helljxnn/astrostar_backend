@@ -100,7 +100,7 @@ export class EmployeeEmailService extends BaseEmailService {
                     <strong>📧 Usuario:</strong> ${email}
                 </div>
                 <div class="credential-item">
-                    <strong>🔑 Contraseña:</strong> <code>${password}</code>
+                    <strong>🔑 Contraseña:</strong> Tu número de documento de identidad
                 </div>
             </div>
             
@@ -157,7 +157,7 @@ Nos complace darte la bienvenida al equipo de AstroStar. Tu cuenta de empleado h
 
 CREDENCIALES DE ACCESO:
 - Usuario: ${email}
-- Contraseña: ${password}
+- Contraseña: Tu número de documento de identidad
 
 IMPORTANTE - SEGURIDAD:
 - Por razones de seguridad, DEBES CAMBIAR tu contraseña después de tu primer inicio de sesión
