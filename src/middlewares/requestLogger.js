@@ -1,31 +1,47 @@
-import logger from "../utils/logger.js";
+import logger from "../config/logger.js";
 
-// Middleware para loggear peticiones HTTP
+/**
+ * Middleware para logging de requests HTTP
+ */
 export const requestLogger = (req, res, next) => {
-  const isDevelopment = process.env.NODE_ENV === "development";
+  const startTime = Date.now();
 
-  // Solo loguear en desarrollo y filtrar ruido
-  if (isDevelopment) {
-    const method = req.method;
-    const url = req.url;
+  // Capturar el método original de res.json
+  const originalJson = res.json.bind(res);
 
-    // Filtrar OPTIONS, health checks, y requests muy frecuentes
-    const shouldLog = !(
-      method === "OPTIONS" ||
-      url.includes("/health") ||
-      url.includes("/auth/refresh") ||
-      url.includes("/favicon.ico")
-    );
+  // Override res.json para capturar la respuesta
+  res.json = function (body) {
+    const responseTime = Date.now() - startTime;
 
-    if (shouldLog) {
-      // Capturar el código de respuesta
-      const originalSend = res.send;
-      res.send = function (data) {
-        logger.http(method, url, res.statusCode);
-        originalSend.call(this, data);
-      };
+    // Log del request
+    logger.logRequest(req, res.statusCode, responseTime);
+
+    // Llamar al método original
+    return originalJson(body);
+  };
+
+  // Capturar errores
+  res.on("finish", () => {
+    if (res.statusCode >= 400) {
+      const responseTime = Date.now() - startTime;
+      logger.logRequest(req, res.statusCode, responseTime);
     }
-  }
+  });
 
   next();
+};
+
+/**
+ * Middleware para logging de errores
+ */
+export const errorLogger = (err, req, res, next) => {
+  logger.logError(err, {
+    method: req.method,
+    url: req.originalUrl,
+    ip: req.ip,
+    userId: req.user?.id,
+    body: req.body,
+  });
+
+  next(err);
 };

@@ -31,15 +31,6 @@ export const createTemporaryWorkerValidation = [
     .withMessage("El primer apellido solo puede contener letras y espacios")
     .trim(),
 
-  // Segundo Apellido - Opcional
-  body("secondLastName")
-    .optional({ nullable: true, checkFalsy: true })
-    .isLength({ min: 2, max: 100 })
-    .withMessage("El segundo apellido debe tener entre 2 y 100 caracteres")
-    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
-    .withMessage("El segundo apellido solo puede contener letras y espacios")
-    .trim(),
-
   // Tipo de persona - Requerido
   body("personType")
     .notEmpty()
@@ -185,14 +176,6 @@ export const updateTemporaryWorkerValidation = [
     .withMessage("El primer apellido debe tener entre 2 y 100 caracteres")
     .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
     .withMessage("El primer apellido solo puede contener letras y espacios")
-    .trim(),
-
-  body("secondLastName")
-    .optional({ nullable: true, checkFalsy: true })
-    .isLength({ min: 2, max: 100 })
-    .withMessage("El segundo apellido debe tener entre 2 y 100 caracteres")
-    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
-    .withMessage("El segundo apellido solo puede contener letras y espacios")
     .trim(),
 
   body("personType")

@@ -1,5 +1,4 @@
 ﻿import nodemailer from 'nodemailer';
-import crypto from 'crypto';
 
 class AppointmentEmailService {
   constructor() {
@@ -12,185 +11,6 @@ class AppointmentEmailService {
         pass: process.env.EMAIL_PASSWORD,
       },
     });
-  }
-
-  generateRescheduleToken() {
-    return crypto.randomBytes(32).toString('hex');
-  }
-
-  async sendRescheduleProposal(appointmentData, athleteEmail, athleteName) {
-    const { id, rescheduleToken, rescheduleProposedDate, rescheduleProposedStart, rescheduleProposedEnd, specialty, specialistName } = appointmentData;
-
-    const acceptUrl = `${process.env.FRONTEND_URL}/appointments/reschedule/${rescheduleToken}/accept`;
-    const rejectUrl = `${process.env.FRONTEND_URL}/appointments/reschedule/${rescheduleToken}/reject`;
-
-    const formattedDate = new Date(rescheduleProposedDate).toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-
-    const mailOptions = {
-      from: `"AstroStar" <${process.env.EMAIL_USER}>`,
-      to: athleteEmail,
-      subject: 'Propuesta de Reagendamiento de Cita - AstroStar',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #B595FF 0%, #7B5FFF 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #B595FF; }
-            .info-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
-            .info-label { font-weight: bold; color: #666; }
-            .info-value { color: #333; }
-            .button-container { text-align: center; margin: 30px 0; }
-            .button { display: inline-block; padding: 15px 40px; margin: 10px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; }
-            .button-accept { background: #22C55E; color: white; }
-            .button-reject { background: #EF4444; color: white; }
-            .footer { text-align: center; color: #666; font-size: 12px; margin-top: 30px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>🗓️ Propuesta de Reagendamiento</h1>
-            </div>
-            <div class="content">
-              <p>Hola <strong>${athleteName}</strong>,</p>
-              
-              <p>Tu especialista <strong>${specialistName}</strong> ha propuesto una nueva fecha para tu cita de <strong>${specialty}</strong> que fue cancelada.</p>
-              
-              <div class="info-box">
-                <h3 style="margin-top: 0; color: #B595FF;">📋 Detalles de la Nueva Cita</h3>
-                <div class="info-row">
-                  <span class="info-label">Especialidad:</span>
-                  <span class="info-value">${specialty}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">Especialista:</span>
-                  <span class="info-value">${specialistName}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">Fecha Propuesta:</span>
-                  <span class="info-value">${formattedDate}</span>
-                </div>
-                <div class="info-row" style="border-bottom: none;">
-                  <span class="info-label">Horario:</span>
-                  <span class="info-value">${rescheduleProposedStart} - ${rescheduleProposedEnd}</span>
-                </div>
-              </div>
-
-              <p style="text-align: center; color: #666;">Por favor, confirma si puedes asistir en esta nueva fecha:</p>
-
-              <div class="button-container">
-                <a href="${acceptUrl}" class="button button-accept">✓ Aceptar Cita</a>
-                <a href="${rejectUrl}" class="button button-reject">✗ Rechazar</a>
-              </div>
-
-              <p style="font-size: 14px; color: #666; text-align: center;">
-                Si tienes alguna pregunta, no dudes en contactarnos.
-              </p>
-            </div>
-            <div class="footer">
-              <p>© ${new Date().getFullYear()} AstroStar. Todos los derechos reservados.</p>
-              <p>Este es un correo automático, por favor no responder.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-    };
-
-    try {
-      await this.transporter.sendMail(mailOptions);
-      console.log(`Email de reagendamiento enviado a ${athleteEmail}`);
-      return { success: true };
-    } catch (error) {
-      console.error('Error enviando email de reagendamiento:', error);
-      throw error;
-    }
-  }
-
-  async sendRescheduleConfirmation(appointmentData, specialistEmail, specialistName, athleteName, accepted) {
-    const { rescheduleProposedDate, rescheduleProposedStart, rescheduleProposedEnd, specialty } = appointmentData;
-
-    const formattedDate = new Date(rescheduleProposedDate).toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-
-    const status = accepted ? 'aceptó' : 'rechazó';
-    const statusColor = accepted ? '#22C55E' : '#EF4444';
-    const statusIcon = accepted ? '✓' : '✗';
-
-    const mailOptions = {
-      from: `"AstroStar" <${process.env.EMAIL_USER}>`,
-      to: specialistEmail,
-      subject: `Respuesta de Reagendamiento - ${athleteName}`,
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #B595FF 0%, #7B5FFF 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-            .status-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${statusColor}; text-align: center; }
-            .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .footer { text-align: center; color: #666; font-size: 12px; margin-top: 30px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>📬 Respuesta de Reagendamiento</h1>
-            </div>
-            <div class="content">
-              <p>Hola <strong>${specialistName}</strong>,</p>
-              
-              <div class="status-box">
-                <h2 style="color: ${statusColor}; margin: 0;">${statusIcon} ${athleteName} ${status} la cita</h2>
-              </div>
-
-              ${accepted ? `
-                <p>La cita ha sido confirmada con los siguientes detalles:</p>
-                <div class="info-box">
-                  <p><strong>Deportista:</strong> ${athleteName}</p>
-                  <p><strong>Especialidad:</strong> ${specialty}</p>
-                  <p><strong>Fecha:</strong> ${formattedDate}</p>
-                  <p><strong>Horario:</strong> ${rescheduleProposedStart} - ${rescheduleProposedEnd}</p>
-                </div>
-              ` : `
-                <p>El deportista no pudo aceptar la fecha propuesta. Por favor, coordina una nueva fecha directamente con el deportista.</p>
-              `}
-            </div>
-            <div class="footer">
-              <p>© ${new Date().getFullYear()} AstroStar. Todos los derechos reservados.</p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `,
-    };
-
-    try {
-      await this.transporter.sendMail(mailOptions);
-      console.log(`Email de confirmación enviado a ${specialistEmail}`);
-      return { success: true };
-    } catch (error) {
-      console.error('Error enviando email de confirmación:', error);
-      throw error;
-    }
   }
 
   async sendAppointmentCreated(appointmentData, athleteEmail, athleteName, specialistEmail, specialistName) {
@@ -285,7 +105,6 @@ class AppointmentEmailService {
         html: emailTemplate(specialistName, false),
       });
 
-      console.log(`Emails de creación enviados a ${athleteEmail} y ${specialistEmail}`);
       return { success: true };
     } catch (error) {
       console.error('Error enviando emails de creación:', error);
@@ -383,7 +202,6 @@ class AppointmentEmailService {
         html: emailTemplate(specialistName),
       });
 
-      console.log(`Emails de cancelación enviados a ${athleteEmail} y ${specialistEmail}`);
       return { success: true };
     } catch (error) {
       console.error('Error enviando emails de cancelación:', error);
@@ -488,7 +306,6 @@ class AppointmentEmailService {
         html: emailTemplate(specialistName),
       });
 
-      console.log(`Recordatorios enviados a ${athleteEmail} y ${specialistEmail}`);
       return { success: true };
     } catch (error) {
       console.error('Error enviando recordatorios:', error);

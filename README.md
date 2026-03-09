@@ -24,6 +24,8 @@ Sistema de gestión deportiva completo desarrollado con Node.js, Express y Postg
 - **Administración de Servicios**: Gestión de eventos deportivos, entrenamientos y competencias
 - **Sistema de Inscripciones**: Control de inscripciones con estados y fechas de vencimiento
 - **Gestión de Equipos**: Organización de atletas en equipos con posiciones y números de camiseta
+- **Sistema de Materiales para Eventos**: Gestión de materiales consumibles y reutilizables con control de stock
+- **Integración Donaciones → Materiales → Eventos**: Conexión automática de donaciones con inventario y eventos
 - **Proveedores y Compras**: Sistema completo de gestión de proveedores y compras
 - **API REST Completa**: Endpoints bien documentados con Swagger
 - **Validación Robusta**: Validación de datos en múltiples capas
@@ -50,23 +52,27 @@ Sistema de gestión deportiva completo desarrollado con Node.js, Express y Postg
 ## 🚀 Instalación
 
 1. **Clonar el repositorio**
+
 ```bash
 git clone <repository-url>
 cd astrostar_backend
 ```
 
 2. **Instalar dependencias**
+
 ```bash
 npm install
 ```
 
 3. **Configurar variables de entorno**
+
 ```bash
 cp .env.example .env
 # Editar .env con tus configuraciones
 ```
 
 4. **Configurar base de datos**
+
 ```bash
 # Generar cliente Prisma
 npm run prisma:generate
@@ -79,6 +85,7 @@ npm run prisma:seed
 ```
 
 5. **Verificar instalación**
+
 ```bash
 npm run test:system
 ```
@@ -107,6 +114,7 @@ NODE_ENV="development"
 ### Base de Datos PostgreSQL
 
 1. **Crear base de datos**
+
 ```sql
 CREATE DATABASE astrostar;
 CREATE USER astrostar_user WITH PASSWORD 'tu_contraseña';
@@ -114,6 +122,7 @@ GRANT ALL PRIVILEGES ON DATABASE astrostar TO astrostar_user;
 ```
 
 2. **Verificar conexión**
+
 ```bash
 npm run test:db
 ```
@@ -121,6 +130,7 @@ npm run test:db
 ## 🎯 Uso
 
 ### Desarrollo
+
 ```bash
 # Iniciar servidor en modo desarrollo (con hot reload)
 npm run dev
@@ -132,12 +142,14 @@ npm run dev
 ```
 
 ### Producción
+
 ```bash
 # Iniciar servidor en modo producción
 npm start
 ```
 
 ### Prisma Studio (Interfaz visual de BD)
+
 ```bash
 npm run prisma:studio
 # Abre en http://localhost:5555
@@ -146,6 +158,7 @@ npm run prisma:studio
 ## 📚 API Endpoints
 
 ### Roles
+
 - `GET /api/roles` - Obtener todos los roles (con paginación y búsqueda)
 - `GET /api/roles/:id` - Obtener rol por ID
 - `POST /api/roles` - Crear nuevo rol
@@ -156,6 +169,7 @@ npm run prisma:studio
 - `GET /api/roles/permissions` - Obtener permisos disponibles
 
 ### Documentación Completa
+
 Visita `http://localhost:4000/api-docs` para ver la documentación interactiva de Swagger con todos los endpoints disponibles.
 
 ## 🗄️ Base de Datos
@@ -233,12 +247,14 @@ Para más detalles, consulta [BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md
 ## 📜 Scripts Disponibles
 
 ### Desarrollo
+
 ```bash
 npm run dev          # Servidor con hot reload
 npm start           # Servidor producción
 ```
 
 ### Base de Datos
+
 ```bash
 npm run prisma:generate  # Generar cliente Prisma
 npm run prisma:migrate   # Ejecutar migraciones
@@ -249,6 +265,7 @@ npm run prisma:reset     # Reset completo de BD
 ```
 
 ### Testing
+
 ```bash
 npm run test:system     # Test completo del sistema
 npm run test:db         # Test de conexión a BD
@@ -258,22 +275,26 @@ npm run test:roles      # Test específico de roles
 ## 🧪 Testing
 
 ### Test de Sistema Completo
+
 ```bash
 npm run test:system
 ```
 
 Este comando ejecuta:
+
 - ✅ Test de conexión a base de datos
 - ✅ Test de funcionalidad de roles
 - ✅ Verificación de variables de entorno
 - ✅ Validación de estructura de datos
 
 ### Test de Conexión a BD
+
 ```bash
 npm run test:db
 ```
 
 ### Test Específicos por Módulo
+
 ```bash
 npm run test:roles      # Test del módulo de roles
 ```
@@ -289,6 +310,7 @@ npm run test:roles      # Test del módulo de roles
 ## 🚀 Despliegue
 
 ### Variables de Entorno para Producción
+
 ```env
 NODE_ENV=production
 DATABASE_URL="postgresql://user:pass@host:5432/astrostar"
@@ -296,6 +318,7 @@ PORT=4000
 ```
 
 ### Comandos de Despliegue
+
 ```bash
 # Instalar dependencias de producción
 npm ci --only=production
@@ -329,6 +352,7 @@ npm start
 ## 📝 Changelog
 
 ### v1.0.0 (Actual)
+
 - ✅ Sistema completo de roles y permisos
 - ✅ Gestión de atletas y tutores
 - ✅ API REST con documentación Swagger
@@ -338,3 +362,23 @@ npm start
 ---
 
 **ASTROSTAR**
+
+## Pruebas Automatizadas con Jest (Taller)
+
+Pruebas m�nimas implementadas para el taller:
+
+- `tests/auth.test.js` (3 pruebas de login)
+- `tests/permissions.test.js` (3 pruebas de permisos 401/403)
+- `tests/crud.test.js` (2 pruebas CRUD de personas temporales)
+
+Comandos:
+
+```bash
+npm test
+npm run test:watch
+npm run test:coverage
+```
+
+Evidencia de ejecuci�n:
+
+- Los resultados se guardan en `astrostar_backend/test-results/`.
