@@ -131,12 +131,6 @@ enum ScheduleRecurrence {
   personalizado
 }
 
-enum ScheduleStatus {
-  Programado
-  Completado
-  Cancelado
-}
-
 enum ScheduleNoveltyType {
   full
   time
@@ -413,21 +407,19 @@ model EmployeePermission {
 }
 
 model EmployeeSchedule {
-  id                 Int                       @id @default(autoincrement())
-  employeeId         Int
-  scheduleDate       DateTime
-  dayOfWeek          String
-  startTime          String
-  endTime            String
-  recurrence         ScheduleRecurrence        @default(no)
-  customRecurrence   String?
-  description        String?
-  status             ScheduleStatus            @default(Programado)
-  cancellationReason String?
-  createdAt          DateTime                  @default(now())
-  updatedAt          DateTime                  @updatedAt
-  employee           Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  novelties          EmployeeScheduleNovelty[]
+  id               Int                       @id @default(autoincrement())
+  employeeId       Int
+  scheduleDate     DateTime
+  dayOfWeek        String
+  startTime        String
+  endTime          String
+  recurrence       ScheduleRecurrence        @default(no)
+  customRecurrence String?
+  description      String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  employee         Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  novelties        EmployeeScheduleNovelty[]
 
   @@map("employee_schedules")
 }
