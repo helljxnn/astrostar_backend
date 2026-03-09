@@ -1,55 +1,62 @@
-# 🌟 AstroStar Backend
+# AstroStar Backend
 
-Sistema de gestión deportiva completo desarrollado con Node.js, Express y PostgreSQL. Proporciona una API REST robusta para la administración de ASTROSTAR.
+Backend de gestión deportiva desarrollado con **Node.js**, **Express** y **PostgreSQL**.
+Proporciona una **API REST** robusta para la administración de AstroStar (roles, atletas, servicios, inscripciones, equipos, inventario, etc.).
 
-## 📋 Tabla de Contenidos
+## Tabla de contenidos
 
-- [Características](#-características)
-- [Tecnologías](#-tecnologías)
-- [Requisitos Previos](#-requisitos-previos)
-- [Instalación](#-instalación)
-- [Configuración](#-configuración)
-- [Uso](#-uso)
-- [API Endpoints](#-api-endpoints)
-- [Base de Datos](#-base-de-datos)
-- [Arquitectura](#-arquitectura)
-- [Scripts Disponibles](#-scripts-disponibles)
-- [Testing](#-testing)
-- [Contribución](#-contribución)
+* [Características](#características)
+* [Tecnologías](#tecnologías)
+* [Requisitos previos](#requisitos-previos)
+* [Instalación](#instalación)
+* [Configuración](#configuración)
+* [Uso](#uso)
+* [API Endpoints](#api-endpoints)
+* [Base de datos](#base-de-datos)
+* [Arquitectura](#arquitectura)
+* [Scripts disponibles](#scripts-disponibles)
+* [Testing](#testing)
+* [Seguridad](#seguridad)
+* [Despliegue](#despliegue)
+* [Contribución](#contribución)
+* [Changelog](#changelog)
 
-## ✨ Características
+## Características
 
-- **Sistema de Roles y Permisos Granulares**: Control de acceso basado en roles con permisos específicos por módulo
-- **Gestión de Atletas**: Registro completo de atletas con información de tutores y categorías deportivas
-- **Administración de Servicios**: Gestión de eventos deportivos, entrenamientos y competencias
-- **Sistema de Inscripciones**: Control de inscripciones con estados y fechas de vencimiento
-- **Gestión de Equipos**: Organización de atletas en equipos con posiciones y números de camiseta
-- **Sistema de Materiales para Eventos**: Gestión de materiales consumibles y reutilizables con control de stock
-- **Integración Donaciones → Materiales → Eventos**: Conexión automática de donaciones con inventario y eventos
-- **Proveedores y Compras**: Sistema completo de gestión de proveedores y compras
-- **API REST Completa**: Endpoints bien documentados con Swagger
-- **Validación Robusta**: Validación de datos en múltiples capas
-- **Arquitectura Escalable**: Diseño modular y mantenible
+* **Sistema de roles y permisos granulares**: control de acceso basado en roles por módulo.
+* **Gestión de atletas y tutores**: información personal, datos deportivos y tutores para menores.
+* **Administración de servicios**: eventos deportivos, entrenamientos, competencias.
+* **Sistema de inscripciones**: estados, fechas de vencimiento y control por servicio.
+* **Gestión de equipos**: equipos, posiciones y números de camiseta.
+* **Inventario de materiales para eventos**: materiales consumibles y reutilizables con control de stock.
+* **Integración donaciones → materiales → eventos**: impacto directo de donaciones en el inventario.
+* **Proveedores y compras**: registro de proveedores y órdenes de compra.
+* **API REST documentada con Swagger**.
+* **Validación robusta de datos** y arquitectura modular escalable.
 
-## 🛠 Tecnologías
+## Tecnologías
 
-- **Runtime**: Node.js (ES Modules)
-- **Framework**: Express.js 5.x
-- **Base de Datos**: PostgreSQL
-- **ORM**: Prisma 6.x
-- **Autenticación**: JWT (JSON Web Tokens)
-- **Validación**: Express Validator
-- **Documentación**: Swagger/OpenAPI 3.0
-- **Encriptación**: bcryptjs
-- **CORS**: Habilitado para frontend
+* **Runtime**: Node.js (ES Modules)
+* **Framework**: Express.js 5.x
+* **Base de datos**: PostgreSQL
+* **ORM**: Prisma 6.x
+* **Autenticación**: JWT (JSON Web Tokens)
+* **Validación**: express-validator
+* **Documentación**: Swagger / OpenAPI 3.0
+* **Encriptación**: bcryptjs
+* **CORS**: habilitado para el frontend AstroStar SPA
 
-## 📋 Requisitos Previos
+## Requisitos previos
 
-- Node.js >= 18.0.0
-- PostgreSQL >= 13.0
-- npm >= 8.0.0
+* **Node.js** 22.15.0 (recomendado, ver archivo `.nvmrc`)
+* **npm ≥ 8.0.0**
+* **PostgreSQL ≥ 13.0**
 
-## 🚀 Instalación
+Opcional (para desarrollo más cómodo):
+
+* Docker / Docker Compose
+
+## Instalación
 
 1. **Clonar el repositorio**
 
@@ -68,7 +75,7 @@ npm install
 
 ```bash
 cp .env.example .env
-# Editar .env con tus configuraciones
+# Edita .env con tus credenciales/locales
 ```
 
 4. **Configurar base de datos**
@@ -90,11 +97,11 @@ npm run prisma:seed
 npm run test:system
 ```
 
-## ⚙️ Configuración
+## Configuración
 
-### Variables de Entorno
+### Variables de entorno
 
-Crear un archivo `.env` en la raíz del proyecto:
+Crea un archivo `.env` en la raíz del proyecto (o usa el ejemplo `.env.example` como base):
 
 ```env
 # Base de datos
@@ -103,7 +110,7 @@ DATABASE_URL="postgresql://usuario:contraseña@localhost:5432/astrostar?schema=p
 # Servidor
 PORT=4000
 
-# JWT (opcional para futuras implementaciones)
+# JWT
 JWT_SECRET="tu_jwt_secret_aqui"
 JWT_EXPIRES_IN="24h"
 
@@ -111,9 +118,9 @@ JWT_EXPIRES_IN="24h"
 NODE_ENV="development"
 ```
 
-### Base de Datos PostgreSQL
+### Base de datos PostgreSQL
 
-1. **Crear base de datos**
+1. **Crear base de datos y usuario**
 
 ```sql
 CREATE DATABASE astrostar;
@@ -121,257 +128,151 @@ CREATE USER astrostar_user WITH PASSWORD 'tu_contraseña';
 GRANT ALL PRIVILEGES ON DATABASE astrostar TO astrostar_user;
 ```
 
-2. **Verificar conexión**
+2. **Probar la conexión**
 
 ```bash
 npm run test:db
 ```
 
-## 🎯 Uso
+## Uso
 
-### Desarrollo
+### Entorno de desarrollo
 
 ```bash
-# Iniciar servidor en modo desarrollo (con hot reload)
 npm run dev
-
-# El servidor estará disponible en:
-# - API: http://localhost:4000/api
-# - Documentación: http://localhost:4000/api-docs
-# - Health Check: http://localhost:4000/health
 ```
+
+El servidor estará disponible en:
+
+* API: `http://localhost:4000/api`
+* Swagger: `http://localhost:4000/api-docs`
+* Health check: `http://localhost:4000/health`
 
 ### Producción
 
 ```bash
-# Iniciar servidor en modo producción
 npm start
 ```
 
-### Prisma Studio (Interfaz visual de BD)
+### Prisma Studio (UI de base de datos)
 
 ```bash
 npm run prisma:studio
-# Abre en http://localhost:5555
 ```
 
-## 📚 API Endpoints
+Abre en:
 
-### Roles
+```
+http://localhost:5555
+```
 
-- `GET /api/roles` - Obtener todos los roles (con paginación y búsqueda)
-- `GET /api/roles/:id` - Obtener rol por ID
-- `POST /api/roles` - Crear nuevo rol
-- `PUT /api/roles/:id` - Actualizar rol
-- `DELETE /api/roles/:id` - Eliminar rol
-- `GET /api/roles/check-name` - Verificar disponibilidad de nombre
-- `GET /api/roles/stats` - Estadísticas de roles
-- `GET /api/roles/permissions` - Obtener permisos disponibles
+## API Endpoints
 
-### Documentación Completa
+Ejemplo (módulo de roles):
 
-Visita `http://localhost:4000/api-docs` para ver la documentación interactiva de Swagger con todos los endpoints disponibles.
+* `GET /api/roles`
+* `GET /api/roles/:id`
+* `POST /api/roles`
+* `PUT /api/roles/:id`
+* `DELETE /api/roles/:id`
+* `GET /api/roles/check-name`
+* `GET /api/roles/stats`
+* `GET /api/roles/permissions`
 
-## 🗄️ Base de Datos
+Documentación completa:
 
-### Modelos Principales
+```
+http://localhost:4000/api-docs
+```
 
-- **Users**: Usuarios del sistema con información personal
-- **Roles**: Roles con permisos granulares por módulo
-- **Athletes**: Atletas con información deportiva
-- **Guardians**: Tutores de atletas menores de edad
-- **Services**: Eventos y servicios deportivos
-- **Teams**: Equipos deportivos
-- **Inscriptions**: Inscripciones de atletas
-- **Providers**: Proveedores de servicios/productos
-- **Purchases**: Compras y adquisiciones
+## Base de datos
 
-### Migraciones y Seeders
+### Modelos principales
+
+* **Users** — usuarios del sistema
+* **Roles** — roles con permisos
+* **Athletes** — atletas
+* **Guardians** — tutores
+* **Services** — servicios deportivos
+* **Teams** — equipos
+* **Inscriptions** — inscripciones
+* **Providers** — proveedores
+* **Purchases** — compras
+
+### Migraciones y seeders
 
 ```bash
-# Crear nueva migración
 npm run prisma:migrate
-
-# Resetear base de datos (¡CUIDADO!)
 npm run prisma:reset
-
-# Ejecutar solo seeders
 npm run prisma:seed
-
-# Ver estado de migraciones
 npm run prisma:status
 ```
 
-## 🏗️ Arquitectura
+## Arquitectura
 
-El proyecto sigue una **arquitectura en capas** bien definida:
+El proyecto sigue una **arquitectura en capas**:
 
-```
-┌─────────────────────────────────────────┐
-│                CLIENTE                  │
-├─────────────────────────────────────────┤
-│            ROUTES (HTTP)                │
-├─────────────────────────────────────────┤
-│         MIDDLEWARES (Auth/Valid)        │
-├─────────────────────────────────────────┤
-│        CONTROLLERS (HTTP Logic)         │
-├─────────────────────────────────────────┤
-│        SERVICES (Business Logic)        │
-├─────────────────────────────────────────┤
-│       REPOSITORY (Data Access)          │
-├─────────────────────────────────────────┤
-│        DATABASE (PostgreSQL)            │
-└─────────────────────────────────────────┘
-```
+* **Routes** — endpoints HTTP
+* **Middlewares** — autenticación, validación, logging
+* **Controllers** — manejo request/response
+* **Services** — lógica de negocio
+* **Repositories** — acceso a datos
 
-### Estructura de Directorios
+Estructura simplificada:
 
 ```
 src/
-├── config/           # Configuraciones (DB, Swagger)
-├── middlewares/      # Middlewares globales
-├── modules/          # Módulos de negocio
-│   └── Roles/        # Ejemplo: módulo de roles
-│       ├── controllers/
-│       ├── services/
-│       ├── repository/
-│       ├── routes/
-│       ├── validators/
-│       └── tests/
-├── routes/           # Router principal
-└── utils/            # Utilidades y helpers
+├ config/
+├ middlewares/
+├ modules/
+│  └ Roles/
+│     ├ controllers/
+│     ├ services/
+│     ├ repository/
+│     ├ routes/
+│     ├ validators/
+│     └ tests/
+├ routes/
+└ utils/
 ```
 
-Para más detalles, consulta [BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md).
+Más detalles en `BACKEND_ARCHITECTURE.md`.
 
-## 📜 Scripts Disponibles
+## Scripts disponibles
 
 ### Desarrollo
 
 ```bash
-npm run dev          # Servidor con hot reload
-npm start           # Servidor producción
+npm run dev
+npm start
 ```
 
-### Base de Datos
+### Base de datos
 
 ```bash
-npm run prisma:generate  # Generar cliente Prisma
-npm run prisma:migrate   # Ejecutar migraciones
-npm run prisma:seed      # Poblar datos iniciales
-npm run prisma:studio    # Interfaz visual
-npm run prisma:push      # Push schema sin migración
-npm run prisma:reset     # Reset completo de BD
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+npm run prisma:studio
+npm run prisma:push
+npm run prisma:reset
 ```
 
 ### Testing
 
 ```bash
-npm run test:system     # Test completo del sistema
-npm run test:db         # Test de conexión a BD
-npm run test:roles      # Test específico de roles
-```
-
-## 🧪 Testing
-
-### Test de Sistema Completo
-
-```bash
 npm run test:system
-```
-
-Este comando ejecuta:
-
-- ✅ Test de conexión a base de datos
-- ✅ Test de funcionalidad de roles
-- ✅ Verificación de variables de entorno
-- ✅ Validación de estructura de datos
-
-### Test de Conexión a BD
-
-```bash
 npm run test:db
+npm run test:roles
 ```
 
-### Test Específicos por Módulo
+## Testing
 
-```bash
-npm run test:roles      # Test del módulo de roles
-```
+Se incluyen pruebas mínimas:
 
-## 🔒 Seguridad
-
-- **Validación de Datos**: Validación en múltiples capas (middleware, service, repository)
-- **Sanitización**: Limpieza automática de datos de entrada
-- **CORS**: Configurado para permitir requests del frontend
-- **Encriptación**: Contraseñas hasheadas con bcryptjs
-- **Roles y Permisos**: Sistema granular de autorización
-
-## 🚀 Despliegue
-
-### Variables de Entorno para Producción
-
-```env
-NODE_ENV=production
-DATABASE_URL="postgresql://user:pass@host:5432/astrostar"
-PORT=4000
-```
-
-### Comandos de Despliegue
-
-```bash
-# Instalar dependencias de producción
-npm ci --only=production
-
-# Generar cliente Prisma
-npm run prisma:generate
-
-# Ejecutar migraciones
-npm run prisma:deploy
-
-# Iniciar aplicación
-npm start
-```
-
-## 🤝 Contribución
-
-1. Fork el proyecto
-2. Crear rama para feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit cambios (`git commit -m 'Agregar nueva funcionalidad'`)
-4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
-5. Abrir Pull Request
-
-### Estándares de Código
-
-- Usar ES Modules (import/export)
-- Seguir arquitectura en capas establecida
-- Documentar endpoints con Swagger
-- Incluir validaciones en todas las capas
-- Escribir tests para nuevas funcionalidades
-
-## 📝 Changelog
-
-### v1.0.0 (Actual)
-
-- ✅ Sistema completo de roles y permisos
-- ✅ Gestión de atletas y tutores
-- ✅ API REST con documentación Swagger
-- ✅ Base de datos PostgreSQL con Prisma
-- ✅ Arquitectura escalable y mantenible
-
----
-
-**ASTROSTAR**
-
-## Pruebas Automatizadas con Jest (Taller)
-
-Pruebas m�nimas implementadas para el taller:
-
-- `tests/auth.test.js` (3 pruebas de login)
-- `tests/permissions.test.js` (3 pruebas de permisos 401/403)
-- `tests/crud.test.js` (2 pruebas CRUD de personas temporales)
-
-Comandos:
+* `tests/auth.test.js`
+* `tests/permissions.test.js`
+* `tests/crud.test.js`
 
 ```bash
 npm test
@@ -379,6 +280,96 @@ npm run test:watch
 npm run test:coverage
 ```
 
-Evidencia de ejecuci�n:
+Resultados en:
 
-- Los resultados se guardan en `astrostar_backend/test-results/`.
+```
+astrostar_backend/test-results/
+```
+
+## Seguridad
+
+* Validación de datos en múltiples capas
+* Sanitización de inputs
+* CORS configurado
+* Contraseñas hasheadas con bcryptjs
+* Autorización por roles y permisos
+
+## Despliegue
+
+### Variables de entorno
+
+```env
+NODE_ENV=production
+DATABASE_URL="postgresql://user:pass@host:5432/astrostar"
+PORT=4000
+```
+
+### Deploy
+
+```bash
+npm ci --only=production
+npm run prisma:generate
+npm run prisma:deploy
+npm start
+```
+
+## Contribución
+
+1. Fork del proyecto
+2. Crear rama:
+
+```bash
+git checkout -b feature/nueva-funcionalidad
+```
+
+3. Commit
+
+```bash
+git commit -m "Agregar nueva funcionalidad"
+```
+
+4. Push
+
+```bash
+git push origin feature/nueva-funcionalidad
+```
+
+5. Abrir Pull Request
+
+### Estándares
+
+* ES Modules
+* Arquitectura en capas
+* Documentar en Swagger
+* Validaciones completas
+* Pruebas automatizadas
+
+## Changelog
+
+### v1.0.0
+
+* Sistema de roles y permisos
+* Gestión de atletas y tutores
+* API REST con Swagger
+* PostgreSQL + Prisma
+* Arquitectura modular
+
+---
+
+# Cómo evitar que vuelva a romperse
+
+Guarda el archivo siempre como **UTF-8**.
+
+En VSCode:
+
+```
+Bottom bar → UTF-8 → Save with encoding → UTF-8
+```
+
+También puedes forzar en el repo con `.editorconfig`:
+
+```
+[*]
+charset = utf-8
+```
+
