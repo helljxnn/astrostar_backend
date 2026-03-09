@@ -57,3 +57,4 @@ ecosystem.config.js
 test-results
 tests
 jest.config.cjs
+coverage

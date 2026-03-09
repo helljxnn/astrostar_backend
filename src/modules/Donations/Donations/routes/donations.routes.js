@@ -94,4 +94,11 @@ router.get(
   DonationsController.getMaterials,
 );
 
+router.get(
+  "/:id/certificate",
+  donationValidators.getById,
+  handleDonationValidation,
+  DonationsController.generateCertificate,
+);
+
 export default router;

@@ -574,8 +574,7 @@ export class TemporaryWorkersService {
       backendData.middleName = frontendData.middleName.trim();
     if (frontendData.lastName)
       backendData.lastName = frontendData.lastName.trim();
-    if (frontendData.secondLastName)
-      backendData.secondLastName = frontendData.secondLastName.trim();
+    // secondLastName no existe en el modelo TemporaryPerson
     if (frontendData.identification)
       backendData.identification = frontendData.identification.trim();
     if (frontendData.email)
@@ -586,6 +585,8 @@ export class TemporaryWorkersService {
     if (frontendData.age !== undefined)
       backendData.age = parseInt(frontendData.age);
     if (frontendData.address) backendData.address = frontendData.address.trim();
+    if (frontendData.personType)
+      backendData.personType = frontendData.personType;
     if (frontendData.team !== undefined)
       backendData.organization = frontendData.team
         ? frontendData.team.trim()

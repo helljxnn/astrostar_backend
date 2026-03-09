@@ -1,4 +1,4 @@
-import { EmployeeService } from '../services/employees.services.js';
+import { EmployeeService } from "../services/employees.services.js";
 
 export class EmployeeController {
   constructor() {
@@ -67,27 +67,28 @@ export class EmployeeController {
    */
   getAllEmployees = async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '', status = '' } = req.query;
+      const { page = 1, limit = 10, search = "", status = "" } = req.query;
 
       const result = await this.employeeService.getAllEmployees({
         page: parseInt(page),
         limit: parseInt(limit),
         search,
-        status
+        status,
       });
 
       res.json({
         success: true,
         data: result.employees,
         pagination: result.pagination,
-        message: `Se encontraron ${result.pagination.total} empleados.`
+        message: `Se encontraron ${result.pagination.total} empleados.`,
       });
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      console.error("Error fetching employees:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener empleados.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener empleados.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -135,21 +136,22 @@ export class EmployeeController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: 'Empleado encontrado exitosamente.'
+        message: "Empleado encontrado exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching employee by ID:', error);
+      console.error("Error fetching employee by ID:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener el empleado.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener el empleado.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -193,38 +195,47 @@ export class EmployeeController {
    */
   createEmployee = async (req, res) => {
     try {
+      // employeeData is already parsed by parseEmployeeData middleware
       const employeeData = req.body;
-      const result = await this.employeeService.createEmployee(employeeData);
+      const result = await this.employeeService.createEmployee(
+        employeeData,
+        req.file,
+      );
 
       res.status(201).json({
         success: true,
         data: result.data,
-        temporaryPassword: process.env.NODE_ENV === 'development' ? result.temporaryPassword : undefined,
+        temporaryPassword:
+          process.env.NODE_ENV === "development"
+            ? result.temporaryPassword
+            : undefined,
         emailSent: result.emailSent,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error creating employee:', error);
-      
+      console.error("Error creating employee:", error);
+
       // Manejar errores específicos
-      if (error.message.includes('ya está en uso')) {
+      if (error.message.includes("ya está en uso")) {
         return res.status(400).json({
           success: false,
-          message: error.message
+          message: error.message,
         });
       }
 
-      if (error.code === 'P2002') {
+      if (error.code === "P2002") {
         return res.status(400).json({
           success: false,
-          message: 'El email o identificación ya están en uso por otro usuario.'
+          message:
+            "El email o identificación ya están en uso por otro usuario.",
         });
       }
 
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al crear el empleado.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al crear empleado.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -276,36 +287,37 @@ export class EmployeeController {
     try {
       const { id } = req.params;
       const updateData = req.body;
-      
+
       const result = await this.employeeService.updateEmployee(id, updateData);
 
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error updating employee:', error);
-      
+      console.error("Error updating employee:", error);
+
       // Manejar errores específicos
-      if (error.message.includes('ya está en uso')) {
+      if (error.message.includes("ya está en uso")) {
         return res.status(400).json({
           success: false,
-          message: error.message
+          message: error.message,
         });
       }
 
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al actualizar el empleado.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al actualizar el empleado.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -353,35 +365,36 @@ export class EmployeeController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
 
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error deleting employee:', error);
-      
-      if (error.message.includes('ya está deshabilitado')) {
+      console.error("Error deleting employee:", error);
+
+      if (error.message.includes("ya está deshabilitado")) {
         return res.status(400).json({
           success: false,
-          message: error.message
+          message: error.message,
         });
       }
 
       if (error.message.includes('estado "Activo"')) {
         return res.status(400).json({
           success: false,
-          message: error.message
+          message: error.message,
         });
       }
 
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al eliminar el empleado.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al eliminar el empleado.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -434,14 +447,15 @@ export class EmployeeController {
       res.json({
         success: true,
         data: result.data,
-        message: 'Estadísticas obtenidas exitosamente.'
+        message: "Estadísticas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching employee stats:', error);
+      console.error("Error fetching employee stats:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener estadísticas.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener estadísticas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -487,14 +501,15 @@ export class EmployeeController {
       res.json({
         success: true,
         data: result.data,
-        message: 'Datos de referencia obtenidos exitosamente.'
+        message: "Datos de referencia obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching reference data:', error);
+      console.error("Error fetching reference data:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener datos de referencia.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener datos de referencia.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -544,19 +559,23 @@ export class EmployeeController {
   checkEmailAvailability = async (req, res) => {
     try {
       const { email, excludeUserId } = req.query;
-      const result = await this.employeeService.checkEmailAvailability(email, excludeUserId);
+      const result = await this.employeeService.checkEmailAvailability(
+        email,
+        excludeUserId,
+      );
 
       res.json({
         success: true,
         available: result.available,
-        message: result.available ? 'Email disponible.' : result.message
+        message: result.available ? "Email disponible." : result.message,
       });
     } catch (error) {
-      console.error('Error checking email availability:', error);
+      console.error("Error checking email availability:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al verificar email.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al verificar email.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -607,19 +626,25 @@ export class EmployeeController {
   checkIdentificationAvailability = async (req, res) => {
     try {
       const { identification, excludeUserId } = req.query;
-      const result = await this.employeeService.checkIdentificationAvailability(identification, excludeUserId);
+      const result = await this.employeeService.checkIdentificationAvailability(
+        identification,
+        excludeUserId,
+      );
 
       res.json({
         success: true,
         available: result.available,
-        message: result.available ? 'Identificación disponible.' : result.message
+        message: result.available
+          ? "Identificación disponible."
+          : result.message,
       });
     } catch (error) {
-      console.error('Error checking identification availability:', error);
+      console.error("Error checking identification availability:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al verificar identificación.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al verificar identificación.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
