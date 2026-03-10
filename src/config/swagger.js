@@ -282,7 +282,11 @@ const options = {
   },
 
   apis: [
-     "./src/modules/**/routes/*.js",      
+    "./src/modules/**/routes/*.js",
+    "./src/modules/Events/events.routes.js",
+    "./src/modules/Auth/controllers/auth.controller.js",
+    "./src/modules/Services/Employees/controllers/*.controller.js",
+    "./src/modules/Athletes/TemporaryWorkers/controllers/*.controller.js",
   ],
 };
 
