@@ -409,6 +409,20 @@ router.get(
   employeeController.getReferenceData,
 );
 
+/**
+ * @swagger
+ * /api/employees/administrators/with-signature:
+ *   get:
+ *     summary: Obtener administradores con firma registrada
+ *     tags: [Employees]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Lista de administradores con firma
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 router.get(
   "/administrators/with-signature",
   authenticateToken,
@@ -475,6 +489,57 @@ router.delete(
   employeeController.deleteEmployee,
 );
 
+/**
+ * @swagger
+ * /api/employees/{id}/signature:
+ *   post:
+ *     summary: Subir o reemplazar firma de un empleado
+ *     tags: [Employees]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [signature]
+ *             properties:
+ *               signature:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Firma subida correctamente
+ *       400:
+ *         $ref: '#/components/responses/BadRequest'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ *   delete:
+ *     summary: Eliminar firma de un empleado
+ *     tags: [Employees]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Firma eliminada correctamente
+ *       404:
+ *         $ref: '#/components/responses/NotFound'
+ *       500:
+ *         $ref: '#/components/responses/InternalServerError'
+ */
 // Signature routes
 router.post(
   "/:id/signature",

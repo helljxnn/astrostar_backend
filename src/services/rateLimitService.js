@@ -12,7 +12,8 @@ class RateLimitService {
   config = {
     passwordReset: {
       maxAttemptsPerEmail: 3, // Máximo 3 intentos por email por hora
-      maxAttemptsPerIP: 5, // Máximo 5 intentos por IP por hora
+      maxAttemptsPerIP: 15, // Máximo 15 intentos totales por IP por hora (más permisivo)
+      maxDifferentEmailsPerIP: 5, // Máximo 5 emails diferentes desde una IP (detectar atacantes)
       windowMinutes: 60, // Ventana de tiempo: 1 hora
       blockDurationMinutes: 60, // Duración del bloqueo: 1 hora
     },
@@ -30,6 +31,9 @@ class RateLimitService {
 
   /**
    * Verificar si un email o IP está bloqueado para recuperación de contraseña
+   * Enfoque híbrido de seguridad:
+   * - Bloquea por email específico (protege cuentas individuales)
+   * - Bloquea por IP solo si hay comportamiento sospechoso (múltiples emails diferentes)
    */
   async checkPasswordResetRateLimit(email, ipAddress) {
     const now = new Date();
@@ -37,10 +41,10 @@ class RateLimitService {
       now.getTime() - this.config.passwordReset.windowMinutes * 60 * 1000,
     );
 
-    // 1. Verificar si hay un bloqueo activo
-    const activeBlock = await prisma.passwordResetAttempt.findFirst({
+    // 1. Verificar si el EMAIL específico está bloqueado
+    const emailBlock = await prisma.passwordResetAttempt.findFirst({
       where: {
-        OR: [{ email: email.toLowerCase() }, { ipAddress }],
+        email: email.toLowerCase(),
         blockedUntil: {
           gt: now,
         },
@@ -50,20 +54,50 @@ class RateLimitService {
       },
     });
 
-    if (activeBlock) {
+    if (emailBlock) {
       const minutesRemaining = Math.ceil(
-        (activeBlock.blockedUntil - now) / (1000 * 60),
+        (emailBlock.blockedUntil - now) / (1000 * 60),
       );
       return {
         allowed: false,
-        reason: "blocked",
-        message: `Demasiados intentos. Por favor espera ${minutesRemaining} minuto(s) antes de intentar nuevamente.`,
-        blockedUntil: activeBlock.blockedUntil,
+        reason: "email_blocked",
+        message: `Has excedido el límite de intentos para este correo. Por favor espera ${minutesRemaining} minuto(s) antes de intentar nuevamente.`,
+        blockedUntil: emailBlock.blockedUntil,
         minutesRemaining,
       };
     }
 
-    // 2. Contar intentos recientes por email
+    // 2. Verificar si la IP está bloqueada por comportamiento sospechoso
+    const ipBlock = await prisma.passwordResetAttempt.findFirst({
+      where: {
+        ipAddress,
+        blockedUntil: {
+          gt: now,
+        },
+        // Solo bloqueos de IP (no de email específico)
+        email: {
+          not: email.toLowerCase(),
+        },
+      },
+      orderBy: {
+        blockedUntil: "desc",
+      },
+    });
+
+    if (ipBlock) {
+      const minutesRemaining = Math.ceil(
+        (ipBlock.blockedUntil - now) / (1000 * 60),
+      );
+      return {
+        allowed: false,
+        reason: "ip_blocked",
+        message: `Actividad sospechosa detectada desde esta ubicación. Por favor espera ${minutesRemaining} minuto(s) antes de intentar nuevamente.`,
+        blockedUntil: ipBlock.blockedUntil,
+        minutesRemaining,
+      };
+    }
+
+    // 3. Contar intentos recientes por email
     const emailAttempts = await prisma.passwordResetAttempt.count({
       where: {
         email: email.toLowerCase(),
@@ -74,7 +108,7 @@ class RateLimitService {
     });
 
     if (emailAttempts >= this.config.passwordReset.maxAttemptsPerEmail) {
-      // Bloquear el email
+      // Bloquear el email específico
       const blockedUntil = new Date(
         now.getTime() +
           this.config.passwordReset.blockDurationMinutes * 60 * 1000,
@@ -92,14 +126,14 @@ class RateLimitService {
       return {
         allowed: false,
         reason: "email_limit_exceeded",
-        message: `Has excedido el límite de ${this.config.passwordReset.maxAttemptsPerEmail} intentos por hora. Por favor espera ${this.config.passwordReset.blockDurationMinutes} minutos.`,
+        message: `Has excedido el límite de ${this.config.passwordReset.maxAttemptsPerEmail} intentos por hora para este correo. Por favor espera ${this.config.passwordReset.blockDurationMinutes} minutos.`,
         attemptsUsed: emailAttempts,
         maxAttempts: this.config.passwordReset.maxAttemptsPerEmail,
         blockedUntil,
       };
     }
 
-    // 3. Contar intentos recientes por IP
+    // 4. Contar intentos totales por IP
     const ipAttempts = await prisma.passwordResetAttempt.count({
       where: {
         ipAddress,
@@ -110,7 +144,7 @@ class RateLimitService {
     });
 
     if (ipAttempts >= this.config.passwordReset.maxAttemptsPerIP) {
-      // Bloquear la IP
+      // Bloquear la IP por exceso de intentos totales
       const blockedUntil = new Date(
         now.getTime() +
           this.config.passwordReset.blockDurationMinutes * 60 * 1000,
@@ -135,12 +169,59 @@ class RateLimitService {
       };
     }
 
-    // 4. Permitir el intento
+    // 5. NUEVO: Detectar comportamiento sospechoso (múltiples emails diferentes desde la misma IP)
+    const distinctEmails = await prisma.passwordResetAttempt.findMany({
+      where: {
+        ipAddress,
+        createdAt: {
+          gte: windowStart,
+        },
+      },
+      select: {
+        email: true,
+      },
+      distinct: ["email"],
+    });
+
+    const differentEmailsCount = distinctEmails.length;
+
+    if (
+      differentEmailsCount >= this.config.passwordReset.maxDifferentEmailsPerIP
+    ) {
+      // Comportamiento sospechoso: intentando múltiples emails desde la misma IP
+      const blockedUntil = new Date(
+        now.getTime() +
+          this.config.passwordReset.blockDurationMinutes * 60 * 1000,
+      );
+
+      await prisma.passwordResetAttempt.create({
+        data: {
+          email: email.toLowerCase(),
+          ipAddress,
+          success: false,
+          blockedUntil,
+        },
+      });
+
+      return {
+        allowed: false,
+        reason: "suspicious_activity",
+        message: `Actividad sospechosa detectada. Por favor espera ${this.config.passwordReset.blockDurationMinutes} minutos o contacta al administrador.`,
+        attemptsUsed: differentEmailsCount,
+        maxAttempts: this.config.passwordReset.maxDifferentEmailsPerIP,
+        blockedUntil,
+      };
+    }
+
+    // 6. Permitir el intento
     return {
       allowed: true,
       attemptsRemaining: {
         email: this.config.passwordReset.maxAttemptsPerEmail - emailAttempts,
         ip: this.config.passwordReset.maxAttemptsPerIP - ipAttempts,
+        differentEmails:
+          this.config.passwordReset.maxDifferentEmailsPerIP -
+          differentEmailsCount,
       },
     };
   }
