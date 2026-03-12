@@ -11,6 +11,8 @@ export class EmployeeController {
    *   get:
    *     summary: Obtener todos los empleados
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: query
    *         name: page
@@ -99,6 +101,8 @@ export class EmployeeController {
    *   get:
    *     summary: Obtener empleado por ID
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: id
@@ -162,12 +166,25 @@ export class EmployeeController {
    *   post:
    *     summary: Crear nuevo empleado
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     requestBody:
    *       required: true
    *       content:
    *         application/json:
    *           schema:
    *             $ref: '#/components/schemas/CreateEmployeeRequest'
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               employeeData:
+   *                 type: string
+   *                 description: JSON serializado con la estructura de CreateEmployeeRequest
+   *               signature:
+   *                 type: string
+   *                 format: binary
+   *                 description: Firma opcional (PNG/JPG, max 2MB)
    *     responses:
    *       201:
    *         description: Empleado creado exitosamente
@@ -246,6 +263,8 @@ export class EmployeeController {
    *   put:
    *     summary: Actualizar empleado
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: id
@@ -328,6 +347,8 @@ export class EmployeeController {
    *   delete:
    *     summary: Eliminar empleado
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: id
@@ -405,6 +426,8 @@ export class EmployeeController {
    *   get:
    *     summary: Obtener estadísticas de empleados
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: Estadísticas obtenidas exitosamente
@@ -466,6 +489,8 @@ export class EmployeeController {
    *   get:
    *     summary: Obtener datos de referencia para formularios
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: Datos de referencia obtenidos exitosamente
@@ -520,6 +545,8 @@ export class EmployeeController {
    *   get:
    *     summary: Verificar disponibilidad de email
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: query
    *         name: email
@@ -586,6 +613,8 @@ export class EmployeeController {
    *   get:
    *     summary: Verificar disponibilidad de identificación
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: query
    *         name: identification
