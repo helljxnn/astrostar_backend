@@ -34,7 +34,7 @@ export class EmployeeController {
    *         schema:
    *           type: string
    *           maxLength: 100
-   *         description: Búsqueda por nombre, apellido, email o identificación
+   *         description: Búsqueda por nombre, apellido, email, identificación, rol o estado
    *       - in: query
    *         name: status
    *         schema:
