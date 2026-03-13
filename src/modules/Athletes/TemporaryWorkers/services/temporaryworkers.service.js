@@ -326,7 +326,7 @@ export class TemporaryWorkersService {
       ) {
         errors.push("El nombre debe tener entre 2 y 100 caracteres");
       }
-      if (!/^[a-zA-ZÃ¡Ã©Ã­Ã³ÃºÃÃ‰ÃÃ“ÃšÃ±Ã‘\s]+$/.test(data.firstName)) {
+      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(data.firstName)) {
         errors.push("El nombre solo puede contener letras y espacios");
       }
     }
@@ -340,7 +340,7 @@ export class TemporaryWorkersService {
       ) {
         errors.push("El apellido debe tener entre 2 y 100 caracteres");
       }
-      if (!/^[a-zA-ZÃ¡Ã©Ã­Ã³ÃºÃÃ‰ÃÃ“ÃšÃ±Ã‘\s]+$/.test(data.lastName)) {
+      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(data.lastName)) {
         errors.push("El apellido solo puede contener letras y espacios");
       }
     }
@@ -536,7 +536,7 @@ export class TemporaryWorkersService {
       errors.push("Si se especifica una categorÃ­a, no puede estar vacÃ­a");
     }
 
-    // Validar que deportistas y entrenadores menores de edad tengan informaciÃ³n adicional
+    // Validar que deportistas y entrenadores menores de edad tengan información adicional
     if (
       currentPersonType === "Deportista" ||
       currentPersonType === "Entrenador"
@@ -550,9 +550,26 @@ export class TemporaryWorkersService {
         calculatedAge = this.calculateAge(birthDate);
       }
 
-      if (calculatedAge && calculatedAge < 18) {
-        // Para menores de edad deportistas/entrenadores, se recomienda tener mÃ¡s informaciÃ³n
-        // Esto es solo una advertencia, no un error bloqueante
+      // Validar que entrenadores sean mayores de edad
+      if (currentPersonType === "Entrenador" && calculatedAge && calculatedAge < 18) {
+        errors.push("Los entrenadores deben ser mayores de 18 años");
+      }
+    }
+
+    // Validar campos requeridos según tipo de persona
+    if (currentPersonType === "Entrenador") {
+      const email = data.email !== undefined ? data.email : (existingData ? existingData.email : null);
+      const phone = data.phone !== undefined ? data.phone : (existingData ? existingData.phone : null);
+      const address = data.address !== undefined ? data.address : (existingData ? existingData.address : null);
+
+      if (!email || !email.trim()) {
+        errors.push("El email es requerido para entrenadores");
+      }
+      if (!phone || !phone.trim()) {
+        errors.push("El teléfono es requerido para entrenadores");
+      }
+      if (!address || !address.trim()) {
+        errors.push("La dirección es requerida para entrenadores");
       }
     }
 
