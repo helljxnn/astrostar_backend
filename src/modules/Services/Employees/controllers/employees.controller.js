@@ -34,7 +34,7 @@ export class EmployeeController {
    *         schema:
    *           type: string
    *           maxLength: 100
-   *         description: Búsqueda por nombre, apellido, email o identificación
+   *         description: Búsqueda por nombre, apellido, email, identificación, rol o estado
    *       - in: query
    *         name: status
    *         schema:
@@ -672,6 +672,75 @@ export class EmployeeController {
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al verificar identificación.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/employees/report:
+   *   get:
+   *     summary: Obtener todos los empleados para reporte (sin paginación)
+   *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *           maxLength: 100
+   *         description: Búsqueda por nombre, apellido, email, identificación, rol o estado
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: string
+   *           enum: [Active, Disabled, OnVacation, Retired]
+   *         description: Filtrar por estado del empleado
+   *     responses:
+   *       200:
+   *         description: Lista completa de empleados para reporte
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Employee'
+   *                 message:
+   *                   type: string
+   *                   example: "Se encontraron 150 empleados para el reporte."
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  getAllEmployeesForReport = async (req, res) => {
+    try {
+      const { search = "", status = "" } = req.query;
+
+      const result = await this.employeeService.getAllEmployeesForReport({
+        search,
+        status,
+      });
+
+      res.json({
+        success: true,
+        data: result.employees,
+        message: `Se encontraron ${result.employees.length} empleados para el reporte.`,
+      });
+    } catch (error) {
+      console.error("Error fetching employees for report:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener empleados para reporte.",
         error:
           process.env.NODE_ENV === "development" ? error.message : undefined,
       });
