@@ -621,13 +621,9 @@ model Donation {
   deletedAt      DateTime?
   serviceId      Int?
   responsibleId  Int?                  @map("responsible_id")
-  responsibleId  Int?                  @map("responsible_id")
-  employeeId     Int?
   donorSponsor   Sponsor?              @relation(fields: [donorSponsorId], references: [id])
   service        Service?              @relation(fields: [serviceId], references: [id])
   responsible    Employee?             @relation("ResponsibleDonation", fields: [responsibleId], references: [id], onDelete: SetNull)
-  responsible    Employee?             @relation("ResponsibleDonation", fields: [responsibleId], references: [id], onDelete: SetNull)
-  employee       Employee?             @relation(fields: [employeeId], references: [id])
   details        DonationDetail[]
   files          DonationFile[]
   transactions   DonationTransaction[]
