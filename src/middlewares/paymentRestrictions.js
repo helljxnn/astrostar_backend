@@ -1,6 +1,14 @@
 import { paymentsService } from '../modules/Payments/services/payments.service.js';
 import prisma from '../config/database.js';
 
+// Prioridades de bloqueo (menor número = mayor prioridad)
+const BLOCKING_PRIORITIES = {
+  ENROLLMENT_INITIAL_PENDING: 1,  // Prioridad más alta
+  MATRICULA_VENCIDA: 2,
+  ENROLLMENT_RENEWAL_PENDING: 2,  // Misma prioridad que matrícula vencida
+  MORA_MENSUALIDAD: 3              // Prioridad más baja
+};
+
 /**
  * Middleware ROBUSTO para verificar restricciones de pago
  * Valida dinámicamente en cada request, no solo en login
@@ -114,11 +122,33 @@ export const globalPaymentProtection = async (req, res, next) => {
 
 /**
  * Función auxiliar para verificar si un atleta está restringido
- * MEJORADA para verificar todas las deudas con configuración dinámica
+ * MEJORADA con sistema de prioridades para múltiples bloqueos
  */
 export const isAthleteRestricted = async (athleteId) => {
   try {
-    // Verificar matrícula
+    // Recolectar todas las condiciones de bloqueo con prioridades
+    const blockingConditions = [];
+    
+    // 1. Verificar ENROLLMENT_INITIAL pendiente (Prioridad 1)
+    const enrollmentInitialObligation = await prisma.paymentObligation.findFirst({
+      where: {
+        athleteId,
+        type: 'ENROLLMENT_INITIAL',
+        payments: {
+          none: { status: 'APPROVED' }
+        }
+      }
+    });
+    
+    if (enrollmentInitialObligation) {
+      blockingConditions.push({
+        priority: BLOCKING_PRIORITIES.ENROLLMENT_INITIAL_PENDING,
+        reason: 'ENROLLMENT_INITIAL_PENDING',
+        message: 'Tu matrícula está pendiente de pago inicial'
+      });
+    }
+    
+    // 2. Verificar matrícula vencida (Prioridad 2)
     const enrollment = await prisma.enrollment.findFirst({
       where: {
         athleteId,
@@ -128,36 +158,46 @@ export const isAthleteRestricted = async (athleteId) => {
     });
 
     if (!enrollment) {
-      return {
-        restricted: true,
+      blockingConditions.push({
+        priority: BLOCKING_PRIORITIES.MATRICULA_VENCIDA,
         reason: 'MATRICULA_VENCIDA',
         message: 'Matrícula vencida'
-      };
+      });
     }
-
-    // Verificar deudas con configuración dinámica
+    
+    // 3. Verificar ENROLLMENT_RENEWAL pendiente (Prioridad 2)
     const financialStatus = await paymentsService.getAthleteFinancialStatus(athleteId);
     
     if (financialStatus.enrollment.needsRenewal) {
-      return {
-        restricted: true,
+      blockingConditions.push({
+        priority: BLOCKING_PRIORITIES.ENROLLMENT_RENEWAL_PENDING,
         reason: 'MATRICULA_VENCIDA',
         message: 'Matrícula necesita renovación'
-      };
+      });
     }
     
-    // Obtener configuración para días máximos de mora
-    const settings = await paymentsService.getPaymentSettings();
-    
-    if (financialStatus.totalDebt.maxDaysLate >= 15) { // ✅ Constante fija
-      return {
-        restricted: true,
+    // 4. Verificar mora excesiva (Prioridad 3)
+    if (financialStatus.totalDebt.maxDaysLate > 15) {
+      blockingConditions.push({
+        priority: BLOCKING_PRIORITIES.MORA_MENSUALIDAD,
         reason: 'MORA_MENSUALIDAD',
         message: `Mora de ${financialStatus.totalDebt.maxDaysLate} días`
-      };
+      });
     }
 
-    return { restricted: false };
+    // Si no hay bloqueos, retornar acceso libre
+    if (blockingConditions.length === 0) {
+      return { restricted: false };
+    }
+    
+    // Retornar el bloqueo de mayor prioridad (menor número)
+    const highestPriorityBlock = blockingConditions.sort((a, b) => a.priority - b.priority)[0];
+    
+    return {
+      restricted: true,
+      reason: highestPriorityBlock.reason,
+      message: highestPriorityBlock.message
+    };
 
   } catch (error) {
     console.error('❌ Error verificando restricciones:', error);

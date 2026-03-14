@@ -32,6 +32,8 @@ model Role {
   permissions Json?      @default("{}")
   users       User[]
 
+  @@index([name])
+  @@index([status])
   @@map("roles")
 }
 
@@ -62,6 +64,11 @@ model User {
   documentType            DocumentType             @relation(fields: [documentTypeId], references: [id])
   role                    Role                     @relation(fields: [roleId], references: [id])
 
+  @@index([identification])
+  @@index([email])
+  @@index([status])
+  @@index([roleId])
+  @@index([documentTypeId])
   @@map("users")
 }
 
@@ -347,19 +354,17 @@ model AthleteAttendance {
 model Enrollment {
   id               Int              @id @default(autoincrement())
   athleteId        Int
-  fechaMatricula   DateTime         @default(now())
-  estado           EnrollmentStatus @default(Vigente)
+  estado           EnrollmentStatus @default(Pending_Payment)
   observaciones    String?
-  comprobantePago  String?          @db.VarChar(500)
-  createdAt        DateTime         @default(now())
+  createdAt        DateTime         @default(now()) // Cuando se creó la matrícula
   updatedAt        DateTime         @updatedAt
-  fechaInicio      DateTime         @default(now())
-  fechaVencimiento DateTime
+  fechaInicio      DateTime?        // NULL hasta que se apruebe el pago inicial (cuando se activa)
+  fechaVencimiento DateTime?        // NULL hasta que se apruebe el pago inicial (fechaInicio + 1 año)
   athlete          Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@index([athleteId])
   @@index([estado])
-  @@index([fechaMatricula])
+  @@index([createdAt])
   @@index([fechaVencimiento])
   @@map("enrollments")
 }
@@ -921,7 +926,7 @@ model PaymentSettings {
   id               Int      @id @default(1)
   monthlyAmount    Int
   enrollmentAmount Int
-  lateFeeDailyAmount Int   @default(1000)
+  lateFeeDailyAmount Int   @default(2000)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -936,6 +941,7 @@ model PaymentObligation {
   baseAmount Int
   dueStart   DateTime
   dueEnd     DateTime
+  metadata   Json?       @default("{}")
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
   athlete    Athlete     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
@@ -983,9 +989,7 @@ enum PreRegistrationStatus {
 enum EnrollmentStatus {
   Pending_Payment
   Vigente
-  Suspendida
   Vencida
-  Cancelada
 }
 
 enum SponsorStatus {

@@ -35,11 +35,19 @@ const generateMonthlyPaymentsJob = cron.schedule('1 0 1 * *', async () => {
 /**
  * Job para procesar matrículas vencidas
  * Se ejecuta diariamente a las 02:00
+ * 
+ * FLUJO AUTOMÁTICO:
+ * 1. Procesa matrículas vencidas (marca como 'Vencida')
+ * 2. Para cada matrícula vencida, genera obligación ENROLLMENT_RENEWAL
+ * 3. Deportista ve obligación en "Mis Pagos"
+ * 4. Al aprobar pago, sistema crea nueva matrícula automáticamente
  */
 const processExpiredEnrollmentsJob = cron.schedule('0 2 * * *', async () => {
-  console.log('🔄 [CRON] Verificando matrículas vencidas...');
+  console.log('🔄 [CRON] Iniciando procesamiento de matrículas vencidas...');
   
   try {
+    const now = new Date();
+    
     // Importar dinámicamente para evitar dependencias circulares
     const { enrollmentsService } = await import('../modules/Enrollments/services/enrollments.service.js');
     
@@ -50,18 +58,29 @@ const processExpiredEnrollmentsJob = cron.schedule('0 2 * * *', async () => {
       errores: result.errors
     });
 
-    // Para cada matrícula vencida, generar obligación de renovación
+    // Para cada matrícula vencida, generar obligación de renovación automáticamente
     if (result.processed > 0) {
       const processedEnrollments = result.details.filter(d => d.status === 'processed');
+      
+      console.log(`🔄 [CRON] Generando ${processedEnrollments.length} obligaciones de renovación...`);
       
       for (const enrollment of processedEnrollments) {
         try {
           await paymentsService.generateEnrollmentRenewalObligation(enrollment.athleteId);
-          console.log(`✅ [CRON] Obligación de renovación creada para atleta ${enrollment.athleteId}`);
+          console.log(`✅ [CRON] Obligación de renovación creada para atleta ${enrollment.athleteId} (${enrollment.athleteName})`);
         } catch (error) {
-          console.error(`❌ [CRON] Error creando obligación de renovación para atleta ${enrollment.athleteId}:`, error.message);
+          // Si ya existe obligación, no es error crítico
+          if (error.message.includes('Ya existe una obligación')) {
+            console.log(`ℹ️ [CRON] Atleta ${enrollment.athleteId} ya tiene obligación de renovación pendiente`);
+          } else {
+            console.error(`❌ [CRON] Error creando obligación de renovación para atleta ${enrollment.athleteId}:`, error.message);
+          }
         }
       }
+      
+      console.log('✅ [CRON] Procesamiento de obligaciones de renovación completado');
+    } else {
+      console.log('ℹ️ [CRON] No hay matrículas vencidas para procesar hoy');
     }
 
   } catch (error) {

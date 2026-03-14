@@ -6,9 +6,10 @@ import prisma from "../../../config/database.js";
 // CONSTANTES FIJAS DEL NEGOCIO (según especificaciones del cliente)
 // ============================================================================
 const BUSINESS_CONSTANTS = {
-  LATE_FEE_DAILY: 1000,        // Mora diaria FIJA: 1,000 pesos (ACTUALIZADO)
+  LATE_FEE_DAILY: 2000,        // Mora diaria FIJA: 2,000 pesos (ACTUALIZADO)
   MAX_LATE_DAYS_MONTHLY: 15,   // Días máximos FIJOS: 15 días
   GRACE_DAYS: 5,               // Días de gracia FIJOS: del 1 al 5 de cada mes
+  MAX_LATE_DAYS_CAP: 90,       // Límite máximo para cálculo de mora (90 días)
 };
 
 // ============================================================================
@@ -65,12 +66,29 @@ const calculateLateDays = (dueEnd) => {
 
 /**
  * Calcula la mora total usando la tarifa diaria de la configuración
+ * ✅ REGLA SIMPLE: No calcular mora si atleta inactivo o matrícula vencida
  * @param {number} lateDays - Días de mora
  * @param {number} [lateFeeDailyAmount] - Tarifa diaria (lee de BD). Fallback: constante.
+ * @param {Object} [athlete] - Datos del atleta (opcional, para validar estado)
+ * @param {Object} [enrollment] - Datos de matrícula (opcional, para validar estado)
  */
-const calculateLateFee = (lateDays, lateFeeDailyAmount = BUSINESS_CONSTANTS.LATE_FEE_DAILY) => {
+const calculateLateFee = (lateDays, lateFeeDailyAmount = BUSINESS_CONSTANTS.LATE_FEE_DAILY, athlete = null, enrollment = null) => {
   if (lateDays <= 0) return 0;
-  return lateDays * lateFeeDailyAmount;
+  
+  // ✅ REGLA CRÍTICA: No calcular mora si atleta inactivo
+  if (athlete && athlete.status !== 'Active') {
+    return 0;
+  }
+  
+  // ✅ REGLA CRÍTICA: No calcular mora si matrícula vencida
+  if (enrollment && enrollment.estado !== 'Vigente') {
+    return 0;
+  }
+  
+  // Aplicar límite máximo de días para mora
+  const cappedLateDays = Math.min(lateDays, BUSINESS_CONSTANTS.MAX_LATE_DAYS_CAP);
+  
+  return cappedLateDays * lateFeeDailyAmount;
 };
 
 /**
@@ -112,7 +130,7 @@ export const paymentsService = {
     console.log(`🔄 [PAYMENTS] Generando mensualidades para periodo: ${currentPeriod}`);
 
     return await prisma.$transaction(async (tx) => {
-      // Buscar atletas activos, NO becados, con matrícula vigente
+      // Buscar atletas activos, NO becados, con matrícula vigente Y activa
       const activeAthletes = await tx.athlete.findMany({
         where: {
           status: 'Active',
@@ -120,7 +138,8 @@ export const paymentsService = {
           enrollments: {
             some: {
               estado: 'Vigente',
-              fechaVencimiento: { gt: now }
+              fechaVencimiento: { gt: now },
+              fechaInicio: { lte: now }  // Validar que matrícula ya inició
             }
           }
         },
@@ -141,6 +160,39 @@ export const paymentsService = {
 
       for (const athlete of activeAthletes) {
         try {
+          // Validación adicional de integridad de matrícula
+          const enrollment = await tx.enrollment.findFirst({
+            where: {
+              athleteId: athlete.id,
+              estado: 'Vigente',
+              fechaVencimiento: { gt: now },
+              fechaInicio: { lte: now }
+            },
+            orderBy: { createdAt: 'desc' }
+          });
+          
+          if (!enrollment) {
+            results.push({
+              athleteId: athlete.id,
+              athleteName: `${athlete.user.firstName} ${athlete.user.lastName}`,
+              status: 'skipped',
+              reason: 'No tiene matrícula vigente y activa'
+            });
+            continue;
+          }
+          
+          // Validar consistencia de fechas
+          if (enrollment.fechaInicio > enrollment.fechaVencimiento) {
+            console.warn(`⚠️ [PAYMENTS] Matrícula inconsistente para atleta ${athlete.id}: fechaInicio > fechaVencimiento`);
+            results.push({
+              athleteId: athlete.id,
+              athleteName: `${athlete.user.firstName} ${athlete.user.lastName}`,
+              status: 'error',
+              reason: 'Matrícula con fechas inconsistentes'
+            });
+            continue;
+          }
+          
           // Verificar si ya existe obligación para este periodo
           const existing = await paymentsRepository.findExistingObligation(
             athlete.id,
@@ -274,6 +326,18 @@ export const paymentsService = {
     const currentMonth = getCurrentPeriod();
     const settings = await getPaymentSettings();
 
+    // ✅ Obtener datos del atleta y matrícula para validar estado
+    const athlete = await prisma.athlete.findUnique({
+      where: { id: athleteId },
+      select: { status: true }
+    });
+
+    const enrollment = await prisma.enrollment.findFirst({
+      where: { athleteId },
+      orderBy: { createdAt: 'desc' },
+      select: { estado: true, fechaVencimiento: true }
+    });
+
     // Buscar TODAS las obligaciones sin pago aprobado
     const pendingObligations = await paymentsRepository.getAllPendingObligations(athleteId);
     
@@ -292,7 +356,8 @@ export const paymentsService = {
     
     for (const obligation of monthlyObligations) {
       const daysLate = calculateLateDays(obligation.dueEnd);
-      const lateFee = calculateLateFee(daysLate, settings.lateFeeDailyAmount); // ✅ Lee de BD
+      // ✅ Pasar atleta y enrollment para validar estado
+      const lateFee = calculateLateFee(daysLate, settings.lateFeeDailyAmount, athlete, enrollment);
       
       totalMonthlyDebt += obligation.baseAmount;
       totalLateFee += lateFee;
@@ -330,15 +395,26 @@ export const paymentsService = {
         obligationsCount: monthlyObligations.length
       },
       
-      // Renovación de matrícula
+      // Estado de matrícula (inicial o renovación)
       enrollment: enrollmentObligation ? {
-        needsRenewal: true,
+        needsRenewal: enrollmentObligation.type === 'ENROLLMENT_RENEWAL', // ✅ Solo true para renovaciones
+        isInitial: enrollmentObligation.type === 'ENROLLMENT_INITIAL',    // ✅ Nuevo campo
+        type: enrollmentObligation.type,                                  // ✅ Tipo explícito
         amount: enrollmentObligation.baseAmount,
         obligationId: enrollmentObligation.id,
         dueDate: enrollmentObligation.dueEnd,
-        paymentStatus: this.getLatestPaymentStatus(enrollmentObligation.payments)
+        paymentStatus: this.getLatestPaymentStatus(enrollmentObligation.payments),
+        // NUEVO: Estado actual de la matrícula
+        estado: currentEnrollment?.estado || null,
+        fechaInicio: currentEnrollment?.fechaInicio || null,
+        fechaVencimiento: currentEnrollment?.fechaVencimiento || null
       } : {
-        needsRenewal: false
+        needsRenewal: false,
+        isInitial: false,
+        // NUEVO: Estado actual de la matrícula (incluso si no hay obligaciones)
+        estado: currentEnrollment?.estado || null,
+        fechaInicio: currentEnrollment?.fechaInicio || null,
+        fechaVencimiento: currentEnrollment?.fechaVencimiento || null
       }
     };
   },
@@ -425,10 +501,16 @@ export const paymentsService = {
   },
 
   /**
-   * Obtener pagos pendientes para administración
+   * Obtener pago por ID
    */
-  async getPendingPayments(filters = {}) {
-    return await paymentsRepository.getPendingPayments(filters);
+  async getPaymentById(paymentId) {
+    return await paymentsRepository.getPaymentById(paymentId);
+  },
+  /**
+   * Obtener pago por ID
+   */
+  async getPaymentById(paymentId) {
+    return await paymentsRepository.getPaymentById(paymentId);
   },
 
   /**
@@ -546,6 +628,317 @@ export const paymentsService = {
   },
 
   // ============================================================================
+  // GESTIÓN DE PAGOS (ADMIN)
+  // ============================================================================
+
+  /**
+   * Obtener pagos pendientes de aprobación
+   */
+  async getPendingPayments(filters = {}) {
+    try {
+      const { page = 1, limit = 20, type, search } = filters;
+      const offset = (page - 1) * limit;
+
+      const whereClause = {
+        status: 'PENDING'
+      };
+
+      // Filtro por tipo de obligación
+      if (type) {
+        whereClause.obligation = {
+          type: type
+        };
+      }
+
+      // Filtro por búsqueda (nombre o identificación del atleta)
+      if (search) {
+        whereClause.athlete = {
+          user: {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { identification: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        };
+      }
+
+      const [payments, total] = await Promise.all([
+        prisma.payment.findMany({
+          where: whereClause,
+          include: {
+            athlete: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    identification: true,
+                    email: true
+                  }
+                }
+              }
+            },
+            obligation: {
+              select: {
+                id: true,
+                type: true,
+                period: true,
+                baseAmount: true,
+                dueStart: true,
+                dueEnd: true
+              }
+            }
+          },
+          orderBy: {
+            uploadedAt: 'desc'
+          },
+          skip: offset,
+          take: limit
+        }),
+        prisma.payment.count({
+          where: whereClause
+        })
+      ]);
+
+      return {
+        payments,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error) {
+      console.error('❌ Error obteniendo pagos pendientes:', error);
+      throw new Error('Error al obtener pagos pendientes');
+    }
+  },
+
+  /**
+   * Obtener todos los pagos con filtros
+   */
+  async getAllPayments(filters = {}) {
+    try {
+      const { page = 1, limit = 20, status, type, dateFrom, dateTo, excludeStatus, search } = filters;
+      const offset = (page - 1) * limit;
+
+      const whereClause = {};
+
+      // Filtro por estado (incluir o excluir)
+      if (status) {
+        whereClause.status = status;
+      } else if (excludeStatus) {
+        // Para el historial: excluir PENDING
+        whereClause.status = {
+          not: excludeStatus
+        };
+      }
+
+      // Filtro por tipo de obligación
+      if (type) {
+        whereClause.obligation = {
+          type: type
+        };
+      }
+
+      // Filtro por búsqueda (nombre o identificación del atleta)
+      if (search) {
+        whereClause.athlete = {
+          user: {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { identification: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        };
+      }
+
+      // Filtro por fecha
+      if (dateFrom || dateTo) {
+        whereClause.uploadedAt = {};
+        if (dateFrom) {
+          whereClause.uploadedAt.gte = new Date(dateFrom);
+        }
+        if (dateTo) {
+          whereClause.uploadedAt.lte = new Date(dateTo);
+        }
+      }
+
+      const [payments, total] = await Promise.all([
+        prisma.payment.findMany({
+          where: whereClause,
+          include: {
+            athlete: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    firstName: true,
+                    lastName: true,
+                    identification: true,
+                    email: true
+                  }
+                }
+              }
+            },
+            obligation: {
+              select: {
+                id: true,
+                type: true,
+                period: true,
+                baseAmount: true,
+                dueStart: true,
+                dueEnd: true
+              }
+            }
+          },
+          orderBy: {
+            uploadedAt: 'desc'
+          },
+          skip: offset,
+          take: limit
+        }),
+        prisma.payment.count({
+          where: whereClause
+        })
+      ]);
+
+      return {
+        payments,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        }
+      };
+    } catch (error) {
+      console.error('❌ Error obteniendo todos los pagos:', error);
+      throw new Error('Error al obtener pagos');
+    }
+  },
+
+  /**
+   * Aprobar un pago
+   */
+  async approvePayment(paymentId, reviewedBy) {
+    try {
+      const payment = await prisma.payment.findUnique({
+        where: { id: parseInt(paymentId) },
+        include: {
+          obligation: true,
+          athlete: true
+        }
+      });
+
+      if (!payment) {
+        throw new Error('Pago no encontrado');
+      }
+
+      if (payment.status !== 'PENDING') {
+        throw new Error('Solo se pueden aprobar pagos pendientes');
+      }
+
+      // Actualizar el pago
+      const updatedPayment = await prisma.payment.update({
+        where: { id: parseInt(paymentId) },
+        data: {
+          status: 'APPROVED',
+          reviewedAt: new Date(),
+          reviewedBy: reviewedBy
+        }
+      });
+
+      // Si es un pago de matrícula inicial o renovación, activar la matrícula
+      if (payment.obligation.type === 'ENROLLMENT_INITIAL' || payment.obligation.type === 'ENROLLMENT_RENEWAL') {
+        await this._activateEnrollmentAfterPayment(payment.athleteId, payment.obligation.type);
+      }
+
+      return updatedPayment;
+    } catch (error) {
+      console.error('❌ Error aprobando pago:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Rechazar un pago
+   */
+  async rejectPayment(paymentId, rejectionReason, reviewedBy) {
+    try {
+      const payment = await prisma.payment.findUnique({
+        where: { id: parseInt(paymentId) }
+      });
+
+      if (!payment) {
+        throw new Error('Pago no encontrado');
+      }
+
+      if (payment.status !== 'PENDING') {
+        throw new Error('Solo se pueden rechazar pagos pendientes');
+      }
+
+      const updatedPayment = await prisma.payment.update({
+        where: { id: parseInt(paymentId) },
+        data: {
+          status: 'REJECTED',
+          rejectionReason,
+          reviewedAt: new Date(),
+          reviewedBy: reviewedBy
+        }
+      });
+
+      return updatedPayment;
+    } catch (error) {
+      console.error('❌ Error rechazando pago:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Activar matrícula después de aprobar pago
+   */
+  async _activateEnrollmentAfterPayment(athleteId, paymentType) {
+    try {
+      if (paymentType === 'ENROLLMENT_INITIAL') {
+        // Activar matrícula inicial
+        await prisma.enrollment.updateMany({
+          where: {
+            athleteId: athleteId,
+            estado: 'Pending_Payment'
+          },
+          data: {
+            estado: 'Vigente'
+          }
+        });
+      } else if (paymentType === 'ENROLLMENT_RENEWAL') {
+        // Crear nueva matrícula para renovación
+        const settings = await getPaymentSettings();
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setFullYear(endDate.getFullYear() + 1);
+
+        await prisma.enrollment.create({
+          data: {
+            athleteId: athleteId,
+            fechaInicio: startDate,
+            fechaVencimiento: endDate,
+            estado: 'Vigente',
+            monto: settings.enrollmentAmount
+          }
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error activando matrícula:', error);
+      throw error;
+    }
+  },
+
+  // ============================================================================
   // GESTIÓN DE CONFIGURACIÓN (NUEVOS MÉTODOS)
   // ============================================================================
 
@@ -563,6 +956,239 @@ export const paymentsService = {
     const updated = await paymentSettingsRepository.updateSettings(newSettings);
     invalidateSettingsCache(); // ✅ Invalidar cache
     return updated;
+  },
+
+  // ============================================================================
+  // GESTIÓN MENSUAL ADMINISTRATIVA (NUEVO - NO AFECTA FUNCIONALIDAD EXISTENTE)
+  // ============================================================================
+
+  /**
+   * Obtener gestión completa de pagos mensuales para administradores
+   * Incluye cálculo de mora, estados y filtros avanzados
+   */
+  async getMonthlyPaymentsManagement(filters = {}) {
+    try {
+      const { page = 1, limit = 20, status, search, dateFrom, dateTo } = filters;
+      const offset = (page - 1) * limit;
+      const now = new Date();
+      const settings = await getPaymentSettings();
+
+      console.log('📊 [PAYMENTS] Procesando gestión mensual:', {
+        page, limit, status, search, dateFrom, dateTo
+      });
+
+      // Construir filtros dinámicos
+      const whereClause = {
+        type: 'MONTHLY'
+      };
+
+      // Filtro por estado de pago
+      if (status === 'PAID') {
+        whereClause.payments = {
+          some: { status: 'APPROVED' }
+        };
+      } else if (status === 'PENDING') {
+        whereClause.payments = {
+          some: { status: 'PENDING' }
+        };
+      } else if (status === 'OVERDUE') {
+        whereClause.dueEnd = { lt: now };
+        whereClause.payments = {
+          none: { status: 'APPROVED' }
+        };
+      } else if (status === 'EXCESSIVE_OVERDUE') {
+        const fifteenDaysAgo = new Date(now.getTime() - (15 * 24 * 60 * 60 * 1000));
+        whereClause.dueEnd = { lt: fifteenDaysAgo };
+        whereClause.payments = {
+          none: { status: 'APPROVED' }
+        };
+      }
+
+      // Filtro por búsqueda (nombre o identificación)
+      if (search) {
+        whereClause.athlete = {
+          user: {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { identification: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        };
+      }
+
+      // Filtro por fecha
+      if (dateFrom || dateTo) {
+        whereClause.dueEnd = {};
+        if (dateFrom) {
+          whereClause.dueEnd.gte = new Date(dateFrom);
+        }
+        if (dateTo) {
+          whereClause.dueEnd.lte = new Date(dateTo);
+        }
+      }
+
+      // Ejecutar consultas en paralelo para mejor rendimiento
+      const [obligations, total] = await Promise.all([
+        prisma.paymentObligation.findMany({
+          where: whereClause,
+          include: {
+            athlete: {
+              include: {
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    identification: true,
+                    email: true
+                  }
+                }
+              }
+            },
+            payments: {
+              orderBy: { uploadedAt: 'desc' },
+              take: 1,
+              select: {
+                id: true,
+                status: true,
+                uploadedAt: true,
+                reviewedAt: true,
+                receiptUrl: true,
+                receiptName: true
+              }
+            }
+          },
+          orderBy: [
+            { dueEnd: 'desc' },
+            { createdAt: 'desc' }
+          ],
+          skip: offset,
+          take: limit
+        }),
+        prisma.paymentObligation.count({ where: whereClause })
+      ]);
+
+      // Procesar cada obligación con cálculo de mora
+      const obligationsWithDetails = obligations.map(obligation => {
+        const lateDays = calculateLateDays(obligation.dueEnd);
+        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount);
+        const totalAmount = obligation.baseAmount + lateFee;
+        
+        // Determinar estado de mora
+        let moraStatus = 'AL_DIA';
+        let moraText = 'Al día';
+        let moraColor = 'success';
+        
+        if (lateDays > 15) {
+          moraStatus = 'MORA_EXCESIVA';
+          moraText = `${lateDays} días de mora (EXCESIVA)`;
+          moraColor = 'danger';
+        } else if (lateDays > 0) {
+          moraStatus = 'EN_MORA';
+          moraText = `${lateDays} días de mora`;
+          moraColor = 'warning';
+        } else if (lateDays > -5) {
+          const diasRestantes = Math.abs(lateDays);
+          moraStatus = 'PERIODO_GRACIA';
+          moraText = `${diasRestantes} días restantes`;
+          moraColor = 'info';
+        }
+
+        // Determinar estado de pago
+        const latestPayment = obligation.payments[0];
+        let paymentStatus = 'SIN_PAGO';
+        let paymentText = 'Sin comprobante';
+        
+        if (latestPayment) {
+          switch (latestPayment.status) {
+            case 'APPROVED':
+              paymentStatus = 'PAGADO';
+              paymentText = 'Pagado';
+              break;
+            case 'PENDING':
+              paymentStatus = 'PENDIENTE_REVISION';
+              paymentText = 'Pendiente de revisión';
+              break;
+            case 'REJECTED':
+              paymentStatus = 'RECHAZADO';
+              paymentText = 'Rechazado';
+              break;
+          }
+        }
+
+        return {
+          id: obligation.id,
+          athleteId: obligation.athleteId,
+          athleteName: `${obligation.athlete.user.firstName} ${obligation.athlete.user.lastName}`,
+          athleteIdentification: obligation.athlete.user.identification,
+          athleteEmail: obligation.athlete.user.email,
+          period: obligation.period,
+          baseAmount: obligation.baseAmount,
+          lateDays,
+          lateFee,
+          totalAmount,
+          dueStart: obligation.dueStart,
+          dueEnd: obligation.dueEnd,
+          createdAt: obligation.createdAt,
+          
+          // Estados calculados
+          moraStatus,
+          moraText,
+          moraColor,
+          paymentStatus,
+          paymentText,
+          
+          // Información del pago
+          latestPayment: latestPayment ? {
+            id: latestPayment.id,
+            status: latestPayment.status,
+            uploadedAt: latestPayment.uploadedAt,
+            reviewedAt: latestPayment.reviewedAt,
+            receiptUrl: latestPayment.receiptUrl,
+            receiptName: latestPayment.receiptName
+          } : null
+        };
+      });
+
+      // Calcular estadísticas de resumen
+      const summary = {
+        totalObligations: total,
+        paidCount: obligationsWithDetails.filter(o => o.paymentStatus === 'PAGADO').length,
+        pendingCount: obligationsWithDetails.filter(o => o.paymentStatus === 'PENDIENTE_REVISION').length,
+        overdueCount: obligationsWithDetails.filter(o => o.moraStatus === 'EN_MORA').length,
+        excessiveOverdueCount: obligationsWithDetails.filter(o => o.moraStatus === 'MORA_EXCESIVA').length,
+        totalOverdueAmount: obligationsWithDetails
+          .filter(o => o.lateDays > 0)
+          .reduce((sum, o) => sum + o.lateFee, 0)
+      };
+
+      console.log('✅ [PAYMENTS] Gestión mensual procesada:', {
+        obligationsFound: obligations.length,
+        totalInDB: total,
+        summary
+      });
+
+      return {
+        obligations: obligationsWithDetails,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        },
+        summary,
+        filters: {
+          status,
+          search,
+          dateFrom,
+          dateTo
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ [PAYMENTS] Error en gestión mensual:', error);
+      throw new Error(`Error al obtener gestión mensual: ${error.message}`);
+    }
   },
 
   // ============================================================================
@@ -584,7 +1210,6 @@ export const paymentsService = {
           athleteId,
           fechaInicio: now,
           fechaVencimiento: expirationDate,
-          fechaMatricula: now,
           estado: 'Vigente',
           observaciones: 'Renovación automática por pago aprobado'
         }
@@ -618,6 +1243,7 @@ export const paymentsService = {
         throw new Error(`No se encontró matrícula en Pending_Payment para el atleta ${athleteId}`);
       }
 
+      // 1. Activar la matrícula
       await tx.enrollment.update({
         where: { id: pendingEnrollment.id },
         data: {
@@ -628,6 +1254,7 @@ export const paymentsService = {
         }
       });
 
+      // 2. Activar el atleta
       await tx.athlete.update({
         where: { id: athleteId },
         data: { status: 'Active' }
@@ -635,5 +1262,238 @@ export const paymentsService = {
 
       console.log(`✅ [PAYMENTS] Matrícula inicial activada para atleta ${athleteId} — vigente hasta ${expirationDate.toISOString().split('T')[0]}`);
     });
+  },
+
+  // ============================================================================
+  // GESTIÓN MENSUAL ADMINISTRATIVA (NUEVO - NO AFECTA FUNCIONALIDAD EXISTENTE)
+  // ============================================================================
+
+  /**
+   * Obtener gestión completa de pagos mensuales para administradores
+   * Incluye cálculo de mora, estados y filtros avanzados
+   */
+  async getMonthlyPaymentsManagement(filters = {}) {
+    try {
+      const { page = 1, limit = 20, status, search, dateFrom, dateTo } = filters;
+      const offset = (page - 1) * limit;
+      const now = new Date();
+      const settings = await getPaymentSettings();
+
+      console.log('📊 [PAYMENTS] Procesando gestión mensual:', {
+        page, limit, status, search, dateFrom, dateTo
+      });
+
+      // Construir filtros dinámicos
+      const whereClause = {
+        type: 'MONTHLY'
+      };
+
+      // Filtro por estado de pago
+      if (status === 'PAID') {
+        whereClause.payments = {
+          some: { status: 'APPROVED' }
+        };
+      } else if (status === 'PENDING') {
+        whereClause.payments = {
+          some: { status: 'PENDING' }
+        };
+      } else if (status === 'OVERDUE') {
+        whereClause.dueEnd = { lt: now };
+        whereClause.payments = {
+          none: { status: 'APPROVED' }
+        };
+      } else if (status === 'EXCESSIVE_OVERDUE') {
+        const fifteenDaysAgo = new Date(now.getTime() - (15 * 24 * 60 * 60 * 1000));
+        whereClause.dueEnd = { lt: fifteenDaysAgo };
+        whereClause.payments = {
+          none: { status: 'APPROVED' }
+        };
+      }
+
+      // Filtro por búsqueda (nombre o identificación)
+      if (search) {
+        whereClause.athlete = {
+          user: {
+            OR: [
+              { firstName: { contains: search, mode: 'insensitive' } },
+              { lastName: { contains: search, mode: 'insensitive' } },
+              { identification: { contains: search, mode: 'insensitive' } }
+            ]
+          }
+        };
+      }
+
+      // Filtro por fecha
+      if (dateFrom || dateTo) {
+        whereClause.dueEnd = {};
+        if (dateFrom) {
+          whereClause.dueEnd.gte = new Date(dateFrom);
+        }
+        if (dateTo) {
+          whereClause.dueEnd.lte = new Date(dateTo);
+        }
+      }
+
+      // Ejecutar consultas en paralelo para mejor rendimiento
+      const [obligations, total] = await Promise.all([
+        prisma.paymentObligation.findMany({
+          where: whereClause,
+          include: {
+            athlete: {
+              include: {
+                user: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    identification: true,
+                    email: true
+                  }
+                }
+              }
+            },
+            payments: {
+              orderBy: { uploadedAt: 'desc' },
+              take: 1,
+              select: {
+                id: true,
+                status: true,
+                uploadedAt: true,
+                reviewedAt: true,
+                receiptUrl: true,
+                receiptName: true
+              }
+            }
+          },
+          orderBy: [
+            { dueEnd: 'desc' },
+            { createdAt: 'desc' }
+          ],
+          skip: offset,
+          take: limit
+        }),
+        prisma.paymentObligation.count({ where: whereClause })
+      ]);
+
+      // Procesar cada obligación con cálculo de mora
+      const obligationsWithDetails = obligations.map(obligation => {
+        const lateDays = calculateLateDays(obligation.dueEnd);
+        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount);
+        const totalAmount = obligation.baseAmount + lateFee;
+        
+        // Determinar estado de mora
+        let moraStatus = 'AL_DIA';
+        let moraText = 'Al día';
+        let moraColor = 'success';
+        
+        if (lateDays > 15) {
+          moraStatus = 'MORA_EXCESIVA';
+          moraText = `${lateDays} días de mora (EXCESIVA)`;
+          moraColor = 'danger';
+        } else if (lateDays > 0) {
+          moraStatus = 'EN_MORA';
+          moraText = `${lateDays} días de mora`;
+          moraColor = 'warning';
+        } else if (lateDays > -5) {
+          const diasRestantes = Math.abs(lateDays);
+          moraStatus = 'PERIODO_GRACIA';
+          moraText = `${diasRestantes} días restantes`;
+          moraColor = 'info';
+        }
+
+        // Determinar estado de pago
+        const latestPayment = obligation.payments[0];
+        let paymentStatus = 'SIN_PAGO';
+        let paymentText = 'Sin comprobante';
+        
+        if (latestPayment) {
+          switch (latestPayment.status) {
+            case 'APPROVED':
+              paymentStatus = 'PAGADO';
+              paymentText = 'Pagado';
+              break;
+            case 'PENDING':
+              paymentStatus = 'PENDIENTE_REVISION';
+              paymentText = 'Pendiente de revisión';
+              break;
+            case 'REJECTED':
+              paymentStatus = 'RECHAZADO';
+              paymentText = 'Rechazado';
+              break;
+          }
+        }
+
+        return {
+          id: obligation.id,
+          athleteId: obligation.athleteId,
+          athleteName: `${obligation.athlete.user.firstName} ${obligation.athlete.user.lastName}`,
+          athleteIdentification: obligation.athlete.user.identification,
+          athleteEmail: obligation.athlete.user.email,
+          period: obligation.period,
+          baseAmount: obligation.baseAmount,
+          lateDays,
+          lateFee,
+          totalAmount,
+          dueStart: obligation.dueStart,
+          dueEnd: obligation.dueEnd,
+          createdAt: obligation.createdAt,
+          
+          // Estados calculados
+          moraStatus,
+          moraText,
+          moraColor,
+          paymentStatus,
+          paymentText,
+          
+          // Información del pago
+          latestPayment: latestPayment ? {
+            id: latestPayment.id,
+            status: latestPayment.status,
+            uploadedAt: latestPayment.uploadedAt,
+            reviewedAt: latestPayment.reviewedAt,
+            receiptUrl: latestPayment.receiptUrl,
+            receiptName: latestPayment.receiptName
+          } : null
+        };
+      });
+
+      // Calcular estadísticas de resumen
+      const summary = {
+        totalObligations: total,
+        paidCount: obligationsWithDetails.filter(o => o.paymentStatus === 'PAGADO').length,
+        pendingCount: obligationsWithDetails.filter(o => o.paymentStatus === 'PENDIENTE_REVISION').length,
+        overdueCount: obligationsWithDetails.filter(o => o.moraStatus === 'EN_MORA').length,
+        excessiveOverdueCount: obligationsWithDetails.filter(o => o.moraStatus === 'MORA_EXCESIVA').length,
+        totalOverdueAmount: obligationsWithDetails
+          .filter(o => o.lateDays > 0)
+          .reduce((sum, o) => sum + o.lateFee, 0)
+      };
+
+      console.log('✅ [PAYMENTS] Gestión mensual procesada:', {
+        obligationsFound: obligations.length,
+        totalInDB: total,
+        summary
+      });
+
+      return {
+        obligations: obligationsWithDetails,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit)
+        },
+        summary,
+        filters: {
+          status,
+          search,
+          dateFrom,
+          dateTo
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ [PAYMENTS] Error en gestión mensual:', error);
+      throw new Error(`Error al obtener gestión mensual: ${error.message}`);
+    }
   }
 };

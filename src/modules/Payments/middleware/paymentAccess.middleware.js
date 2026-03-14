@@ -100,18 +100,61 @@ export const requirePaymentAdminPermissions = (req, res, next) => {
 export const requireAthleteOwnership = (req, res, next) => {
   try {
     const { athleteId } = req.params;
-    const userAthleteId = req.user.athlete?.id;
+    const requestedAthleteId = parseInt(athleteId);
 
     // Si es admin, permitir acceso
     const userPermissions = req.user.role?.permissions || {};
-    const isAdmin = userPermissions.Admin || req.user.role?.name === 'Administrador';
+    const isAdmin = userPermissions.Admin || 
+                   userPermissions.Pagos?.Administrar ||
+                   req.user.role?.name === 'Administrador';
     
     if (isAdmin) {
       return next();
     }
 
-    // Si es atleta, verificar que sea su propio ID
-    if (!userAthleteId || parseInt(athleteId) !== userAthleteId) {
+    // ✅ CORRECCIÓN: Verificar múltiples formas de obtener el athleteId
+    let userAthleteId = null;
+    
+    // Opción 1: req.user.athlete.id (si existe la relación)
+    if (req.user.athlete?.id) {
+      userAthleteId = req.user.athlete.id;
+    }
+    // Opción 2: req.user.id (si el usuario ES el atleta directamente)
+    else if (req.user.role?.name === 'Deportista') {
+      userAthleteId = req.user.id;
+    }
+
+    console.log('🔍 [OWNERSHIP DEBUG]', {
+      requestedAthleteId,
+      userAthleteId,
+      userRole: req.user.role?.name,
+      hasAthleteRelation: !!req.user.athlete,
+      athleteRelationId: req.user.athlete?.id
+    });
+
+    // Si no se pudo determinar el athleteId del usuario
+    if (!userAthleteId) {
+      return res.status(403).json({
+        success: false,
+        message: "No se pudo verificar tu identidad como deportista"
+      });
+    }
+
+    // ✅ CORRECCIÓN CRÍTICA: Si el usuario está pidiendo su propio user.id pero tiene athlete.id diferente,
+    // redirigir automáticamente al athlete.id correcto
+    if (req.user.role?.name === 'Deportista' && req.user.athlete?.id && requestedAthleteId === req.user.id) {
+      console.log('🔄 [AUTO-REDIRECT] Redirigiendo de user.id a athlete.id:', {
+        from: req.user.id,
+        to: req.user.athlete.id
+      });
+      
+      // Modificar la URL para usar el athlete.id correcto
+      req.params.athleteId = req.user.athlete.id.toString();
+      return next();
+    }
+
+    // Verificar que el atleta acceda solo a sus propios datos
+    if (requestedAthleteId !== userAthleteId) {
       return res.status(403).json({
         success: false,
         message: "Solo puedes acceder a tu propia información de pagos"

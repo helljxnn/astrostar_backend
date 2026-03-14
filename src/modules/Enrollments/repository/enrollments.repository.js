@@ -15,7 +15,7 @@ export const enrollmentsRepository = {
     });
   },
 
-  async findAll({ estado, athleteId, page = 1, limit = 10 }) {
+  async findAll({ estado, athleteId, search, page = 1, limit = 10 }) {
     const skip = (page - 1) * limit;
     const where = {};
 
@@ -25,6 +25,68 @@ export const enrollmentsRepository = {
 
     if (athleteId) {
       where.athleteId = parseInt(athleteId);
+    }
+
+    // ✅ MEJORADO: Búsqueda por nombre completo o documento
+    if (search) {
+      const searchTerm = search.trim();
+      where.OR = [
+        // Búsqueda por documento exacto
+        {
+          athlete: {
+            user: {
+              identification: {
+                contains: searchTerm,
+                mode: 'insensitive'
+              }
+            }
+          }
+        },
+        // Búsqueda por nombre
+        {
+          athlete: {
+            user: {
+              firstName: {
+                contains: searchTerm,
+                mode: 'insensitive'
+              }
+            }
+          }
+        },
+        // Búsqueda por apellido
+        {
+          athlete: {
+            user: {
+              lastName: {
+                contains: searchTerm,
+                mode: 'insensitive'
+              }
+            }
+          }
+        },
+        // Búsqueda por segundo nombre
+        {
+          athlete: {
+            user: {
+              middleName: {
+                contains: searchTerm,
+                mode: 'insensitive'
+              }
+            }
+          }
+        },
+        // Búsqueda por segundo apellido
+        {
+          athlete: {
+            user: {
+              secondLastName: {
+                contains: searchTerm,
+                mode: 'insensitive'
+              }
+            }
+          }
+        }
+      ];
     }
 
     const [data, total] = await Promise.all([
@@ -37,11 +99,9 @@ export const enrollmentsRepository = {
           athleteId: true,
           fechaInicio: true,
           fechaVencimiento: true,
-          fechaMatricula: true,
+          createdAt: true,
           estado: true,
           observaciones: true,
-          comprobantePago: true,
-          createdAt: true,
           updatedAt: true,
           athlete: {
             select: {
@@ -84,8 +144,23 @@ export const enrollmentsRepository = {
       prisma.enrollment.count({ where }),
     ]);
 
+    // ✅ MEJORADO: Transformar datos para incluir nombre completo y fechaMatricula (alias de createdAt)
+    const transformedData = data.map(enrollment => ({
+      ...enrollment,
+      fechaMatricula: enrollment.createdAt, // API: compatibilidad - createdAt = cuando se creó
+      athlete: {
+        ...enrollment.athlete,
+        nombreCompleto: [
+          enrollment.athlete.user?.firstName,
+          enrollment.athlete.user?.middleName,
+          enrollment.athlete.user?.lastName,
+          enrollment.athlete.user?.secondLastName
+        ].filter(Boolean).join(' ')
+      }
+    }));
+
     return {
-      data,
+      data: transformedData,
       pagination: {
         total,
         page: parseInt(page),
@@ -133,8 +208,10 @@ export const enrollmentsRepository = {
   },
 
   async delete(id) {
-    return await prisma.enrollment.delete({
-      where: { id: parseInt(id) },
-    });
+    // ❌ PROTECCIÓN: Las matrículas no pueden eliminarse para mantener historial
+    throw new Error(
+      'Operación no permitida: Las matrículas no pueden eliminarse. ' +
+      'Solo pueden cambiar de estado: Vigente, Vencida, Pending_Payment.'
+    );
   },
 };

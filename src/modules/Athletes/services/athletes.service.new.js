@@ -83,7 +83,37 @@ export const athletesService = {
           if (enrollment) {
             await tx.enrollment.update({
               where: { id: enrollment.id },
-              data: { estado: "Suspendida" },
+              data: { estado: "Vencida" },
+            });
+          }
+          
+          // Suspender obligaciones MONTHLY pendientes
+          const pendingObligations = await tx.paymentObligation.findMany({
+            where: {
+              athleteId: parseInt(id),
+              type: 'MONTHLY',
+              payments: {
+                none: { status: 'APPROVED' }
+              }
+            }
+          });
+          
+          const now = new Date();
+          for (const obligation of pendingObligations) {
+            // Calcular mora actual para congelarla
+            const lateDays = Math.max(0, Math.ceil((now - new Date(obligation.dueEnd)) / (1000 * 60 * 60 * 24)));
+            const lateFee = lateDays * 2000; // Usar constante de mora diaria
+            
+            await tx.paymentObligation.update({
+              where: { id: obligation.id },
+              data: {
+                metadata: {
+                  ...obligation.metadata,
+                  suspended: true,
+                  suspendedAt: now.toISOString(),
+                  moraAtSuspension: lateFee
+                }
+              }
             });
           }
         }
@@ -93,7 +123,7 @@ export const athletesService = {
           const enrollment = await tx.enrollment.findFirst({
             where: {
               athleteId: parseInt(id),
-              estado: "Suspendida",
+              estado: "Vencida",
             },
             orderBy: { updatedAt: "desc" },
           });
@@ -103,6 +133,32 @@ export const athletesService = {
               where: { id: enrollment.id },
               data: { estado: "Vigente" },
             });
+          }
+          
+          // Reactivar obligaciones MONTHLY suspendidas
+          const suspendedObligations = await tx.paymentObligation.findMany({
+            where: {
+              athleteId: parseInt(id),
+              type: 'MONTHLY',
+              payments: {
+                none: { status: 'APPROVED' }
+              }
+            }
+          });
+          
+          for (const obligation of suspendedObligations) {
+            if (obligation.metadata?.suspended) {
+              await tx.paymentObligation.update({
+                where: { id: obligation.id },
+                data: {
+                  metadata: {
+                    ...obligation.metadata,
+                    suspended: false,
+                    reactivatedAt: new Date().toISOString()
+                  }
+                }
+              });
+            }
           }
         }
       }

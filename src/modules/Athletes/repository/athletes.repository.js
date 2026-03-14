@@ -29,7 +29,6 @@ export class AthletesRepository {
     const mapInscriptionStatus = (status) => {
       const statusMap = {
         Active: "Vigente",
-        Suspended: "Suspendida",
         Expired: "Vencida",
       };
       return statusMap[status] || status;
@@ -61,12 +60,21 @@ export class AthletesRepository {
       return `${year}-${month}-${day}`;
     };
 
+    // Construir nombre completo
+    const nombreCompleto = [
+      athlete.user?.firstName,
+      athlete.user?.middleName,
+      athlete.user?.lastName,
+      athlete.user?.secondLastName
+    ].filter(Boolean).join(' ');
+
     return {
       id: athlete.id,
       firstName: athlete.user?.firstName || "",
       middleName: athlete.user?.middleName || "",
       lastName: athlete.user?.lastName || "",
       secondLastName: athlete.user?.secondLastName || "",
+      nombreCompleto: nombreCompleto, // ✅ AGREGADO
       documentTypeId: athlete.user?.documentTypeId,
       documentTypeName: athlete.user?.documentType?.name || "",
       identification: athlete.user?.identification || "",
@@ -118,12 +126,11 @@ export class AthletesRepository {
       })),
       matriculas: (athlete.enrollments || []).map((mat) => ({
         id: mat.id,
-        fechaMatricula: mat.fechaMatricula,
+        fechaMatricula: mat.createdAt, // createdAt = cuando se creó la matrícula
         fechaInicio: mat.fechaInicio,
         fechaVencimiento: mat.fechaVencimiento,
         estado: mat.estado,
         observaciones: mat.observaciones,
-        comprobantePago: mat.comprobantePago,
       })),
       createdAt: athlete.createdAt,
       updatedAt: athlete.updatedAt,
@@ -265,20 +272,9 @@ export class AthletesRepository {
       const athleteAge =
         userData.age ?? calculateAgeFromBirthDate(userData.birthDate);
       
-      // REGLA DE NEGOCIO: NO validar edad vs categoría cuando viene de matrícula (preRegistrationId)
-      // Esto permite matricular deportistas en categorías superiores a su edad
-      const isFromEnrollment = athleteData.preRegistrationId !== undefined;
-      
-      if (!isFromEnrollment) {
-        // Solo validar si NO viene de matrícula
-        // Nueva validación: Solo rechazar si la edad es MENOR al mínimo de la categoría
-        // Permite que deportistas se inscriban en categorías superiores
-        if (athleteAge !== null && athleteAge < sportsCategory.edadMinima) {
-          throw new Error(
-            `No se puede crear: la edad ${athleteAge} es menor al rango de la categoría "${sportsCategory.nombre}" (${sportsCategory.edadMinima}-${sportsCategory.edadMaxima} años). Puedes escoger categorías para edades mayores o iguales.`
-          );
-        }
-      }
+      // ✅ VALIDACIÓN DE EDAD VS CATEGORÍA ELIMINADA
+      // El cliente tiene control total sobre qué deportistas asignar a qué categorías
+      // Sin restricciones de edad
 
       // Buscar o crear rol de atleta
       let athleteRole = await prisma.role.findFirst({
@@ -392,47 +388,18 @@ export class AthletesRepository {
           throw new Error("Atleta no encontrado");
         }
 
-        const effectiveBirthDate = athleteData.birthDate
-          ? new Date(athleteData.birthDate)
-          : currentAthlete.user?.birthDate;
-        const categoryName = String(
-          athleteData.categoria ||
-            currentAthlete.inscriptions[0]?.sportsCategory?.nombre ||
-            ""
-        ).trim();
+        // ✅ VALIDACIÓN DE EDAD VS CATEGORÍA ELIMINADA
+        // El cliente tiene control total sobre qué deportistas asignar a qué categorías
+        // Sin restricciones de edad
 
-        if (effectiveBirthDate && categoryName) {
-          const athleteAge = calculateAgeFromBirthDate(effectiveBirthDate);
-          if (athleteAge !== null) {
-            const category = await prisma.sportsCategory.findFirst({
-              where: {
-                nombre: {
-                  equals: categoryName,
-                  mode: "insensitive",
-                },
-              },
-            });
+        // ✅ CORRECCIÓN CRÍTICA: NO actualizar passwordHash a menos que haya nueva contraseña
+        // Eliminar passwordHash de userData para evitar sobrescribir la contraseña existente
+        const { passwordHash, ...userDataWithoutPassword } = userData;
 
-            if (!category) {
-              throw new Error(
-                `Categoría deportiva "${categoryName}" no encontrada`
-              );
-            }
-
-            // Nueva validación: Solo rechazar si la edad es MENOR al mínimo de la categoría
-            // Permite que deportistas se inscriban en categorías superiores
-            if (athleteAge < category.edadMinima) {
-              throw new Error(
-                `No se puede editar: la edad ${athleteAge} es menor al rango de la categoría "${category.nombre}" (${category.edadMinima}-${category.edadMaxima} años). Puedes escoger categorías para edades mayores o iguales.`
-              );
-            }
-          }
-        }
-
-        // Actualizar usuario
+        // Actualizar usuario SIN tocar el passwordHash
         await tx.user.update({
           where: { id: currentAthlete.userId },
-          data: userData,
+          data: userDataWithoutPassword,
         });
 
         // Verificar si cambió el estado
@@ -555,143 +522,253 @@ export class AthletesRepository {
   }
 
   async findAll({
-    page = 1,
-    limit = 10,
-    search = "",
-    status = "",
-    categoria = "",
-    estadoInscripcion = "",
-  }) {
-    const skip = (page - 1) * limit;
-    const where = {};
+      page = 1,
+      limit = 10,
+      search = "",
+      status = "",
+      categoria = "",
+      estadoInscripcion = "",
+    }) {
+      const skip = (page - 1) * limit;
 
-    // NO aplicar filtros de búsqueda en el where si hay término de búsqueda
-    // Traer todo y filtrar en memoria para poder buscar en categoría y estado
-    
-    if (status && !search) {
-      where.status = status === "Activo" ? "Active" : "Inactive";
-    }
-
-    if (estadoInscripcion && !search) {
-      const statusMap = {
-        Vigente: "Active",
-        Suspendida: "Suspended",
-        Vencida: "Expired",
+      // ✅ OPTIMIZACIÓN: Construir filtros de base de datos en lugar de filtrar en memoria
+      const where = {
+        AND: []
       };
-      where.currentInscriptionStatus = statusMap[estadoInscripcion];
+
+      // Filtro por estado del atleta
+      if (status) {
+        where.AND.push({
+          status: status === "Activo" ? "Active" : "Inactive"
+        });
+      }
+
+      // Filtro por estado de inscripción
+      if (estadoInscripcion) {
+        const statusMap = {
+          Vigente: "Active",
+          Vencida: "Expired",
+        };
+        where.AND.push({
+          currentInscriptionStatus: statusMap[estadoInscripcion]
+        });
+      }
+
+      // ✅ OPTIMIZACIÓN: Filtro por categoría usando JOIN en lugar de memoria
+      if (categoria) {
+        where.AND.push({
+          inscriptions: {
+            some: {
+              sportsCategory: {
+                nombre: categoria
+              }
+            }
+          }
+        });
+      }
+
+      // ✅ OPTIMIZACIÓN: Búsqueda usando base de datos con índices
+      if (search) {
+        const searchLower = search.toLowerCase().trim().replace(/\s+/g, ' ');
+        const searchWords = searchLower.split(' ');
+
+        // Búsqueda exacta por estado
+        const isStatusSearch = searchLower === "activo" || searchLower === "inactivo";
+
+        if (isStatusSearch) {
+          where.AND.push({
+            status: searchLower === "activo" ? "Active" : "Inactive"
+          });
+        } else {
+          // Búsqueda por múltiples campos usando OR
+          const searchConditions = {
+            OR: [
+              // Búsqueda exacta por documento
+              {
+                user: {
+                  identification: {
+                    equals: searchLower,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              // Búsqueda parcial por documento
+              {
+                user: {
+                  identification: {
+                    contains: searchLower,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              // Búsqueda por email
+              {
+                user: {
+                  email: {
+                    contains: searchLower,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              // Búsqueda por teléfono
+              {
+                user: {
+                  phoneNumber: {
+                    contains: searchLower,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              // Búsqueda por dirección
+              {
+                user: {
+                  address: {
+                    contains: searchLower,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              // Búsqueda por categoría deportiva
+              {
+                inscriptions: {
+                  some: {
+                    sportsCategory: {
+                      nombre: {
+                        contains: searchLower,
+                        mode: "insensitive"
+                      }
+                    }
+                  }
+                }
+              },
+              // Búsqueda por documento del acudiente
+              {
+                guardian: {
+                  identification: {
+                    contains: searchLower,
+                    mode: "insensitive"
+                  }
+                }
+              }
+            ]
+          };
+
+          // ✅ OPTIMIZACIÓN: Búsqueda por nombres usando múltiples palabras
+          searchWords.forEach(word => {
+            searchConditions.OR.push(
+              // Nombres del atleta
+              {
+                user: {
+                  firstName: {
+                    contains: word,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              {
+                user: {
+                  middleName: {
+                    contains: word,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              {
+                user: {
+                  lastName: {
+                    contains: word,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              {
+                user: {
+                  secondLastName: {
+                    contains: word,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              // Nombres del acudiente
+              {
+                guardian: {
+                  firstName: {
+                    contains: word,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              {
+                guardian: {
+                  lastName: {
+                    contains: word,
+                    mode: "insensitive"
+                  }
+                }
+              }
+            );
+          });
+
+          where.AND.push(searchConditions);
+        }
+      }
+
+      // Si no hay filtros, limpiar el array AND
+      if (where.AND.length === 0) {
+        delete where.AND;
+      }
+
+      // ✅ OPTIMIZACIÓN: Consulta única con paginación en base de datos
+      const [athletes, total] = await Promise.all([
+        prisma.athlete.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            user: {
+              include: {
+                documentType: true,
+              },
+            },
+            guardian: {
+              include: {
+                documentType: true,
+              },
+            },
+            inscriptions: {
+              include: {
+                sportsCategory: true,
+              },
+              orderBy: { inscriptionDate: "desc" },
+              take: 1, // ✅ OPTIMIZACIÓN: Solo traer la inscripción más reciente
+            },
+            enrollments: {
+              orderBy: { createdAt: "desc" },
+              take: 3, // ✅ OPTIMIZACIÓN: Limitar matrículas para reducir payload
+            },
+          },
+          orderBy: { createdAt: "desc" },
+        }),
+        prisma.athlete.count({ where })
+      ]);
+
+      const transformedAthletes = athletes.map((athlete) =>
+        this.transformToFrontend(athlete)
+      );
+
+      return {
+        athletes: transformedAthletes,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: total,
+          totalPages: Math.ceil(total / limit),
+          hasNext: page < Math.ceil(total / limit),
+          hasPrev: page > 1,
+        },
+      };
     }
 
-    // Si hay búsqueda, traer TODOS los registros sin filtro
-    const shouldFetchAll = !!search;
-    
-    const athletes = await prisma.athlete.findMany({
-      where,
-      skip: shouldFetchAll ? undefined : skip,
-      take: shouldFetchAll ? undefined : limit,
-      include: {
-        user: {
-          include: {
-            documentType: true,
-          },
-        },
-        guardian: {
-          include: {
-            documentType: true,
-          },
-        },
-        inscriptions: {
-          include: {
-            sportsCategory: true,
-          },
-          orderBy: { inscriptionDate: "desc" },
-        },
-        enrollments: {
-          orderBy: { fechaMatricula: "desc" },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    // Filtrar en memoria si hay búsqueda
-    let filteredAthletes = athletes;
-    
-    if (search) {
-      // Normalizar el término de búsqueda (eliminar espacios extras)
-      const searchLower = search.toLowerCase().trim().replace(/\s+/g, ' ');
-      
-      // Dividir el término de búsqueda en palabras individuales
-      const searchWords = searchLower.split(' ');
-      
-      filteredAthletes = athletes.filter((athlete) => {
-        const user = athlete.user;
-        const guardian = athlete.guardian;
-        const currentInscription = athlete.inscriptions[0];
-        const categoryName = currentInscription?.sportsCategory?.nombre || "";
-        const athleteStatus = athlete.status === "Active" ? "activo" : "inactivo";
-        
-        // Concatenar nombre completo para búsqueda con espacios
-        const fullName = [
-          user?.firstName,
-          user?.middleName,
-          user?.lastName,
-          user?.secondLastName
-        ].filter(Boolean).join(' ').toLowerCase();
-        
-        const guardianFullName = [
-          guardian?.firstName,
-          guardian?.lastName
-        ].filter(Boolean).join(' ').toLowerCase();
-        
-        // Búsqueda EXACTA para el estado (para evitar que "activo" encuentre "inactivo")
-        const matchesStatus = athleteStatus === searchLower;
-        
-        // Búsqueda por palabras individuales: TODAS las palabras deben estar presentes
-        const matchesAllWords = searchWords.every(word => 
-          fullName.includes(word) ||
-          guardianFullName.includes(word) ||
-          user?.identification?.toLowerCase().includes(word) ||
-          user?.email?.toLowerCase().includes(word) ||
-          user?.phoneNumber?.toLowerCase().includes(word) ||
-          user?.address?.toLowerCase().includes(word) ||
-          guardian?.identification?.toLowerCase().includes(word) ||
-          categoryName.toLowerCase().includes(word)
-        );
-        
-        return matchesStatus || matchesAllWords;
-      });
-    }
-    
-    // Filtro adicional por categoría específica (del filtro dropdown)
-    if (categoria) {
-      filteredAthletes = filteredAthletes.filter((athlete) => {
-        const currentInscription = athlete.inscriptions[0];
-        return currentInscription?.sportsCategory?.nombre === categoria;
-      });
-    }
-    
-    // Aplicar paginación manual si se trajo todo
-    const paginatedAthletes = shouldFetchAll 
-      ? filteredAthletes.slice(skip, skip + limit)
-      : filteredAthletes;
-
-    const transformedAthletes = paginatedAthletes.map((athlete) =>
-      this.transformToFrontend(athlete)
-    );
-
-    const finalTotal = shouldFetchAll ? filteredAthletes.length : athletes.length;
-
-    return {
-      athletes: transformedAthletes,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: finalTotal,
-        totalPages: Math.ceil(finalTotal / limit),
-        hasNext: page < Math.ceil(finalTotal / limit),
-        hasPrev: page > 1,
-      },
-    };
-  }
 
   async findById(id) {
     const athlete = await prisma.athlete.findUnique({
@@ -714,7 +791,7 @@ export class AthletesRepository {
           orderBy: { inscriptionDate: "desc" },
         },
         enrollments: {
-          orderBy: { fechaMatricula: "desc" },
+          orderBy: { createdAt: "desc" },
         },
       },
     });
@@ -818,7 +895,6 @@ export class AthletesRepository {
     const inscripcionStats = byInscripcion.reduce((acc, item) => {
       const statusMap = {
         Active: "vigente",
-        Suspended: "suspendida",
         Expired: "vencida",
       };
       const key = statusMap[item.currentInscriptionStatus] || "sin_estado";

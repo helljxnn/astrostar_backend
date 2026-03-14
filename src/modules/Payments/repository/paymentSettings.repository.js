@@ -35,7 +35,7 @@ export const paymentSettingsRepository = {
         id: 1,
         monthlyAmount: 30000,        // Valor real: $30,000
         enrollmentAmount: 40000,     // Valor real: $40,000
-        lateFeeDailyAmount: 1000     // Mora diaria: $1,000/día
+        lateFeeDailyAmount: 2000     // Mora diaria: $2,000/día
       }
     });
   }

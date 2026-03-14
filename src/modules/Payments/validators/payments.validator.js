@@ -40,8 +40,8 @@ export const paymentsValidator = {
     
     query('type')
       .optional()
-      .isIn(['MONTHLY', 'ENROLLMENT_RENEWAL'])
-      .withMessage('El tipo debe ser MONTHLY o ENROLLMENT_RENEWAL')
+      .isIn(['MONTHLY', 'ENROLLMENT_RENEWAL', 'ENROLLMENT_INITIAL'])
+      .withMessage('El tipo debe ser MONTHLY, ENROLLMENT_RENEWAL o ENROLLMENT_INITIAL')
   ],
 
   // ============================================================================

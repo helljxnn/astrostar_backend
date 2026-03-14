@@ -42,8 +42,8 @@ export const paymentsRepository = {
       where.period = period;
     }
 
-    // Para ENROLLMENT_RENEWAL, buscar cualquier obligación sin pago aprobado
-    if (type === 'ENROLLMENT_RENEWAL') {
+    // Para ENROLLMENT_RENEWAL e ENROLLMENT_INITIAL, buscar cualquier obligación sin pago aprobado
+    if (type === 'ENROLLMENT_RENEWAL' || type === 'ENROLLMENT_INITIAL') {
       where.payments = {
         none: { status: 'APPROVED' }
       };
@@ -186,9 +186,13 @@ export const paymentsRepository = {
     const skip = (page - 1) * limit;
 
     const where = {
-      status: 'PENDING',
-      ...(type && { obligation: { type } })
+      status: 'PENDING'
     };
+
+    // Filtrar por tipo de obligación si se especifica
+    if (type) {
+      where.obligation = { type };
+    }
 
     const [payments, total] = await Promise.all([
       prisma.payment.findMany({
@@ -214,7 +218,7 @@ export const paymentsRepository = {
       }),
       prisma.payment.count({ where })
     ]);
-
+    
     return {
       payments,
       pagination: {
@@ -225,6 +229,30 @@ export const paymentsRepository = {
         hasPrev: page > 1
       }
     };
+  },
+
+  /**
+   * Obtener pago por ID
+   */
+  async getPaymentById(paymentId) {
+    return await prisma.payment.findUnique({
+      where: { id: paymentId },
+      include: {
+        obligation: true,
+        athlete: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                identification: true,
+                email: true
+              }
+            }
+          }
+        }
+      }
+    });
   },
 
   /**

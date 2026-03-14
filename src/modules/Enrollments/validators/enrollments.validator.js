@@ -38,7 +38,7 @@ const validateAthlete = (athlete) => {
 
 const validateEnrollment = (enrollment) => {
   const errors = [];
-  const validStates = ["Vigente", "Suspendida", "Vencida", "Cancelada"];
+  const validStates = ["Vigente", "Vencida", "Pending_Payment"];
   
   if (enrollment.estado && !validStates.includes(enrollment.estado)) {
     errors.push({ field: 'estado', message: 'Estado inválido' });

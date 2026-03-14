@@ -68,6 +68,7 @@ router.post("/logout", authController.logout);
 
 // Rutas protegidas
 router.get("/me", authenticateToken, authController.me);
+router.get("/permissions", authenticateToken, authController.getPermissions);
 
 router.post(
   "/change-password",

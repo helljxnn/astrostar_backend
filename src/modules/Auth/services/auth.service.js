@@ -39,8 +39,17 @@ export class AuthService {
       if (user.status !== "Active") {
         return {
           success: false,
-          statusCode: 401,
+          statusCode: 403,
           message: "Usuario inactivo. Contacte al administrador.",
+        };
+      }
+
+      // 3.5. ✅ VALIDACIÓN CRÍTICA: Si es deportista, verificar que el atleta esté activo
+      if (user.athlete && user.athlete.status !== "Active") {
+        return {
+          success: false,
+          statusCode: 403,
+          message: "Tu cuenta de deportista está inactiva. Contacta al administrador para más información.",
         };
       }
 

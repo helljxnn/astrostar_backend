@@ -10,8 +10,13 @@ import { uploadPaymentReceipt } from "../../../services/shared/middleware/upload
 
 const router = Router();
 
+// Ruta simple para probar
+router.get('/test', (req, res) => {
+  res.json({ message: 'Payments routes working - updated' });
+});
+
 // ============================================================================
-// RUTAS PÚBLICAS (requieren autenticación básica)
+// RUTAS PARA DEPORTISTAS (RESTAURADAS)
 // ============================================================================
 
 /**
@@ -40,8 +45,19 @@ router.post(
 );
 
 /**
+ * GET /payments/:paymentId/receipt
+ * Descargar comprobante de pago
+ */
+router.get(
+  '/:paymentId/receipt',
+  authenticateToken,
+  paymentsValidator.validatePaymentId,
+  paymentsController.downloadPaymentReceipt
+);
+
+/**
  * GET /payments/athletes/:athleteId/access-check
- * Verificar restricciones de acceso (usado internamente)
+ * Verificar restricciones de acceso
  */
 router.get(
   '/athletes/:athleteId/access-check',
@@ -52,79 +68,14 @@ router.get(
 );
 
 // ============================================================================
-// RUTAS DE ADMINISTRACIÓN (requieren permisos especiales)
+// RUTAS DE ADMINISTRACIÓN
 // ============================================================================
 
-/**
- * GET /payments/pending
- * Obtener pagos pendientes de revisión
- */
-router.get(
-  '/pending',
-  authenticateToken,
-  requirePaymentAdminPermissions,
-  paymentsValidator.validatePaginationQuery,
-  paymentsController.getPendingPayments
-);
-
-/**
- * PATCH /payments/:paymentId/approve
- * Aprobar un pago
- */
-router.patch(
-  '/:paymentId/approve',
-  authenticateToken,
-  requirePaymentAdminPermissions,
-  paymentsValidator.validatePaymentId,
-  paymentsController.approvePayment
-);
-
-/**
- * PATCH /payments/:paymentId/reject
- * Rechazar un pago
- */
-router.patch(
-  '/:paymentId/reject',
-  authenticateToken,
-  requirePaymentAdminPermissions,
-  paymentsValidator.validatePaymentId,
-  paymentsValidator.validateRejectPayment,
-  paymentsController.rejectPayment
-);
-
-/**
- * POST /payments/generate-monthly
- * Generar mensualidades automáticamente (CRON job)
- */
-router.post(
-  '/generate-monthly',
-  authenticateToken,
-  requirePaymentAdminPermissions,
-  paymentsController.generateMonthlyObligations
-);
-
-/**
- * POST /payments/athletes/:athleteId/enrollment-renewal
- * Generar obligación de renovación de matrícula
- */
-router.post(
-  '/athletes/:athleteId/enrollment-renewal',
-  authenticateToken,
-  requirePaymentAdminPermissions,
-  paymentsValidator.validateAthleteId,
-  paymentsController.generateEnrollmentRenewal
-);
-
-/**
- * POST /payments/athletes/:athleteId/enrollment-initial
- * Generar obligación de pago inicial de matrícula (fallback manual para admin)
- */
-router.post(
-  '/athletes/:athleteId/enrollment-initial',
-  authenticateToken,
-  requirePaymentAdminPermissions,
-  paymentsValidator.validateAthleteId,
-  paymentsController.generateInitialEnrollmentObligation
-);
+// Rutas básicas - solo métodos que existen en el controller
+router.get('/pending', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPendingPayments);
+router.get('/all', authenticateToken, requirePaymentAdminPermissions, paymentsController.getAllPayments);
+router.get('/monthly-management', authenticateToken, requirePaymentAdminPermissions, paymentsController.getMonthlyPaymentsManagement);
+router.patch('/:paymentId/approve', authenticateToken, requirePaymentAdminPermissions, paymentsController.approvePayment);
+router.patch('/:paymentId/reject', authenticateToken, requirePaymentAdminPermissions, paymentsController.rejectPayment);
 
 export default router;

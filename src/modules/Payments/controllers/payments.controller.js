@@ -1,9 +1,5 @@
-import { paymentsService } from "../services/payments.service.js";
+  import { paymentsService } from "../services/payments.service.js";
 import { validationResult } from "express-validator";
-
-// ============================================================================
-// UTILIDADES
-// ============================================================================
 
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
@@ -19,31 +15,17 @@ const handleValidationErrors = (req, res) => {
 
 const handleError = (res, error, defaultMessage = "Error interno del servidor") => {
   console.error('❌ [PAYMENTS CONTROLLER]', error);
-  
-  const statusCode = error.message.includes('no encontrado') ? 404 :
-                    error.message.includes('ya existe') ? 409 :
-                    error.message.includes('obligatorio') ? 400 : 500;
-
-  return res.status(statusCode).json({
+  return res.status(500).json({
     success: false,
-    message: error.message || defaultMessage,
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
+    message: error.message || defaultMessage
   });
 };
 
-// ============================================================================
-// CONTROLADORES
-// ============================================================================
-
 export const paymentsController = {
   // ============================================================================
-  // ESTADO FINANCIERO
+  // MÉTODOS PARA DEPORTISTAS
   // ============================================================================
 
-  /**
-   * GET /payments/athletes/:athleteId/financial-status
-   * Obtener estado financiero de un atleta
-   */
   async getAthleteFinancialStatus(req, res) {
     try {
       const validationError = handleValidationErrors(req, res);
@@ -62,14 +44,6 @@ export const paymentsController = {
     }
   },
 
-  // ============================================================================
-  // COMPROBANTES DE PAGO
-  // ============================================================================
-
-  /**
-   * POST /payments/obligations/:obligationId/receipt
-   * Subir comprobante de pago
-   */
   async uploadPaymentReceipt(req, res) {
     try {
       const validationError = handleValidationErrors(req, res);
@@ -93,7 +67,7 @@ export const paymentsController = {
       }
 
       const receiptData = {
-        url: req.file.path, // Cloudinary URL
+        url: req.file.path,
         originalName: req.file.originalname
       };
 
@@ -105,7 +79,7 @@ export const paymentsController = {
 
       return res.status(201).json({
         success: true,
-        message: "Comprobante subido exitosamente. Será revisado por administración.",
+        message: "Comprobante subido exitosamente.",
         data: payment
       });
     } catch (error) {
@@ -113,22 +87,59 @@ export const paymentsController = {
     }
   },
 
-  /**
-   * GET /payments/pending
-   * Obtener pagos pendientes (solo admin)
-   */
+  async downloadPaymentReceipt(req, res) {
+    try {
+      const { paymentId } = req.params;
+      const payment = await paymentsService.getPaymentById(parseInt(paymentId));
+
+      if (!payment) {
+        return res.status(404).json({
+          success: false,
+          message: "Comprobante no encontrado"
+        });
+      }
+
+      if (!payment.receiptUrl) {
+        return res.status(404).json({
+          success: false,
+          message: "Este pago no tiene comprobante adjunto"
+        });
+      }
+
+      return res.redirect(payment.receiptUrl);
+    } catch (error) {
+      return handleError(res, error, "Error al descargar comprobante");
+    }
+  },
+
+  async checkAthleteAccess(req, res) {
+    try {
+      const { athleteId } = req.params;
+      const accessCheck = await paymentsService.checkAthleteAccessRestrictions(parseInt(athleteId));
+
+      return res.status(200).json({
+        success: true,
+        data: accessCheck
+      });
+    } catch (error) {
+      return handleError(res, error, "Error al verificar acceso");
+    }
+  },
+
+  // ============================================================================
+  // MÉTODOS PARA ADMINISTRADORES
+  // ============================================================================
+
   async getPendingPayments(req, res) {
     try {
-      const { page = 1, limit = 20, type } = req.query;
-      
-      const filters = {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        ...(type && { type })
+      const { page = 1, limit = 20, type, search } = req.query;
+      const filters = { 
+        page: parseInt(page), 
+        limit: parseInt(limit), 
+        ...(type && { type }),
+        ...(search && { search })
       };
-
       const result = await paymentsService.getPendingPayments(filters);
-
       return res.status(200).json({
         success: true,
         message: "Pagos pendientes obtenidos exitosamente",
@@ -140,23 +151,36 @@ export const paymentsController = {
     }
   },
 
-  /**
-   * PATCH /payments/:paymentId/approve
-   * Aprobar pago (solo admin)
-   */
+  async getAllPayments(req, res) {
+    try {
+      const { page = 1, limit = 20, status, type, dateFrom, dateTo, excludeStatus, search } = req.query;
+      const filters = { 
+        page: parseInt(page), 
+        limit: parseInt(limit), 
+        status, 
+        type, 
+        dateFrom, 
+        dateTo,
+        excludeStatus,
+        search
+      };
+      const result = await paymentsService.getAllPayments(filters);
+      return res.status(200).json({
+        success: true,
+        message: 'Pagos obtenidos exitosamente',
+        data: result.payments,
+        pagination: result.pagination
+      });
+    } catch (error) {
+      return handleError(res, error, 'Error al obtener pagos');
+    }
+  },
+
   async approvePayment(req, res) {
     try {
-      const validationError = handleValidationErrors(req, res);
-      if (validationError) return validationError;
-
       const { paymentId } = req.params;
       const reviewedBy = req.user.id;
-
-      const payment = await paymentsService.approvePayment(
-        parseInt(paymentId),
-        reviewedBy
-      );
-
+      const payment = await paymentsService.approvePayment(parseInt(paymentId), reviewedBy);
       return res.status(200).json({
         success: true,
         message: "Pago aprobado exitosamente",
@@ -167,32 +191,18 @@ export const paymentsController = {
     }
   },
 
-  /**
-   * PATCH /payments/:paymentId/reject
-   * Rechazar pago (solo admin)
-   */
   async rejectPayment(req, res) {
     try {
-      const validationError = handleValidationErrors(req, res);
-      if (validationError) return validationError;
-
       const { paymentId } = req.params;
       const { rejectionReason } = req.body;
       const reviewedBy = req.user.id;
-
       if (!rejectionReason) {
         return res.status(400).json({
           success: false,
           message: "La razón de rechazo es obligatoria"
         });
       }
-
-      const payment = await paymentsService.rejectPayment(
-        parseInt(paymentId),
-        reviewedBy,
-        rejectionReason
-      );
-
+      const payment = await paymentsService.rejectPayment(parseInt(paymentId), reviewedBy, rejectionReason);
       return res.status(200).json({
         success: true,
         message: "Pago rechazado exitosamente",
@@ -203,102 +213,26 @@ export const paymentsController = {
     }
   },
 
-  // ============================================================================
-  // ADMINISTRACIÓN
-  // ============================================================================
-
-  /**
-   * POST /payments/generate-monthly
-   * Generar mensualidades (CRON job - solo admin)
-   */
-  async generateMonthlyObligations(req, res) {
+  async getMonthlyPaymentsManagement(req, res) {
     try {
-      const result = await paymentsService.generateMonthlyObligations();
-
+      const { page = 1, limit = 20, status, search, dateFrom, dateTo } = req.query;
+      console.log('📊 [PAYMENTS] Gestión mensual solicitada:', {
+        page: parseInt(page), limit: parseInt(limit), status, search, dateFrom, dateTo
+      });
+      const result = await paymentsService.getMonthlyPaymentsManagement({
+        page: parseInt(page), limit: parseInt(limit), status, search, dateFrom, dateTo
+      });
       return res.status(200).json({
         success: true,
-        message: `Mensualidades generadas: ${result.created}, omitidas: ${result.skipped}`,
-        data: result
+        data: result,
+        message: 'Gestión mensual obtenida correctamente'
       });
     } catch (error) {
-      return handleError(res, error, "Error al generar mensualidades");
-    }
-  },
-
-  /**
-   * POST /payments/athletes/:athleteId/enrollment-renewal
-   * Generar obligación de renovación de matrícula (solo admin)
-   */
-  async generateEnrollmentRenewal(req, res) {
-    try {
-      const validationError = handleValidationErrors(req, res);
-      if (validationError) return validationError;
-
-      const { athleteId } = req.params;
-      
-      const obligation = await paymentsService.generateEnrollmentRenewalObligation(
-        parseInt(athleteId)
-      );
-
-      return res.status(201).json({
-        success: true,
-        message: "Obligación de renovación de matrícula creada exitosamente",
-        data: obligation
+      console.error('❌ [PAYMENTS] Error en gestión mensual:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al obtener gestión de pagos mensuales'
       });
-    } catch (error) {
-      return handleError(res, error, "Error al generar obligación de renovación");
-    }
-  },
-
-  // ============================================================================
-  // VALIDACIÓN DE ACCESO
-  // ============================================================================
-
-  /**
-   * GET /payments/athletes/:athleteId/access-check
-   * Verificar restricciones de acceso (usado por middleware de login)
-   */
-  async checkAthleteAccess(req, res) {
-    try {
-      const { athleteId } = req.params;
-      
-      const accessCheck = await paymentsService.checkAthleteAccessRestrictions(
-        parseInt(athleteId)
-      );
-
-      return res.status(200).json({
-        success: true,
-        data: accessCheck
-      });
-    } catch (error) {
-      return handleError(res, error, "Error al verificar acceso");
-    }
-  },
-
-  /**
-   * POST /payments/athletes/:athleteId/enrollment-initial
-   * Generar obligación de pago inicial de matrícula (admin - manual fallback)
-   */
-  async generateInitialEnrollmentObligation(req, res) {
-    try {
-      const validationError = handleValidationErrors(req, res);
-      if (validationError) return validationError;
-
-      const { athleteId } = req.params;
-      const { enrollmentId } = req.body;
-
-      const obligation = await paymentsService.generateInitialEnrollmentObligation(
-        parseInt(athleteId),
-        enrollmentId ? parseInt(enrollmentId) : undefined
-      );
-
-      return res.status(201).json({
-        success: true,
-        message: "Obligación de pago inicial de matrícula creada exitosamente",
-        data: obligation
-      });
-    } catch (error) {
-      return handleError(res, error, "Error al generar obligación de pago inicial");
     }
   }
 };
