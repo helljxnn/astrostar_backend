@@ -402,6 +402,7 @@ const upload = multer({
 
 // Rutas específicas PRIMERO (antes de rutas con parámetros)
 router.get("/stats", authenticateToken, employeeController.getEmployeeStats);
+router.get("/report", authenticateToken, employeeController.getAllEmployeesForReport);
 
 router.get(
   "/reference-data",

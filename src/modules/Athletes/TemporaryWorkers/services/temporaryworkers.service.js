@@ -132,7 +132,7 @@ export class TemporaryWorkersService {
   }
 
   /**
-   * Eliminar persona temporal (solo si estÃ¡ inactiva)
+   * Eliminar persona temporal (solo si no está asociada a ningún equipo)
    */
   async deleteTemporaryWorker(id) {
     try {
@@ -145,9 +145,19 @@ export class TemporaryWorkersService {
         };
       }
 
+      // Verificar si está asociada a algún equipo
+      const teamAssociation = await this.temporaryWorkersRepository.isAssociatedWithTeam(id);
+      if (teamAssociation) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar la persona temporal porque está asociada al equipo '${teamAssociation.team.name}'. Primero debe removerla del equipo.`,
+        };
+      }
+
       const personName = `${existing.firstName} ${existing.lastName}`;
 
-      // Permitir eliminaciÃ³n independientemente del estado
+      // Permitir eliminación solo si no está asociada a equipos
       await this.temporaryWorkersRepository.hardDelete(id);
 
       return {
@@ -554,6 +564,28 @@ export class TemporaryWorkersService {
       if (currentPersonType === "Entrenador" && calculatedAge && calculatedAge < 18) {
         errors.push("Los entrenadores deben ser mayores de 18 años");
       }
+
+      // Validar edad según tipo de documento
+      const documentTypeId = data.documentTypeId !== undefined ? data.documentTypeId : (existingData ? existingData.documentTypeId : null);
+      if (documentTypeId && calculatedAge !== null && calculatedAge !== undefined) {
+        // Asumiendo que documentTypeId 1 = CC (Cédula) y 2 = TI (Tarjeta de Identidad)
+        // Esto debería ajustarse según los IDs reales en la base de datos
+        if (documentTypeId == 1) { // Cédula de Ciudadanía
+          if (calculatedAge < 18) {
+            errors.push("Para cédula de ciudadanía la persona debe ser mayor de edad (18 años)");
+          }
+        } else if (documentTypeId == 2) { // Tarjeta de Identidad
+          if (calculatedAge >= 18) {
+            errors.push("Para tarjeta de identidad la persona debe ser menor de edad (menor a 18 años)");
+          }
+        }
+      }
+    }
+
+    // Validar que entrenadores no puedan usar Tarjeta de Identidad (ID 2)
+    const documentTypeId = data.documentTypeId !== undefined ? data.documentTypeId : (existingData ? existingData.documentTypeId : null);
+    if (currentPersonType === "Entrenador" && documentTypeId == 2) {
+      errors.push("Los entrenadores no pueden usar Tarjeta de Identidad ya que deben ser mayores de edad");
     }
 
     // Validar campos requeridos según tipo de persona
@@ -591,7 +623,8 @@ export class TemporaryWorkersService {
       backendData.middleName = frontendData.middleName.trim();
     if (frontendData.lastName)
       backendData.lastName = frontendData.lastName.trim();
-    // secondLastName no existe en el modelo TemporaryPerson
+    if (frontendData.secondLastName)
+      backendData.secondLastName = frontendData.secondLastName.trim();
     if (frontendData.identification)
       backendData.identification = frontendData.identification.trim();
     if (frontendData.email)

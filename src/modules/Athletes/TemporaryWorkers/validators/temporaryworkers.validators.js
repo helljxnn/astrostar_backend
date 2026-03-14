@@ -31,6 +31,15 @@ export const createTemporaryWorkerValidation = [
     .withMessage("El primer apellido solo puede contener letras y espacios")
     .trim(),
 
+  // Segundo Apellido - Opcional
+  body("secondLastName")
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 2, max: 100 })
+    .withMessage("El segundo apellido debe tener entre 2 y 100 caracteres")
+    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+    .withMessage("El segundo apellido solo puede contener letras y espacios")
+    .trim(),
+
   // Tipo de persona - Requerido
   body("personType")
     .notEmpty()
@@ -121,6 +130,25 @@ export const createTemporaryWorkerValidation = [
         }
       }
 
+      // Validar edad según tipo de documento
+      if (req.body.documentTypeId) {
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+
+        // Asumiendo que documentTypeId 1 = CC (Cédula) y 2 = TI (Tarjeta de Identidad)
+        // Esto debería ajustarse según los IDs reales en la base de datos
+        if (req.body.documentTypeId == 1) { // Cédula de Ciudadanía
+          if (actualAge < 18) {
+            throw new Error("Para cédula de ciudadanía la persona debe ser mayor de edad (18 años)");
+          }
+        } else if (req.body.documentTypeId == 2) { // Tarjeta de Identidad
+          if (actualAge >= 18) {
+            throw new Error("Para tarjeta de identidad la persona debe ser menor de edad (menor a 18 años)");
+          }
+        }
+      }
+
       return true;
     }),
 
@@ -159,7 +187,14 @@ export const createTemporaryWorkerValidation = [
   body("documentTypeId")
     .optional({ nullable: true })
     .isInt({ min: 1 })
-    .withMessage("El tipo de documento debe ser un número válido"),
+    .withMessage("El tipo de documento debe ser un número válido")
+    .custom((value, { req }) => {
+      // Validar que entrenadores no puedan usar Tarjeta de Identidad (ID 2)
+      if (req.body.personType === "Entrenador" && value == 2) {
+        throw new Error("Los entrenadores no pueden usar Tarjeta de Identidad ya que deben ser mayores de edad");
+      }
+      return true;
+    }),
 
   // Estado - Opcional, por defecto Active
   body("status")
@@ -198,6 +233,14 @@ export const updateTemporaryWorkerValidation = [
     .withMessage("El primer apellido debe tener entre 2 y 100 caracteres")
     .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
     .withMessage("El primer apellido solo puede contener letras y espacios")
+    .trim(),
+
+  body("secondLastName")
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 2, max: 100 })
+    .withMessage("El segundo apellido debe tener entre 2 y 100 caracteres")
+    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+    .withMessage("El segundo apellido solo puede contener letras y espacios")
     .trim(),
 
   body("personType")
@@ -303,7 +346,14 @@ export const updateTemporaryWorkerValidation = [
   body("documentTypeId")
     .optional({ nullable: true })
     .isInt({ min: 1 })
-    .withMessage("El tipo de documento debe ser un número válido"),
+    .withMessage("El tipo de documento debe ser un número válido")
+    .custom((value, { req }) => {
+      // Validar que entrenadores no puedan usar Tarjeta de Identidad (ID 2)
+      if (req.body.personType === "Entrenador" && value == 2) {
+        throw new Error("Los entrenadores no pueden usar Tarjeta de Identidad ya que deben ser mayores de edad");
+      }
+      return true;
+    }),
 
   body("status")
     .optional()
