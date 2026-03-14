@@ -11,6 +11,8 @@ export class EmployeeController {
    *   get:
    *     summary: Obtener todos los empleados
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: query
    *         name: page
@@ -32,7 +34,7 @@ export class EmployeeController {
    *         schema:
    *           type: string
    *           maxLength: 100
-   *         description: Búsqueda por nombre, apellido, email o identificación
+   *         description: Búsqueda por nombre, apellido, email, identificación, rol o estado
    *       - in: query
    *         name: status
    *         schema:
@@ -99,6 +101,8 @@ export class EmployeeController {
    *   get:
    *     summary: Obtener empleado por ID
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: id
@@ -162,12 +166,25 @@ export class EmployeeController {
    *   post:
    *     summary: Crear nuevo empleado
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     requestBody:
    *       required: true
    *       content:
    *         application/json:
    *           schema:
    *             $ref: '#/components/schemas/CreateEmployeeRequest'
+   *         multipart/form-data:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               employeeData:
+   *                 type: string
+   *                 description: JSON serializado con la estructura de CreateEmployeeRequest
+   *               signature:
+   *                 type: string
+   *                 format: binary
+   *                 description: Firma opcional (PNG/JPG, max 2MB)
    *     responses:
    *       201:
    *         description: Empleado creado exitosamente
@@ -246,6 +263,8 @@ export class EmployeeController {
    *   put:
    *     summary: Actualizar empleado
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: id
@@ -328,6 +347,8 @@ export class EmployeeController {
    *   delete:
    *     summary: Eliminar empleado
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: path
    *         name: id
@@ -405,6 +426,8 @@ export class EmployeeController {
    *   get:
    *     summary: Obtener estadísticas de empleados
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: Estadísticas obtenidas exitosamente
@@ -466,6 +489,8 @@ export class EmployeeController {
    *   get:
    *     summary: Obtener datos de referencia para formularios
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     responses:
    *       200:
    *         description: Datos de referencia obtenidos exitosamente
@@ -520,6 +545,8 @@ export class EmployeeController {
    *   get:
    *     summary: Verificar disponibilidad de email
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: query
    *         name: email
@@ -586,6 +613,8 @@ export class EmployeeController {
    *   get:
    *     summary: Verificar disponibilidad de identificación
    *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
    *     parameters:
    *       - in: query
    *         name: identification
@@ -643,6 +672,75 @@ export class EmployeeController {
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al verificar identificación.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * @swagger
+   * /api/employees/report:
+   *   get:
+   *     summary: Obtener todos los empleados para reporte (sin paginación)
+   *     tags: [Employees]
+   *     security:
+   *       - bearerAuth: []
+   *     parameters:
+   *       - in: query
+   *         name: search
+   *         schema:
+   *           type: string
+   *           maxLength: 100
+   *         description: Búsqueda por nombre, apellido, email, identificación, rol o estado
+   *       - in: query
+   *         name: status
+   *         schema:
+   *           type: string
+   *           enum: [Active, Disabled, OnVacation, Retired]
+   *         description: Filtrar por estado del empleado
+   *     responses:
+   *       200:
+   *         description: Lista completa de empleados para reporte
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 success:
+   *                   type: boolean
+   *                   example: true
+   *                 data:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/Employee'
+   *                 message:
+   *                   type: string
+   *                   example: "Se encontraron 150 empleados para el reporte."
+   *       400:
+   *         $ref: '#/components/responses/BadRequest'
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
+   */
+  getAllEmployeesForReport = async (req, res) => {
+    try {
+      const { search = "", status = "" } = req.query;
+
+      const result = await this.employeeService.getAllEmployeesForReport({
+        search,
+        status,
+      });
+
+      res.json({
+        success: true,
+        data: result.employees,
+        message: `Se encontraron ${result.employees.length} empleados para el reporte.`,
+      });
+    } catch (error) {
+      console.error("Error fetching employees for report:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener empleados para reporte.",
         error:
           process.env.NODE_ENV === "development" ? error.message : undefined,
       });

@@ -306,35 +306,3 @@ router.delete('/:id',
 );
 
 export default router;
-/**
- * @
-swagger
- * /api/roles/stats:
- *   get:
- *     summary: Get role statistics
- *     tags: [Roles]
- *     responses:
- *       200:
- *         description: Role statistics
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 data:
- *                   type: object
- *                   properties:
- *                     total:
- *                       type: integer
- *                     active:
- *                       type: integer
- *                     inactive:
- *                       type: integer
- *                 message:
- *                   type: string
- *       500:
- *         description: Server error
- */
