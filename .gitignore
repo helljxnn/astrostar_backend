@@ -66,3 +66,6 @@ backend-tests/
 frontend-tests/
 PASS_BACKEND/
 PASS_FRONTEND/
+README-RESET-PRODUCTION.md/
+reset-and-populate-production-data.js/
+reset-database.bat/
