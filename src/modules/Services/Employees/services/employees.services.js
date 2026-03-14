@@ -48,6 +48,22 @@ export class EmployeeService {
       throw error;
     }
   }
+  /**
+   * Obtener todos los empleados para reporte (sin paginación)
+   */
+  async getAllEmployeesForReport({ search = "", status = "" }) {
+    try {
+      const result = await this.employeeRepository.findAllForReport({
+        search,
+        status,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Service error - getAllEmployeesForReport:", error);
+      throw error;
+    }
+  }
 
   /**
    * Obtener empleado por ID
@@ -531,6 +547,23 @@ export class EmployeeService {
       return result;
     } catch (error) {
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Obtener todos los empleados para reporte (sin paginación)
+   */
+  async getAllEmployeesForReport({ search = "", status = "" }) {
+    try {
+      const result = await this.employeeRepository.findAllForReport({
+        search,
+        status,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Service error - getAllEmployeesForReport:", error);
+      throw error;
     }
   }
 }

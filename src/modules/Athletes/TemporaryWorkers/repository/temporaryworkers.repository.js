@@ -14,13 +14,59 @@ export class TemporaryWorkersRepository {
     const where = {};
     
     if (search) {
-      where.OR = [
+      // Para campos de texto usar contains
+      const textSearchConditions = [
         { firstName: { contains: search, mode: 'insensitive' } },
+        { middleName: { contains: search, mode: 'insensitive' } },
         { lastName: { contains: search, mode: 'insensitive' } },
-        { identification: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } }
+        { secondLastName: { contains: search, mode: 'insensitive' } }
       ];
+
+      // Agregar campos opcionales solo si no son null
+      if (search.trim()) {
+        textSearchConditions.push(
+          { identification: { contains: search, mode: 'insensitive' } },
+          { email: { contains: search, mode: 'insensitive' } },
+          { phone: { contains: search, mode: 'insensitive' } }
+        );
+      }
+
+      // Para enums usar comparación parcial (insensible a mayúsculas)
+      const searchLower = search.toLowerCase();
+      const enumSearchConditions = [];
+
+      // Buscar en personType - coincidencia parcial
+      if ('deportista'.includes(searchLower) && searchLower.length > 0) {
+        enumSearchConditions.push({ personType: 'Deportista' });
+      }
+      if ('entrenador'.includes(searchLower) && searchLower.length > 0) {
+        enumSearchConditions.push({ personType: 'Entrenador' });
+      }
+
+      // Buscar en status - coincidencia más precisa
+      if (searchLower.length > 0) {
+        // Para "activo" - verificar que la búsqueda coincida con el inicio de "activo"
+        // pero que NO coincida con el inicio de "inactivo"
+        if ('activo'.startsWith(searchLower) && !'inactivo'.startsWith(searchLower)) {
+          enumSearchConditions.push({ status: 'Active' });
+        }
+        
+        // Para "inactivo" - debe coincidir con el inicio de "inactivo"
+        if ('inactivo'.startsWith(searchLower)) {
+          enumSearchConditions.push({ status: 'Inactive' });
+        }
+        
+        // También buscar por términos en inglés
+        if ('active'.startsWith(searchLower) && !'inactive'.startsWith(searchLower)) {
+          enumSearchConditions.push({ status: 'Active' });
+        }
+        
+        if ('inactive'.startsWith(searchLower)) {
+          enumSearchConditions.push({ status: 'Inactive' });
+        }
+      }
+
+      where.OR = [...textSearchConditions, ...enumSearchConditions];
     }
     
     if (status) {
@@ -225,6 +271,25 @@ export class TemporaryWorkersRepository {
   }
 
   /**
+   * Verificar si una persona temporal está asociada a algún equipo
+   */
+  async isAssociatedWithTeam(id) {
+    const teamMember = await prisma.teamMember.findFirst({
+      where: { temporaryPersonId: parseInt(id) },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    return teamMember;
+  }
+
+  /**
    * Obtener datos de referencia (excluye NIT para personas naturales)
    */
   async getReferenceData() {
@@ -245,5 +310,23 @@ export class TemporaryWorkersRepository {
     });
 
     return { documentTypes };
+  }
+  /**
+   * Verificar si una persona temporal está asociada a algún equipo
+   */
+  async isAssociatedWithTeam(id) {
+    const teamMember = await prisma.teamMember.findFirst({
+      where: { temporaryPersonId: parseInt(id) },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    return teamMember;
   }
 }

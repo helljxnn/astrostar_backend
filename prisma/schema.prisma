@@ -401,7 +401,9 @@ model Inscription {
 model TemporaryPerson {
   id             Int                   @id @default(autoincrement())
   firstName      String
+  middleName     String?
   lastName       String
+  secondLastName String?
   identification String?
   email          String?
   phone          String?

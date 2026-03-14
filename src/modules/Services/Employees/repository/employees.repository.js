@@ -10,18 +10,33 @@ export class EmployeeRepository {
     const skip = (page - 1) * limit;
 
     // Construir condiciones de búsqueda
+    const searchConditions = [];
+
+    if (search) {
+      // Búsqueda en campos de texto
+      searchConditions.push(
+        { user: { firstName: { contains: search, mode: "insensitive" } } },
+        { user: { lastName: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+        { user: { identification: { contains: search, mode: "insensitive" } } },
+        { user: { role: { name: { contains: search, mode: "insensitive" } } } },
+      );
+
+      // Búsqueda en enum de estado (case-insensitive match)
+      const searchLower = search.toLowerCase();
+      const statusValues = ["Activo", "Licencia", "Desvinculado", "Fallecido"];
+      const matchingStatuses = statusValues.filter((s) =>
+        s.toLowerCase().includes(searchLower),
+      );
+
+      if (matchingStatuses.length > 0) {
+        searchConditions.push({ status: { in: matchingStatuses } });
+      }
+    }
+
     const where = {
       ...(status && { status }),
-      ...(search && {
-        OR: [
-          { user: { firstName: { contains: search, mode: "insensitive" } } },
-          { user: { lastName: { contains: search, mode: "insensitive" } } },
-          { user: { email: { contains: search, mode: "insensitive" } } },
-          {
-            user: { identification: { contains: search, mode: "insensitive" } },
-          },
-        ],
-      }),
+      ...(searchConditions.length > 0 && { OR: searchConditions }),
     };
 
     // Ejecutar consultas en paralelo para optimizar performance
@@ -335,5 +350,56 @@ export class EmployeeRepository {
         },
       },
     });
+  }
+
+  /**
+   * Obtener todos los empleados para reporte (sin paginación)
+   */
+  async findAllForReport({ search, status }) {
+    // Construir condiciones de búsqueda (misma lógica que findAll)
+    const searchConditions = [];
+
+    if (search) {
+      searchConditions.push(
+        { user: { firstName: { contains: search, mode: "insensitive" } } },
+        { user: { lastName: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+        { user: { identification: { contains: search, mode: "insensitive" } } },
+        { user: { role: { name: { contains: search, mode: "insensitive" } } } },
+      );
+
+      const searchLower = search.toLowerCase();
+      const statusValues = ["Activo", "Licencia", "Desvinculado", "Fallecido"];
+      const matchingStatuses = statusValues.filter((s) =>
+        s.toLowerCase().includes(searchLower),
+      );
+
+      if (matchingStatuses.length > 0) {
+        searchConditions.push({ status: { in: matchingStatuses } });
+      }
+    }
+
+    const where = {
+      ...(status && { status }),
+      ...(searchConditions.length > 0 && { OR: searchConditions }),
+    };
+
+    // Obtener TODOS los empleados sin paginación
+    const employees = await prisma.employee.findMany({
+      where,
+      include: {
+        user: {
+          include: {
+            role: true,
+            documentType: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      employees,
+    };
   }
 }
