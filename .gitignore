@@ -69,3 +69,5 @@ PASS_FRONTEND/
 README-RESET-PRODUCTION.md/
 reset-and-populate-production-data.js/
 reset-database.bat/
+
+coverage

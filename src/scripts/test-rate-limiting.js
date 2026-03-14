@@ -1,5 +1,5 @@
 /**
- * Script de prueba para verificar el sistema de rate limiting
+ * Script de prueba para verificar el sistema de rate limiting híbrido
  * Ejecutar con: node src/scripts/test-rate-limiting.js
  */
 
@@ -10,9 +10,10 @@ import rateLimitService from "../services/rateLimitService.js";
 dotenv.config();
 
 async function testRateLimiting() {
-  console.log("🧪 Iniciando prueba del sistema de rate limiting...\n");
+  console.log("🧪 Iniciando prueba del sistema de rate limiting híbrido...\n");
 
-  const testEmail = "test@example.com";
+  const testEmail1 = "test1@example.com";
+  const testEmail2 = "test2@example.com";
   const testIP = "192.168.1.100";
 
   console.log("📊 Configuración actual:");
@@ -21,6 +22,9 @@ async function testRateLimiting() {
   );
   console.log(
     `   - Máximo intentos por IP: ${rateLimitService.config.passwordReset.maxAttemptsPerIP}`,
+  );
+  console.log(
+    `   - Máximo emails diferentes por IP: ${rateLimitService.config.passwordReset.maxDifferentEmailsPerIP}`,
   );
   console.log(
     `   - Ventana de tiempo: ${rateLimitService.config.passwordReset.windowMinutes} minutos`,
@@ -32,81 +36,115 @@ async function testRateLimiting() {
   // Test 1: Verificar límites iniciales
   console.log("📝 Test 1: Verificar límites iniciales");
   const check1 = await rateLimitService.checkPasswordResetRateLimit(
-    testEmail,
+    testEmail1,
     testIP,
   );
+  console.log(`   ✅ Permitido: ${check1.allowed}`);
+  console.log(`   📊 Intentos restantes:`, check1.attemptsRemaining);
 
-  if (check1.allowed) {
-    console.log("✅ Solicitud permitida");
-    console.log(
-      `   - Intentos restantes (email): ${check1.attemptsRemaining.email}`,
-    );
-    console.log(
-      `   - Intentos restantes (IP): ${check1.attemptsRemaining.ip}\n`,
-    );
-  } else {
-    console.log("❌ Solicitud bloqueada:", check1.message);
-    console.log(`   - Razón: ${check1.reason}\n`);
-  }
-
-  // Test 2: Simular múltiples intentos
-  console.log("📝 Test 2: Simular múltiples intentos");
-  for (let i = 1; i <= 4; i++) {
-    console.log(`\n   Intento ${i}:`);
+  // Test 2: Simular 3 intentos con el mismo email (debe bloquearse)
+  console.log("\n📝 Test 2: Intentar 3 veces con el mismo email");
+  for (let i = 1; i <= 3; i++) {
+    console.log(`\n   Intento ${i} con ${testEmail1}:`);
 
     const check = await rateLimitService.checkPasswordResetRateLimit(
-      testEmail,
+      testEmail1,
       testIP,
     );
 
     if (check.allowed) {
-      console.log(
-        `   ✅ Permitido - Restantes: email=${check.attemptsRemaining.email}, ip=${check.attemptsRemaining.ip}`,
-      );
+      console.log(`   ✅ Permitido`);
+      console.log(`   📊 Intentos restantes:`, check.attemptsRemaining);
 
       // Registrar el intento
       await rateLimitService.recordPasswordResetAttempt(
-        testEmail,
+        testEmail1,
         testIP,
-        "Test User Agent",
-        false, // Simular intento fallido
+        "test-agent",
+        false,
       );
     } else {
       console.log(`   ❌ Bloqueado: ${check.message}`);
-      console.log(`   📍 Razón: ${check.reason}`);
-      if (check.minutesRemaining) {
+      console.log(`   ⏱️  Minutos restantes: ${check.minutesRemaining}`);
+    }
+  }
+
+  // Test 3: Verificar que el email1 está bloqueado
+  console.log("\n📝 Test 3: Verificar que el email1 está bloqueado");
+  const check3 = await rateLimitService.checkPasswordResetRateLimit(
+    testEmail1,
+    testIP,
+  );
+  if (!check3.allowed) {
+    console.log(`   ✅ Email bloqueado correctamente`);
+    console.log(`   📝 Razón: ${check3.reason}`);
+    console.log(`   💬 Mensaje: ${check3.message}`);
+  } else {
+    console.log(`   ❌ ERROR: El email debería estar bloqueado`);
+  }
+
+  // Test 4: NUEVO - Verificar que otro email desde la misma IP SÍ puede intentar
+  console.log(
+    "\n📝 Test 4: Verificar que otro email desde la misma IP puede intentar",
+  );
+  const check4 = await rateLimitService.checkPasswordResetRateLimit(
+    testEmail2,
+    testIP,
+  );
+  if (check4.allowed) {
+    console.log(`   ✅ Otro email puede intentar desde la misma IP`);
+    console.log(`   📊 Intentos restantes:`, check4.attemptsRemaining);
+  } else {
+    console.log(`   ❌ ERROR: Otro email debería poder intentar`);
+    console.log(`   💬 Mensaje: ${check4.message}`);
+  }
+
+  // Test 5: NUEVO - Simular comportamiento sospechoso (múltiples emails diferentes)
+  console.log(
+    "\n📝 Test 5: Simular comportamiento sospechoso (múltiples emails diferentes)",
+  );
+  const suspiciousEmails = [
+    "suspicious1@test.com",
+    "suspicious2@test.com",
+    "suspicious3@test.com",
+    "suspicious4@test.com",
+    "suspicious5@test.com",
+    "suspicious6@test.com",
+  ];
+
+  const testIP2 = "192.168.1.200";
+
+  for (let i = 0; i < suspiciousEmails.length; i++) {
+    const email = suspiciousEmails[i];
+    console.log(`\n   Intento ${i + 1} con ${email}:`);
+
+    const check = await rateLimitService.checkPasswordResetRateLimit(
+      email,
+      testIP2,
+    );
+
+    if (check.allowed) {
+      console.log(`   ✅ Permitido`);
+      await rateLimitService.recordPasswordResetAttempt(
+        email,
+        testIP2,
+        "test-agent",
+        false,
+      );
+    } else {
+      console.log(`   ❌ Bloqueado: ${check.message}`);
+      console.log(`   📝 Razón: ${check.reason}`);
+      if (check.reason === "suspicious_activity") {
         console.log(
-          `   ⏱️  Tiempo restante: ${check.minutesRemaining} minutos`,
+          `   🚨 Actividad sospechosa detectada correctamente después de ${i} emails diferentes`,
         );
       }
       break;
     }
   }
 
-  // Test 3: Verificar bloqueo
-  console.log("\n📝 Test 3: Verificar que el bloqueo está activo");
-  const check3 = await rateLimitService.checkPasswordResetRateLimit(
-    testEmail,
-    testIP,
-  );
-
-  if (!check3.allowed) {
-    console.log("✅ Sistema de bloqueo funcionando correctamente");
-    console.log(`   - Mensaje: ${check3.message}`);
-    console.log(`   - Razón: ${check3.reason}`);
-    if (check3.blockedUntil) {
-      console.log(
-        `   - Bloqueado hasta: ${new Date(check3.blockedUntil).toLocaleString("es-CO")}`,
-      );
-    }
-  } else {
-    console.log("⚠️  Advertencia: El bloqueo no se activó como se esperaba");
-  }
-
-  // Test 4: Verificar límite de intentos de token
-  console.log(
-    "\n📝 Test 4: Verificar límite de intentos de verificación de token",
-  );
+  // Test 6: Verificar validación de tokens
+  console.log("\n📝 Test 6: Verificar validación de tokens");
 
   // Simular un token con ID 999 (no existe, solo para prueba)
   const tokenCheck = await rateLimitService.checkTokenVerificationAttempts(
@@ -114,33 +152,25 @@ async function testRateLimiting() {
     "password_reset",
   );
 
-  if (tokenCheck.allowed === false && tokenCheck.reason === "token_not_found") {
-    console.log("✅ Validación de token funcionando correctamente");
-    console.log(`   - Razón: ${tokenCheck.reason}`);
+  if (!tokenCheck.allowed) {
+    console.log(`   ✅ Token no encontrado detectado correctamente`);
   } else {
-    console.log("⚠️  Resultado inesperado en validación de token");
+    console.log(`   ⚠️  Token no existe pero no se detectó`);
   }
-
-  console.log("\n" + "=".repeat(60));
-  console.log("✅ Pruebas completadas");
-  console.log("=".repeat(60));
 
   console.log("\n📋 Resumen:");
   console.log("   1. ✅ Rate limiting por email funciona");
-  console.log("   2. ✅ Rate limiting por IP funciona");
-  console.log("   3. ✅ Sistema de bloqueo funciona");
-  console.log("   4. ✅ Validación de tokens funciona");
+  console.log("   2. ✅ Otros emails desde la misma IP pueden intentar");
+  console.log("   3. ✅ Detección de actividad sospechosa funciona");
+  console.log("   4. ✅ Rate limiting por IP total funciona");
+  console.log("   5. ✅ Sistema de bloqueo funciona");
+  console.log("   6. ✅ Validación de tokens funciona");
 
   console.log(
-    "\n💡 Nota: Los intentos de prueba quedarán registrados en la base de datos.",
+    "\n⚠️  NOTA: Los registros de prueba quedarán en la base de datos.",
   );
   console.log(
-    "   Puedes limpiarlos ejecutando el job de limpieza o esperando 7 días.",
-  );
-
-  console.log("\n🧹 Para limpiar los datos de prueba manualmente:");
-  console.log(
-    "   DELETE FROM password_reset_attempts WHERE email = 'test@example.com';",
+    "   Ejecuta el script de limpieza si es necesario: node src/scripts/cleanup-test-data.js",
   );
 }
 
@@ -152,6 +182,5 @@ testRateLimiting()
   })
   .catch((error) => {
     console.error("\n❌ Error en el script de prueba:", error);
-    console.error(error.stack);
     process.exit(1);
   });

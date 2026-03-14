@@ -5,13 +5,29 @@
 import prisma from "../config/database.js";
 
 async function cleanupTestData() {
-  console.log("🧹 Limpiando datos de prueba...\n");
+  console.log("🧹 Limpiando datos de prueba del rate limiting...\n");
 
   try {
+    // Lista de emails de prueba
+    const testEmails = [
+      "test@example.com",
+      "test1@example.com",
+      "test2@example.com",
+      "test3@example.com",
+      "suspicious1@test.com",
+      "suspicious2@test.com",
+      "suspicious3@test.com",
+      "suspicious4@test.com",
+      "suspicious5@test.com",
+      "suspicious6@test.com",
+    ];
+
     // Eliminar intentos de prueba
     const deleted = await prisma.passwordResetAttempt.deleteMany({
       where: {
-        email: "test@example.com",
+        email: {
+          in: testEmails,
+        },
       },
     });
 

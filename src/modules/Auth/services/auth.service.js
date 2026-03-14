@@ -226,7 +226,7 @@ export class AuthService {
       return {
         success: false,
         statusCode: 500,
-        message: "Error al restablecer la contraseña.",
+          message: "Error al restablecer la contraseña.",
       };
     }
   }
@@ -536,7 +536,7 @@ export class AuthService {
           success: false,
           statusCode: 403,
           message:
-            "No se puede restablecer la contraseña del usuario por defecto del sistema",
+            "No se puede restablecer la contraseÃƒÆ’Ã‚Â±a del usuario por defecto del sistema",
         };
       }
 
@@ -682,7 +682,7 @@ export class AuthService {
    */
   async verifyAndUpdateEmail(userId, token) {
     try {
-      // 1. Buscar token válido
+      // 1. Buscar token vÃƒÆ’Ã‚Â¡lido
       const verificationToken =
         await this.authRepository.findValidEmailVerificationToken(
           userId,
@@ -853,7 +853,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 401,
-          message: "Refresh token inválido o expirado",
+          message: "Refresh token invÃƒÆ’Ã‚Â¡lido o expirado",
         };
       }
 
