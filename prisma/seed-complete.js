@@ -83,10 +83,14 @@ async function main() {
     });
   }
 
-  const categories = await prisma.sportsCategory.findMany();
-  const infantilCategory = categories.find((c) => c.nombre === "Infantil");
-  const prejuvenilCategory = categories.find((c) => c.nombre === "PreJuvenil");
-  const juvenilCategory = categories.find((c) => c.nombre === "Juvenil");
+  const categories = await prisma.sportsCategory.findMany({
+    orderBy: { edadMinima: 'asc' }
+  });
+
+  if (categories.length === 0) {
+    console.log("⚠️  No hay categorías deportivas. Ejecuta primero: node prisma/seed-sports-categories.js\n");
+    return;
+  }
 
   // ============================================
   // 1. CREAR ACUDIENTES/GUARDIANES
@@ -224,72 +228,74 @@ async function main() {
 
   const athletes = [];
 
-  // Deportistas categoría Infantil (10-12 años)
-  const infantilAthletes = [
-    { firstName: "Sofía", lastName: "Hernández", identification: "1001001001" },
-    { firstName: "Mateo", lastName: "García", identification: "1001001002" },
-    { firstName: "Valentina", lastName: "Díaz", identification: "1001001003" },
-    { firstName: "Santiago", lastName: "Moreno", identification: "1001001004" },
-    { firstName: "Isabella", lastName: "Castro", identification: "1001001005" },
-  ];
+  // Nombres femeninos (la fundación es exclusivamente de mujeres)
+  const femaleNames = ["Sofía", "Valentina", "Isabella", "Camila", "Daniela", "Mariana", "Laura", "Gabriela", "Valeria", "Lucía", "María", "Paula"];
+  const lastNames = ["Hernández", "García", "Díaz", "Moreno", "Castro", "Ruiz", "Vargas", "Jiménez", "López", "Martínez", "Rodríguez", "Pérez"];
 
-  for (let i = 0; i < infantilAthletes.length; i++) {
-    const data = infantilAthletes[i];
-    const birthDate = generateBirthDate(10, 12);
-    const age = calculateAge(birthDate);
-    const guardian = guardians[i % guardians.length];
+  // Crear deportistas para cada categoría disponible
+  for (let catIndex = 0; catIndex < categories.length; catIndex++) {
+    const category = categories[catIndex];
+    const numAthletes = 4; // 4 deportistas por categoría
 
-    const existingUser = await prisma.user.findUnique({
-      where: { identification: data.identification },
-    });
+    for (let i = 0; i < numAthletes; i++) {
+      const athleteNumber = catIndex * 100 + i + 1;
+      const identification = `100${catIndex}00${athleteNumber}`;
+      const birthDate = generateBirthDate(category.edadMinima, category.edadMaxima);
+      const age = calculateAge(birthDate);
+      const guardian = guardians[i % guardians.length];
 
-    if (!existingUser) {
-      const user = await prisma.user.create({
-        data: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          identification: data.identification,
-          email: `${data.firstName.toLowerCase()}.${data.lastName.toLowerCase()}@email.com`,
-          phoneNumber: `+57 320 ${1000000 + i}`,
-          passwordHash: await bcrypt.hash(data.identification, 10),
-          documentTypeId: tiDocumentType.id,
-          roleId: finalAthleteRole.id,
-          address: "Barrio Los Pinos",
-          birthDate: birthDate,
-          age: age,
-          status: "Active",
-        },
+      const existingUser = await prisma.user.findUnique({
+        where: { identification: identification },
       });
 
-      const athlete = await prisma.athlete.create({
-        data: {
-          userId: user.id,
-          guardianId: guardian.id,
-          relationship: "Mother",
-          status: "Active",
-          currentInscriptionStatus: "Active",
-        },
-      });
+      if (!existingUser) {
+        const firstName = femaleNames[(catIndex * numAthletes + i) % femaleNames.length];
+        const lastName = lastNames[(catIndex * numAthletes + i) % lastNames.length];
 
-      // Crear matrícula vigente
-      await prisma.enrollment.create({
-        data: {
-          athleteId: athlete.id,
-          fechaInicio: new Date(),
-          fechaVencimiento: new Date(
-            new Date().setFullYear(new Date().getFullYear() + 1),
-          ),
-          fechaMatricula: new Date(),
-          estado: "Vigente",
-        },
-      });
+        const user = await prisma.user.create({
+          data: {
+            firstName: firstName,
+            lastName: lastName,
+            identification: identification,
+            email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}${athleteNumber}@email.com`,
+            phoneNumber: `+57 320 ${1000000 + athleteNumber}`,
+            passwordHash: await bcrypt.hash(identification, 10),
+            documentTypeId: tiDocumentType.id,
+            roleId: finalAthleteRole.id,
+            address: "Barrio Los Pinos",
+            birthDate: birthDate,
+            age: age,
+            status: "Active",
+          },
+        });
 
-      // Inscribir en categoría Infantil
-      if (infantilCategory) {
+        const athlete = await prisma.athlete.create({
+          data: {
+            userId: user.id,
+            guardianId: age < 18 ? guardian.id : null,
+            relationship: age < 18 ? "Mother" : null,
+            status: "Active",
+            currentInscriptionStatus: "Active",
+          },
+        });
+
+        // Crear matrícula vigente
+        await prisma.enrollment.create({
+          data: {
+            athleteId: athlete.id,
+            fechaInicio: new Date(),
+            fechaVencimiento: new Date(
+              new Date().setFullYear(new Date().getFullYear() + 1),
+            ),
+            estado: "Vigente",
+          },
+        });
+
+        // Inscribir en la categoría correspondiente
         await prisma.inscription.create({
           data: {
             athleteId: athlete.id,
-            sportsCategoryId: infantilCategory.id,
+            sportsCategoryId: category.id,
             type: "initial_inscription",
             status: "Active",
             inscriptionDate: new Date(),
@@ -297,177 +303,17 @@ async function main() {
             expirationDate: new Date(
               new Date().setFullYear(new Date().getFullYear() + 1),
             ),
-            concept: "Inscripción inicial categoría Infantil",
+            concept: `Inscripción inicial categoría ${category.nombre}`,
           },
         });
+
+        athletes.push(athlete);
       }
-
-      athletes.push(athlete);
-    }
-  }
-
-  // Deportistas categoría PreJuvenil (13-15 años)
-  const prejuvenilAthletes = [
-    { firstName: "Camila", lastName: "Vargas", identification: "1002002001" },
-    { firstName: "Andrés", lastName: "Ruiz", identification: "1002002002" },
-    { firstName: "Daniela", lastName: "Jiménez", identification: "1002002003" },
-    {
-      firstName: "Sebastián",
-      lastName: "Mendoza",
-      identification: "1002002004",
-    },
-  ];
-
-  for (let i = 0; i < prejuvenilAthletes.length; i++) {
-    const data = prejuvenilAthletes[i];
-    const birthDate = generateBirthDate(13, 15);
-    const age = calculateAge(birthDate);
-    const guardian = guardians[i % guardians.length];
-
-    const existingUser = await prisma.user.findUnique({
-      where: { identification: data.identification },
-    });
-
-    if (!existingUser) {
-      const user = await prisma.user.create({
-        data: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          identification: data.identification,
-          email: `${data.firstName.toLowerCase()}.${data.lastName.toLowerCase()}@email.com`,
-          phoneNumber: `+57 321 ${2000000 + i}`,
-          passwordHash: await bcrypt.hash(data.identification, 10),
-          documentTypeId: tiDocumentType.id,
-          roleId: finalAthleteRole.id,
-          address: "Barrio El Prado",
-          birthDate: birthDate,
-          age: age,
-          status: "Active",
-        },
-      });
-
-      const athlete = await prisma.athlete.create({
-        data: {
-          userId: user.id,
-          guardianId: guardian.id,
-          relationship: "Father",
-          status: "Active",
-          currentInscriptionStatus: "Active",
-        },
-      });
-
-      await prisma.enrollment.create({
-        data: {
-          athleteId: athlete.id,
-          fechaInicio: new Date(),
-          fechaVencimiento: new Date(
-            new Date().setFullYear(new Date().getFullYear() + 1),
-          ),
-          fechaMatricula: new Date(),
-          estado: "Vigente",
-        },
-      });
-
-      if (prejuvenilCategory) {
-        await prisma.inscription.create({
-          data: {
-            athleteId: athlete.id,
-            sportsCategoryId: prejuvenilCategory.id,
-            type: "initial_inscription",
-            status: "Active",
-            inscriptionDate: new Date(),
-            conceptDate: new Date(),
-            expirationDate: new Date(
-              new Date().setFullYear(new Date().getFullYear() + 1),
-            ),
-            concept: "Inscripción inicial categoría PreJuvenil",
-          },
-        });
-      }
-
-      athletes.push(athlete);
-    }
-  }
-
-  // Deportistas categoría Juvenil (16-18 años)
-  const juvenilAthletes = [
-    { firstName: "Alejandro", lastName: "Ortiz", identification: "1003003001" },
-    { firstName: "Mariana", lastName: "Silva", identification: "1003003002" },
-    { firstName: "David", lastName: "Rojas", identification: "1003003003" },
-  ];
-
-  for (let i = 0; i < juvenilAthletes.length; i++) {
-    const data = juvenilAthletes[i];
-    const birthDate = generateBirthDate(16, 18);
-    const age = calculateAge(birthDate);
-
-    const existingUser = await prisma.user.findUnique({
-      where: { identification: data.identification },
-    });
-
-    if (!existingUser) {
-      const user = await prisma.user.create({
-        data: {
-          firstName: data.firstName,
-          lastName: data.lastName,
-          identification: data.identification,
-          email: `${data.firstName.toLowerCase()}.${data.lastName.toLowerCase()}@email.com`,
-          phoneNumber: `+57 322 ${3000000 + i}`,
-          passwordHash: await bcrypt.hash(data.identification, 10),
-          documentTypeId: tiDocumentType.id,
-          roleId: finalAthleteRole.id,
-          address: "Barrio La Esperanza",
-          birthDate: birthDate,
-          age: age,
-          status: "Active",
-        },
-      });
-
-      const athlete = await prisma.athlete.create({
-        data: {
-          userId: user.id,
-          guardianId: null, // Mayor de edad
-          relationship: null,
-          status: "Active",
-          currentInscriptionStatus: "Active",
-        },
-      });
-
-      await prisma.enrollment.create({
-        data: {
-          athleteId: athlete.id,
-          fechaInicio: new Date(),
-          fechaVencimiento: new Date(
-            new Date().setFullYear(new Date().getFullYear() + 1),
-          ),
-          fechaMatricula: new Date(),
-          estado: "Vigente",
-        },
-      });
-
-      if (juvenilCategory) {
-        await prisma.inscription.create({
-          data: {
-            athleteId: athlete.id,
-            sportsCategoryId: juvenilCategory.id,
-            type: "initial_inscription",
-            status: "Active",
-            inscriptionDate: new Date(),
-            conceptDate: new Date(),
-            expirationDate: new Date(
-              new Date().setFullYear(new Date().getFullYear() + 1),
-            ),
-            concept: "Inscripción inicial categoría Juvenil",
-          },
-        });
-      }
-
-      athletes.push(athlete);
     }
   }
 
   console.log(
-    `   ✓ ${athletes.length} deportistas creados con inscripciones\n`,
+    `   ✓ ${athletes.length} deportistas creadas con inscripciones\n`,
   );
 
   // ============================================
@@ -476,61 +322,58 @@ async function main() {
   console.log("🏆 Creando equipos de la fundación...");
 
   const foundationTeams = [];
-  const teamData = [
-    {
-      name: "Astrostar Infantil",
-      category: "Infantil",
-      coach: "Roberto Sánchez",
-    },
-    {
-      name: "Astrostar PreJuvenil",
-      category: "PreJuvenil",
-      coach: "Diana Torres",
-    },
-    { name: "Astrostar Juvenil", category: "Juvenil", coach: "Miguel Ramírez" },
-  ];
+  
+  for (let i = 0; i < categories.length; i++) {
+    const category = categories[i];
+    const coach = employees[i % employees.length];
+    const coachName = coach ? `${coach.user?.firstName || 'Entrenador'} ${coach.user?.lastName || ''}` : 'Entrenador Principal';
 
-  for (const data of teamData) {
     const team = await prisma.team.upsert({
-      where: { name: data.name },
+      where: { name: `Astrostar ${category.nombre}` },
       update: {},
       create: {
-        name: data.name,
-        description: `Equipo oficial de la fundación - Categoría ${data.category}`,
-        coach: data.coach,
-        category: data.category,
+        name: `Astrostar ${category.nombre}`,
+        description: `Equipo oficial de la fundación - Categoría ${category.nombre}`,
+        coach: coachName,
+        category: category.nombre,
         teamType: "Fundacion",
         status: "Active",
       },
     });
     foundationTeams.push(team);
 
-    // Agregar miembros al equipo según categoría
-    const teamAthletes = athletes.filter((a) => {
-      // Buscar inscripciones del atleta
-      return true; // Simplificado para el seed
+    // Agregar deportistas al equipo (primeros 3 de cada categoría)
+    const categoryAthletes = await prisma.athlete.findMany({
+      where: {
+        inscriptions: {
+          some: {
+            sportsCategoryId: category.id,
+            status: "Active"
+          }
+        }
+      },
+      take: 3
     });
 
-    // Agregar los primeros 3 atletas de cada categoría al equipo correspondiente
-    let athletesToAdd = [];
-    if (data.category === "Infantil") {
-      athletesToAdd = athletes.slice(0, 3);
-    } else if (data.category === "PreJuvenil") {
-      athletesToAdd = athletes.slice(5, 8);
-    } else if (data.category === "Juvenil") {
-      athletesToAdd = athletes.slice(9, 11);
-    }
-
-    for (const athlete of athletesToAdd) {
-      await prisma.teamMember.create({
-        data: {
+    for (const athlete of categoryAthletes) {
+      const existingMember = await prisma.teamMember.findFirst({
+        where: {
           teamId: team.id,
-          athleteId: athlete.id,
-          memberType: "Athlete",
-          position: "Jugador",
-          isActive: true,
-        },
+          athleteId: athlete.id
+        }
       });
+
+      if (!existingMember) {
+        await prisma.teamMember.create({
+          data: {
+            teamId: team.id,
+            athleteId: athlete.id,
+            memberType: "Athlete",
+            position: "Jugador",
+            isActive: true,
+          },
+        });
+      }
     }
   }
 
@@ -548,44 +391,47 @@ async function main() {
       lastName: "Gómez",
       identification: "1100100100",
       personType: "Deportista",
-      category: "Infantil",
     },
     {
       firstName: "Laura",
       lastName: "Fernández",
       identification: "1100100101",
       personType: "Deportista",
-      category: "PreJuvenil",
     },
     {
       firstName: "Pedro",
       lastName: "Navarro",
       identification: "1100100102",
       personType: "Entrenador",
-      category: null,
     },
   ];
 
   for (const data of tempPersonData) {
-    const tempPerson = await prisma.temporaryPerson.upsert({
+    // Verificar si ya existe
+    const existing = await prisma.temporaryPerson.findFirst({
       where: { identification: data.identification },
-      update: {},
-      create: {
-        firstName: data.firstName,
-        lastName: data.lastName,
-        identification: data.identification,
-        email: `${data.firstName.toLowerCase()}.${data.lastName.toLowerCase()}@temp.com`,
-        phone: `+57 330 ${Math.floor(Math.random() * 9000000) + 1000000}`,
-        address: "Dirección temporal",
-        birthDate: generateBirthDate(15, 30),
-        age: calculateAge(generateBirthDate(15, 30)),
-        documentTypeId: documentType.id,
-        personType: data.personType,
-        category: data.category,
-        status: "Active",
-      },
     });
-    temporaryPersons.push(tempPerson);
+
+    if (!existing) {
+      const tempPerson = await prisma.temporaryPerson.create({
+        data: {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          identification: data.identification,
+          email: `${data.firstName.toLowerCase()}.${data.lastName.toLowerCase()}@temp.com`,
+          phone: `+57 330 ${Math.floor(Math.random() * 9000000) + 1000000}`,
+          address: "Dirección temporal",
+          birthDate: generateBirthDate(15, 30),
+          age: calculateAge(generateBirthDate(15, 30)),
+          documentTypeId: documentType.id,
+          personType: data.personType,
+          status: "Active",
+        },
+      });
+      temporaryPersons.push(tempPerson);
+    } else {
+      temporaryPersons.push(existing);
+    }
   }
 
   console.log(`   ✓ ${temporaryPersons.length} personas temporales creadas\n`);
@@ -596,28 +442,19 @@ async function main() {
   console.log("🎯 Creando equipos temporales...");
 
   const temporaryTeams = [];
-  const tempTeamData = [
-    {
-      name: "Visitantes Infantil",
-      category: "Infantil",
-      coach: "Pedro Navarro",
-    },
-    {
-      name: "Invitados PreJuvenil",
-      category: "PreJuvenil",
-      coach: "Coach Externo",
-    },
-  ];
-
-  for (const data of tempTeamData) {
+  
+  // Crear un equipo temporal por cada categoría
+  for (let i = 0; i < Math.min(2, categories.length); i++) {
+    const category = categories[i];
+    
     const team = await prisma.team.upsert({
-      where: { name: data.name },
+      where: { name: `Visitantes ${category.nombre}` },
       update: {},
       create: {
-        name: data.name,
-        description: `Equipo temporal invitado - Categoría ${data.category}`,
-        coach: data.coach,
-        category: data.category,
+        name: `Visitantes ${category.nombre}`,
+        description: `Equipo temporal invitado - Categoría ${category.nombre}`,
+        coach: "Coach Externo",
+        category: category.nombre,
         teamType: "Temporal",
         status: "Active",
       },
@@ -626,19 +463,28 @@ async function main() {
 
     // Agregar personas temporales al equipo
     const tempPersonsForTeam = temporaryPersons.filter(
-      (tp) => tp.personType === "Deportista" && tp.category === data.category,
+      (tp) => tp.personType === "Deportista",
     );
 
     for (const tempPerson of tempPersonsForTeam) {
-      await prisma.teamMember.create({
-        data: {
+      const existingMember = await prisma.teamMember.findFirst({
+        where: {
           teamId: team.id,
-          temporaryPersonId: tempPerson.id,
-          memberType: "TemporaryPerson",
-          position: "Jugador",
-          isActive: true,
-        },
+          temporaryPersonId: tempPerson.id
+        }
       });
+
+      if (!existingMember) {
+        await prisma.teamMember.create({
+          data: {
+            teamId: team.id,
+            temporaryPersonId: tempPerson.id,
+            memberType: "TemporaryPerson",
+            position: "Jugador",
+            isActive: true,
+          },
+        });
+      }
     }
   }
 
@@ -663,74 +509,39 @@ async function main() {
 
   const events = [];
 
-  // Evento 1: Torneo Infantil
-  const event1 = await prisma.service.create({
-    data: {
-      name: "Torneo Infantil Astrostar 2024",
-      description: "Torneo de fútbol para categoría infantil",
-      startDate: new Date("2024-12-15"),
-      endDate: new Date("2024-12-15"),
-      startTime: "08:00",
-      endTime: "17:00",
-      location: "Cancha Principal Astrostar",
-      phone: "+57 300 1234567",
-      status: "Programado",
-      publish: true,
-      categoryId: eventCategory?.id,
-      typeId: torneoType.id,
-    },
-  });
+  // Crear un evento por cada categoría disponible
+  for (let i = 0; i < categories.length; i++) {
+    const category = categories[i];
+    const eventType = i % 2 === 0 ? torneoType : festivalType;
+    const eventTypeName = i % 2 === 0 ? "Torneo" : "Festival";
 
-  // Asociar categoría deportiva Infantil al evento
-  if (infantilCategory) {
-    await prisma.serviceSportsCategory.create({
+    const event = await prisma.service.create({
       data: {
-        serviceId: event1.id,
-        sportsCategoryId: infantilCategory.id,
+        name: `${eventTypeName} ${category.nombre} Astrostar 2024`,
+        description: `${eventTypeName} deportivo para categoría ${category.nombre}`,
+        startDate: new Date("2024-12-15"),
+        endDate: new Date("2024-12-15"),
+        startTime: "08:00",
+        endTime: "17:00",
+        location: "Complejo Deportivo Astrostar",
+        phone: "+57 300 1234567",
+        status: "Programado",
+        publish: true,
+        categoryId: eventCategory?.id,
+        typeId: eventType.id,
       },
     });
-  }
 
-  events.push(event1);
-
-  // Evento 2: Festival PreJuvenil y Juvenil
-  const event2 = await prisma.service.create({
-    data: {
-      name: "Festival Deportivo PreJuvenil-Juvenil",
-      description: "Festival deportivo para categorías prejuvenil y juvenil",
-      startDate: new Date("2024-12-20"),
-      endDate: new Date("2024-12-20"),
-      startTime: "09:00",
-      endTime: "18:00",
-      location: "Complejo Deportivo Astrostar",
-      phone: "+57 300 7654321",
-      status: "Programado",
-      publish: true,
-      categoryId: eventCategory?.id,
-      typeId: festivalType.id,
-    },
-  });
-
-  // Asociar categorías deportivas PreJuvenil y Juvenil al evento
-  if (prejuvenilCategory) {
+    // Asociar categoría deportiva al evento
     await prisma.serviceSportsCategory.create({
       data: {
-        serviceId: event2.id,
-        sportsCategoryId: prejuvenilCategory.id,
+        serviceId: event.id,
+        sportsCategoryId: category.id,
       },
     });
-  }
 
-  if (juvenilCategory) {
-    await prisma.serviceSportsCategory.create({
-      data: {
-        serviceId: event2.id,
-        sportsCategoryId: juvenilCategory.id,
-      },
-    });
+    events.push(event);
   }
-
-  events.push(event2);
 
   console.log(`   ✓ ${events.length} eventos creados\n`);
 
@@ -741,101 +552,95 @@ async function main() {
 
   let registrationCount = 0;
 
-  // Inscribir equipos al Torneo Infantil
-  const infantilTeam = foundationTeams.find((t) => t.category === "Infantil");
-  const tempInfantilTeam = temporaryTeams.find(
-    (t) => t.category === "Infantil",
-  );
+  // Inscribir equipos a sus eventos correspondientes
+  for (let i = 0; i < events.length; i++) {
+    const event = events[i];
+    const category = categories[i];
 
-  if (infantilTeam) {
-    await prisma.participant.create({
-      data: {
-        type: "Team",
-        serviceId: event1.id,
-        teamId: infantilTeam.id,
-        sportsCategoryId: infantilCategory?.id,
-        status: "Registered",
-        notes: "Equipo local",
+    // Buscar equipos de esta categoría
+    const foundationTeam = foundationTeams.find((t) => t.category === category.nombre);
+    const temporaryTeam = temporaryTeams.find((t) => t.category === category.nombre);
+
+    if (foundationTeam) {
+      const existingParticipant = await prisma.participant.findFirst({
+        where: {
+          serviceId: event.id,
+          teamId: foundationTeam.id
+        }
+      });
+
+      if (!existingParticipant) {
+        await prisma.participant.create({
+          data: {
+            type: "Team",
+            serviceId: event.id,
+            teamId: foundationTeam.id,
+            sportsCategoryId: category.id,
+            status: "Registered",
+            notes: "Equipo local",
+          },
+        });
+        registrationCount++;
+      }
+    }
+
+    if (temporaryTeam) {
+      const existingParticipant = await prisma.participant.findFirst({
+        where: {
+          serviceId: event.id,
+          teamId: temporaryTeam.id
+        }
+      });
+
+      if (!existingParticipant) {
+        await prisma.participant.create({
+          data: {
+            type: "Team",
+            serviceId: event.id,
+            teamId: temporaryTeam.id,
+            sportsCategoryId: category.id,
+            status: "Registered",
+            notes: "Equipo visitante",
+          },
+        });
+        registrationCount++;
+      }
+    }
+
+    // Inscribir algunos deportistas individuales (primeros 2 de cada categoría)
+    const categoryAthletes = await prisma.athlete.findMany({
+      where: {
+        inscriptions: {
+          some: {
+            sportsCategoryId: category.id,
+            status: "Active"
+          }
+        }
       },
+      take: 2
     });
-    registrationCount++;
-  }
 
-  if (tempInfantilTeam) {
-    await prisma.participant.create({
-      data: {
-        type: "Team",
-        serviceId: event1.id,
-        teamId: tempInfantilTeam.id,
-        sportsCategoryId: infantilCategory?.id,
-        status: "Registered",
-        notes: "Equipo visitante",
-      },
-    });
-    registrationCount++;
-  }
+    for (const athlete of categoryAthletes) {
+      const existingParticipant = await prisma.participant.findFirst({
+        where: {
+          serviceId: event.id,
+          athleteId: athlete.id
+        }
+      });
 
-  // Inscribir equipos al Festival PreJuvenil-Juvenil
-  const prejuvenilTeam = foundationTeams.find(
-    (t) => t.category === "PreJuvenil",
-  );
-  const juvenilTeam = foundationTeams.find((t) => t.category === "Juvenil");
-  const tempPrejuvenilTeam = temporaryTeams.find(
-    (t) => t.category === "PreJuvenil",
-  );
-
-  if (prejuvenilTeam) {
-    await prisma.participant.create({
-      data: {
-        type: "Team",
-        serviceId: event2.id,
-        teamId: prejuvenilTeam.id,
-        sportsCategoryId: prejuvenilCategory?.id,
-        status: "Registered",
-      },
-    });
-    registrationCount++;
-  }
-
-  if (juvenilTeam) {
-    await prisma.participant.create({
-      data: {
-        type: "Team",
-        serviceId: event2.id,
-        teamId: juvenilTeam.id,
-        sportsCategoryId: juvenilCategory?.id,
-        status: "Registered",
-      },
-    });
-    registrationCount++;
-  }
-
-  if (tempPrejuvenilTeam) {
-    await prisma.participant.create({
-      data: {
-        type: "Team",
-        serviceId: event2.id,
-        teamId: tempPrejuvenilTeam.id,
-        sportsCategoryId: prejuvenilCategory?.id,
-        status: "Registered",
-      },
-    });
-    registrationCount++;
-  }
-
-  // Inscribir algunos deportistas individuales
-  const infantilAthletesForEvent = athletes.slice(0, 2);
-  for (const athlete of infantilAthletesForEvent) {
-    await prisma.participant.create({
-      data: {
-        type: "Individual",
-        serviceId: event1.id,
-        athleteId: athlete.id,
-        sportsCategoryId: infantilCategory?.id,
-        status: "Registered",
-      },
-    });
-    registrationCount++;
+      if (!existingParticipant) {
+        await prisma.participant.create({
+          data: {
+            type: "Individual",
+            serviceId: event.id,
+            athleteId: athlete.id,
+            sportsCategoryId: category.id,
+            status: "Registered",
+          },
+        });
+        registrationCount++;
+      }
+    }
   }
 
   console.log(`   ✓ ${registrationCount} inscripciones creadas\n`);

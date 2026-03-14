@@ -11,6 +11,7 @@ import athleteEmailService from "../modules/Athletes/services/AthleteEmailServic
 import preRegistrationEmailService from "../modules/PreRegistrations/services/PreRegistrationEmailService.js";
 import appointmentEmailService from "../modules/Services/AppointmentManagement/services/AppointmentEmailService.js";
 import authEmailService from "../modules/Auth/services/AuthEmailService.js";
+import donorEmailService from "../modules/Donations/DonorsSponsors/services/DonorEmailService.js";
 
 class EmailService extends BaseEmailService {
   // ============================================
@@ -111,6 +112,14 @@ class EmailService extends BaseEmailService {
       verificationToken,
       firstName,
     );
+  }
+
+  // ============================================
+  // MÉTODOS DE DONANTES (Delegados)
+  // ============================================
+
+  async sendDonorWelcomeEmail(donorData) {
+    return donorEmailService.sendDonorWelcomeEmail(donorData);
   }
 }
 

@@ -158,8 +158,8 @@ export const enrollmentsService = {
       });
 
       // 9. Crear matrícula (SIEMPRE Vigente al crear, con fecha de vencimiento a 1 año)
-      const fechaInicio = enrollment?.fechaMatricula
-        ? new Date(enrollment.fechaMatricula)
+      const fechaInicio = enrollment?.fechaInicio
+        ? new Date(enrollment.fechaInicio)
         : new Date();
       
       const fechaVencimiento = new Date(fechaInicio);
@@ -170,10 +170,8 @@ export const enrollmentsService = {
           athleteId: newAthlete.id,
           fechaInicio: fechaInicio,
           fechaVencimiento: fechaVencimiento,
-          fechaMatricula: fechaInicio,
           estado: "Vigente", // Siempre vigente al crear
           observaciones: enrollment?.observaciones || null,
-          comprobantePago: enrollment?.comprobantePago || null,
         },
       });
 
@@ -188,7 +186,7 @@ export const enrollmentsService = {
         
         await tx.preRegistration.update({
           where: { id: preRegistrationId },
-          data: { status: "Processed" }, // ← Cambiado a inglés
+          data: { status: "Processed" },
         });
         
         console.log('✅ [ENROLLMENT SERVICE] Inscripción marcada como Procesada exitosamente');
@@ -199,7 +197,7 @@ export const enrollmentsService = {
         let preRegistration = await tx.preRegistration.findFirst({
           where: {
             email: cleanEmail,
-            status: "Pending" // ← Cambiado a inglés
+            status: "Pending"
           },
           orderBy: {
             createdAt: 'desc'
@@ -212,7 +210,7 @@ export const enrollmentsService = {
           preRegistration = await tx.preRegistration.findFirst({
             where: {
               identification: athlete.identification?.trim(),
-              status: "Pending" // ← Cambiado a inglés
+              status: "Pending"
             },
             orderBy: {
               createdAt: 'desc'
@@ -224,7 +222,7 @@ export const enrollmentsService = {
           console.log('✅ [ENROLLMENT SERVICE] Inscripción encontrada:', preRegistration.id);
           await tx.preRegistration.update({
             where: { id: preRegistration.id },
-            data: { status: "Processed" }, // ← Cambiado a inglés
+            data: { status: "Processed" },
           });
           console.log('✅ [ENROLLMENT SERVICE] Inscripción marcada como Procesada');
         } else {
@@ -287,7 +285,7 @@ export const enrollmentsService = {
     
     // REGLA DE NEGOCIO: No se puede eliminar una matrícula reciente (menos de 1 año desde su creación)
     const now = new Date();
-    const enrollmentDate = new Date(enrollment.fechaMatricula);
+    const enrollmentDate = new Date(enrollment.createdAt);
     const oneYearLater = new Date(enrollmentDate);
     oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
     
@@ -416,10 +414,8 @@ export const enrollmentsService = {
           athleteId: parseInt(athleteId),
           fechaInicio: fechaInicio,
           fechaVencimiento: fechaVencimiento,
-          fechaMatricula: fechaInicio,
           estado: 'Vigente',
-          observaciones: enrollmentData.observaciones || 'Renovación de matrícula',
-          comprobantePago: enrollmentData.comprobantePago || null
+          observaciones: enrollmentData.observaciones || 'Renovación de matrícula'
         }
       });
 

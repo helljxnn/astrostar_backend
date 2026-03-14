@@ -762,8 +762,8 @@ export class AppointmentService {
         appointment.specialist &&
         appointment.specialist.user
       ) {
-        const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
-        const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
+        const athleteName = `${appointment.athlete.user.firstName || ''} ${appointment.athlete.user.lastName || ''}`.trim() || 'Deportista';
+        const specialistName = `${appointment.specialist.user.firstName || ''} ${appointment.specialist.user.lastName || ''}`.trim() || 'Especialista';
 
         appointmentEmailService
           .sendAppointmentCancelled(
@@ -823,6 +823,18 @@ export class AppointmentService {
           success: false,
           statusCode: 400,
           message: "No se puede completar una cita cancelada.",
+        };
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const apptDate = new Date(appointment.appointmentDate);
+      apptDate.setHours(0, 0, 0, 0);
+      if (apptDate > today) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "No se puede completar una cita que aún no ha ocurrido.",
         };
       }
 

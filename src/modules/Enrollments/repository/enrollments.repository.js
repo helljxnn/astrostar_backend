@@ -7,7 +7,11 @@ export const enrollmentsRepository = {
       include: {
         athlete: {
           include: {
-            documentType: true,
+            user: {
+              include: {
+                documentType: true,
+              },
+            },
             guardian: true,
           },
         },
@@ -37,10 +41,8 @@ export const enrollmentsRepository = {
           athleteId: true,
           fechaInicio: true,
           fechaVencimiento: true,
-          fechaMatricula: true,
           estado: true,
           observaciones: true,
-          comprobantePago: true,
           createdAt: true,
           updatedAt: true,
           athlete: {
@@ -101,7 +103,11 @@ export const enrollmentsRepository = {
       include: {
         athlete: {
           include: {
-            documentType: true,
+            user: {
+              include: {
+                documentType: true,
+              },
+            },
             guardian: true,
           },
         },

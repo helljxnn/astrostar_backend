@@ -105,12 +105,13 @@ export class AthletesRepository {
       })),
       matriculas: (athlete.enrollments || []).map((mat) => ({
         id: mat.id,
-        fechaMatricula: mat.fechaMatricula,
+        fechaMatricula: mat.fechaMatricula || mat.createdAt,
         fechaInicio: mat.fechaInicio,
         fechaVencimiento: mat.fechaVencimiento,
         estado: mat.estado,
         observaciones: mat.observaciones,
         comprobantePago: mat.comprobantePago,
+        createdAt: mat.createdAt,
       })),
       createdAt: athlete.createdAt,
       updatedAt: athlete.updatedAt,
@@ -584,7 +585,7 @@ export class AthletesRepository {
             orderBy: { inscriptionDate: "desc" },
           },
           enrollments: {
-            orderBy: { fechaMatricula: "desc" },
+            orderBy: { createdAt: "desc" },
           },
         },
         orderBy: { createdAt: "desc" },
@@ -639,7 +640,7 @@ export class AthletesRepository {
           orderBy: { inscriptionDate: "desc" },
         },
         enrollments: {
-          orderBy: { fechaMatricula: "desc" },
+          orderBy: { createdAt: "desc" },
         },
       },
     });

@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../../../MOVIL"
+		},
+		{
+			"path": "../.."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "MOVIL",
+		"javascript.autoClosingTags": false
+	}
+}

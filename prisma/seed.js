@@ -306,41 +306,6 @@ async function main() {
 
   console.log("   ✓ Tipos de eventos configurados\n");
 
-  console.log("DEBUG: Antes de categorías deportivas");
-
-  // CATEGORÍAS DEPORTIVAS
-  console.log("🏅 Configurando categorías deportivas...");
-  await prisma.sportsCategory.createMany({
-    data: [
-      {
-        nombre: "Infantil",
-        edadMinima: 10,
-        edadMaxima: 12,
-        descripcion: "Categoría infantil para niños de 10 a 12 años",
-        estado: "Activo",
-        publicar: true,
-      },
-      {
-        nombre: "PreJuvenil",
-        edadMinima: 13,
-        edadMaxima: 15,
-        descripcion: "Categoría prejuvenil para adolescentes de 13 a 15 años",
-        estado: "Activo",
-        publicar: true,
-      },
-      {
-        nombre: "Juvenil",
-        edadMinima: 16,
-        edadMaxima: 18,
-        descripcion: "Categoría juvenil para jóvenes de 16 a 18 años",
-        estado: "Activo",
-        publicar: true,
-      },
-    ],
-    skipDuplicates: true,
-  });
-  console.log("   ✓ Categorías deportivas configuradas\n");
-
   console.log("🎉 Seed completado exitosamente!");
   console.log("📊 Resumen:");
   console.log("   • Tipos de documento: Configurados");
@@ -348,9 +313,6 @@ async function main() {
   console.log("   • Usuario Administrador: Creado");
   console.log("   • Categorías de eventos: Configuradas");
   console.log("   • Tipos de eventos: Configurados");
-  console.log(
-    "   • Categorías deportivas: Configuradas (Infantil, PreJuvenil, Juvenil)",
-  );
   console.log("\n💡 Puedes iniciar sesión con:");
   console.log("   📧 Email: astrostar.java@gmail.com");
   console.log("   🔑 Contraseña: Admin123*");

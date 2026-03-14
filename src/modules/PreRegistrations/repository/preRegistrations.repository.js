@@ -98,7 +98,7 @@ export const preRegistrationsRepository = {
           { identification: identification }
         ],
         status: {
-          not: 'Rejected' // Permitir solo si no está rechazada
+          not: 'Rejected'
         }
       },
       select: {
