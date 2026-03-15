@@ -139,6 +139,7 @@ model RefreshToken {
 model Employee {
   id                   Int                  @id @default(autoincrement())
   status               EmployeeStatus       @default(Activo)
+  specialty            String?              @db.VarChar(30)
   statusAssignedAt     DateTime             @default(now())
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
