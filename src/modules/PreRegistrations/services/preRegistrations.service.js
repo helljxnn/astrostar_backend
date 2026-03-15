@@ -223,4 +223,16 @@ export const preRegistrationsService = {
       data: existingPreRegistration || existingUser || null,
     };
   },
+
+  /**
+   * Obtener todas las inscripciones para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport(filters) {
+    const data = await preRegistrationsRepository.findAllForReport(filters);
+    return {
+      success: true,
+      data,
+      message: `Se encontraron ${data.length} inscripciones para el reporte.`,
+    };
+  },
 };

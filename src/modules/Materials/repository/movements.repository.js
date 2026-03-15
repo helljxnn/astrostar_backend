@@ -529,6 +529,66 @@ class MovementsRepository {
       },
     });
   }
+
+    /**
+     * Obtener todos los movimientos para reporte (SIN PAGINACIÓN)
+     */
+    async findAllForReport({
+      search = "",
+      materialId,
+      tipoMovimiento,
+      startDate,
+      endDate,
+    }) {
+      const where = {};
+
+      if (search && search.trim()) {
+        where.OR = [
+          { observaciones: { contains: search, mode: "insensitive" } },
+        ];
+      }
+
+      if (materialId) {
+        where.materialId = parseInt(materialId);
+      }
+
+      if (tipoMovimiento) {
+        where.tipoMovimiento = tipoMovimiento;
+      }
+
+      if (startDate || endDate) {
+        where.fecha = {};
+        if (startDate) {
+          where.fecha.gte = new Date(startDate);
+        }
+        if (endDate) {
+          where.fecha.lte = new Date(endDate);
+        }
+      }
+
+      const movements = await prisma.materialMovement.findMany({
+        where,
+        include: {
+          material: {
+            select: {
+              id: true,
+              nombre: true,
+              codigo: true,
+            },
+          },
+          proveedor: {
+            select: {
+              id: true,
+              businessName: true,
+            },
+          },
+        },
+        orderBy: { fecha: "desc" },
+      });
+
+      return movements;
+    }
 }
 
 export default new MovementsRepository();
+

@@ -72,7 +72,9 @@ router.get(
 // ============================================================================
 
 // Rutas básicas - solo métodos que existen en el controller
+router.get('/pending/report', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPendingPaymentsForReport); // ANTES de /pending
 router.get('/pending', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPendingPayments);
+router.get('/history/report', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPaymentHistoryForReport); // ANTES de /all
 router.get('/all', authenticateToken, requirePaymentAdminPermissions, paymentsController.getAllPayments);
 router.get('/monthly-management', authenticateToken, requirePaymentAdminPermissions, paymentsController.getMonthlyPaymentsManagement);
 router.patch('/:paymentId/approve', authenticateToken, requirePaymentAdminPermissions, paymentsController.approvePayment);

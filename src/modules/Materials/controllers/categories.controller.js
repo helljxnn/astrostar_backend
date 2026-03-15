@@ -251,6 +251,34 @@ class CategoriesController {
       });
     }
   }
+
+  /**
+   * GET /api/materials/categories/report
+   * Obtener todas las categorías para reporte (sin paginación)
+   */
+  async getAllForReport(req, res) {
+    try {
+      const { search = '', estado } = req.query;
+
+      const result = await categoriesService.getAllForReport({
+        search,
+        estado,
+      });
+
+      return res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.length} categorías para el reporte.`,
+      });
+    } catch (error) {
+      console.error('CategoriesController.getAllForReport - Error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor al obtener categorías para reporte',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  }
 }
 
 export default new CategoriesController();

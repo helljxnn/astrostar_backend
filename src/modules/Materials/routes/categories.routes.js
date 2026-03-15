@@ -73,6 +73,36 @@ router.use(authenticateToken);
 
 /**
  * @swagger
+ * /api/materials/categories/report:
+ *   get:
+ *     summary: Obtener todas las categorías para reporte (sin paginación)
+ *     tags: [Material Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Búsqueda por nombre o descripción
+ *       - in: query
+ *         name: estado
+ *         schema:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *         description: Filtrar por estado
+ *     responses:
+ *       200:
+ *         description: Lista completa de categorías para reporte
+ */
+router.get(
+  '/report',
+  checkPermissions('materialCategories', 'Ver'),
+  categoriesController.getAllForReport
+);
+
+/**
+ * @swagger
  * /api/materials/categories/active:
  *   get:
  *     summary: Obtener categorías activas

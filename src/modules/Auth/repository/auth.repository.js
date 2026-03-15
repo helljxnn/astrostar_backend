@@ -39,7 +39,7 @@ export class AuthRepository {
               status: true,
               guardianId: true,
               relationship: true,
-              otherRelationship: true,
+
               currentInscriptionStatus: true,
               createdAt: true,
               updatedAt: true,
@@ -239,7 +239,7 @@ export class AuthRepository {
               status: true,
               guardianId: true,
               relationship: true,
-              otherRelationship: true,
+
               currentInscriptionStatus: true,
               createdAt: true,
               updatedAt: true,
@@ -370,7 +370,7 @@ export class AuthRepository {
               status: true,
               guardianId: true,
               relationship: true,
-              otherRelationship: true,
+
               currentInscriptionStatus: true,
               createdAt: true,
               updatedAt: true,
@@ -423,7 +423,7 @@ export class AuthRepository {
               status: true,
               guardianId: true,
               relationship: true,
-              otherRelationship: true,
+
               currentInscriptionStatus: true,
               createdAt: true,
               updatedAt: true,

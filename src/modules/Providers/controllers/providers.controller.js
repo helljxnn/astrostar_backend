@@ -520,6 +520,31 @@ export class ProvidersController {
       });
     }
   };
+
+    /**
+     * GET /api/providers/report
+     * Obtener todos los proveedores para reporte (SIN PAGINACIÓN)
+     */
+    getAllProvidersForReport = async (req, res) => {
+      try {
+        const { search = "", status, entityType } = req.query;
+
+        const result = await this.providersService.getAllProvidersForReport({
+          search,
+          status,
+          entityType,
+        });
+
+        return res.json(result);
+      } catch (error) {
+        console.error("Controller error - getAllProvidersForReport:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Error interno del servidor al obtener proveedores para reporte",
+          error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        });
+      }
+    };
 }
 
 export default new ProvidersController();

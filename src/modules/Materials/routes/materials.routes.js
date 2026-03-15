@@ -27,6 +27,17 @@ router.get(
 );
 
 /**
+ * GET /api/materials/report
+ * Obtener todos los materiales para reporte (SIN PAGINACIÓN)
+ * Permiso: materials.Ver
+ */
+router.get(
+  "/report",
+  checkPermissions("materials", "Ver"),
+  materialsController.getAllForReport,
+);
+
+/**
  * GET /api/materials/:id/history
  * Obtener historial de movimientos de un material
  * Permiso: materials.Ver

@@ -9,11 +9,13 @@ router.use(authenticateToken);
 
 // Rutas de matrículas
 router.post("/", enrollmentsController.create);
+router.get("/report", enrollmentsController.findAllForReport); // ANTES de /:id
 router.get("/", enrollmentsController.findAll);
 router.get("/:id", enrollmentsController.findById);
 router.put("/:id", enrollmentsController.update);
 router.delete("/:id", enrollmentsController.delete); // Bloqueada - devuelve error 403
 router.get("/athlete/:athleteId", enrollmentsController.findByAthleteId);
+router.get("/athlete/:athleteId/history", enrollmentsController.getAthleteHistory);
 
 // Rutas para procesamiento de vencimientos (solo admin)
 router.post("/process-expired", enrollmentsController.processExpired);

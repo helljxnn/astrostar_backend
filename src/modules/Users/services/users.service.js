@@ -136,6 +136,28 @@ export class UsersService {
   }
 
   /**
+   * Obtener todos los usuarios para reporte (SIN PAGINACIÓN)
+   */
+  async getAllUsersForReport(params = {}) {
+    try {
+      const result = await usersRepository.findAllForReport(params);
+
+      // Formatear respuesta
+      const formattedUsers = result.users.map((user) =>
+        this.formatUserResponse(user)
+      );
+
+      return {
+        success: true,
+        data: formattedUsers,
+      };
+    } catch (error) {
+      console.error("Error in getAllUsersForReport service:", error);
+      throw new Error(`Error obteniendo usuarios para reporte: ${error.message}`);
+    }
+  }
+
+  /**
    * Formatear respuesta del usuario (eliminar datos sensibles)
    */
   formatUserResponse(user) {

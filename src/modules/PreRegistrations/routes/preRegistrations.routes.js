@@ -39,6 +39,7 @@ router.get("/check-document/:identification", preRegistrationsController.checkDo
 router.get("/check-email/:email", preRegistrationsController.checkEmail);
 
 // Protegidas - Requieren autenticación
+router.get("/report", authenticateToken, preRegistrationsController.findAllForReport); // ANTES de /:id
 router.get("/", authenticateToken, preRegistrationsController.findAll);
 router.get("/:id", authenticateToken, preRegistrationsController.findById);
 router.put("/:id/status", authenticateToken, preRegistrationsController.updateStatus);
