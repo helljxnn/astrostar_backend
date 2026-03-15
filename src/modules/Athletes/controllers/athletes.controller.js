@@ -1,4 +1,5 @@
 import { AthletesService } from "../services/athletes.service.js";
+import { athletesService } from "../services/athletes.service.new.js";
 
 export class AthletesController {
   constructor() {
@@ -390,6 +391,33 @@ export class AthletesController {
         success: false,
         message: 'Error interno del servidor al remover acudiente.',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * GET /api/athletes/report
+   * Obtener todos los deportistas para reporte (SIN PAGINACIÓN)
+   */
+  getAllAthletesForReport = async (req, res) => {
+    try {
+      const { search = "", status, minAge, maxAge, category } = req.query;
+
+      const result = await athletesService.findAllForReport({
+        search,
+        status,
+        minAge: minAge ? parseInt(minAge) : undefined,
+        maxAge: maxAge ? parseInt(maxAge) : undefined,
+        category,
+      });
+
+      return res.json(result);
+    } catch (error) {
+      console.error("Controller error - getAllAthletesForReport:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener deportistas para reporte",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };

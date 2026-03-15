@@ -234,5 +234,39 @@ export const paymentsController = {
         message: 'Error al obtener gestión de pagos mensuales'
       });
     }
-  }
+  },
+
+  /**
+   * GET /api/payments/pending/report
+   * Obtener todos los pagos pendientes para reporte (SIN PAGINACIÓN)
+   */
+  async getPendingPaymentsForReport(req, res) {
+    try {
+      const { type } = req.query;
+      const result = await paymentsService.getPendingPaymentsForReport({ type });
+      return res.status(200).json(result);
+    } catch (error) {
+      return handleError(res, error, "Error al obtener pagos pendientes para reporte");
+    }
+  },
+
+  /**
+   * GET /api/payments/history/report
+   * Obtener historial completo de pagos para reporte (SIN PAGINACIÓN)
+   */
+  async getPaymentHistoryForReport(req, res) {
+    try {
+      const { athleteId, status, type, startDate, endDate } = req.query;
+      const result = await paymentsService.getPaymentHistoryForReport({
+        athleteId: athleteId ? parseInt(athleteId) : undefined,
+        status,
+        type,
+        startDate,
+        endDate,
+      });
+      return res.status(200).json(result);
+    } catch (error) {
+      return handleError(res, error, "Error al obtener historial de pagos para reporte");
+    }
+  },
 };

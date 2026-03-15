@@ -266,6 +266,36 @@ router.get("/stats", providersController.getProviderStats);
 
 /**
  * @swagger
+ * /api/providers/report:
+ *   get:
+ *     summary: Get all providers for report (NO PAGINATION)
+ *     tags: [Providers]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *         description: Filter by status
+ *       - in: query
+ *         name: entityType
+ *         schema:
+ *           type: string
+ *           enum: [juridica, natural]
+ *         description: Filter by entity type
+ *     responses:
+ *       200:
+ *         description: All providers retrieved successfully for report
+ */
+router.get("/report", providersController.getAllProvidersForReport);
+
+/**
+ * @swagger
  * /api/providers:
  *   get:
  *     summary: Get list of providers with pagination and filters

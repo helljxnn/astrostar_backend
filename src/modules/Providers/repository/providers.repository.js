@@ -452,6 +452,48 @@ export class ProvidersRepository {
     };
     return documentTypeMap[documentTypeName] || null;
   }
+
+  /**
+   * Obtener todos los proveedores para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({ search = "", status, entityType }) {
+    const where = {};
+
+    // Filtro de búsqueda
+    if (search && search.trim()) {
+      where.OR = [
+        { businessName: { contains: search, mode: "insensitive" } },
+        { nit: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { contactName: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // Filtro de estado
+    if (status) {
+      where.status = status;
+    }
+
+    // Filtro de tipo de entidad
+    if (entityType) {
+      where.entityType = entityType;
+    }
+
+    const providers = await prisma.provider.findMany({
+      where,
+      include: {
+        documentType: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return providers.map((provider) => this.transformToFrontend(provider));
+  }
 }
 
 /**

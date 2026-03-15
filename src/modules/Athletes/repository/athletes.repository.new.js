@@ -130,4 +130,96 @@ export const athletesRepository = {
       porCategoria: categoriaStats,
     };
   },
+
+  /**
+   * Obtener todos los deportistas para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({ search = "", status, minAge, maxAge, category }) {
+    const where = {};
+
+    // Filtro de búsqueda
+    if (search && search.trim()) {
+      where.user = {
+        OR: [
+          { firstName: { contains: search, mode: "insensitive" } },
+          { lastName: { contains: search, mode: "insensitive" } },
+          { identification: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      };
+    }
+
+    // Filtro de estado
+    if (status) {
+      where.status = status;
+    }
+
+    // Filtro de edad mínima
+    if (minAge !== undefined && minAge !== null) {
+      where.user = { ...where.user, age: { ...where.user?.age, gte: parseInt(minAge) } };
+    }
+
+    // Filtro de edad máxima
+    if (maxAge !== undefined && maxAge !== null) {
+      where.user = { ...where.user, age: { ...where.user?.age, lte: parseInt(maxAge) } };
+    }
+
+    const athletes = await prisma.athlete.findMany({
+      where,
+      include: {
+        user: {
+          include: {
+            documentType: true,
+          },
+        },
+        guardian: true,
+        enrollments: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Transformar datos para aplanar la estructura y que coincida con el frontend
+    return athletes.map((athlete) => ({
+      id: athlete.id,
+      // Datos del usuario (aplanados)
+      firstName: athlete.user?.firstName,
+      middleName: athlete.user?.middleName,
+      lastName: athlete.user?.lastName,
+      secondLastName: athlete.user?.secondLastName,
+      identification: athlete.user?.identification,
+      email: athlete.user?.email,
+      phoneNumber: athlete.user?.phoneNumber,
+      address: athlete.user?.address,
+      birthDate: athlete.user?.birthDate,
+      age: athlete.user?.age,
+      // Tipo de documento
+      documentTypeId: athlete.user?.documentTypeId,
+      documentTypeName: athlete.user?.documentType?.name,
+      // Datos del deportista
+      status: athlete.status,
+      relationship: athlete.relationship,
+      currentInscriptionStatus: athlete.currentInscriptionStatus,
+      isScholarship: athlete.isScholarship,
+      inactivityReason: athlete.inactivityReason,
+      createdAt: athlete.createdAt,
+      updatedAt: athlete.updatedAt,
+      // Acudiente
+      guardianId: athlete.guardianId,
+      acudiente: athlete.guardian ? {
+        id: athlete.guardian.id,
+        firstName: athlete.guardian.firstName,
+        lastName: athlete.guardian.lastName,
+        identification: athlete.guardian.identification,
+        email: athlete.guardian.email,
+        phone: athlete.guardian.phone,
+        address: athlete.guardian.address,
+        documentTypeId: athlete.guardian.documentTypeId,
+      } : null,
+      // Matrícula activa
+      activeEnrollment: athlete.enrollments[0] || null,
+    }));
+  },
 };

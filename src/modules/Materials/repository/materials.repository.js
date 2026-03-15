@@ -757,6 +757,47 @@ class MaterialsRepository {
       take: limit,
     });
   }
+  /**
+   * Obtener todos los materiales para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({
+    search = "",
+    status,
+    categoriaId,
+  }) {
+    const where = {};
+
+    if (search && search.trim()) {
+      where.OR = [
+        { nombre: { contains: search, mode: "insensitive" } },
+        { codigo: { contains: search, mode: "insensitive" } },
+        { descripcion: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (status) {
+      where.estado = status;
+    }
+
+    if (categoriaId) {
+      where.categoriaId = parseInt(categoriaId);
+    }
+
+    const materials = await prisma.material.findMany({
+      where,
+      include: {
+        categoria: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+      orderBy: { nombre: "asc" },
+    });
+
+    return materials;
+  }
 }
 
 export default new MaterialsRepository();
