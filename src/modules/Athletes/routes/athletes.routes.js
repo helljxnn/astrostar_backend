@@ -4,6 +4,7 @@ import {
   athletesValidators,
   handleValidationErrors,
 } from "../validators/athletes.validator.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
 
 const router = express.Router();
 const athletesController = new AthletesController();
@@ -155,7 +156,10 @@ const athletesController = new AthletesController();
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/check-email", athletesController.checkEmailAvailability);
+router.get("/check-email", 
+  authenticateToken,
+  athletesController.checkEmailAvailability
+);
 
 /**
  * @swagger
@@ -200,7 +204,10 @@ router.get("/check-email", athletesController.checkEmailAvailability);
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/check-identification", athletesController.checkIdentificationAvailability);
+router.get("/check-identification", 
+  authenticateToken,
+  athletesController.checkIdentificationAvailability
+);
 
 /**
  * @swagger
@@ -235,7 +242,10 @@ router.get("/check-identification", athletesController.checkIdentificationAvaila
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/document-types", athletesController.getDocumentTypes);
+router.get("/document-types", 
+  authenticateToken,
+  athletesController.getDocumentTypes
+);
 
 /**
  * @swagger
@@ -286,7 +296,10 @@ router.get("/document-types", athletesController.getDocumentTypes);
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/reference-data", athletesController.getReferenceData);
+router.get("/reference-data", 
+  authenticateToken,
+  athletesController.getReferenceData
+);
 
 /**
  * @swagger
@@ -323,7 +336,10 @@ router.get("/reference-data", athletesController.getReferenceData);
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/stats", athletesController.getAthleteStats);
+router.get("/stats", 
+  authenticateToken,
+  athletesController.getAthleteStats
+);
 
 /**
  * @swagger
@@ -399,6 +415,7 @@ router.get("/stats", athletesController.getAthleteStats);
  */
 router.get(
   "/",
+  authenticateToken,
   athletesValidators.getAll,
   handleValidationErrors,
   athletesController.getAllAthletes
@@ -441,6 +458,7 @@ router.get(
  */
 router.get(
   "/:id",
+  authenticateToken,
   athletesValidators.getById,
   handleValidationErrors,
   athletesController.getAthleteById
@@ -530,6 +548,7 @@ router.get(
  */
 router.post(
   "/",
+  authenticateToken,
   athletesValidators.create,
   handleValidationErrors,
   athletesController.createAthlete
@@ -611,6 +630,7 @@ router.post(
  */
 router.put(
   "/:id",
+  authenticateToken,
   athletesValidators.update,
   handleValidationErrors,
   athletesController.updateAthlete
@@ -666,6 +686,7 @@ router.put(
  */
 router.patch(
   "/:id/status",
+  authenticateToken,
   athletesValidators.changeStatus,
   handleValidationErrors,
   athletesController.changeAthleteStatus
@@ -706,7 +727,10 @@ router.patch(
  *       500:
  *         description: Error interno del servidor
  */
-router.put("/:id/remove-guardian", athletesController.removeGuardian);
+router.put("/:id/remove-guardian", 
+  authenticateToken,
+  athletesController.removeGuardian
+);
 
 /**
  * @swagger
@@ -741,6 +765,7 @@ router.put("/:id/remove-guardian", athletesController.removeGuardian);
  */
 router.delete(
   "/:id",
+  authenticateToken,
   athletesValidators.delete,
   handleValidationErrors,
   athletesController.deleteAthlete

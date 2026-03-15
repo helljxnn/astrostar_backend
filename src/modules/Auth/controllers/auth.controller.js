@@ -1,4 +1,5 @@
 import { AuthService } from "../services/auth.service.js";
+import prisma from "../../../config/database.js";
 
 export class AuthController {
   constructor() {
@@ -768,4 +769,70 @@ export class AuthController {
       });
     }
   };
+
+  /**
+   * Obtener permisos dinámicos basados en el estado de la matrícula
+   */
+  getPermissions = async (req, res) => {
+    try {
+      const user = req.user;
+      
+      // Permisos base del rol
+      let permissions = user.role?.permissions || {};
+      
+      // Si es deportista, verificar estado de matrícula para permisos dinámicos
+      if (user.athlete && user.role?.name === 'Deportista') {
+        // CORRECCIÓN: Una matrícula está realmente activa solo si:
+        // 1. Estado es 'Vigente' Y 2. Tiene fechaInicio (fue pagada y activada)
+        const enrollment = await prisma.enrollment.findFirst({
+          where: {
+            athleteId: user.athlete.id,
+            estado: 'Vigente',
+            fechaInicio: { not: null }  // ← CORRECCIÓN CRÍTICA
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        // Si NO tiene matrícula realmente activa, solo permitir acceso a Perfil y Pagos
+        if (!enrollment) {
+          permissions = {
+            "Perfil": { "Ver": true, "Editar": true },
+            "Pagos": { "Ver": true, "Crear": true },
+            "Matriculas": { "Ver": true }
+          };
+        } else {
+          // Si tiene matrícula realmente activa, dar acceso completo
+          permissions = {
+            "Perfil": { "Ver": true, "Editar": true },
+            "Pagos": { "Ver": true, "Crear": true },
+            "Citas": { "Ver": true, "Crear": true, "Editar": true },
+            "Matriculas": { "Ver": true },
+            "Inscripciones": { "Ver": true },
+            "Eventos": { "Ver": true }
+          };
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          permissions,
+          hasActiveEnrollment: user.athlete ? await prisma.enrollment.findFirst({
+            where: {
+              athleteId: user.athlete.id,
+              estado: 'Vigente',
+              fechaInicio: { not: null }  // ← CORRECCIÓN CRÍTICA
+            }
+          }) !== null : true
+        }
+      });
+    } catch (error) {
+      console.error("Error obteniendo permisos:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };;
 }

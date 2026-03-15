@@ -264,8 +264,8 @@ export const athletesValidators = {
 
     query("estadoInscripcion")
       .optional({ checkFalsy: true })
-      .isIn(["Vigente", "Suspendida", "Vencida"])
-      .withMessage("El estado de inscripción debe ser Vigente, Suspendida o Vencida.")
+      .isIn(["Vigente", "Vencida"])
+      .withMessage("El estado de inscripción debe ser Vigente o Vencida.")
   ]
 };
 

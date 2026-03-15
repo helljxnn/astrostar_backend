@@ -171,4 +171,31 @@ export const preRegistrationsController = {
       });
     }
   },
+
+  async checkEmail(req, res) {
+    try {
+      const { email } = req.params;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "El email es requerido",
+        });
+      }
+
+      const result = await preRegistrationsService.checkEmailExists(email);
+
+      return res.json({
+        success: true,
+        exists: result.exists,
+        message: result.message,
+        location: result.location,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
 };

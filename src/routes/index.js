@@ -8,6 +8,8 @@ import materialsRoutes from "../modules/Materials/routes/index.js";
 import temporaryWorkersRoutes from "../modules/Athletes/TemporaryWorkers/routes/temporaryworkers.routes.js";
 import donorsSponsorsRoutes from "../modules/Donations/DonorsSponsors/routes/donorsSponsors.routes.js";
 import donationsRoutes from "../modules/Donations/Donations/routes/donations.routes.js";
+import paymentsRoutes from "../modules/Payments/routes/payments.routes.js";
+import paymentSettingsRoutes from "../modules/Payments/routes/paymentSettings.routes.js";
 
 import documentTypesRoutes from "./documentTypes.routes.js";
 import sportsCategoryRoutes from "../modules/Athletes/SportsCategory/routes/sportsCategory.routes.js";
@@ -42,6 +44,8 @@ router.use("/", materialsRoutes); // Materials, Categories, Material-Movements
 router.use("/temporary-workers", temporaryWorkersRoutes);
 router.use("/donors-sponsors", donorsSponsorsRoutes);
 router.use("/donations", donationsRoutes);
+router.use("/payments", paymentsRoutes); // Nuevo módulo de Gestión de Pagos
+router.use("/payment-settings", paymentSettingsRoutes); // Configuración de pagos
 router.use("/document-types", documentTypesRoutes);
 router.use("/sports-categories", sportsCategoryRoutes);
 router.use("/teams", teamsRoutes);
@@ -82,6 +86,7 @@ router.get("/health", (req, res) => {
       "TemporaryWorkers",
       "DonorsSponsors",
       "Donations",
+      "Payments", // Nuevo módulo
       "DocumentTypes",
       "SportsCategories",
       "Teams",

@@ -32,6 +32,14 @@ export const authenticateToken = async (req, res, next) => {
             name: true,
             permissions: true
           }
+        },
+        // ✅ CORRECCIÓN: Incluir información del atleta si existe
+        athlete: {
+          select: {
+            id: true,
+            status: true,
+            guardianId: true
+          }
         }
       }
     });
@@ -104,6 +112,14 @@ export const optionalAuth = async (req, res, next) => {
             id: true,
             name: true,
             permissions: true
+          }
+        },
+        // ✅ CORRECCIÓN: Incluir información del atleta si existe
+        athlete: {
+          select: {
+            id: true,
+            status: true,
+            guardianId: true
           }
         }
       }

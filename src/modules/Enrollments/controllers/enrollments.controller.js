@@ -43,10 +43,11 @@ export const enrollmentsController = {
 
   async findAll(req, res) {
     try {
-      const { estado, athleteId, page, limit } = req.query;
+      const { estado, athleteId, search, page, limit } = req.query;
       const result = await enrollmentsService.findAll({
         estado,
         athleteId,
+        search: search?.trim() || undefined,
         page: page ? parseInt(page) : 1,
         limit: limit ? parseInt(limit) : 10,
       });
@@ -124,11 +125,11 @@ export const enrollmentsController = {
   },
 
   // ELIMINADO: Las matrículas NO deben poder eliminarse
-  // Solo pueden cambiar de estado (Vigente, Suspendida, Vencida, Cancelada)
+  // Solo pueden cambiar de estado (Vigente, Vencida, Pending_Payment)
   async delete(req, res) {
     return res.status(403).json({
       success: false,
-      message: "Las matrículas no pueden ser eliminadas. Solo pueden cambiar de estado (Vigente, Suspendida, Vencida, Cancelada).",
+      message: "Las matrículas no pueden ser eliminadas. Solo pueden cambiar de estado (Vigente, Vencida, Pending_Payment).",
     });
   },
 
@@ -154,28 +155,9 @@ export const enrollmentsController = {
     }
   },
 
-  /**
-   * Renovar matrícula de un deportista
-   * POST /api/enrollments/renew/:athleteId
-   */
-  async renew(req, res) {
-    try {
-      const { athleteId } = req.params;
-      const enrollmentData = req.body;
-
-      const result = await enrollmentsService.renewEnrollment(athleteId, enrollmentData);
-
-      return res.status(201).json({
-        success: true,
-        message: "Matrícula renovada exitosamente. Deportista reactivado.",
-        data: result,
-      });
-    } catch (error) {
-      console.error('Error renovando matrícula:', error);
-      return res.status(400).json({
-        success: false,
-        message: error.message,
-      });
-    }
-  },
+  // NOTA: La renovación de matrículas se maneja automáticamente a través del sistema de pagos
+  // 1. CRON detecta vencimiento → marca matrícula como 'Vencida'
+  // 2. CRON genera obligación ENROLLMENT_RENEWAL
+  // 3. Deportista paga → Admin aprueba → Sistema crea nueva matrícula
+  // Endpoint manual para generar obligación: POST /api/payments/athletes/:athleteId/enrollment-renewal
 };

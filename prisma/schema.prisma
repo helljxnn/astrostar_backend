@@ -32,6 +32,8 @@ model Role {
   permissions Json?      @default("{}")
   users       User[]
 
+  @@index([name])
+  @@index([status])
   @@map("roles")
 }
 
@@ -62,6 +64,11 @@ model User {
   documentType            DocumentType             @relation(fields: [documentTypeId], references: [id])
   role                    Role                     @relation(fields: [roleId], references: [id])
 
+  @@index([identification])
+  @@index([email])
+  @@index([status])
+  @@index([roleId])
+  @@index([documentTypeId])
   @@map("users")
 }
 
@@ -329,6 +336,21 @@ model Athlete {
   @@map("athletes")
 }
 
+model AthleteAttendance {
+  id          Int      @id @default(autoincrement())
+  athleteId   Int
+  date        DateTime
+  asistencia  Boolean  @default(false)
+  observacion String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([athleteId, date])
+  @@index([date])
+  @@map("athlete_attendances")
+}
+
 model Enrollment {
   id               Int              @id @default(autoincrement())
   athleteId        Int
@@ -338,8 +360,6 @@ model Enrollment {
   updatedAt        DateTime         @updatedAt
   fechaInicio      DateTime?        // NULL hasta que se apruebe el pago inicial (cuando se activa)
   fechaVencimiento DateTime?        // NULL hasta que se apruebe el pago inicial (fechaInicio + 1 año)
-  fechaMatricula   DateTime?        // Fecha de matrícula
-  comprobantePago  String?          // URL del comprobante de pago
   athlete          Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@index([athleteId])
@@ -756,7 +776,6 @@ model Material {
   stockFundacion         Int                     @default(0) @map("stock_fundacion")
   stockEventos           Int                     @default(0) @map("stock_eventos")
   stockEventosReservado  Int                     @default(0) @map("stock_eventos_reservado")
-  esReutilizable         Boolean                 @default(false) @map("es_reutilizable")
   eventMaterials         EventMaterial[]
   eventMaterialsReusable EventMaterialReusable[]
   movements              MaterialMovement[]
@@ -770,7 +789,6 @@ model Material {
   @@index([unidadMedida])
   @@index([stockFundacion])
   @@index([stockEventos])
-  @@index([esReutilizable])
   @@index([stockEventosReservado], map: "idx_materials_stock_eventos_reservado")
   @@map("materials")
 }
@@ -978,9 +996,9 @@ model Payment {
 // ==================== ENUMS ====================
 
 enum PreRegistrationStatus {
-  Pending   @map("Pendiente")
-  Processed @map("Procesada")
-  Rejected  @map("Rechazada")
+  Pending
+  Processed
+  Rejected
 }
 
 enum EnrollmentStatus {

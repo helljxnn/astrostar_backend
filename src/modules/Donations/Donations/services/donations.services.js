@@ -46,12 +46,8 @@ export class DonationsService {
           userId,
           userName,
         );
-      } catch (error) {
-        console.error(
-          "Error auto-converting donation to event materials:",
-          error,
-        );
-        // Don't fail the donation creation, just log the error
+      } catch {
+        // Don't fail the donation creation if auto-assignment fails
       }
     }
 
@@ -110,7 +106,7 @@ export class DonationsService {
                 materialId: material.id,
                 materialNombre: material.nombre,
                 categoria: material.categoria,
-                tipoMovimiento: "ASIGNACION_DIRECTA_DONACION",
+                tipoMovimiento: "ASIGNACION_EVENTO",
                 cantidad: cantidad,
                 inventarioDestino: "EVENTO_DIRECTO",
                 donacionId: parseInt(donationId),
@@ -456,7 +452,7 @@ export class DonationsService {
                 materialId: item.materialId,
                 materialNombre: material.nombre,
                 categoria: material.categoria,
-                tipoMovimiento: "ASIGNACION_DIRECTA_DONACION",
+                tipoMovimiento: "ASIGNACION_EVENTO",
                 cantidad: cantidad,
                 inventarioDestino: "EVENTO_DIRECTO",
                 donacionId: parseInt(donationId),

@@ -7,6 +7,17 @@ import { BaseEmailService } from "../../../services/email/BaseEmailService.js";
 
 export class PreRegistrationEmailService extends BaseEmailService {
   /**
+   * Formatear fecha en formato dd/mm/yyyy
+   */
+  formatDate(date) {
+    const d = new Date(date);
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const year = d.getUTCFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  /**
    * Enviar correo de confirmación de pre-inscripción
    */
   async sendPreRegistrationEmail(preRegistrationData) {
@@ -17,8 +28,7 @@ export class PreRegistrationEmailService extends BaseEmailService {
         firstName,
         lastName,
         secondLastName,
-        documentType,
-        documentNumber,
+        identification,
         birthDate,
         phoneNumber,
         email,
@@ -33,8 +43,7 @@ export class PreRegistrationEmailService extends BaseEmailService {
         html: this.generatePreRegistrationTemplate(
           firstName,
           nombreCompleto,
-          documentType,
-          documentNumber,
+          identification,
           birthDate,
           phoneNumber,
           email,
@@ -42,8 +51,7 @@ export class PreRegistrationEmailService extends BaseEmailService {
         text: this.generatePreRegistrationText(
           firstName,
           nombreCompleto,
-          documentType,
-          documentNumber,
+          identification,
         ),
       };
 
@@ -80,8 +88,7 @@ export class PreRegistrationEmailService extends BaseEmailService {
   generatePreRegistrationTemplate(
     firstName,
     nombreCompleto,
-    documentType,
-    documentNumber,
+    identification,
     birthDate,
     phoneNumber,
     email,
@@ -131,11 +138,11 @@ export class PreRegistrationEmailService extends BaseEmailService {
                 </div>
                 <div class="info-row">
                     <span class="info-label">Documento:</span>
-                    <span class="info-value">${documentType} ${documentNumber}</span>
+                    <span class="info-value">${identification || 'No proporcionado'}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Fecha de nacimiento:</span>
-                    <span class="info-value">${new Date(birthDate).toLocaleDateString("es-CO")}</span>
+                    <span class="info-value">${this.formatDate(birthDate)}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Teléfono:</span>
@@ -148,21 +155,31 @@ export class PreRegistrationEmailService extends BaseEmailService {
             </div>
             
             <div class="steps">
-                <h3>📝 Próximos Pasos</h3>
-                <ol>
-                    <li><strong>Revisión de Solicitud:</strong> Nuestro equipo revisará tu información en los próximos días.</li>
-                    <li><strong>Contacto:</strong> Te contactaremos por teléfono o email para coordinar una entrevista.</li>
-                    <li><strong>Documentación:</strong> Te indicaremos qué documentos adicionales necesitas presentar.</li>
-                    <li><strong>Matrícula:</strong> Una vez aprobada tu solicitud, procederemos con el proceso de matrícula.</li>
-                </ol>
+                <h3>🏃‍♀️ ¿LISTA PARA DAR EL PRIMER PASO?</h3>
+                <p><strong>Te esperamos en los siguientes horarios:</strong></p>
+                <ul>
+                    <li><strong>Martes y viernes:</strong> de 8:00 am a 9:30 am</li>
+                    <li><strong>Miércoles y jueves:</strong> de 5:30 pm a 7:00 pm</li>
+                </ul>
+                
+                <p><strong>📍 Ubicación:</strong><br>
+                En la cancha principal de la Unidad Deportiva Cristo Rey, en Copacabana, Antioquia.</p>
+                
+                <p>Ven a descubrir todo lo que puedes lograr con la Fundación Manuela Vanegas.</p>
+                
+                <div style="background-color: #667eea; color: white; padding: 15px; border-radius: 8px; margin: 15px 0; text-align: center;">
+                    <p><strong>💬 Si tienes alguna duda o quieres más información</strong></p>
+                    <p><strong>¡Conéctate con nosotros a través de nuestras redes sociales!</strong></p>
+                    <p><strong>¡ESTAMOS AQUÍ PARA AYUDARTE!</strong></p>
+                </div>
             </div>
             
             <div class="warning">
                 <strong>⚠️ Importante:</strong>
                 <ul>
-                    <li>Mantén tu teléfono disponible para recibir nuestra llamada</li>
-                    <li>Revisa tu correo electrónico regularmente (incluyendo spam)</li>
+                    <li>Revisa tu correo electrónico regularmente para cualquier actualización (incluyendo spam)</li>
                     <li>Si tienes preguntas, puedes contactarnos respondiendo a este correo</li>
+                    <li>Mantén tu teléfono disponible por si necesitamos contactarte</li>
                 </ul>
             </div>
             
@@ -187,8 +204,7 @@ export class PreRegistrationEmailService extends BaseEmailService {
   generatePreRegistrationText(
     firstName,
     nombreCompleto,
-    documentType,
-    documentNumber,
+    identification,
   ) {
     return `¡Bienvenida a la Fundación Manuela Vanegas!
 
@@ -198,18 +214,27 @@ Gracias por tu interés en formar parte de la Fundación Manuela Vanegas. Hemos 
 
 DATOS DE TU INSCRIPCIÓN:
 - Nombre completo: ${nombreCompleto}
-- Documento: ${documentType} ${documentNumber}
+- Documento: ${identification || 'No proporcionado'}
 
 PRÓXIMOS PASOS:
-1. Revisión de Solicitud: Nuestro equipo revisará tu información en los próximos días.
-2. Contacto: Te contactaremos por teléfono o email para coordinar una entrevista.
-3. Documentación: Te indicaremos qué documentos adicionales necesitas presentar.
-4. Matrícula: Una vez aprobada tu solicitud, procederemos con el proceso de matrícula.
+
+¿LISTA PARA DAR EL PRIMER PASO?
+
+Te esperamos en los siguientes horarios:
+- Martes y viernes: de 8:00 am a 9:30 am
+- Miércoles y jueves: de 5:30 pm a 7:00 pm
+
+Ubicación: En la cancha principal de la Unidad Deportiva Cristo Rey, en Copacabana, Antioquia.
+
+Ven a descubrir todo lo que puedes lograr con la Fundación Manuela Vanegas.
+
+Si tienes alguna duda o quieres más información, ¡conéctate con nosotros a través de nuestras redes sociales!
+¡ESTAMOS AQUÍ PARA AYUDARTE!
 
 IMPORTANTE:
-- Mantén tu teléfono disponible para recibir nuestra llamada
-- Revisa tu correo electrónico regularmente (incluyendo spam)
+- Revisa tu correo electrónico regularmente para cualquier actualización (incluyendo spam)
 - Si tienes preguntas, puedes contactarnos respondiendo a este correo
+- Mantén tu teléfono disponible por si necesitamos contactarte
 
 Estamos emocionados de que quieras ser parte de nuestra familia deportiva.
 

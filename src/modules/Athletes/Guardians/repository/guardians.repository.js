@@ -33,14 +33,17 @@ export class GuardiansRepository {
     const lastName = lastNameParts.join(' ') || firstName;
 
     return {
-      firstName: firstName || '',
-      lastName: lastName,
-      identification: guardianData.identification?.trim(),
-      email: guardianData.email?.trim(),
-      phone: guardianData.phoneNumber?.trim(),
-      address: guardianData.address || 'N/A',
+      firstName: firstName || guardianData.firstName || '',
+      lastName: lastName || guardianData.lastName || '',
+      identification: guardianData.identification?.trim() || guardianData.identificacion?.trim(),
+      email: guardianData.email?.trim() || guardianData.correo?.trim(),
+      phone: guardianData.phone?.trim() || guardianData.phoneNumber?.trim() || guardianData.telefono?.trim(),
+      address: guardianData.address || guardianData.direccion || 'N/A',
       occupation: guardianData.occupation || null,
-      birthDate: guardianData.birthDate ? new Date(guardianData.birthDate) : null,
+      birthDate: guardianData.birthDate ? (() => {
+        const date = new Date(guardianData.birthDate);
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+      })() : null,
     };
   }
 
@@ -212,6 +215,40 @@ export class GuardiansRepository {
       where: { guardianId: parseInt(id) }
     });
     return count > 0;
+  }
+
+  async getMinorAthletes(guardianId) {
+    // Obtener deportistas asociados a este acudiente
+    const athletes = await prisma.athlete.findMany({
+      where: { guardianId: parseInt(guardianId) },
+      include: {
+        user: {
+          select: {
+            firstName: true,
+            lastName: true,
+            birthDate: true,
+          }
+        }
+      }
+    });
+
+    // Filtrar solo los menores de 18 años
+    const today = new Date();
+    const minorAthletes = athletes.filter(athlete => {
+      if (!athlete.user?.birthDate) return false;
+      
+      const birthDate = new Date(athlete.user.birthDate);
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age < 18;
+    });
+
+    return minorAthletes;
   }
 
   async getStats() {

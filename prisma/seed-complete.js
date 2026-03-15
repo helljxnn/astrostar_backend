@@ -2,14 +2,8 @@
  * SEED COMPLETO DE DATOS DE PRUEBA PARA ASTROSTAR
  *
  * Este seed crea datos de prueba para:
- * - Acudientes/Guardianes
  * - Empleados
- * - Deportistas con inscripciones en categorías
- * - Equipos de la fundación
- * - Personas temporales
- * - Equipos temporales
  * - Eventos con categorías deportivas
- * - Inscripciones de equipos y deportistas a eventos
  */
 
 import { PrismaClient } from "../generated/prisma/index.js";
@@ -29,30 +23,12 @@ function calculateAge(birthDate) {
   return age;
 }
 
-// Función auxiliar para generar fecha de nacimiento según edad
-function generateBirthDate(minAge, maxAge) {
-  const age = Math.floor(Math.random() * (maxAge - minAge + 1)) + minAge;
-  const today = new Date();
-  const birthYear = today.getFullYear() - age;
-  const birthMonth = Math.floor(Math.random() * 12);
-  const birthDay = Math.floor(Math.random() * 28) + 1;
-  return new Date(birthYear, birthMonth, birthDay);
-}
-
 async function main() {
   console.log("🌱 Iniciando seed completo de datos de prueba...\n");
 
   // Obtener datos necesarios
   const documentType = await prisma.documentType.findFirst({
     where: { name: "Cédula de Ciudadanía" },
-  });
-
-  const tiDocumentType = await prisma.documentType.findFirst({
-    where: { name: "Tarjeta de Identidad" },
-  });
-
-  const athleteRole = await prisma.role.findFirst({
-    where: { name: "Athlete" },
   });
 
   const employeeRole = await prisma.role.findFirst({
@@ -153,7 +129,7 @@ async function main() {
   console.log(`   ✓ ${guardians.length} acudientes creados\n`);
 
   // ============================================
-  // 2. CREAR EMPLEADOS
+  // 1. CREAR EMPLEADOS
   // ============================================
   console.log("👔 Creando empleados...");
 
@@ -650,14 +626,8 @@ async function main() {
   // ============================================
   console.log("🎉 Seed completo finalizado exitosamente!\n");
   console.log("📊 Resumen de datos creados:");
-  console.log(`   • Acudientes: ${guardians.length}`);
   console.log(`   • Empleados: ${employees.length}`);
-  console.log(`   • Deportistas: ${athletes.length}`);
-  console.log(`   • Equipos de fundación: ${foundationTeams.length}`);
-  console.log(`   • Personas temporales: ${temporaryPersons.length}`);
-  console.log(`   • Equipos temporales: ${temporaryTeams.length}`);
   console.log(`   • Eventos: ${events.length}`);
-  console.log(`   • Inscripciones: ${registrationCount}`);
   console.log("\n💡 Datos de prueba listos para usar!");
 }
 

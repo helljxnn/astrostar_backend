@@ -80,21 +80,6 @@ export const validateEnrollmentId = [
   handleValidationErrors,
 ];
 
-/**
- * Validador para renovación de matrícula
- */
-export const validateRenewEnrollment = [
-  param("athleteId")
-    .isInt({ min: 1 })
-    .withMessage("ID de atleta inválido")
-    .toInt(),
-
-  body("teamId")
-    .notEmpty()
-    .withMessage("El ID del equipo es requerido")
-    .isInt({ min: 1 })
-    .withMessage("ID de equipo inválido")
-    .toInt(),
-
-  handleValidationErrors,
-];
+// NOTA: El validador validateRenewEnrollment ha sido eliminado
+// La renovación se maneja automáticamente a través del sistema de pagos
+// No se requiere validación manual para este proceso

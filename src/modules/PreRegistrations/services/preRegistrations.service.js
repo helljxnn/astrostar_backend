@@ -12,12 +12,7 @@ export const preRegistrationsService = {
     });
 
     if (existingByEmail) {
-      throw new Error(
-        `Ya existe una inscripción ${existingByEmail.status === 'Pending' ? 'pendiente' : 'procesada'} con este correo. ` +
-        (existingByEmail.status === 'Pending' 
-          ? "Si no recibiste el correo, usa la opción de reenviar."
-          : "Este usuario ya está en proceso de matrícula.")
-      );
+      throw new Error('Este email ya está inscrito');
     }
 
     const existingByDocument = await prisma.preRegistration.findUnique({
@@ -26,18 +21,16 @@ export const preRegistrationsService = {
     });
 
     if (existingByDocument) {
-      throw new Error(
-        `Ya existe una inscripción ${existingByDocument.status === 'Pending' ? 'pendiente' : 'procesada'} con este documento. ` +
-        (existingByDocument.status === 'Pending' 
-          ? "Si no recibiste el correo, usa la opción de reenviar."
-          : "Este usuario ya está en proceso de matrícula.")
-      );
+      throw new Error('Este documento ya está inscrito');
     }
 
     // 2. Convertir birthDate a Date si viene como string
     const dataToCreate = {
       ...data,
-      birthDate: data.birthDate ? new Date(data.birthDate) : new Date(),
+      birthDate: data.birthDate ? (() => {
+        const date = new Date(data.birthDate);
+        return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
+      })() : new Date(),
       status: "Pending",
     };
 
@@ -172,12 +165,54 @@ export const preRegistrationsService = {
     let location = null;
     
     if (existingPreRegistration) {
-      message = existingPreRegistration.status === 'Pending' 
-        ? 'Este documento ya tiene una inscripción pendiente'
-        : 'Este documento ya está procesado y en proceso de matrícula';
+      message = 'Este documento ya está inscrito';
       location = 'preRegistration';
     } else if (existingUser) {
-      message = 'Este documento ya está matriculado en el sistema';
+      message = 'Este documento ya está registrado en el sistema';
+      location = 'user';
+    }
+
+    return {
+      exists,
+      message,
+      location,
+      data: existingPreRegistration || existingUser || null,
+    };
+  },
+
+  async checkEmailExists(email) {
+    // 1. Buscar en pre-registros (las rechazadas se eliminan automáticamente)
+    const existingPreRegistration = await prisma.preRegistration.findUnique({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        status: true,
+      }
+    });
+    
+    // 2. Buscar en usuarios (deportistas matriculados)
+    const existingUser = await prisma.user.findFirst({
+      where: { email },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+      }
+    });
+
+    // Si existe en cualquiera de las dos tablas
+    const exists = !!(existingPreRegistration || existingUser);
+    
+    let message = 'Email disponible';
+    let location = null;
+    
+    if (existingPreRegistration) {
+      message = 'Este email ya está inscrito';
+      location = 'preRegistration';
+    } else if (existingUser) {
+      message = 'Este email ya está registrado en el sistema';
       location = 'user';
     }
 
