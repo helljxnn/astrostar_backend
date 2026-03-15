@@ -1,263 +1,687 @@
 import prisma from "../../../config/database.js";
 import { enrollmentsRepository } from "../repository/enrollments.repository.js";
-import { athletesRepository } from "../../Athletes/repository/athletes.repository.js";
-import { preRegistrationsRepository } from "../../PreRegistrations/repository/preRegistrations.repository.js";
 import emailService from "../../../services/emailService.js";
+import { paymentsService } from "../../Payments/services/payments.service.js";
 
+// ============================================================================
+// CONSTANTES Y CONFIGURACIÓN
+// ============================================================================
+const ENROLLMENT_CONSTANTS = {
+  ADULT_AGE: 18,
+  ENROLLMENT_DURATION_YEARS: 1,
+  ENROLLMENT_MINIMUM_AGE_MONTHS: 12,
+  DEFAULT_ROLE_NAME: 'Deportista',
+  DEFAULT_ADDRESS: 'N/A',
+  BCRYPT_SALT_ROUNDS: 10,
+};
+
+const ENROLLMENT_STATUS = {
+  PENDING_PAYMENT: 'Pending_Payment',
+  ACTIVE: 'Vigente',
+  EXPIRED: 'Vencida',
+};
+
+const ATHLETE_STATUS = {
+  ACTIVE: 'Active',
+  INACTIVE: 'Inactive',
+};
+
+const PRE_REGISTRATION_STATUS = {
+  PENDING: 'Pending',
+  PROCESSED: 'Processed',
+};
+
+// ============================================================================
+// UTILIDADES
+// ============================================================================
+
+/**
+ * Calcula la edad de una persona basándose en su fecha de nacimiento
+ * @param {Date|string} birthDate - Fecha de nacimiento
+ * @returns {number} Edad en años
+ */
 const calculateAge = (birthDate) => {
   const today = new Date();
   const birth = new Date(birthDate);
   let age = today.getFullYear() - birth.getFullYear();
   const monthDiff = today.getMonth() - birth.getMonth();
+  
   if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
     age--;
   }
+  
   return age;
 };
 
-export const enrollmentsService = {
-  async create({ preRegistrationId, athlete, enrollment }) {
-    console.log('🔍 [ENROLLMENT SERVICE] ========================================');
-    console.log('🔍 [ENROLLMENT SERVICE] INICIANDO CREACIÓN DE MATRÍCULA');
-    console.log('🔍 [ENROLLMENT SERVICE] preRegistrationId recibido:', preRegistrationId);
-    console.log('🔍 [ENROLLMENT SERVICE] Tipo:', typeof preRegistrationId);
-    console.log('🔍 [ENROLLMENT SERVICE] ========================================');
+/**
+ * Normaliza los campos del atleta para soportar múltiples formatos
+ * @param {Object} athlete - Datos del atleta
+ * @returns {Object} Datos normalizados
+ */
+const normalizeAthleteFields = (athlete) => {
+  return {
+    ...athlete,
+    guardianId: athlete.guardianId || athlete.acudiente || null,
+    relationship: athlete.relationship || athlete.parentesco || null,
+  };
+};
+
+/**
+ * Limpia y normaliza un email
+ * @param {string} email - Email a normalizar
+ * @returns {string} Email normalizado
+ */
+const normalizeEmail = (email) => {
+  return email?.trim().toLowerCase() || '';
+};
+
+/**
+ * Calcula la fecha de vencimiento de una matrícula
+ * @param {Date} startDate - Fecha de inicio
+ * @param {number} years - Años de duración
+ * @returns {Date} Fecha de vencimiento
+ */
+const calculateExpirationDate = (startDate, years = ENROLLMENT_CONSTANTS.ENROLLMENT_DURATION_YEARS) => {
+  const expirationDate = new Date(startDate);
+  expirationDate.setFullYear(expirationDate.getFullYear() + years);
+  return expirationDate;
+};
+
+// ============================================================================
+// VALIDACIONES
+// ============================================================================
+
+/**
+ * Valida que un usuario no exista por documento
+ * @param {Object} tx - Transacción de Prisma
+ * @param {string} identification - Documento de identidad
+ * @throws {Error} Si el usuario ya existe
+ */
+const validateUserDoesNotExist = async (tx, identification) => {
+  const existingUser = await tx.user.findUnique({
+    where: { identification },
+    select: { id: true },
+  });
+
+  if (existingUser) {
+    throw new Error("Ya existe una deportista con ese documento");
+  }
+};
+
+/**
+ * Valida y obtiene el acudiente si es necesario
+ * @param {Object} tx - Transacción de Prisma
+ * @param {number} age - Edad del atleta
+ * @param {number|null} guardianId - ID del acudiente
+ * @returns {Promise<number|null>} ID del acudiente validado o null
+ * @throws {Error} Si la validación falla
+ */
+const validateAndGetGuardian = async (tx, age, guardianId) => {
+  const isMinor = age < ENROLLMENT_CONSTANTS.ADULT_AGE;
+  
+  // Si es menor de edad, el acudiente es obligatorio
+  if (isMinor && !guardianId) {
+    throw new Error(`El acudiente es obligatorio para menores de ${ENROLLMENT_CONSTANTS.ADULT_AGE} años`);
+  }
+  
+  // Si no hay guardianId, retornar null
+  if (!guardianId) {
+    return null;
+  }
+  
+  // Validar que el ID sea un número válido
+  const parsedGuardianId = parseInt(guardianId);
+  if (isNaN(parsedGuardianId) || parsedGuardianId <= 0) {
+    throw new Error("El ID del acudiente debe ser un número entero positivo");
+  }
+  
+  // Verificar que el acudiente existe
+  const guardian = await tx.guardian.findUnique({
+    where: { id: parsedGuardianId },
+    select: { id: true, firstName: true, lastName: true },
+  });
+  
+  if (!guardian) {
+    throw new Error("Acudiente no encontrado");
+  }
+  
+  return parsedGuardianId;
+};
+
+// ============================================================================
+// OPERACIONES DE BASE DE DATOS
+// ============================================================================
+
+/**
+ * Obtiene o crea el rol de atleta
+ * @param {Object} tx - Transacción de Prisma
+ * @returns {Promise<Object>} Rol de atleta
+ */
+const getOrCreateAthleteRole = async (tx) => {
+  let athleteRole = await tx.role.findFirst({
+    where: { name: ENROLLMENT_CONSTANTS.DEFAULT_ROLE_NAME }
+  });
+
+  if (!athleteRole) {
+    // Permisos básicos para deportistas
+    const athletePermissions = {
+      "Perfil": {
+        "Ver": true,
+        "Editar": true
+      },
+      "Pagos": {
+        "Ver": true,
+        "Crear": true
+      },
+      "Matriculas": {
+        "Ver": true
+      }
+    };
+
+    athleteRole = await tx.role.create({
+      data: {
+        name: ENROLLMENT_CONSTANTS.DEFAULT_ROLE_NAME,
+        description: 'Rol de deportista',
+        status: ATHLETE_STATUS.ACTIVE,
+        permissions: athletePermissions
+      }
+    });
     
-    return await prisma.$transaction(async (tx) => {
-      // 1. Verificar que el documento no exista
-      const existingUser = await tx.user.findUnique({
-        where: { identification: athlete.identification },
-        select: { id: true },
-      });
+    console.log('✅ [ENROLLMENT] Rol de Athlete creado con permisos básicos');
+  }
 
-      if (existingUser) {
-        throw new Error("Ya existe una deportista con ese documento");
-      }
+  return athleteRole;
+};
 
-      // 2. Calcular edad
-      const age = calculateAge(new Date(athlete.birthDate));
+/**
+ * Crea un nuevo usuario en el sistema
+ * @param {Object} tx - Transacción de Prisma
+ * @param {Object} athleteData - Datos del atleta
+ * @param {number} roleId - ID del rol
+ * @param {number} age - Edad calculada
+ * @returns {Promise<Object>} Usuario creado
+ */
+const createUser = async (tx, athleteData, roleId, age) => {
+  const bcrypt = await import('bcrypt');
+  const tempPassword = athleteData.identification?.trim();
+  const passwordHash = await bcrypt.default.hash(tempPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
+  const cleanEmail = normalizeEmail(athleteData.email);
+  
+  const newUser = await tx.user.create({
+    data: {
+      firstName: athleteData.firstName?.trim(),
+      middleName: athleteData.middleName?.trim() || null,
+      lastName: athleteData.lastName?.trim(),
+      secondLastName: athleteData.secondLastName?.trim() || null,
+      documentTypeId: parseInt(athleteData.documentTypeId),
+      identification: athleteData.identification?.trim(),
+      email: cleanEmail,
+      phoneNumber: athleteData.phoneNumber?.trim(),
+      birthDate: new Date(athleteData.birthDate),
+      age: age,
+      address: athleteData.address?.trim() || ENROLLMENT_CONSTANTS.DEFAULT_ADDRESS,
+      passwordHash: passwordHash,
+      roleId: roleId,
+      status: ATHLETE_STATUS.ACTIVE
+    },
+    include: {
+      documentType: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+        },
+      },
+      role: true
+    },
+  });
 
-      // 3. Validar acudiente SOLO si es menor de 18 años
-      if (age < 18) {
-        if (!athlete.acudiente) {
-          throw new Error("El acudiente es obligatorio para menores de 18 años");
+  return { user: newUser, tempPassword };
+};
+
+/**
+ * Crea un nuevo atleta en el sistema
+ * @param {Object} tx - Transacción de Prisma
+ * @param {number} userId - ID del usuario
+ * @param {number|null} guardianId - ID del acudiente
+ * @param {string|null} relationship - Relación con el acudiente
+ * @returns {Promise<Object>} Atleta creado
+ */
+const createAthlete = async (tx, userId, guardianId, relationship) => {
+  return await tx.athlete.create({
+    data: {
+      userId: userId,
+      status: ATHLETE_STATUS.ACTIVE,
+      inactivityReason: null,
+      guardianId: guardianId,
+      relationship: relationship,
+      currentInscriptionStatus: ATHLETE_STATUS.ACTIVE
+    },
+    include: {
+      user: {
+        include: {
+          documentType: true
         }
-        
-        // Validar que el ID del acudiente sea válido
-        const guardianId = parseInt(athlete.acudiente);
-        if (isNaN(guardianId) || guardianId <= 0) {
-          throw new Error("El ID del acudiente debe ser un número entero positivo");
-        }
-        
-        // Verificar que el acudiente existe
-        const guardian = await tx.guardian.findUnique({
-          where: { id: guardianId },
-          select: { id: true },
-        });
-        if (!guardian) {
-          throw new Error("Acudiente no encontrado");
-        }
-      } else {
-        // 4. Mayor de 18: acudiente es opcional
-        if (athlete.acudiente) {
-          // Si se proporciona acudiente, validar que exista
-          const guardianId = parseInt(athlete.acudiente);
-          if (!isNaN(guardianId) && guardianId > 0) {
-            const guardian = await tx.guardian.findUnique({
-              where: { id: guardianId },
-              select: { id: true },
-            });
-            if (!guardian) {
-              throw new Error("Acudiente no encontrado");
-            }
-          } else {
-            // Si el ID no es válido, establecer como null
-            athlete.acudiente = null;
-          }
-        }
-      }
+      },
+      guardian: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          email: true,
+        },
+      },
+    },
+  });
+};
 
-      // 5. Buscar o crear rol de atleta
-      let athleteRole = await tx.role.findFirst({
-        where: { name: 'Athlete' }
-      });
+/**
+ * Crea una nueva matrícula
+ * @param {Object} tx - Transacción de Prisma
+ * @param {number} athleteId - ID del atleta
+ * @param {Object} enrollmentData - Datos de la matrícula
+ * @returns {Promise<Object>} Matrícula creada
+ */
+const createEnrollment = async (tx, athleteId, enrollmentData) => {
+  return await tx.enrollment.create({
+    data: {
+      athleteId: athleteId,
+      estado: ENROLLMENT_STATUS.PENDING_PAYMENT, // Empieza en Pending_Payment
+      observaciones: enrollmentData?.observaciones || null,
+      // createdAt = cuándo se creó | fechaInicio/fechaVencimiento = cuando se apruebe pago inicial
+      fechaInicio: null,
+      fechaVencimiento: null,
+    },
+  });
+};
 
-      if (!athleteRole) {
-        athleteRole = await tx.role.create({
-          data: {
-            name: 'Athlete',
-            description: 'Rol de deportista',
-            status: 'Active'
-          }
-        });
-      }
+/**
+ * Marca una pre-inscripción como procesada
+ * @param {Object} tx - Transacción de Prisma
+ * @param {number|null} preRegistrationId - ID de la pre-inscripción
+ * @param {string} email - Email del atleta
+ * @param {string} identification - Documento del atleta
+ */
+const markPreRegistrationAsProcessed = async (tx, preRegistrationId, email, identification) => {
+  if (preRegistrationId) {
+    console.log('🔄 [ENROLLMENT] Marcando inscripción como Procesada, ID:', preRegistrationId);
+    
+    await tx.preRegistration.update({
+      where: { id: preRegistrationId },
+      data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
+    });
+    
+    console.log('✅ [ENROLLMENT] Inscripción marcada como Procesada');
+    return;
+  }
 
-      // 6. REGLA DE NEGOCIO: Usar documento de identidad como contraseña inicial
-      const bcrypt = await import('bcrypt');
-      const tempPassword = athlete.identification?.trim();
-      const passwordHash = await bcrypt.default.hash(tempPassword, 10);
+  // Buscar por email o documento
+  console.log('⚠️ [ENROLLMENT] No hay preRegistrationId, buscando por email/documento...');
+  
+  let preRegistration = await tx.preRegistration.findFirst({
+    where: {
+      email: email,
+      status: PRE_REGISTRATION_STATUS.PENDING
+    },
+    orderBy: { createdAt: 'desc' }
+  });
 
-      // 7. Crear usuario
-      const cleanEmail = athlete.email?.trim().toLowerCase();
+  if (!preRegistration) {
+    preRegistration = await tx.preRegistration.findFirst({
+      where: {
+        identification: identification,
+        status: PRE_REGISTRATION_STATUS.PENDING
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
+
+  if (preRegistration) {
+    console.log('✅ [ENROLLMENT] Inscripción encontrada:', preRegistration.id);
+    await tx.preRegistration.update({
+      where: { id: preRegistration.id },
+      data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
+    });
+    console.log('✅ [ENROLLMENT] Inscripción marcada como Procesada');
+  } else {
+    console.log('⚠️ [ENROLLMENT] No se encontró inscripción pendiente');
+  }
+};
+
+/**
+ * Envía email de bienvenida al atleta (versión async no bloqueante)
+ * @param {Object} user - Datos del usuario
+ * @param {string} tempPassword - Contraseña temporal
+ */
+const sendWelcomeEmail = async (user, tempPassword) => {
+  try {
+    const athleteInfo = {
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName
+    };
+
+    const credentials = {
+      email: user.email,
+      temporaryPassword: tempPassword
+    };
+
+    // Envío asíncrono sin await para no bloquear
+    emailService.sendAthleteWelcomeEmail(athleteInfo, credentials)
+      .then(() => console.log('✅ [ENROLLMENT] Email de bienvenida enviado'))
+      .catch(error => console.error('❌ [ENROLLMENT] Error enviando email:', error));
       
+  } catch (emailError) {
+    console.error('❌ [ENROLLMENT] Error preparando email de bienvenida:', emailError);
+  }
+};
+
+// ============================================================================
+// SERVICIO PRINCIPAL
+// ============================================================================
+
+export const enrollmentsService = {
+  /**
+   * Crea una nueva matrícula con su atleta asociado (VERSIÓN ULTRA-OPTIMIZADA)
+   * @param {Object} params - Parámetros de creación
+   * @param {number|null} params.preRegistrationId - ID de pre-inscripción
+   * @param {Object} params.athlete - Datos del atleta
+   * @param {Object} params.enrollment - Datos de la matrícula
+   * @returns {Promise<Object>} Resultado de la creación
+   */
+  async create({ preRegistrationId, athlete, enrollment }) {
+    console.log('🔍 [ENROLLMENT] ========================================');
+    console.log('🔍 [ENROLLMENT] INICIANDO CREACIÓN DE MATRÍCULA ULTRA-OPTIMIZADA');
+    console.log('🔍 [ENROLLMENT] preRegistrationId:', preRegistrationId, 'Tipo:', typeof preRegistrationId);
+    console.log('🔍 [ENROLLMENT] ========================================');
+    
+    const startTime = Date.now();
+    
+    // PASO 1: Preparar TODOS los datos fuera de la transacción
+    const normalizedAthlete = normalizeAthleteFields(athlete);
+    const cleanEmail = normalizeEmail(normalizedAthlete.email);
+    const cleanIdentification = normalizedAthlete.identification?.trim();
+    const age = calculateAge(new Date(normalizedAthlete.birthDate));
+    
+    console.log('📊 [ENROLLMENT] Edad calculada:', age, 'años');
+
+    // PASO 2: Validaciones críticas en paralelo (fuera de transacción)
+    const [existingUser, athleteRole, guardian] = await Promise.all([
+      // Verificar usuario existente
+      prisma.user.findUnique({
+        where: { identification: cleanIdentification },
+        select: { id: true },
+      }),
+      
+      // Obtener o crear rol de atleta
+      prisma.role.findFirst({
+        where: { name: ENROLLMENT_CONSTANTS.DEFAULT_ROLE_NAME },
+        select: { id: true }
+      }).then(async (role) => {
+        if (role) return role;
+        
+        // Crear rol si no existe
+        return await prisma.role.create({
+          data: {
+            name: ENROLLMENT_CONSTANTS.DEFAULT_ROLE_NAME,
+            description: 'Rol de deportista',
+            status: ATHLETE_STATUS.ACTIVE,
+            permissions: {
+              "Perfil": { "Ver": true, "Editar": true },
+              "Pagos": { "Ver": true, "Crear": true },
+              "Matriculas": { "Ver": true }
+            }
+          },
+          select: { id: true }
+        });
+      }),
+      
+      // Validar acudiente si es necesario
+      normalizedAthlete.guardianId ? prisma.guardian.findUnique({
+        where: { id: parseInt(normalizedAthlete.guardianId) },
+        select: { id: true },
+      }) : Promise.resolve(null)
+    ]);
+
+    // Validaciones de negocio
+    if (existingUser) {
+      throw new Error("Ya existe un deportista con ese documento");
+    }
+
+    const validatedGuardianId = normalizedAthlete.guardianId ? parseInt(normalizedAthlete.guardianId) : null;
+    
+    if (validatedGuardianId && !guardian) {
+      throw new Error("Acudiente no encontrado");
+    }
+
+    if (age < ENROLLMENT_CONSTANTS.ADULT_AGE && !validatedGuardianId) {
+      throw new Error(`El acudiente es obligatorio para menores de ${ENROLLMENT_CONSTANTS.ADULT_AGE} años`);
+    }
+
+    // PASO 3: Preparar hash de contraseña fuera de transacción
+    const bcrypt = await import('bcrypt');
+    const tempPassword = cleanIdentification;
+    const passwordHash = await bcrypt.default.hash(tempPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
+
+    console.log(`⏱️ [ENROLLMENT] Preparación completada en ${Date.now() - startTime}ms`);
+
+    // PASO 4: Transacción ULTRA-OPTIMIZADA (solo operaciones críticas)
+    const transactionStart = Date.now();
+    const result = await prisma.$transaction(async (tx) => {
+      // Crear usuario (operación atómica)
       const newUser = await tx.user.create({
         data: {
-          firstName: athlete.firstName?.trim(),
-          middleName: athlete.middleName?.trim() || null,
-          lastName: athlete.lastName?.trim(),
-          secondLastName: athlete.secondLastName?.trim() || null,
-          documentTypeId: parseInt(athlete.documentTypeId),
-          identification: athlete.identification?.trim(),
+          firstName: normalizedAthlete.firstName?.trim(),
+          middleName: normalizedAthlete.middleName?.trim() || null,
+          lastName: normalizedAthlete.lastName?.trim(),
+          secondLastName: normalizedAthlete.secondLastName?.trim() || null,
+          documentTypeId: parseInt(normalizedAthlete.documentTypeId),
+          identification: cleanIdentification,
           email: cleanEmail,
-          phoneNumber: athlete.phoneNumber?.trim(),
-          birthDate: new Date(athlete.birthDate),
+          phoneNumber: normalizedAthlete.phoneNumber?.trim(),
+          birthDate: new Date(normalizedAthlete.birthDate),
           age: age,
-          address: athlete.address?.trim() || 'N/A',
+          address: normalizedAthlete.address?.trim() || ENROLLMENT_CONSTANTS.DEFAULT_ADDRESS,
           passwordHash: passwordHash,
           roleId: athleteRole.id,
-          status: 'Active'
+          status: ATHLETE_STATUS.ACTIVE
         },
-        include: {
-          documentType: {
-            select: {
-              id: true,
-              name: true,
-              description: true,
-            },
-          },
-          role: true
-        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          identification: true
+        }
       });
 
-      // 8. Crear deportista (SIEMPRE Activo al crear matrícula)
+      // Crear atleta (operación atómica)
       const newAthlete = await tx.athlete.create({
         data: {
           userId: newUser.id,
-          status: 'Active', // Siempre activo al crear matrícula
+          status: ATHLETE_STATUS.ACTIVE,
           inactivityReason: null,
-          guardianId: athlete.acudiente ? parseInt(athlete.acudiente) : null,
-          relationship: athlete.parentesco || null,
-          currentInscriptionStatus: 'Active'
+          guardianId: validatedGuardianId,
+          relationship: normalizedAthlete.relationship,
+          currentInscriptionStatus: ATHLETE_STATUS.ACTIVE
         },
-        include: {
-          user: {
-            include: {
-              documentType: true
-            }
-          },
-          guardian: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              phone: true,
-              email: true,
-            },
-          },
-        },
+        select: {
+          id: true,
+          userId: true,
+          status: true
+        }
       });
 
-      // 9. Crear matrícula (SIEMPRE Vigente al crear, con fecha de vencimiento a 1 año)
-      const fechaInicio = enrollment?.fechaMatricula
-        ? new Date(enrollment.fechaMatricula)
-        : new Date();
-      
-      const fechaVencimiento = new Date(fechaInicio);
-      fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + 1);
-
+      // Crear matrícula (operación atómica)
       const newEnrollment = await tx.enrollment.create({
         data: {
           athleteId: newAthlete.id,
-          fechaInicio: fechaInicio,
-          fechaVencimiento: fechaVencimiento,
-          fechaMatricula: fechaInicio,
-          estado: "Vigente", // Siempre vigente al crear
+          estado: ENROLLMENT_STATUS.PENDING_PAYMENT,
           observaciones: enrollment?.observaciones || null,
-          comprobantePago: enrollment?.comprobantePago || null,
+          fechaInicio: null,
+          fechaVencimiento: null,
         },
+        select: {
+          id: true,
+          athleteId: true,
+          estado: true,
+          createdAt: true
+        }
       });
 
-      // 10. Si viene de inscripción del landing, marcarla como procesada
-      console.log('🔍 [ENROLLMENT SERVICE] Verificando preRegistrationId...');
-      console.log('🔍 [ENROLLMENT SERVICE] preRegistrationId:', preRegistrationId);
-      console.log('🔍 [ENROLLMENT SERVICE] ¿Existe?', !!preRegistrationId);
-      
+      // Marcar pre-inscripción como procesada (solo si existe ID)
       if (preRegistrationId) {
-        console.log('🔄 [ENROLLMENT SERVICE] Marcando inscripción como Procesada...');
-        console.log('🔄 [ENROLLMENT SERVICE] ID a actualizar:', preRegistrationId);
-        
         await tx.preRegistration.update({
           where: { id: preRegistrationId },
-          data: { status: "Processed" }, // ← Cambiado a inglés
+          data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
         });
-        
-        console.log('✅ [ENROLLMENT SERVICE] Inscripción marcada como Procesada exitosamente');
-      } else {
-        console.log('⚠️ [ENROLLMENT SERVICE] No hay preRegistrationId, buscando por email/documento...');
-        
-        // Si no viene preRegistrationId, buscar por email O por documento
-        let preRegistration = await tx.preRegistration.findFirst({
-          where: {
-            email: cleanEmail,
-            status: "Pending" // ← Cambiado a inglés
-          },
-          orderBy: {
-            createdAt: 'desc'
-          }
-        });
-
-        // Si no se encontró por email, buscar por documento
-        if (!preRegistration) {
-          console.log('⚠️ [ENROLLMENT SERVICE] No encontrada por email, buscando por documento...');
-          preRegistration = await tx.preRegistration.findFirst({
-            where: {
-              identification: athlete.identification?.trim(),
-              status: "Pending" // ← Cambiado a inglés
-            },
-            orderBy: {
-              createdAt: 'desc'
-            }
-          });
-        }
-
-        if (preRegistration) {
-          console.log('✅ [ENROLLMENT SERVICE] Inscripción encontrada:', preRegistration.id);
-          await tx.preRegistration.update({
-            where: { id: preRegistration.id },
-            data: { status: "Processed" }, // ← Cambiado a inglés
-          });
-          console.log('✅ [ENROLLMENT SERVICE] Inscripción marcada como Procesada');
-        } else {
-          console.log('⚠️ [ENROLLMENT SERVICE] No se encontró inscripción pendiente para marcar');
-        }
-      }
-
-      // 11. REGLA DE NEGOCIO: Enviar credenciales por email
-      try {
-        const athleteInfo = {
-          email: newUser.email,
-          firstName: newUser.firstName,
-          lastName: newUser.lastName
-        };
-
-        const credentials = {
-          email: newUser.email,
-          temporaryPassword: tempPassword
-        };
-
-        await emailService.sendAthleteWelcomeEmail(athleteInfo, credentials);
-      } catch (emailError) {
-        console.error('Error enviando email de bienvenida:', emailError);
-        // No fallar la transacción si el email falla
       }
 
       return {
-        athlete: newAthlete,
+        athlete: { ...newAthlete, user: newUser },
         enrollment: newEnrollment,
-        temporaryPassword: process.env.NODE_ENV === 'development' ? tempPassword : undefined,
-        emailSent: true
+        tempPassword: tempPassword,
+        cleanEmail: cleanEmail,
+        cleanIdentification: cleanIdentification,
+        categoria: normalizedAthlete.categoria
       };
+    }, {
+      timeout: 15000, // 15 segundos de timeout
+      isolationLevel: 'ReadCommitted' // Nivel de aislamiento más eficiente
     });
+
+    console.log(`⚡ [ENROLLMENT] Transacción completada en ${Date.now() - transactionStart}ms`);
+
+    // OPERACIONES POST-TRANSACCIÓN (ejecutar en background sin await)
+    
+    // 1. Crear inscripción con categoría
+    if (result.categoria) {
+      setImmediate(async () => {
+        try {
+          const sportsCategory = await prisma.sportsCategory.findFirst({
+            where: { nombre: { equals: result.categoria, mode: "insensitive" } },
+            select: { id: true, nombre: true }
+          });
+
+          if (sportsCategory) {
+            await prisma.inscription.create({
+              data: {
+                athleteId: result.athlete.id,
+                sportsCategoryId: sportsCategory.id,
+                type: "initial_inscription",
+                status: "Active",
+                inscriptionDate: new Date(),
+                conceptDate: new Date(),
+                expirationDate: calculateExpirationDate(new Date()),
+                concept: `Inscripción inicial en categoría ${sportsCategory.nombre}`,
+              },
+            });
+            console.log('✅ [ENROLLMENT] Inscripción con categoría creada (background)');
+          }
+        } catch (error) {
+          console.error('⚠️ [ENROLLMENT] Error creando inscripción:', error.message);
+        }
+      });
+    }
+
+    // 2. Enviar email de bienvenida
+    setImmediate(async () => {
+      try {
+        const athleteInfo = {
+          email: result.athlete.user.email,
+          firstName: result.athlete.user.firstName,
+          lastName: result.athlete.user.lastName
+        };
+
+        const credentials = {
+          email: result.athlete.user.email,
+          temporaryPassword: result.tempPassword
+        };
+
+        await emailService.sendAthleteWelcomeEmail(athleteInfo, credentials);
+        console.log('✅ [ENROLLMENT] Email de bienvenida enviado (background)');
+      } catch (emailError) {
+        console.error('❌ [ENROLLMENT] Error enviando email:', emailError.message);
+      }
+    });
+
+    // 3. Procesar pre-inscripción por datos
+    if (!preRegistrationId) {
+      setImmediate(async () => {
+        try {
+          await this.processPreRegistrationByData(result.cleanEmail, result.cleanIdentification);
+        } catch (error) {
+          console.error('⚠️ [ENROLLMENT] Error procesando pre-inscripción:', error.message);
+        }
+      });
+    }
+
+    // 4. Generar obligación de pago inicial
+    setImmediate(async () => {
+      try {
+        await prisma.paymentObligation.create({
+          data: {
+            athleteId: result.athlete.id,
+            type: 'ENROLLMENT_INITIAL',
+            period: null,
+            baseAmount: 40000,
+            dueStart: new Date(),
+            dueEnd: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)),
+          }
+        });
+        console.log('✅ [ENROLLMENT] Obligación de pago inicial generada (background)');
+      } catch (paymentError) {
+        console.error('⚠️ [ENROLLMENT] Error generando obligación:', paymentError.message);
+      }
+    });
+
+    const totalTime = Date.now() - startTime;
+    console.log(`🚀 [ENROLLMENT] Proceso completo en ${totalTime}ms (transacción: ${Date.now() - transactionStart}ms)`);
+
+    // Retornar resultado inmediatamente
+    return {
+      athlete: result.athlete,
+      enrollment: result.enrollment,
+      temporaryPassword: process.env.NODE_ENV === 'development' ? result.tempPassword : undefined,
+      emailSent: true,
+      performanceMs: totalTime
+    };
+  },
+
+  /**
+   * Procesa pre-inscripción por email o documento (método auxiliar)
+   */
+  async processPreRegistrationByData(email, identification) {
+    try {
+      let preRegistration = await prisma.preRegistration.findFirst({
+        where: {
+          email: email,
+          status: PRE_REGISTRATION_STATUS.PENDING
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (!preRegistration) {
+        preRegistration = await prisma.preRegistration.findFirst({
+          where: {
+            identification: identification,
+            status: PRE_REGISTRATION_STATUS.PENDING
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+      }
+
+      if (preRegistration) {
+        await prisma.preRegistration.update({
+          where: { id: preRegistration.id },
+          data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
+        });
+        console.log('✅ [ENROLLMENT] Pre-inscripción procesada por datos:', preRegistration.id);
+      }
+    } catch (error) {
+      console.error('❌ [ENROLLMENT] Error procesando pre-inscripción por datos:', error);
+    }
   },
 
   async findAll(filters) {
@@ -282,80 +706,55 @@ export const enrollmentsService = {
   },
 
   async delete(id) {
-    // Verificar que la matrícula existe
-    const enrollment = await this.findById(id);
-    
-    // REGLA DE NEGOCIO: No se puede eliminar una matrícula reciente (menos de 1 año desde su creación)
-    const now = new Date();
-    const enrollmentDate = new Date(enrollment.fechaMatricula);
-    const oneYearLater = new Date(enrollmentDate);
-    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
-    
-    if (now < oneYearLater) {
-      const monthsRemaining = Math.ceil((oneYearLater - now) / (1000 * 60 * 60 * 24 * 30));
-      throw new Error(
-        `No se puede eliminar una matrícula reciente. ` +
-        `Debe esperar ${monthsRemaining} mes(es) desde la fecha de matrícula (${enrollmentDate.toLocaleDateString('es-CO')}). ` +
-        `Podrá eliminarla después del ${oneYearLater.toLocaleDateString('es-CO')}.`
-      );
-    }
-    
-    // REGLA DE NEGOCIO: No se puede eliminar una matrícula vigente
-    if (enrollment.estado === 'Vigente') {
-      throw new Error(
-        'No se puede eliminar una matrícula vigente. ' +
-        'Primero debe vencer o ser cancelada.'
-      );
-    }
-    
-    return await enrollmentsRepository.delete(id);
+    // ❌ PROTECCIÓN: Las matrículas no pueden eliminarse para mantener historial
+    throw new Error(
+      'Operación no permitida: Las matrículas no pueden eliminarse. ' +
+      'Solo pueden cambiar de estado: Vigente, Vencida, Pending_Payment.'
+    );
   },
 
   /**
-   * Verificar y procesar matrículas vencidas
-   * Este método debe ejecutarse diariamente (cron job)
+   * Procesa matrículas vencidas (ejecutar diariamente con cron job)
+   * 
+   * FLUJO AUTOMÁTICO DE RENOVACIÓN:
+   * 1. Detecta matrículas con fechaVencimiento <= hoy
+   * 2. Cambia estado de 'Vigente' → 'Vencida'
+   * 3. El CRON genera automáticamente obligación ENROLLMENT_RENEWAL
+   * 4. Deportista ve obligación en "Mis Pagos" y sube comprobante
+   * 5. Admin aprueba pago → Sistema crea nueva matrícula vigente
+   * 
+   * @returns {Promise<Object>} Resultado del procesamiento
    */
   async processExpiredEnrollments() {
     return await prisma.$transaction(async (tx) => {
       const now = new Date();
       
-      // Buscar matrículas vigentes que ya vencieron
       const expiredEnrollments = await tx.enrollment.findMany({
         where: {
-          estado: 'Vigente',
-          fechaVencimiento: {
-            lte: now
-          }
+          estado: ENROLLMENT_STATUS.ACTIVE,
+          fechaVencimiento: { lte: now }
         },
         include: {
           athlete: {
-            include: {
-              user: true
-            }
+            include: { user: true }
           }
         }
       });
 
-      console.log(`🔍 Encontradas ${expiredEnrollments.length} matrículas vencidas`);
+      console.log(`🔍 [ENROLLMENT] Encontradas ${expiredEnrollments.length} matrículas vencidas para procesar`);
 
       const results = [];
 
       for (const enrollment of expiredEnrollments) {
         try {
-          // 1. Actualizar estado de matrícula a Vencida
+          // Marcar matrícula como VENCIDA
+          // NOTA: NO cambiar estado del atleta - eso lo maneja el sistema de pagos dinámicamente
           await tx.enrollment.update({
             where: { id: enrollment.id },
-            data: { estado: 'Vencida' }
+            data: { estado: ENROLLMENT_STATUS.EXPIRED }
           });
 
-          // 2. Actualizar estado de deportista a Inactivo con razón
-          await tx.athlete.update({
-            where: { id: enrollment.athleteId },
-            data: {
-              status: 'Inactive',
-              inactivityReason: 'Inactiva por vencimiento de matrícula'
-            }
-          });
+          console.log(`✅ [ENROLLMENT] Matrícula ${enrollment.id} marcada como vencida - Atleta: ${enrollment.athlete.user.firstName} ${enrollment.athlete.user.lastName}`);
 
           results.push({
             enrollmentId: enrollment.id,
@@ -365,6 +764,7 @@ export const enrollmentsService = {
             status: 'processed'
           });
         } catch (error) {
+          console.error(`❌ [ENROLLMENT] Error procesando matrícula ${enrollment.id}:`, error.message);
           results.push({
             enrollmentId: enrollment.id,
             status: 'error',
@@ -373,69 +773,77 @@ export const enrollmentsService = {
         }
       }
 
+      const processed = results.filter(r => r.status === 'processed').length;
+      const errors = results.filter(r => r.status === 'error').length;
+
+      console.log(`📊 [ENROLLMENT] Procesamiento completado: ${processed} exitosas, ${errors} errores`);
+
       return {
-        processed: results.filter(r => r.status === 'processed').length,
-        errors: results.filter(r => r.status === 'error').length,
+        processed,
+        errors,
         details: results
       };
     });
   },
 
   /**
-   * Renovar matrícula vencida
-   * Crea una nueva matrícula y reactiva al deportista
+   * Activa una matrícula cuando se aprueba el pago inicial
+   * @param {number} enrollmentId - ID de la matrícula
+   * @returns {Promise<Object>} Matrícula activada
    */
-  async renewEnrollment(athleteId, enrollmentData = {}) {
+  async activateEnrollment(enrollmentId) {
     return await prisma.$transaction(async (tx) => {
-      // Verificar que el deportista existe
-      const athlete = await tx.athlete.findUnique({
-        where: { id: parseInt(athleteId) },
+      const enrollment = await tx.enrollment.findUnique({
+        where: { id: parseInt(enrollmentId) },
         include: {
-          user: true,
-          enrollments: {
-            orderBy: { createdAt: 'desc' },
-            take: 1
+          athlete: {
+            include: { user: true }
           }
         }
       });
 
-      if (!athlete) {
-        throw new Error('Deportista no encontrado');
+      if (!enrollment) {
+        throw new Error('Matrícula no encontrada');
       }
 
-      // Crear nueva matrícula
-      const fechaInicio = enrollmentData.fechaInicio
-        ? new Date(enrollmentData.fechaInicio)
-        : new Date();
-      
-      const fechaVencimiento = new Date(fechaInicio);
-      fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + 1);
+      if (enrollment.estado !== ENROLLMENT_STATUS.PENDING_PAYMENT) {
+        throw new Error('La matrícula no está pendiente de pago');
+      }
 
-      const newEnrollment = await tx.enrollment.create({
+      const fechaInicio = new Date();
+      const fechaVencimiento = calculateExpirationDate(fechaInicio);
+
+      const activatedEnrollment = await tx.enrollment.update({
+        where: { id: parseInt(enrollmentId) },
         data: {
-          athleteId: parseInt(athleteId),
+          estado: ENROLLMENT_STATUS.ACTIVE,
           fechaInicio: fechaInicio,
           fechaVencimiento: fechaVencimiento,
-          fechaMatricula: fechaInicio,
-          estado: 'Vigente',
-          observaciones: enrollmentData.observaciones || 'Renovación de matrícula',
-          comprobantePago: enrollmentData.comprobantePago || null
         }
       });
 
-      // Reactivar deportista
+      // Actualizar estado del atleta
       await tx.athlete.update({
-        where: { id: parseInt(athleteId) },
+        where: { id: enrollment.athleteId },
         data: {
-          status: 'Active',
+          status: ATHLETE_STATUS.ACTIVE,
           inactivityReason: null
         }
       });
 
+      console.log('✅ [ENROLLMENT] Matrícula activada exitosamente');
+
       return {
-        enrollment: newEnrollment,
-        athlete: athlete
+        enrollment: activatedEnrollment,
+        athlete: enrollment.athlete
       };
     });
   },
+
+  // NOTA: La función renewEnrollment ha sido eliminada por seguridad
+  // La renovación se maneja automáticamente a través del sistema de pagos:
+  // 1. CRON detecta vencimiento y genera obligación ENROLLMENT_RENEWAL
+  // 2. Deportista paga y admin aprueba
+  // 3. Sistema automáticamente crea nueva matrícula vigente
+  // Ver: src/modules/Payments/services/payments.service.js -> _processEnrollmentRenewal()
 };

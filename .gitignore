@@ -53,8 +53,21 @@ config.local.js
 config.local.json
 ecosystem.config.js
 
-#tests
-test-results
-tests
+# Archivos de pruebas automatizadas
+test-results/
+tests/
 jest.config.cjs
+jest.config.js
+*-pass.txt
+*-full-log.txt
+evidencias/
+pruebas_automatizadas/
+backend-tests/
+frontend-tests/
+PASS_BACKEND/
+PASS_FRONTEND/
+README-RESET-PRODUCTION.md/
+reset-and-populate-production-data.js/
+reset-database.bat/
+
 coverage

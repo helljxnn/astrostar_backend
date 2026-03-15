@@ -36,6 +36,7 @@ const resendLimiter = rateLimit({
 router.post("/", createLimiter, preRegistrationsController.create);
 router.post("/resend-email", resendLimiter, preRegistrationsController.resendEmail);
 router.get("/check-document/:identification", preRegistrationsController.checkDocument);
+router.get("/check-email/:email", preRegistrationsController.checkEmail);
 
 // Protegidas - Requieren autenticación
 router.get("/", authenticateToken, preRegistrationsController.findAll);

@@ -12,11 +12,12 @@ router.post("/", enrollmentsController.create);
 router.get("/", enrollmentsController.findAll);
 router.get("/:id", enrollmentsController.findById);
 router.put("/:id", enrollmentsController.update);
-router.delete("/:id", enrollmentsController.delete);
+router.delete("/:id", enrollmentsController.delete); // Bloqueada - devuelve error 403
 router.get("/athlete/:athleteId", enrollmentsController.findByAthleteId);
 
-// Nuevas rutas para vencimiento y renovación
+// Rutas para procesamiento de vencimientos (solo admin)
 router.post("/process-expired", enrollmentsController.processExpired);
-router.post("/renew/:athleteId", enrollmentsController.renew);
+// NOTA: La renovación se maneja automáticamente a través del sistema de pagos
+// Endpoint: POST /api/payments/athletes/:athleteId/enrollment-renewal
 
 export default router;

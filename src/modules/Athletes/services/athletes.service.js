@@ -379,7 +379,7 @@ export class AthletesService {
 
       return { 
         available: false, 
-        message: `El email "${email}" ya está en uso.` 
+        message: 'Este email ya está registrado en el sistema' 
       };
     } catch (error) {
       console.error('Service error - checkEmailAvailability:', error);
@@ -404,7 +404,7 @@ export class AthletesService {
 
       return { 
         available: false, 
-        message: `La identificación "${identification}" ya está en uso.` 
+        message: 'Este documento ya está registrado en el sistema' 
       };
     } catch (error) {
       console.error('Service error - checkIdentificationAvailability:', error);
@@ -432,6 +432,18 @@ export class AthletesService {
           success: false,
           statusCode: 400,
           message: 'El deportista no tiene un acudiente asignado.',
+        };
+      }
+
+      // 🔥 VALIDACIÓN: No permitir remover acudiente si es menor de edad
+      // Nota: findById ya devuelve el objeto transformado con birthDate y age calculado
+      const age = athlete.age || this.calculateAge(athlete.birthDate);
+      
+      if (age < 18) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede remover el acudiente de "${athlete.firstName} ${athlete.lastName}" porque es menor de edad (${age} años). Los menores de edad deben tener un acudiente asignado en todo momento.`,
         };
       }
 

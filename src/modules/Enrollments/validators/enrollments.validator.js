@@ -30,16 +30,15 @@ const validateAthlete = (athlete) => {
     errors.push({ field: 'birthDate', message: 'Fecha de nacimiento es requerida' });
   }
   
-  if (!athlete.categoria) {
-    errors.push({ field: 'categoria', message: 'Categoría es requerida' });
-  }
+  // Categoría es opcional - puede venir como categoria, category, o sportsCategoryId
+  // No es obligatoria para la creación de matrícula
   
   return errors;
 };
 
 const validateEnrollment = (enrollment) => {
   const errors = [];
-  const validStates = ["Vigente", "Suspendida", "Vencida", "Cancelada"];
+  const validStates = ["Vigente", "Vencida", "Pending_Payment"];
   
   if (enrollment.estado && !validStates.includes(enrollment.estado)) {
     errors.push({ field: 'estado', message: 'Estado inválido' });
