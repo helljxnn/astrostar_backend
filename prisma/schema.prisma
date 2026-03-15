@@ -749,7 +749,6 @@ model Material {
   stockFundacion         Int                     @default(0) @map("stock_fundacion")
   stockEventos           Int                     @default(0) @map("stock_eventos")
   stockEventosReservado  Int                     @default(0) @map("stock_eventos_reservado")
-  esReutilizable         Boolean                 @default(false) @map("es_reutilizable")
   eventMaterials         EventMaterial[]
   eventMaterialsReusable EventMaterialReusable[]
   movements              MaterialMovement[]
@@ -763,7 +762,6 @@ model Material {
   @@index([unidadMedida])
   @@index([stockFundacion])
   @@index([stockEventos])
-  @@index([esReutilizable])
   @@index([stockEventosReservado], map: "idx_materials_stock_eventos_reservado")
   @@map("materials")
 }

@@ -21,7 +21,6 @@ class EventMaterialsReusableService {
               stockFundacion: true,
               estado: true,
               unidadMedida: true,
-              esReutilizable: true,
             },
           },
         },
@@ -69,11 +68,11 @@ class EventMaterialsReusableService {
         };
       }
 
-      if (!material.esReutilizable) {
+      if (material.stockFundacion <= 0) {
         return {
           success: false,
           statusCode: 400,
-          message: "This material is not marked as reusable",
+          message: "Este material no tiene stock en fundación. Solo los materiales con stock de fundación pueden planificarse como reutilizables.",
         };
       }
 

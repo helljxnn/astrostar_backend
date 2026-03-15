@@ -209,22 +209,10 @@ class MovementsRepository {
           ? newStockValue + material.stockEventos
           : material.stockFundacion + newStockValue;
 
-      // 6. Update material stock and esReutilizable flag
+      // 6. Update material stock
       const updateData = {
         [stockField]: newStockValue,
       };
-
-      // Si es una entrada a FUNDACION, marcar como reutilizable
-      if (data.tipo_movimiento === "Entrada" && inventoryType === "FUNDACION") {
-        updateData.esReutilizable = true;
-      }
-      // Si es una entrada a EVENTOS, marcar como NO reutilizable (consumible)
-      else if (
-        data.tipo_movimiento === "Entrada" &&
-        inventoryType === "EVENTOS"
-      ) {
-        updateData.esReutilizable = false;
-      }
 
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(data.material_id) },
@@ -257,71 +245,6 @@ class MovementsRepository {
             ? new Date(data.fecha_ingreso)
             : null,
           proveedorId: data.proveedor_id || null,
-        },
-      });
-
-      return movement;
-    });
-  }
-
-  /**
-   * Registrar baja de material (transacción atómica)
-   */
-  async registerDischarge(data, userId) {
-    return await prisma.$transaction(async (tx) => {
-      // 1. Obtener material con bloqueo
-      const material = await tx.material.findUnique({
-        where: { id: parseInt(data.material_id) },
-      });
-
-      if (!material) {
-        throw new Error("Material no encontrado");
-      }
-
-      if (material.estado !== "Activo") {
-        throw new Error("No se pueden registrar bajas en materiales inactivos");
-      }
-
-      // 2. Validar stock suficiente
-      const cantidad = parseInt(data.cantidad);
-      if (cantidad > material.stockDisponible) {
-        throw new Error(
-          `Stock insuficiente. Stock disponible: ${material.stockDisponible}, Cantidad solicitada: ${cantidad}`,
-        );
-      }
-
-      // 3. Calcular stock actual y nuevo
-      const stockActual = material.stockDisponible + material.stockEventos;
-      const nuevoStockDisponible = material.stockDisponible - cantidad;
-      const stockNuevo = nuevoStockDisponible + material.stockEventos;
-
-      // 4. Actualizar stock del material
-      await tx.material.update({
-        where: { id: parseInt(data.material_id) },
-        data: {
-          stockDisponible: nuevoStockDisponible,
-        },
-      });
-
-      // 5. Mapear tipo_baja a valor del enum
-      const tipoBajaEnum = this.mapTipoBajaToEnum(data.tipo_baja);
-
-      // 6. Crear movimiento de baja
-      const movement = await tx.materialMovement.create({
-        data: {
-          materialId: parseInt(data.material_id),
-          materialNombre: data.material_nombre,
-          categoria: data.categoria,
-          tipoMovimiento: "Baja",
-          cantidad: cantidad,
-          origen: data.origen,
-          destino: null,
-          observaciones: data.observaciones || null,
-          stockAnterior: stockActual,
-          stockNuevo: stockNuevo,
-          createdBy: userId,
-          createdByName: data.created_by_name || null,
-          tipoBaja: tipoBajaEnum,
         },
       });
 

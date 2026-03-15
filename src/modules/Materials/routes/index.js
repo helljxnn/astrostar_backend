@@ -3,7 +3,6 @@ import materialsRoutes from "./materials.routes.js";
 import categoriesRoutes from "./categories.routes.js";
 import movementsRoutes from "./movements.routes.js";
 import transfersRoutes from "./transfers.routes.js";
-import eventMaterialsRoutes from "./eventMaterials.routes.js";
 import eventMaterialsConsumableRoutes from "./eventMaterialsConsumable.routes.js";
 import eventMaterialsReusableRoutes from "./eventMaterialsReusable.routes.js";
 import eventMaterialsSummaryRoutes from "./eventMaterialsSummary.routes.js";
@@ -20,7 +19,6 @@ router.use("/materials/movements", movementsRoutes); // GET /api/materials/movem
 router.use("/materials/events", eventMaterialsSummaryRoutes); // Event materials summary (optimized)
 router.use("/materials/events", eventMaterialsConsumableRoutes); // Event consumable materials routes
 router.use("/materials/events", eventMaterialsReusableRoutes); // Event reusable materials routes
-router.use("/materials/events", eventMaterialsRoutes); // Event materials routes (legacy)
 
 router.use("/materials", transfersRoutes); // Transfer routes (must be before materials)
 router.use("/materials", materialsRoutes); // GET /api/materials

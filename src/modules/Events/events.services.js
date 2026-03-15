@@ -185,26 +185,75 @@ export class EventsService {
         };
       }
 
-      // Validar si tiene materiales a entregar asignados
-      const deliverableMaterials = await prisma.eventMaterial.count({
+      // Validar si tiene materiales a entregar asignados por donación
+      // (materiales CONSUMIBLES con donacionId != null no se pueden eliminar
+      // porque provienen de un acuerdo legal con un donante/patrocinador)
+      const donationDeliverableMaterials = await prisma.eventMaterial.count({
         where: {
           eventoId: parseInt(id),
           tipo: "CONSUMIBLE",
+          donacionId: { not: null },
         },
       });
 
-      if (deliverableMaterials > 0) {
+      if (donationDeliverableMaterials > 0) {
         return {
           success: false,
           statusCode: 400,
           message:
-            "No se puede eliminar el evento porque tiene materiales a entregar asignados.",
+            `No se puede eliminar el evento porque tiene ${donationDeliverableMaterials} material(es) a entregar asignados por donación. Estos materiales fueron comprometidos con un donante o patrocinador y no pueden ser reasignados.`,
         };
       }
 
       const eventName = existing.name;
 
-      // Eliminar el evento (los participantes y patrocinadores se eliminarán en cascada)
+      // Revertir automáticamente materiales CONSUMIBLES asignados manualmente
+      // (los que no tienen donacionId) antes de eliminar el evento
+      const manualMaterials = await prisma.eventMaterial.findMany({
+        where: {
+          eventoId: parseInt(id),
+          tipo: "CONSUMIBLE",
+          donacionId: null,
+        },
+        include: { material: true },
+      });
+
+      if (manualMaterials.length > 0) {
+        await prisma.$transaction(async (tx) => {
+          for (const assignment of manualMaterials) {
+            const material = assignment.material;
+            const newStockEventos = material.stockEventos + assignment.cantidad;
+            const stockAnterior = material.stockFundacion + material.stockEventos;
+            const stockNuevo = material.stockFundacion + newStockEventos;
+
+            // Revertir stock
+            await tx.material.update({
+              where: { id: material.id },
+              data: { stockEventos: newStockEventos },
+            });
+
+            // Registrar movimiento de reversión
+            await tx.materialMovement.create({
+              data: {
+                materialId: material.id,
+                materialNombre: material.nombre,
+                categoria: material.categoria,
+                tipoMovimiento: "REVERSION_ASIGNACION",
+                cantidad: assignment.cantidad,
+                inventarioDestino: "EVENTOS",
+                eventoId: parseInt(id),
+                observaciones: `Reversión por eliminación del evento "${eventName}"`,
+                stockAnterior,
+                stockNuevo,
+                createdBy: 0,
+                createdByName: "Sistema",
+              },
+            });
+          }
+        });
+      }
+
+      // Eliminar el evento (participantes, patrocinadores y eventMaterials en cascada)
       await this.eventsRepository.delete(id);
 
       return {
