@@ -157,6 +157,40 @@ router.get("/check-identification", usersController.checkIdentificationAvailabil
 
 /**
  * @swagger
+ * /api/users/report:
+ *   get:
+ *     summary: Get all users for report (without pagination)
+ *     tags: [Users]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Active, Inactive, Suspended]
+ *         description: Filter by status
+ *       - in: query
+ *         name: roleId
+ *         schema:
+ *           type: integer
+ *         description: Filter by role ID
+ *       - in: query
+ *         name: userType
+ *         schema:
+ *           type: string
+ *         description: User type
+ *     responses:
+ *       200:
+ *         description: Complete user list for report
+ */
+router.get("/report", usersController.getAllUsersForReport);
+
+/**
+ * @swagger
  * /api/users/stats:
  *   get:
  *     summary: Get user statistics

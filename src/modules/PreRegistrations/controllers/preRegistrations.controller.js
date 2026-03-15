@@ -198,4 +198,25 @@ export const preRegistrationsController = {
       });
     }
   },
+
+  /**
+   * GET /api/pre-registrations/report
+   * Obtener todas las inscripciones para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport(req, res) {
+    try {
+      const { status, search } = req.query;
+      const result = await preRegistrationsService.findAllForReport({
+        status,
+        search,
+      });
+
+      return res.json(result);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
 };

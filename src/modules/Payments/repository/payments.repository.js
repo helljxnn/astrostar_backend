@@ -312,5 +312,100 @@ export const paymentsRepository = {
         currentPage: page
       }
     };
+  },
+
+  /**
+   * Obtener todos los pagos pendientes para reporte (SIN PAGINACIÓN)
+   */
+  async getPendingPaymentsForReport(filters = {}) {
+    const { type } = filters;
+
+    const where = {
+      status: 'PENDING'
+    };
+
+    // Filtrar por tipo de obligación si se especifica
+    if (type) {
+      where.obligation = { type };
+    }
+
+    const payments = await prisma.payment.findMany({
+      where,
+      include: {
+        obligation: true,
+        athlete: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                identification: true,
+                email: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { uploadedAt: 'desc' }
+    });
+    
+    return payments;
+  },
+
+  /**
+   * Obtener historial completo de pagos para reporte (SIN PAGINACIÓN)
+   */
+  async getPaymentHistoryForReport(filters = {}) {
+    const { athleteId, status, type, startDate, endDate } = filters;
+
+    const where = {};
+
+    // Filtrar por atleta
+    if (athleteId) {
+      where.athleteId = parseInt(athleteId);
+    }
+
+    // Filtrar por estado
+    if (status) {
+      where.status = status;
+    }
+
+    // Filtrar por tipo de obligación
+    if (type) {
+      where.obligation = { type };
+    }
+
+    // Filtrar por rango de fechas
+    if (startDate || endDate) {
+      where.uploadedAt = {};
+      if (startDate) {
+        where.uploadedAt.gte = new Date(startDate);
+      }
+      if (endDate) {
+        where.uploadedAt.lte = new Date(endDate);
+      }
+    }
+
+    const payments = await prisma.payment.findMany({
+      where,
+      include: {
+        obligation: true,
+        athlete: {
+          include: {
+            user: {
+              select: {
+                firstName: true,
+                lastName: true,
+                identification: true,
+                email: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { uploadedAt: 'desc' }
+    });
+
+    return payments;
   }
 };

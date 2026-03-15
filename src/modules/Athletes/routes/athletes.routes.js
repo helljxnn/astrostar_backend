@@ -343,6 +343,48 @@ router.get("/stats",
 
 /**
  * @swagger
+ * /api/athletes/report:
+ *   get:
+ *     summary: Obtener todos los deportistas para reporte (SIN PAGINACIÓN)
+ *     tags: [Athletes]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Búsqueda por nombre, apellido, documento o correo
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *         description: Filtrar por estado
+ *       - in: query
+ *         name: minAge
+ *         schema:
+ *           type: integer
+ *         description: Edad mínima
+ *       - in: query
+ *         name: maxAge
+ *         schema:
+ *           type: integer
+ *         description: Edad máxima
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filtrar por categoría deportiva
+ *     responses:
+ *       200:
+ *         description: Todos los deportistas obtenidos para reporte
+ */
+router.get("/report", 
+  authenticateToken,
+  athletesController.getAllAthletesForReport
+);
+
+/**
+ * @swagger
  * /api/athletes:
  *   get:
  *     summary: Obtener lista de deportistas

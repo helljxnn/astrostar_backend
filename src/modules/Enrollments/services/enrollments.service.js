@@ -685,7 +685,16 @@ export const enrollmentsService = {
   },
 
   async findAll(filters) {
-    return await enrollmentsRepository.findAll(filters);
+    // 🚨 FORZAR showAll=false para mostrar solo la matrícula más reciente por deportista
+    // Esto activa el DISTINCT ON en el repository
+    const enhancedFilters = {
+      ...filters,
+      showAll: false // SIEMPRE mostrar solo la más reciente por deportista
+    };
+    
+    console.log('🔍 [ENROLLMENTS SERVICE] Filtros enviados al repository:', enhancedFilters);
+    
+    return await enrollmentsRepository.findAll(enhancedFilters);
   },
 
   async findById(id) {
@@ -846,4 +855,140 @@ export const enrollmentsService = {
   // 2. Deportista paga y admin aprueba
   // 3. Sistema automáticamente crea nueva matrícula vigente
   // Ver: src/modules/Payments/services/payments.service.js -> _processEnrollmentRenewal()
+
+  /**
+   * Obtener todas las matrículas para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport(filters) {
+    const data = await enrollmentsRepository.findAllForReport(filters);
+    return {
+      success: true,
+      data,
+      message: `Se encontraron ${data.length} matrículas para el reporte.`,
+    };
+  },
+  /**
+   * Obtener historial completo de matrículas de un deportista específico
+   * Retorna TODAS las matrículas ordenadas cronológicamente (más antigua primero)
+   * con estados corregidos automáticamente
+   *
+   * @param {number} athleteId - ID del deportista
+   * @returns {Promise<Object>} Historial de matrículas
+   */
+  async getAthleteEnrollmentHistory(athleteId) {
+    try {
+      console.log(`🔍 [ENROLLMENT HISTORY] Obteniendo historial para deportista ID: ${athleteId}`);
+
+      // Obtener TODAS las matrículas del deportista
+      const enrollments = await prisma.enrollment.findMany({
+        where: { athleteId: parseInt(athleteId) },
+        orderBy: { createdAt: 'asc' }, // Cronológico: más antigua primero
+        include: {
+          athlete: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  middleName: true,
+                  lastName: true,
+                  secondLastName: true,
+                  identification: true,
+                  email: true,
+                  phoneNumber: true,
+                  birthDate: true,
+                  age: true
+                }
+              },
+              guardian: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  identification: true,
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          }
+        }
+      });
+
+      if (enrollments.length === 0) {
+        return {
+          success: true,
+          data: [],
+          message: 'No se encontraron matrículas para este deportista.',
+          athleteInfo: null
+        };
+      }
+
+      // Procesar estados correctamente para el historial
+      const processedEnrollments = enrollments.map((enrollment, index) => {
+        const isLatest = index === enrollments.length - 1; // La última (más reciente)
+
+        // Lógica de estados para historial cronológico:
+        let correctedStatus = enrollment.estado;
+        let statusNote = null;
+
+        // Si hay múltiples matrículas y esta no es la más reciente
+        if (enrollments.length > 1 && !isLatest) {
+          // Las matrículas anteriores deberían estar "Vencidas"
+          if (enrollment.estado === ENROLLMENT_STATUS.ACTIVE) {
+            correctedStatus = ENROLLMENT_STATUS.EXPIRED;
+            statusNote = 'Estado corregido automáticamente para historial';
+          }
+        }
+
+        // Agregar información de posición en el historial
+        const enrollmentNumber = index + 1;
+        const isRenewal = index > 0;
+
+        return {
+          ...enrollment,
+          estado: correctedStatus,
+          statusNote,
+          enrollmentNumber,
+          isRenewal,
+          isLatest,
+          // Agregar fecha de matrícula para compatibilidad
+          fechaMatricula: enrollment.createdAt,
+          // Agregar nombre completo del deportista
+          nombreCompleto: [
+            enrollment.athlete.user.firstName,
+            enrollment.athlete.user.middleName,
+            enrollment.athlete.user.lastName,
+            enrollment.athlete.user.secondLastName
+          ].filter(Boolean).join(' ')
+        };
+      });
+
+      // Información del deportista (usar la primera matrícula como referencia)
+      const athleteInfo = {
+        id: enrollments[0].athlete.id,
+        nombreCompleto: processedEnrollments[0].nombreCompleto,
+        identification: enrollments[0].athlete.user.identification,
+        email: enrollments[0].athlete.user.email,
+        phoneNumber: enrollments[0].athlete.user.phoneNumber,
+        age: enrollments[0].athlete.user.age,
+        totalEnrollments: enrollments.length,
+        hasRenewals: enrollments.length > 1,
+        guardian: enrollments[0].athlete.guardian
+      };
+
+      console.log(`✅ [ENROLLMENT HISTORY] Historial obtenido: ${enrollments.length} matrículas`);
+
+      return {
+        success: true,
+        data: processedEnrollments,
+        athleteInfo,
+        message: `Historial de ${enrollments.length} matrícula(s) obtenido exitosamente.`
+      };
+
+    } catch (error) {
+      console.error('❌ [ENROLLMENT HISTORY] Error:', error);
+      throw new Error(`Error obteniendo historial de matrículas: ${error.message}`);
+    }
+  },
 };

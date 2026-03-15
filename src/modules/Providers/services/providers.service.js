@@ -472,4 +472,26 @@ export class ProvidersService {
       throw error;
     }
   }
+
+  /**
+   * Obtener todos los proveedores para reporte (SIN PAGINACIÓN)
+   */
+  async getAllProvidersForReport({ search = "", status, entityType }) {
+    try {
+      const providers = await providersRepository.findAllForReport({
+        search,
+        status,
+        entityType,
+      });
+
+      return {
+        success: true,
+        data: providers,
+        message: `Se encontraron ${providers.length} proveedores para el reporte.`,
+      };
+    } catch (error) {
+      console.error("Error en getAllProvidersForReport:", error);
+      throw error;
+    }
+  }
 }

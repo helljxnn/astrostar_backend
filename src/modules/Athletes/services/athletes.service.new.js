@@ -175,4 +175,16 @@ export const athletesService = {
   async getStats() {
     return await athletesRepository.getStats();
   },
+
+  /**
+   * Obtener todos los deportistas para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport(filters) {
+    const athletes = await athletesRepository.findAllForReport(filters);
+    return {
+      success: true,
+      data: athletes,
+      message: `Se encontraron ${athletes.length} deportistas para el reporte.`,
+    };
+  },
 };

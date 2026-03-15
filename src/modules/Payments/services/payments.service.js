@@ -335,7 +335,7 @@ export const paymentsService = {
     const enrollment = await prisma.enrollment.findFirst({
       where: { athleteId },
       orderBy: { createdAt: 'desc' },
-      select: { estado: true, fechaVencimiento: true }
+      select: { estado: true, fechaInicio: true, fechaVencimiento: true }
     });
 
     // Buscar TODAS las obligaciones sin pago aprobado
@@ -405,16 +405,16 @@ export const paymentsService = {
         dueDate: enrollmentObligation.dueEnd,
         paymentStatus: this.getLatestPaymentStatus(enrollmentObligation.payments),
         // NUEVO: Estado actual de la matrícula
-        estado: currentEnrollment?.estado || null,
-        fechaInicio: currentEnrollment?.fechaInicio || null,
-        fechaVencimiento: currentEnrollment?.fechaVencimiento || null
+        estado: enrollment?.estado || null,
+        fechaInicio: enrollment?.fechaInicio || null,
+        fechaVencimiento: enrollment?.fechaVencimiento || null
       } : {
         needsRenewal: false,
         isInitial: false,
         // NUEVO: Estado actual de la matrícula (incluso si no hay obligaciones)
-        estado: currentEnrollment?.estado || null,
-        fechaInicio: currentEnrollment?.fechaInicio || null,
-        fechaVencimiento: currentEnrollment?.fechaVencimiento || null
+        estado: enrollment?.estado || null,
+        fechaInicio: enrollment?.fechaInicio || null,
+        fechaVencimiento: enrollment?.fechaVencimiento || null
       }
     };
   },
@@ -633,11 +633,18 @@ export const paymentsService = {
 
   /**
    * Obtener pagos pendientes de aprobación
+   * ✅ CORREGIDO: Ahora calcula mora con las mismas validaciones que getMonthlyPaymentsManagement
    */
   async getPendingPayments(filters = {}) {
     try {
       const { page = 1, limit = 20, type, search } = filters;
       const offset = (page - 1) * limit;
+      const now = new Date();
+      const settings = await getPaymentSettings();
+
+      console.log('📊 [PAYMENTS] Procesando pagos pendientes:', {
+        page, limit, type, search
+      });
 
       const whereClause = {
         status: 'PENDING'
@@ -687,7 +694,8 @@ export const paymentsService = {
                 period: true,
                 baseAmount: true,
                 dueStart: true,
-                dueEnd: true
+                dueEnd: true,
+                athleteId: true
               }
             }
           },
@@ -702,8 +710,48 @@ export const paymentsService = {
         })
       ]);
 
+      // ✅ CALCULAR MORA CON VALIDACIONES (igual que getMonthlyPaymentsManagement)
+      const paymentsWithDetails = await Promise.all(payments.map(async (payment) => {
+        const lateDays = calculateLateDays(payment.obligation.dueEnd);
+        
+        // Obtener matrícula actual para validar estado
+        const enrollment = await prisma.enrollment.findFirst({
+          where: { athleteId: payment.obligation.athleteId },
+          orderBy: { createdAt: 'desc' },
+          select: { estado: true, fechaInicio: true, fechaVencimiento: true }
+        });
+        
+        // Calcular mora con validaciones
+        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount, payment.athlete, enrollment);
+        const totalAmount = payment.obligation.baseAmount + lateFee;
+
+        return {
+          ...payment,
+          // Agregar campos calculados
+          lateDays,
+          lateFee,
+          totalAmount,
+          // Información de la obligación expandida
+          obligation: {
+            ...payment.obligation,
+            // ✅ CAMPOS CON NOMBRES CORRECTOS PARA EL FRONTEND
+            daysLate: lateDays,        // Frontend espera daysLate
+            lateFeeAmount: lateFee,    // Frontend espera lateFeeAmount
+            totalAmount: totalAmount,  // Este ya está correcto
+            // Mantener también los nombres originales por compatibilidad
+            lateDays,
+            lateFee
+          }
+        };
+      }));
+
+      console.log('✅ [PAYMENTS] Pagos pendientes procesados:', {
+        paymentsFound: payments.length,
+        totalInDB: total
+      });
+
       return {
-        payments,
+        payments: paymentsWithDetails,
         pagination: {
           page,
           limit,
@@ -927,8 +975,7 @@ export const paymentsService = {
             athleteId: athleteId,
             fechaInicio: startDate,
             fechaVencimiento: endDate,
-            estado: 'Vigente',
-            monto: settings.enrollmentAmount
+            estado: 'Vigente'
           }
         });
       }
@@ -1069,9 +1116,18 @@ export const paymentsService = {
       ]);
 
       // Procesar cada obligación con cálculo de mora
-      const obligationsWithDetails = obligations.map(obligation => {
+      const obligationsWithDetails = await Promise.all(obligations.map(async (obligation) => {
         const lateDays = calculateLateDays(obligation.dueEnd);
-        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount);
+        
+        // ✅ OBTENER MATRÍCULA ACTUAL PARA VALIDAR ESTADO
+        const enrollment = await prisma.enrollment.findFirst({
+          where: { athleteId: obligation.athleteId },
+          orderBy: { createdAt: 'desc' },
+          select: { estado: true, fechaInicio: true, fechaVencimiento: true }
+        });
+        
+        // ✅ CALCULAR MORA CON VALIDACIONES (igual que vista deportista)
+        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount, obligation.athlete, enrollment);
         const totalAmount = obligation.baseAmount + lateFee;
         
         // Determinar estado de mora
@@ -1148,7 +1204,7 @@ export const paymentsService = {
             receiptName: latestPayment.receiptName
           } : null
         };
-      });
+      }));
 
       // Calcular estadísticas de resumen
       const summary = {
@@ -1269,231 +1325,78 @@ export const paymentsService = {
   // ============================================================================
 
   /**
-   * Obtener gestión completa de pagos mensuales para administradores
-   * Incluye cálculo de mora, estados y filtros avanzados
+   * Obtener todos los pagos pendientes para reporte (SIN PAGINACIÓN)
+   * ✅ CORREGIDO: Ahora calcula mora con las mismas validaciones
    */
-  async getMonthlyPaymentsManagement(filters = {}) {
+  async getPendingPaymentsForReport(filters = {}) {
     try {
-      const { page = 1, limit = 20, status, search, dateFrom, dateTo } = filters;
-      const offset = (page - 1) * limit;
       const now = new Date();
       const settings = await getPaymentSettings();
 
-      console.log('📊 [PAYMENTS] Procesando gestión mensual:', {
-        page, limit, status, search, dateFrom, dateTo
-      });
+      console.log('📊 [PAYMENTS] Procesando reporte de pagos pendientes:', filters);
 
-      // Construir filtros dinámicos
-      const whereClause = {
-        type: 'MONTHLY'
-      };
+      // Obtener pagos del repositorio
+      const payments = await paymentsRepository.getPendingPaymentsForReport(filters);
 
-      // Filtro por estado de pago
-      if (status === 'PAID') {
-        whereClause.payments = {
-          some: { status: 'APPROVED' }
-        };
-      } else if (status === 'PENDING') {
-        whereClause.payments = {
-          some: { status: 'PENDING' }
-        };
-      } else if (status === 'OVERDUE') {
-        whereClause.dueEnd = { lt: now };
-        whereClause.payments = {
-          none: { status: 'APPROVED' }
-        };
-      } else if (status === 'EXCESSIVE_OVERDUE') {
-        const fifteenDaysAgo = new Date(now.getTime() - (15 * 24 * 60 * 60 * 1000));
-        whereClause.dueEnd = { lt: fifteenDaysAgo };
-        whereClause.payments = {
-          none: { status: 'APPROVED' }
-        };
-      }
-
-      // Filtro por búsqueda (nombre o identificación)
-      if (search) {
-        whereClause.athlete = {
-          user: {
-            OR: [
-              { firstName: { contains: search, mode: 'insensitive' } },
-              { lastName: { contains: search, mode: 'insensitive' } },
-              { identification: { contains: search, mode: 'insensitive' } }
-            ]
-          }
-        };
-      }
-
-      // Filtro por fecha
-      if (dateFrom || dateTo) {
-        whereClause.dueEnd = {};
-        if (dateFrom) {
-          whereClause.dueEnd.gte = new Date(dateFrom);
-        }
-        if (dateTo) {
-          whereClause.dueEnd.lte = new Date(dateTo);
-        }
-      }
-
-      // Ejecutar consultas en paralelo para mejor rendimiento
-      const [obligations, total] = await Promise.all([
-        prisma.paymentObligation.findMany({
-          where: whereClause,
-          include: {
-            athlete: {
-              include: {
-                user: {
-                  select: {
-                    firstName: true,
-                    lastName: true,
-                    identification: true,
-                    email: true
-                  }
-                }
-              }
-            },
-            payments: {
-              orderBy: { uploadedAt: 'desc' },
-              take: 1,
-              select: {
-                id: true,
-                status: true,
-                uploadedAt: true,
-                reviewedAt: true,
-                receiptUrl: true,
-                receiptName: true
-              }
-            }
-          },
-          orderBy: [
-            { dueEnd: 'desc' },
-            { createdAt: 'desc' }
-          ],
-          skip: offset,
-          take: limit
-        }),
-        prisma.paymentObligation.count({ where: whereClause })
-      ]);
-
-      // Procesar cada obligación con cálculo de mora
-      const obligationsWithDetails = obligations.map(obligation => {
-        const lateDays = calculateLateDays(obligation.dueEnd);
-        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount);
-        const totalAmount = obligation.baseAmount + lateFee;
+      // ✅ CALCULAR MORA CON VALIDACIONES para cada pago
+      const paymentsWithDetails = await Promise.all(payments.map(async (payment) => {
+        const lateDays = calculateLateDays(payment.obligation.dueEnd);
         
-        // Determinar estado de mora
-        let moraStatus = 'AL_DIA';
-        let moraText = 'Al día';
-        let moraColor = 'success';
+        // Obtener matrícula actual para validar estado
+        const enrollment = await prisma.enrollment.findFirst({
+          where: { athleteId: payment.athleteId },
+          orderBy: { createdAt: 'desc' },
+          select: { estado: true, fechaInicio: true, fechaVencimiento: true }
+        });
         
-        if (lateDays > 15) {
-          moraStatus = 'MORA_EXCESIVA';
-          moraText = `${lateDays} días de mora (EXCESIVA)`;
-          moraColor = 'danger';
-        } else if (lateDays > 0) {
-          moraStatus = 'EN_MORA';
-          moraText = `${lateDays} días de mora`;
-          moraColor = 'warning';
-        } else if (lateDays > -5) {
-          const diasRestantes = Math.abs(lateDays);
-          moraStatus = 'PERIODO_GRACIA';
-          moraText = `${diasRestantes} días restantes`;
-          moraColor = 'info';
-        }
-
-        // Determinar estado de pago
-        const latestPayment = obligation.payments[0];
-        let paymentStatus = 'SIN_PAGO';
-        let paymentText = 'Sin comprobante';
-        
-        if (latestPayment) {
-          switch (latestPayment.status) {
-            case 'APPROVED':
-              paymentStatus = 'PAGADO';
-              paymentText = 'Pagado';
-              break;
-            case 'PENDING':
-              paymentStatus = 'PENDIENTE_REVISION';
-              paymentText = 'Pendiente de revisión';
-              break;
-            case 'REJECTED':
-              paymentStatus = 'RECHAZADO';
-              paymentText = 'Rechazado';
-              break;
-          }
-        }
+        // Calcular mora con validaciones
+        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount, payment.athlete, enrollment);
+        const totalAmount = payment.obligation.baseAmount + lateFee;
 
         return {
-          id: obligation.id,
-          athleteId: obligation.athleteId,
-          athleteName: `${obligation.athlete.user.firstName} ${obligation.athlete.user.lastName}`,
-          athleteIdentification: obligation.athlete.user.identification,
-          athleteEmail: obligation.athlete.user.email,
-          period: obligation.period,
-          baseAmount: obligation.baseAmount,
+          ...payment,
+          // Agregar campos calculados
           lateDays,
           lateFee,
           totalAmount,
-          dueStart: obligation.dueStart,
-          dueEnd: obligation.dueEnd,
-          createdAt: obligation.createdAt,
-          
-          // Estados calculados
-          moraStatus,
-          moraText,
-          moraColor,
-          paymentStatus,
-          paymentText,
-          
-          // Información del pago
-          latestPayment: latestPayment ? {
-            id: latestPayment.id,
-            status: latestPayment.status,
-            uploadedAt: latestPayment.uploadedAt,
-            reviewedAt: latestPayment.reviewedAt,
-            receiptUrl: latestPayment.receiptUrl,
-            receiptName: latestPayment.receiptName
-          } : null
+          // Información de la obligación expandida
+          obligation: {
+            ...payment.obligation,
+            // ✅ CAMPOS CON NOMBRES CORRECTOS PARA EL FRONTEND
+            daysLate: lateDays,        // Frontend espera daysLate
+            lateFeeAmount: lateFee,    // Frontend espera lateFeeAmount
+            totalAmount: totalAmount,  // Este ya está correcto
+            // Mantener también los nombres originales por compatibilidad
+            lateDays,
+            lateFee
+          }
         };
-      });
+      }));
 
-      // Calcular estadísticas de resumen
-      const summary = {
-        totalObligations: total,
-        paidCount: obligationsWithDetails.filter(o => o.paymentStatus === 'PAGADO').length,
-        pendingCount: obligationsWithDetails.filter(o => o.paymentStatus === 'PENDIENTE_REVISION').length,
-        overdueCount: obligationsWithDetails.filter(o => o.moraStatus === 'EN_MORA').length,
-        excessiveOverdueCount: obligationsWithDetails.filter(o => o.moraStatus === 'MORA_EXCESIVA').length,
-        totalOverdueAmount: obligationsWithDetails
-          .filter(o => o.lateDays > 0)
-          .reduce((sum, o) => sum + o.lateFee, 0)
-      };
-
-      console.log('✅ [PAYMENTS] Gestión mensual procesada:', {
-        obligationsFound: obligations.length,
-        totalInDB: total,
-        summary
+      console.log('✅ [PAYMENTS] Reporte de pagos pendientes procesado:', {
+        paymentsFound: payments.length
       });
 
       return {
-        obligations: obligationsWithDetails,
-        pagination: {
-          page,
-          limit,
-          total,
-          totalPages: Math.ceil(total / limit)
-        },
-        summary,
-        filters: {
-          status,
-          search,
-          dateFrom,
-          dateTo
-        }
+        success: true,
+        data: paymentsWithDetails,
+        message: `Se encontraron ${paymentsWithDetails.length} pagos pendientes para el reporte.`,
       };
-
     } catch (error) {
-      console.error('❌ [PAYMENTS] Error en gestión mensual:', error);
-      throw new Error(`Error al obtener gestión mensual: ${error.message}`);
+      console.error('❌ Error en reporte de pagos pendientes:', error);
+      throw new Error('Error al obtener reporte de pagos pendientes');
     }
-  }
+  },
+
+  /**
+   * Obtener historial completo de pagos para reporte (SIN PAGINACIÓN)
+   */
+  async getPaymentHistoryForReport(filters = {}) {
+    const payments = await paymentsRepository.getPaymentHistoryForReport(filters);
+    return {
+      success: true,
+      data: payments,
+      message: `Se encontraron ${payments.length} pagos en el historial para el reporte.`,
+    };
+  },
 };

@@ -122,6 +122,36 @@ router.get(
 
 /**
  * @swagger
+ * /api/teams/report:
+ *   get:
+ *     summary: Obtener todos los equipos para reporte (sin paginación)
+ *     tags: [Teams]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Búsqueda por nombre, entrenador o categoría
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *         description: Filtrar por estado
+ *       - in: query
+ *         name: teamType
+ *         schema:
+ *           type: string
+ *           enum: [Fundacion, Temporal]
+ *         description: Filtrar por tipo de equipo
+ *     responses:
+ *       200:
+ *         description: Lista completa de equipos para reporte
+ */
+router.get("/report", teamsController.getAllTeamsForReport);
+
+/**
+ * @swagger
  * /api/teams/stats:
  *   get:
  *     summary: Obtener estadísticas de equipos

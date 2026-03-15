@@ -49,6 +49,17 @@ router.get(
 );
 
 /**
+ * GET /api/materials/material-movements/report
+ * Obtener todos los movimientos para reporte (SIN PAGINACIÓN)
+ * Permiso: materialsRegistry.Ver
+ */
+router.get(
+  '/report',
+  checkPermissions('materialsRegistry', 'Ver'),
+  movementsController.getAllForReport
+);
+
+/**
  * GET /api/materials/material-movements/history/:materialId
  * Obtener historial de movimientos de un material
  * Permiso: materialsRegistry.Ver

@@ -67,10 +67,6 @@ export class SignatureService {
           {
             folder: "astrostar/signatures",
             resource_type: "image",
-            transformation: [
-              { width: 500, height: 200, crop: "limit" }, // Limit size
-              { quality: "auto:good" }, // Optimize quality
-            ],
           },
           (error, uploaded) => {
             if (error) return reject(error);

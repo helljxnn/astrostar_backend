@@ -125,6 +125,36 @@ export class UsersController {
       });
     }
   }
+
+  async getAllUsersForReport(req, res) {
+    try {
+      const {
+        search = "",
+        status,
+        roleId,
+        userType,
+      } = req.query;
+
+      const result = await usersService.getAllUsersForReport({
+        search,
+        status,
+        roleId: roleId ? parseInt(roleId) : undefined,
+        userType,
+      });
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.length} usuarios para el reporte.`,
+      });
+    } catch (error) {
+      console.error("Error in getAllUsersForReport controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener usuarios para reporte",
+      });
+    }
+  }
 }
 
 export default new UsersController();

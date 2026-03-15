@@ -60,6 +60,23 @@ export class AthletesRepository {
       return `${year}-${month}-${day}`;
     };
 
+    // Mapear relationship de inglés a español
+    const mapRelationshipToSpanish = (relationship) => {
+      const relationshipMap = {
+        Mother: "Madre",
+        Father: "Padre",
+        Grandparent: "Abuelo/a",
+        Uncle_Aunt: "Tío/a",
+        Sibling: "Hermano/a",
+        Cousin: "Primo/a",
+        Legal_Guardian: "Tutor/a Legal",
+        Neighbor: "Vecino/a",
+        Family_Friend: "Amigo/a de la familia",
+        Other: "Otro",
+      };
+      return relationshipMap[relationship] || null;
+    };
+
     // Construir nombre completo
     const nombreCompleto = [
       athlete.user?.firstName,
@@ -99,7 +116,7 @@ export class AthletesRepository {
         documentTypeId: athlete.guardian.documentTypeId,
         tipoDocumento: athlete.guardian.documentType?.name || '',
       } : null,
-      parentesco: athlete.relationship || athlete.otherRelationship,
+      parentesco: mapRelationshipToSpanish(athlete.relationship),
       estadoInscripcion: currentInscription
         ? mapInscriptionStatus(currentInscription.status)
         : "Sin inscripción",
@@ -196,10 +213,6 @@ export class AthletesRepository {
     const athleteSpecificData = {
       status: athleteData.estado === "Activo" ? "Active" : "Inactive",
       relationship: mapRelationship(athleteData.parentesco),
-      otherRelationship:
-        athleteData.parentesco && !mapRelationship(athleteData.parentesco)
-          ? athleteData.parentesco
-          : null,
     };
 
     // Manejar guardianId por separado
@@ -411,7 +424,6 @@ export class AthletesRepository {
         const updateData = {
           status: athleteSpecificData.status,
           relationship: athleteSpecificData.relationship,
-          otherRelationship: athleteSpecificData.otherRelationship,
           currentInscriptionStatus:
             athleteData.estado === "Inactivo"
               ? "Suspended"
@@ -1021,7 +1033,6 @@ export class AthletesRepository {
         data: {
           guardianId: null,
           relationship: null,
-          otherRelationship: null,
         },
       });
 
@@ -1031,6 +1042,64 @@ export class AthletesRepository {
       console.error("Error en removeGuardianFromAthlete():", error);
       throw error;
     }
+  }
+
+  /**
+   * Obtener todos los deportistas para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({
+    search = "",
+    status,
+    minAge,
+    maxAge,
+    category,
+  }) {
+    const where = {};
+
+    // Filtro de búsqueda
+    if (search && search.trim()) {
+      where.OR = [
+        { user: { firstName: { contains: search, mode: "insensitive" } } },
+        { user: { lastName: { contains: search, mode: "insensitive" } } },
+        { user: { identification: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    // Filtro de estado
+    if (status) {
+      where.status = status;
+    }
+
+    // Filtro de edad mínima
+    if (minAge !== undefined && minAge !== null) {
+      where.user = { ...where.user, age: { ...where.user?.age, gte: parseInt(minAge) } };
+    }
+
+    // Filtro de edad máxima
+    if (maxAge !== undefined && maxAge !== null) {
+      where.user = { ...where.user, age: { ...where.user?.age, lte: parseInt(maxAge) } };
+    }
+
+    // Filtro de categoría
+    if (category) {
+      where.category = category;
+    }
+
+    const athletes = await prisma.athlete.findMany({
+      where,
+      include: {
+        user: {
+          include: {
+            documentType: true,
+          },
+        },
+        guardian: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return athletes.map((athlete) => this.transformToFrontend(athlete));
   }
 }
 

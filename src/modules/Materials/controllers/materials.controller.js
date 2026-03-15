@@ -383,6 +383,33 @@ class MaterialsController {
       });
     }
   }
+
+  /**
+   * GET /api/materials/materials/report
+   * Obtener todos los materiales para reporte (SIN PAGINACIÓN)
+   */
+  async getAllForReport(req, res) {
+    try {
+      const { search = "", status, categoriaId, stockMin, stockMax } = req.query;
+
+      const result = await materialsService.getAllForReport({
+        search,
+        status,
+        categoriaId: categoriaId ? parseInt(categoriaId) : undefined,
+        stockMin: stockMin ? parseInt(stockMin) : undefined,
+        stockMax: stockMax ? parseInt(stockMax) : undefined,
+      });
+
+      return res.json(result);
+    } catch (error) {
+      console.error("Controller error - getAllForReport:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener materiales para reporte",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
 }
 
 export default new MaterialsController();

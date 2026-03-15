@@ -43,13 +43,25 @@ export const enrollmentsController = {
 
   async findAll(req, res) {
     try {
-      const { estado, athleteId, search, page, limit } = req.query;
+      const { estado, athleteId, search, page, limit, sortBy, sortOrder } = req.query;
+      
+      console.log('🔍 [ENROLLMENTS CONTROLLER] Parámetros:', {
+        estado, athleteId, search, page, limit, sortBy, sortOrder
+      });
+      
       const result = await enrollmentsService.findAll({
         estado,
         athleteId,
         search: search?.trim() || undefined,
         page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 10,
+        limit: limit ? parseInt(limit) : 7, // Usar 7 como default (igual que otros módulos)
+        sortBy: sortBy || 'createdAt',
+        sortOrder: sortOrder || 'desc'
+      });
+
+      console.log('📊 [ENROLLMENTS CONTROLLER] Resultado:', {
+        totalEncontrado: result.data.length,
+        paginacionTotal: result.pagination.total
       });
 
       return res.json({
@@ -160,4 +172,54 @@ export const enrollmentsController = {
   // 2. CRON genera obligación ENROLLMENT_RENEWAL
   // 3. Deportista paga → Admin aprueba → Sistema crea nueva matrícula
   // Endpoint manual para generar obligación: POST /api/payments/athletes/:athleteId/enrollment-renewal
+
+  /**
+   * GET /api/enrollments/report
+   * Obtener todas las matrículas para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport(req, res) {
+    try {
+      const { estado, athleteId, search } = req.query;
+      const result = await enrollmentsService.findAllForReport({
+        estado,
+        athleteId,
+        search: search?.trim() || undefined,
+      });
+
+      return res.json(result);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  /**
+   * GET /api/enrollments/athlete/:athleteId/history
+   * Obtener historial completo de matrículas de un deportista específico
+   */
+  async getAthleteHistory(req, res) {
+    try {
+      const { athleteId } = req.params;
+
+      console.log(`🔍 [ENROLLMENT CONTROLLER] Obteniendo historial para deportista ID: ${athleteId}`);
+
+      if (!athleteId || isNaN(parseInt(athleteId))) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de deportista inválido'
+        });
+      }
+
+      const result = await enrollmentsService.getAthleteEnrollmentHistory(parseInt(athleteId));
+
+      return res.json(result);
+    } catch (error) {
+      console.error('❌ [ENROLLMENT CONTROLLER] Error obteniendo historial:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
 };
