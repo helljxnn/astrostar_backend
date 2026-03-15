@@ -10,19 +10,53 @@ const specialistSchedules = {
 
 export class AppointmentController {
   /**
-   * Obtiene todas las citas.
+   * Obtiene todas las citas con paginación.
    */
   GetAll = async (req, res) => {
     try {
-      const appointments = await prisma.appointment.findMany({
-        include: {
-          // Incluye aquí las relaciones cuando las tengas (athlete, specialist)
-        },
-        orderBy: {
-          start: 'asc',
+      const { page = 1, limit = 10, search = "", status = "" } = req.query;
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const where = {};
+
+      // Filtro por búsqueda (título o descripción)
+      if (search && search.trim()) {
+        where.OR = [
+          { title: { contains: search.trim(), mode: "insensitive" } },
+          { description: { contains: search.trim(), mode: "insensitive" } },
+        ];
+      }
+
+      // Filtro por estado
+      if (status && status.trim()) {
+        where.status = status.trim();
+      }
+
+      const [appointments, total] = await Promise.all([
+        prisma.appointment.findMany({
+          where,
+          skip,
+          take: parseInt(limit),
+          include: {
+            // Incluye aquí las relaciones cuando las tengas (athlete, specialist)
+          },
+          orderBy: {
+            start: 'asc',
+          },
+        }),
+        prisma.appointment.count({ where }),
+      ]);
+
+      res.status(200).json({
+        success: true,
+        data: appointments,
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          pages: Math.ceil(total / parseInt(limit)),
         },
       });
-      res.status(200).json({ success: true, data: appointments });
     } catch (error) {
       console.error("Error fetching appointments:", error);
       res.status(500).json({ success: false, message: "Internal server error." });

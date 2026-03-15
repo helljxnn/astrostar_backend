@@ -107,8 +107,32 @@ const controller = new AppointmentController();
  * @swagger
  * /api/appointments:
  *   get:
- *     summary: Obtener todas las citas
+ *     summary: Obtener todas las citas con paginación
  *     tags: [Appointments]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Número de página
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *         description: Cantidad de registros por página
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Búsqueda por título o descripción
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [PENDING, COMPLETED, CANCELLED]
+ *         description: Filtrar por estado
  *     responses:
  *       200:
  *         description: Lista de citas obtenida exitosamente.
@@ -123,6 +147,17 @@ const controller = new AppointmentController();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Appointment'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     pages:
+ *                       type: integer
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */

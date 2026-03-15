@@ -118,8 +118,8 @@ export const scheduleValidators = {
       }),
     body('repeticion')
       .optional()
-      .isIn(['no', 'dia', 'semana', 'mes', 'anio', 'laboral', 'personalizado'])
-      .withMessage('El tipo de repetición debe ser: no, dia, semana, mes, anio, laboral o personalizado.'),
+      .isIn(['no', 'personalizado'])
+      .withMessage('El tipo de repetición debe ser: no o personalizado.'),
     body('customRecurrence')
       .optional()
       .custom((value) => {
@@ -173,8 +173,8 @@ export const scheduleValidators = {
       }),
     body('repeticion')
       .optional()
-      .isIn(['no', 'dia', 'semana', 'mes', 'anio', 'laboral', 'personalizado'])
-      .withMessage('El tipo de repetición debe ser: no, dia, semana, mes, anio, laboral o personalizado.'),
+      .isIn(['no', 'personalizado'])
+      .withMessage('El tipo de repetición debe ser: no o personalizado.'),
     body('customRecurrence')
       .optional(),
     body('descripcion')

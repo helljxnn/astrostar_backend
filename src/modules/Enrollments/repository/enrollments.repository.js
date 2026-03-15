@@ -7,7 +7,11 @@ export const enrollmentsRepository = {
       include: {
         athlete: {
           include: {
-            documentType: true,
+            user: {
+              include: {
+                documentType: true,
+              },
+            },
             guardian: true,
           },
         },
@@ -176,7 +180,11 @@ export const enrollmentsRepository = {
       include: {
         athlete: {
           include: {
-            documentType: true,
+            user: {
+              include: {
+                documentType: true,
+              },
+            },
             guardian: true,
           },
         },

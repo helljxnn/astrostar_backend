@@ -171,19 +171,23 @@ export class AppointmentController {
     try {
       const { id } = req.params;
       const { conclusion } = req.body;
+      
       if (!conclusion || !conclusion.trim()) {
         return res.status(400).json({
           success: false,
           message: 'La conclusión es obligatoria.'
         });
       }
+      
       const result = await this.appointmentService.completeAppointment(id, conclusion);
+      
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
           message: result.message
         });
       }
+      
       res.json({
         success: true,
         data: result.data,
@@ -289,5 +293,6 @@ export class AppointmentController {
       });
     }
   };
+
 }
 

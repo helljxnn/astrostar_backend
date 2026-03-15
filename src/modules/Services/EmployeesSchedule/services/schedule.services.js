@@ -218,8 +218,7 @@ export class ScheduleService {
         endTime: scheduleData.horaFin,
         recurrence: scheduleData.repeticion || 'no',
         customRecurrence: scheduleData.customRecurrence ? JSON.stringify(scheduleData.customRecurrence) : null,
-        description: scheduleData.descripcion?.trim() || null,
-        cancellationReason: null
+        description: scheduleData.descripcion?.trim() || null
       };
 
       // 7. Crear el horario
