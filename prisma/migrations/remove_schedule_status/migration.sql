@@ -2,5 +2,4 @@
 ALTER TABLE "employee_schedules" DROP COLUMN IF EXISTS "status";
 ALTER TABLE "employee_schedules" DROP COLUMN IF EXISTS "cancellationReason";
 
--- DropEnum: Eliminar el enum ScheduleStatus si existe
-DROP TYPE IF EXISTS "ScheduleStatus";
+-- DropEnum: No se elimina ScheduleStatus porque aún lo usa la tabla appointments

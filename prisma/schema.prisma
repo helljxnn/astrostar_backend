@@ -358,8 +358,8 @@ model Enrollment {
   observaciones    String?
   createdAt        DateTime         @default(now()) // Cuando se creó la matrícula
   updatedAt        DateTime         @updatedAt
-  fechaInicio      DateTime?        // NULL hasta que se apruebe el pago inicial (cuando se activa)
-  fechaVencimiento DateTime?        // NULL hasta que se apruebe el pago inicial (fechaInicio + 1 año)
+  fechaInicio      DateTime? // NULL hasta que se apruebe el pago inicial (cuando se activa)
+  fechaVencimiento DateTime? // NULL hasta que se apruebe el pago inicial (fechaInicio + 1 año)
   athlete          Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@index([athleteId])
@@ -918,32 +918,17 @@ model email_verification_attempts {
   @@index([ip_address])
 }
 
-model AthleteAttendance {
-  id          Int      @id @default(autoincrement())
-  athleteId   Int
-  date        DateTime
-  asistencia  Boolean  @default(false)
-  observacion String?  @db.VarChar(500)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-
-  @@unique([athleteId, date])
-  @@index([date])
-  @@map("athlete_attendances")
-}
-
 // ============================================
 // MODELOS PARA GESTIÓN DE PAGOS
 // ============================================
 
 model PaymentSettings {
-  id               Int      @id @default(1)
-  monthlyAmount    Int
-  enrollmentAmount Int
-  lateFeeDailyAmount Int   @default(2000)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 Int      @id @default(1)
+  monthlyAmount      Int
+  enrollmentAmount   Int
+  lateFeeDailyAmount Int      @default(2000)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   @@map("payment_settings")
 }
