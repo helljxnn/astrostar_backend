@@ -2,6 +2,20 @@
 import { PrismaClient } from '../../../../../generated/prisma/index.js';
 const prisma = new PrismaClient();
 
+// Select reutilizable para user con role
+const userWithRoleSelect = {
+  select: {
+    id: true,
+    firstName: true,
+    middleName: true,
+    lastName: true,
+    secondLastName: true,
+    email: true,
+    phoneNumber: true,
+    role: { select: { id: true, name: true } }
+  }
+};
+
 export class ScheduleRepository {
   /**
    * Obtener todos los horarios con filtros y paginación
@@ -20,25 +34,9 @@ export class ScheduleRepository {
         take: limit,
         include: {
           employee: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  middleName: true,
-                  lastName: true,
-                  secondLastName: true,
-                  email: true,
-                  phoneNumber: true
-                }
-              }
-            }
+            include: { user: userWithRoleSelect }
           },
-          novelties: {
-            orderBy: {
-              date: 'desc'
-            }
-          }
+          novelties: { orderBy: { date: 'desc' } }
         },
         orderBy: [
           { scheduleDate: 'desc' },
@@ -68,25 +66,9 @@ export class ScheduleRepository {
       where: { id: parseInt(id) },
       include: {
         employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                firstName: true,
-                middleName: true,
-                lastName: true,
-                secondLastName: true,
-                email: true,
-                phoneNumber: true
-              }
-            }
-          }
+          include: { user: userWithRoleSelect }
         },
-        novelties: {
-          orderBy: {
-            date: 'desc'
-          }
-        }
+        novelties: { orderBy: { date: 'desc' } }
       }
     });
   }
@@ -99,15 +81,9 @@ export class ScheduleRepository {
       where: { employeeId: parseInt(employeeId) },
       include: {
         employee: {
-          include: {
-            user: true
-          }
+          include: { user: userWithRoleSelect }
         },
-        novelties: {
-          orderBy: {
-            date: 'desc'
-          }
-        }
+        novelties: { orderBy: { date: 'desc' } }
       },
       orderBy: [
         { scheduleDate: 'desc' },
@@ -124,24 +100,9 @@ export class ScheduleRepository {
       employeeId: parseInt(employeeId),
       scheduleDate: new Date(scheduleDate),
       OR: [
-        {
-          AND: [
-            { startTime: { lte: startTime } },
-            { endTime: { gt: startTime } }
-          ]
-        },
-        {
-          AND: [
-            { startTime: { lt: endTime } },
-            { endTime: { gte: endTime } }
-          ]
-        },
-        {
-          AND: [
-            { startTime: { gte: startTime } },
-            { endTime: { lte: endTime } }
-          ]
-        }
+        { AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }] },
+        { AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }] },
+        { AND: [{ startTime: { gte: startTime } }, { endTime: { lte: endTime } }] }
       ],
       ...(excludeScheduleId && { id: { not: parseInt(excludeScheduleId) } })
     };
@@ -157,9 +118,7 @@ export class ScheduleRepository {
       data: scheduleData,
       include: {
         employee: {
-          include: {
-            user: true
-          }
+          include: { user: userWithRoleSelect }
         }
       }
     });
@@ -174,15 +133,9 @@ export class ScheduleRepository {
       data: scheduleData,
       include: {
         employee: {
-          include: {
-            user: true
-          }
+          include: { user: userWithRoleSelect }
         },
-        novelties: {
-          orderBy: {
-            date: 'desc'
-          }
-        }
+        novelties: { orderBy: { date: 'desc' } }
       }
     });
   }
@@ -201,14 +154,10 @@ export class ScheduleRepository {
    */
   async delete(id) {
     try {
-      await prisma.employeeSchedule.delete({
-        where: { id: parseInt(id) }
-      });
+      await prisma.employeeSchedule.delete({ where: { id: parseInt(id) } });
       return true;
     } catch (error) {
-      if (error.code === 'P2025') {
-        return false;
-      }
+      if (error.code === 'P2025') return false;
       throw error;
     }
   }
@@ -218,7 +167,7 @@ export class ScheduleRepository {
    */
   async getActiveEmployees() {
     return await prisma.employee.findMany({
-      where: { 
+      where: {
         status: 'Activo',
         user: { status: 'Active' }
       },
@@ -232,19 +181,11 @@ export class ScheduleRepository {
             secondLastName: true,
             email: true,
             identification: true,
-            role: {
-              select: {
-                name: true
-              }
-            }
+            role: { select: { name: true } }
           }
         }
       },
-      orderBy: {
-        user: {
-          firstName: 'asc'
-        }
-      }
+      orderBy: { user: { firstName: 'asc' } }
     });
   }
 }

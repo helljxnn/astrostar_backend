@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import { AuthRepository } from "../repository/auth.repository.js";
 import emailService from "../../../services/emailService.js";
+import prisma from "../../../config/database.js";
 
 export class AuthService {
   constructor() {
@@ -96,6 +97,7 @@ export class AuthService {
       );
 
       // 8. Preparar datos de respuesta (sin contraseña)
+      const cargo = user.role?.name || null;
       const userData = {
         id: user.id,
         firstName: user.firstName,
@@ -112,7 +114,9 @@ export class AuthService {
         avatarColorIndex: user.avatarColorIndex || 0,
         documentType: user.documentType,
         role: user.role,
-        employee: user.employee,
+        employee: user.employee
+          ? { ...user.employee, position: cargo }
+          : null,
         athlete: user.athlete,
       };
 
@@ -577,7 +581,9 @@ export class AuthService {
         };
       }
 
-      // Preparar datos de respuesta
+      // El cargo real es el nombre del rol del sistema
+      const cargo = user.role?.name || null;
+
       const userData = {
         id: user.id,
         firstName: user.firstName,
@@ -594,7 +600,9 @@ export class AuthService {
         avatarColorIndex: user.avatarColorIndex || 0,
         documentType: user.documentType,
         role: user.role,
-        employee: user.employee,
+        employee: user.employee
+          ? { ...user.employee, position: cargo }
+          : null,
         athlete: user.athlete,
       };
 

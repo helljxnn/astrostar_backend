@@ -61,6 +61,11 @@ app.use(
       // Permitir requests sin origin (mobile apps, Postman, curl, etc.)
       if (!origin) return callback(null, true);
 
+      // En desarrollo, permitir cualquier localhost (Flutter web usa puertos aleatorios)
+      if (process.env.NODE_ENV === "development" && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -70,7 +75,7 @@ app.use(
     },
     credentials: true, // Permitir envío de cookies
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-client-type"],
     exposedHeaders: ["Content-Range", "X-Content-Range"],
     maxAge: 600, // Cache preflight requests por 10 minutos
   }),

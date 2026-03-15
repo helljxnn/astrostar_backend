@@ -78,10 +78,14 @@ export class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
       });
 
-      // Retornar solo el access token y datos del usuario
+      // Para apps móviles también devolver el refreshToken en el body
+      const isMobile = req.headers['x-client-type'] === 'mobile';
       res.json({
         success: true,
-        data: result.data,
+        data: {
+          ...result.data,
+          ...(isMobile && { refreshToken: result.refreshToken }),
+        },
         message: "Login exitoso",
       });
     } catch (error) {
@@ -628,8 +632,8 @@ export class AuthController {
    */
   refresh = async (req, res) => {
     try {
-      // Obtener refresh token desde la cookie HttpOnly
-      const refreshToken = req.cookies.refreshToken;
+      // Obtener refresh token desde la cookie HttpOnly o desde el body (para apps móviles)
+      const refreshToken = req.cookies.refreshToken || req.body?.refreshToken;
 
       if (!refreshToken) {
         return res.status(401).json({
