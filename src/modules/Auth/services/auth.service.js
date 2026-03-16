@@ -9,6 +9,18 @@ export class AuthService {
     this.authRepository = new AuthRepository();
   }
 
+  getJwtSecret() {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("JWT_SECRET no está configurado en variables de entorno");
+    }
+    return secret;
+  }
+
+  getJwtRefreshSecret() {
+    return process.env.JWT_REFRESH_SECRET || this.getJwtSecret();
+  }
+
   /**
    * Autenticar usuario
    */
@@ -71,7 +83,7 @@ export class AuthService {
           email: user.email,
           roleId: user.roleId,
         },
-        process.env.JWT_SECRET || "your-secret-key",
+        this.getJwtSecret(),
         { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m" },
       );
 
@@ -81,9 +93,7 @@ export class AuthService {
           id: user.id,
           type: "refresh",
         },
-        process.env.JWT_REFRESH_SECRET ||
-          process.env.JWT_SECRET ||
-          "your-refresh-secret",
+        this.getJwtRefreshSecret(),
         { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" },
       );
 
@@ -129,108 +139,6 @@ export class AuthService {
       throw error;
     }
   }
-
-  /**
-   * Verificar la validez de un token de reseteo de contrasea
-   */
-  async verifyResetToken(token) {
-    try {
-      // 1. Validar entrada
-      if (!token) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: "Token de reseteo es requerido.",
-        };
-      }
-
-      // 2. Hashear el token recibido para buscarlo en la base de datos
-      const hashedToken = crypto
-        .createHash("sha256")
-        .update(token)
-        .digest("hex");
-
-      // 3. Buscar usuario por el token hasheado y verificar expiracin
-      const user = await this.authRepository.findByPasswordResetToken(
-        hashedToken
-      );
-
-      if (!user) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: "El enlace de recuperacin es invlido o ha expirado.",
-        };
-      }
-
-      return { success: true, message: "Token vlido." };
-    } catch (error) {
-      console.error("Service error - verifyResetToken:", error);
-      return { success: false, statusCode: 500, message: "Error al verificar el token." };
-    }
-  }
-
-  /**
-   * Resetear la contrasea del usuario usando el token
-   */
-  async resetPassword(token, newPassword) {
-    try {
-      // 1. Validar entrada
-      if (!token || !newPassword) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: "Token y nueva contrasea son requeridos.",
-        };
-      }
-
-      if (newPassword.length < 6) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: "La nueva contrasea debe tener al menos 6 caracteres.",
-        };
-      }
-
-      // 2. Hashear el token para buscarlo en la base de datos
-      const hashedToken = crypto
-        .createHash("sha256")
-        .update(token)
-        .digest("hex");
-
-      // 3. Buscar usuario por el token y verificar expiracin
-      const user = await this.authRepository.findByPasswordResetToken(
-        hashedToken
-      );
-
-      if (!user) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: "El enlace de recuperacin es invlido o ha expirado.",
-        };
-      }
-
-      // 4. Hashear la nueva contrasea
-      const newPasswordHash = await bcrypt.hash(newPassword, 10);
-
-      // 5. Resetear la contrasea y limpiar los campos de reseteo
-      await this.authRepository.resetPassword(user.id, newPasswordHash);
-
-      return {
-        success: true,
-        message: "Contrasea restablecida exitosamente.",
-      };
-    } catch (error) {
-      console.error("Service error - resetPassword:", error);
-      return {
-        success: false,
-        statusCode: 500,
-          message: "Error al restablecer la contrasea.",
-      };
-    }
-  }
-
 
   /**
    * Cambiar contrasea
@@ -845,9 +753,7 @@ export class AuthService {
       try {
         decoded = jwt.verify(
           refreshToken,
-          process.env.JWT_REFRESH_SECRET ||
-            process.env.JWT_SECRET ||
-            "your-refresh-secret",
+          this.getJwtRefreshSecret(),
         );
       } catch (error) {
         return {
@@ -885,7 +791,7 @@ export class AuthService {
           email: storedToken.user.email,
           roleId: storedToken.user.roleId,
         },
-        process.env.JWT_SECRET || "your-secret-key",
+        this.getJwtSecret(),
         { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m" },
       );
 
