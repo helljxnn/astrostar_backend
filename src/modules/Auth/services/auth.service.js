@@ -44,12 +44,12 @@ export class AuthService {
         };
       }
 
-      // 3.5. ✅ VALIDACIÓN CRÍTICA: Si es deportista, verificar que el atleta esté activo
+      // 3.5.  VALIDACIï¿½N CRï¿½TICA: Si es deportista, verificar que el atleta está activo
       if (user.athlete && user.athlete.status !== "Active") {
         return {
           success: false,
           statusCode: 403,
-          message: "Tu cuenta de deportista está inactiva. Contacta al administrador para más información.",
+          message: "Tu cuenta de deportista está inactiva. Contacta al administrador para mï¿½s información.",
         };
       }
 
@@ -64,7 +64,7 @@ export class AuthService {
         };
       }
 
-      // 5. Generar access token (corta duración - solo en memoria del cliente)
+      // 5. Generar access token (corta duraciï¿½n - solo en memoria del cliente)
       const accessToken = jwt.sign(
         {
           id: user.id,
@@ -75,7 +75,7 @@ export class AuthService {
         { expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m" },
       );
 
-      // 6. Generar refresh token (larga duración - irá en cookie HttpOnly)
+      // 6. Generar refresh token (larga duraciï¿½n - irï¿½ en cookie HttpOnly)
       const refreshToken = jwt.sign(
         {
           id: user.id,
@@ -88,7 +88,7 @@ export class AuthService {
       );
 
       // 7. Guardar refresh token en la base de datos
-      const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 días
+      const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dï¿½as
       await this.authRepository.createRefreshToken(
         user.id,
         refreshToken,
@@ -122,7 +122,7 @@ export class AuthService {
           user: userData,
           accessToken,
         },
-        refreshToken, // Se enviará como cookie HttpOnly
+        refreshToken, // Se enviarï¿½ como cookie HttpOnly
       };
     } catch (error) {
       console.error("Service error - login:", error);
@@ -150,7 +150,7 @@ export class AuthService {
         .update(token)
         .digest("hex");
 
-      // 3. Buscar usuario por el token hasheado y verificar expiración
+      // 3. Buscar usuario por el token hasheado y verificar expiraciï¿½n
       const user = await this.authRepository.findByPasswordResetToken(
         hashedToken
       );
@@ -159,7 +159,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "El enlace de recuperación es inválido o ha expirado.",
+          message: "El enlace de recuperaciï¿½n es inválido o ha expirado.",
         };
       }
 
@@ -198,7 +198,7 @@ export class AuthService {
         .update(token)
         .digest("hex");
 
-      // 3. Buscar usuario por el token y verificar expiración
+      // 3. Buscar usuario por el token y verificar expiraciï¿½n
       const user = await this.authRepository.findByPasswordResetToken(
         hashedToken
       );
@@ -207,7 +207,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "El enlace de recuperación es inválido o ha expirado.",
+          message: "El enlace de recuperaciï¿½n es inválido o ha expirado.",
         };
       }
 
@@ -219,7 +219,7 @@ export class AuthService {
 
       return {
         success: true,
-        message: "Contraseña restablecida exitosamente.",
+        message: "Contraseï¿½a restablecida exitosamente.",
       };
     } catch (error) {
       console.error("Service error - resetPassword:", error);
@@ -242,7 +242,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "Contraseña actual y nueva contraseña son requeridas",
+          message: "Contraseï¿½a actual y nueva contraseña son requeridas",
         };
       }
 
@@ -265,7 +265,7 @@ export class AuthService {
         };
       }
 
-      // 2.1 PROTECCIÓN: No permitir cambiar contraseña del usuario por defecto del sistema
+      // 2.1 PROTECCIï¿½N: No permitir cambiar contraseña del usuario por defecto del sistema
       if (user.email === "astrostar.java@gmail.com") {
         return {
           success: false,
@@ -285,7 +285,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 401,
-          message: "Contraseña actual incorrecta",
+          message: "Contraseï¿½a actual incorrecta",
         };
       }
 
@@ -305,7 +305,7 @@ export class AuthService {
   }
 
   /**
-   * Solicitar recuperación de contraseña
+   * Solicitar recuperaciï¿½n de contraseña
    */
   async requestPasswordReset(email, ipAddress, userAgent) {
     try {
@@ -332,7 +332,7 @@ export class AuthService {
       // 2. Buscar usuario por email
       const cleanEmail = email.toLowerCase().trim();
 
-      // 2.1 PROTECCIÓN: No permitir recuperación de contraseña del usuario por defecto
+      // 2.1 PROTECCIï¿½N: No permitir recuperaciï¿½n de contraseña del usuario por defecto
       if (cleanEmail === "astrostar.java@gmail.com") {
         // Registrar intento pero no revelar que es usuario protegido
         await rateLimitService.recordPasswordResetAttempt(
@@ -345,7 +345,7 @@ export class AuthService {
         return {
           success: true,
           message:
-            "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
+            "Si el correo existe, recibirï¿½s instrucciones para restablecer tu contraseña",
         };
       }
 
@@ -364,7 +364,7 @@ export class AuthService {
         return {
           success: true,
           message:
-            "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
+            "Si el correo existe, recibirï¿½s instrucciones para restablecer tu contraseña",
         };
       }
 
@@ -387,10 +387,10 @@ export class AuthService {
       // 4. Eliminar tokens antiguos
       await this.authRepository.deleteOldTokens(user.id);
 
-      // 5. Generar token de 6 dígitos
+      // 5. Generar token de 6 dï¿½gitos
       const resetToken = crypto.randomInt(100000, 999999).toString();
 
-      // 6. Calcular expiración (15 minutos)
+      // 6. Calcular expiraciï¿½n (15 minutos)
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
       // 7. Guardar token en la base de datos con información de seguridad
@@ -416,7 +416,7 @@ export class AuthService {
       return {
         success: true,
         message:
-          "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
+          "Si el correo existe, recibirï¿½s instrucciones para restablecer tu contraseña",
         attemptsRemaining: rateLimitCheck.attemptsRemaining,
       };
     } catch (error) {
@@ -426,7 +426,7 @@ export class AuthService {
   }
 
   /**
-   * Verificar token de recuperación
+   * Verificar token de recuperaciï¿½n
    */
   async verifyResetToken(token) {
     try {
@@ -436,11 +436,11 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "Código inválido o expirado",
+          message: "Cï¿½digo inválido o expirado",
         };
       }
 
-      // Verificar intentos de verificación
+      // Verificar intentos de verificaciï¿½n
       const rateLimitService = (
         await import("../../../services/rateLimitService.js")
       ).default;
@@ -507,11 +507,11 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "Código inválido o expirado",
+          message: "Cï¿½digo inválido o expirado",
         };
       }
 
-      // 2.1 Verificar intentos de verificación
+      // 2.1 Verificar intentos de verificaciï¿½n
       const rateLimitService = (
         await import("../../../services/rateLimitService.js")
       ).default;
@@ -530,13 +530,13 @@ export class AuthService {
         };
       }
 
-      // 2.2 PROTECCIÓN: No permitir resetear contraseña del usuario por defecto
+      // 2.2 PROTECCIï¿½N: No permitir resetear contraseña del usuario por defecto
       if (resetToken.user.email === "astrostar.java@gmail.com") {
         return {
           success: false,
           statusCode: 403,
           message:
-            "No se puede restablecer la contraseÃƒÆ’Ã‚Â±a del usuario por defecto del sistema",
+            "No se puede restablecer la contraseÃï¿½ï¿½ï¿½a del usuario por defecto del sistema",
         };
       }
 
@@ -554,7 +554,7 @@ export class AuthService {
 
       return {
         success: true,
-        message: "Contraseña restablecida exitosamente",
+        message: "Contraseï¿½a restablecida exitosamente",
       };
     } catch (error) {
       console.error("Service error - resetPassword:", error);
@@ -609,7 +609,7 @@ export class AuthService {
   }
 
   /**
-   * Solicitar cambio de email (envía código de verificación)
+   * Solicitar cambio de email (envï¿½a cï¿½digo de verificaciï¿½n)
    */
   async requestEmailChange(userId, newEmail) {
     try {
@@ -633,23 +633,23 @@ export class AuthService {
         };
       }
 
-      // 3. Verificar que el nuevo email no esté en uso
+      // 3. Verificar que el nuevo email no está en uso
       const existingUser = await this.authRepository.findByEmail(newEmail);
       if (existingUser) {
         return {
           success: false,
           statusCode: 400,
-          message: "El correo electrónico ya está en uso",
+          message: "El correo electrï¿½nico ya está en uso",
         };
       }
 
       // 4. Eliminar tokens antiguos de cambio de email
       await this.authRepository.deleteOldEmailVerificationTokens(userId);
 
-      // 5. Generar token de 6 dígitos
+      // 5. Generar token de 6 dï¿½gitos
       const verificationToken = crypto.randomInt(100000, 999999).toString();
 
-      // 6. Calcular expiración (15 minutos)
+      // 6. Calcular expiraciï¿½n (15 minutos)
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
       // 7. Guardar token en la base de datos
@@ -660,7 +660,7 @@ export class AuthService {
         expiresAt,
       );
 
-      // 8. Enviar email con el código
+      // 8. Enviar email con el cï¿½digo
       await emailService.sendEmailVerificationCode(
         newEmail,
         verificationToken,
@@ -669,7 +669,7 @@ export class AuthService {
 
       return {
         success: true,
-        message: "Código de verificación enviado al nuevo correo electrónico",
+        message: "Cï¿½digo de verificaciï¿½n enviado al nuevo correo electrï¿½nico",
       };
     } catch (error) {
       console.error("Service error - requestEmailChange:", error);
@@ -678,11 +678,11 @@ export class AuthService {
   }
 
   /**
-   * Verificar código y actualizar email
+   * Verificar cï¿½digo y actualizar email
    */
   async verifyAndUpdateEmail(userId, token) {
     try {
-      // 1. Buscar token vÃƒÆ’Ã‚Â¡lido
+      // 1. Buscar token vÃï¿½ï¿½ï¿½lido
       const verificationToken =
         await this.authRepository.findValidEmailVerificationToken(
           userId,
@@ -693,7 +693,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "Código inválido o expirado",
+          message: "Cï¿½digo inválido o expirado",
         };
       }
 
@@ -730,7 +730,7 @@ export class AuthService {
       return {
         success: true,
         data: userData,
-        message: "Correo electrónico actualizado exitosamente",
+        message: "Correo electrï¿½nico actualizado exitosamente",
       };
     } catch (error) {
       console.error("Service error - verifyAndUpdateEmail:", error);
@@ -768,7 +768,7 @@ export class AuthService {
           return {
             success: false,
             statusCode: 400,
-            message: "El índice de color debe estar entre 0 y 5",
+            message: "El ï¿½ndice de color debe estar entre 0 y 5",
           };
         }
         allowedFields.avatarColorIndex = colorIndex;
@@ -853,7 +853,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 401,
-          message: "Refresh token invÃƒÆ’Ã‚Â¡lido o expirado",
+          message: "Refresh token invÃï¿½ï¿½ï¿½lido o expirado",
         };
       }
 
@@ -869,7 +869,7 @@ export class AuthService {
         };
       }
 
-      // 3. Verificar que el usuario esté activo
+      // 3. Verificar que el usuario está activo
       if (storedToken.user.status !== "Active") {
         return {
           success: false,
@@ -902,7 +902,7 @@ export class AuthService {
   }
 
   /**
-   * Cerrar sesión (invalidar refresh token desde cookie)
+   * Cerrar sesiï¿½n (invalidar refresh token desde cookie)
    */
   async logout(refreshToken) {
     try {
@@ -913,7 +913,7 @@ export class AuthService {
 
       return {
         success: true,
-        message: "Sesión cerrada exitosamente",
+        message: "Sesiï¿½n cerrada exitosamente",
       };
     } catch (error) {
       console.error("Service error - logout:", error);

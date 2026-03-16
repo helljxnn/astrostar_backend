@@ -76,7 +76,6 @@ export class AthletesController {
 
   createAthlete = async (req, res) => {
     try {
-      console.log("📥 Datos recibidos en createAthlete:", req.body);
 
       const result = await this.athletesService.createAthlete(req.body);
 
@@ -140,10 +139,6 @@ export class AthletesController {
         });
       }
 
-      console.log("📥 Datos recibidos en updateAthlete:", {
-        id,
-        data: req.body,
-      });
 
       const result = await this.athletesService.updateAthlete(id, req.body);
 
@@ -227,7 +222,7 @@ export class AthletesController {
   changeAthleteStatus = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { status } = req.body;
+      const status = req.body.status ?? req.body.estado;
 
       if (isNaN(id)) {
         return res.status(400).json({
@@ -236,7 +231,7 @@ export class AthletesController {
         });
       }
 
-      if (!status) {
+      if (status === undefined || status === null || status === "") {
         return res.status(400).json({
           success: false,
           message: "El estado es requerido",

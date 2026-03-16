@@ -13,6 +13,16 @@ const calculateAgeFromBirthDate = (birthDate) => {
   return age;
 };
 
+const normalizeAthleteStatusInput = (value) => {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "boolean") return value ? "Active" : "Inactive";
+
+  const normalized = String(value).trim().toLowerCase();
+  if (["activo", "active", "true", "1"].includes(normalized)) return "Active";
+  if (["inactivo", "inactive", "false", "0"].includes(normalized)) return "Inactive";
+  return null;
+};
+
 export class AthletesRepository {
   transformToFrontend(athlete) {
     if (!athlete) return null;
@@ -170,7 +180,19 @@ export class AthletesRepository {
         "Amigo/a de la familia": "Family_Friend",
         Otro: "Other",
       };
-      return relationshipMap[parentesco] || null;
+      
+      // Si el parentesco existe en el mapa, usarlo
+      if (relationshipMap[parentesco]) {
+        return relationshipMap[parentesco];
+      }
+      
+      // Si no existe pero hay un valor, usar "Other" como fallback
+      if (parentesco && parentesco.trim() !== '') {
+        return "Other";
+      }
+      
+      // Solo devolver null si realmente no hay parentesco
+      return null;
     };
 
     // Calcular edad automáticamente
@@ -210,8 +232,12 @@ export class AthletesRepository {
       passwordHash: "temp_password_hash", // Se debe generar un hash real
     };
 
+    const normalizedStatus = normalizeAthleteStatusInput(
+      athleteData.estado ?? athleteData.status ?? athleteData.isActive ?? athleteData.active
+    );
+
     const athleteSpecificData = {
-      status: athleteData.estado === "Activo" ? "Active" : "Inactive",
+      ...(normalizedStatus ? { status: normalizedStatus } : {}),
       relationship: mapRelationship(athleteData.parentesco),
     };
 
@@ -220,6 +246,11 @@ export class AthletesRepository {
       athleteSpecificData.guardianId = athleteData.acudiente
         ? parseInt(athleteData.acudiente)
         : null;
+        
+      // Si hay acudiente pero no hay parentesco, usar "Other" como fallback
+      if (athleteSpecificData.guardianId && !athleteSpecificData.relationship) {
+        athleteSpecificData.relationship = "Other";
+      }
     }
 
     return { userData, athleteSpecificData };
@@ -227,10 +258,6 @@ export class AthletesRepository {
 
   async create(athleteData) {
     try {
-      console.log(
-        "📥 Datos recibidos en repository:",
-        JSON.stringify(athleteData, null, 2)
-      );
 
       const { userData, athleteSpecificData } =
         this.transformToBackend(athleteData);
@@ -244,17 +271,8 @@ export class AthletesRepository {
         );
       }
 
-      console.log(
-        "🔄 userData transformado:",
-        JSON.stringify(userData, null, 2)
-      );
-      console.log(
-        "🔄 athleteSpecificData transformado:",
-        JSON.stringify(athleteSpecificData, null, 2)
-      );
 
       // Validar que el tipo de documento existe
-      console.log("🔍 Validando documentTypeId:", athleteData.documentTypeId);
       const documentType = await prisma.documentType.findUnique({
         where: { id: parseInt(athleteData.documentTypeId) },
       });
@@ -264,7 +282,6 @@ export class AthletesRepository {
           `Tipo de documento con ID "${athleteData.documentTypeId}" no encontrado`
         );
       }
-      console.log("✅ Tipo de documento encontrado:", documentType.name);
 
       // Buscar la categoría deportiva
       const sportsCategory = await prisma.sportsCategory.findFirst({
@@ -313,7 +330,6 @@ export class AthletesRepository {
           },
         });
 
-        console.log("✅ Usuario creado con ID:", newUser.id);
 
         // Crear atleta
         const newAthlete = await tx.athlete.create({
@@ -326,7 +342,6 @@ export class AthletesRepository {
           },
         });
 
-        console.log("✅ Atleta creado con ID:", newAthlete.id);
 
         // Crear inscripción inicial
         const inscriptionStatus =
@@ -422,14 +437,18 @@ export class AthletesRepository {
 
         // Preparar datos de actualización del atleta
         const updateData = {
-          status: athleteSpecificData.status,
+          ...(athleteSpecificData.status ? { status: athleteSpecificData.status } : {}),
           relationship: athleteSpecificData.relationship,
-          currentInscriptionStatus:
-            athleteData.estado === "Inactivo"
-              ? "Suspended"
-              : athleteSpecificData.status === "Active"
-              ? "Active"
-              : currentAthlete.currentInscriptionStatus,
+          ...(athleteData.estado
+            ? {
+                currentInscriptionStatus:
+                  athleteData.estado === "Inactivo"
+                    ? "Suspended"
+                    : athleteSpecificData.status === "Active"
+                    ? "Active"
+                    : currentAthlete.currentInscriptionStatus,
+              }
+            : {}),
           ...(statusChanged && { statusAssignedAt: new Date() }),
         };
 
@@ -443,6 +462,14 @@ export class AthletesRepository {
           where: { id: parseInt(id) },
           data: updateData,
         });
+
+        // Sincronizar estado en users si se actualizó el estado del atleta
+        if (athleteSpecificData.status) {
+          await tx.user.update({
+            where: { id: currentAthlete.userId },
+            data: { status: athleteSpecificData.status },
+          });
+        }
 
         // Si se cambió el estado a Inactivo, actualizar inscripción
         if (
@@ -550,8 +577,9 @@ export class AthletesRepository {
 
       // Filtro por estado del atleta
       if (status) {
+        const normalizedStatus = normalizeAthleteStatusInput(status);
         where.AND.push({
-          status: status === "Activo" ? "Active" : "Inactive"
+          status: normalizedStatus ?? status
         });
       }
 
@@ -586,10 +614,22 @@ export class AthletesRepository {
 
         // Búsqueda exacta por estado
         const isStatusSearch = searchLower === "activo" || searchLower === "inactivo";
+        const inscriptionStatusMap = {
+          vigente: "Active",
+          vencida: "Expired",
+          suspendida: "Suspended",
+          suspendido: "Suspended",
+          pendiente: "Pending"
+        };
+        const inscriptionStatusSearch = inscriptionStatusMap[searchLower] || null;
 
         if (isStatusSearch) {
           where.AND.push({
             status: searchLower === "activo" ? "Active" : "Inactive"
+          });
+        } else if (inscriptionStatusSearch) {
+          where.AND.push({
+            currentInscriptionStatus: inscriptionStatusSearch
           });
         } else {
           // Búsqueda por múltiples campos usando OR
@@ -848,28 +888,58 @@ export class AthletesRepository {
 
   async changeStatus(id, status) {
     try {
-      const updatedAthlete = await prisma.athlete.update({
-        where: { id: parseInt(id) },
-        data: {
-          status: status === "Activo" ? "Active" : "Inactive",
-        },
-        include: {
-          user: {
-            include: {
-              documentType: true,
+      const normalizedStatus = normalizeAthleteStatusInput(status);
+      if (!normalizedStatus) {
+        throw new Error('Estado inválido. Use "Activo" o "Inactivo".');
+      }
+
+      // ✅ SOLUCIÓN: Actualizar AMBAS tablas en una transacción
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Obtener el atleta para conseguir el userId
+        const athlete = await tx.athlete.findUnique({
+          where: { id: parseInt(id) },
+          select: { userId: true }
+        });
+
+        if (!athlete) {
+          throw new Error(`Atleta con ID ${id} no encontrado`);
+        }
+
+        // 2. Actualizar tabla athletes
+        const updatedAthlete = await tx.athlete.update({
+          where: { id: parseInt(id) },
+          data: {
+            status: normalizedStatus,
+            statusAssignedAt: new Date() // ✅ Actualizar fecha de cambio de estado
+          },
+          include: {
+            user: {
+              include: {
+                documentType: true,
+              },
+            },
+            guardian: true,
+            inscriptions: {
+              include: {
+                sportsCategory: true,
+              },
+              orderBy: { inscriptionDate: "desc" },
             },
           },
-          guardian: true,
-          inscriptions: {
-            include: {
-              sportsCategory: true,
-            },
-            orderBy: { inscriptionDate: "desc" },
-          },
-        },
+        });
+
+        // 3. ✅ CRÍTICO: Actualizar tabla users para sincronizar el estado
+        await tx.user.update({
+          where: { id: athlete.userId },
+          data: {
+            status: normalizedStatus
+          }
+        });
+
+        return updatedAthlete;
       });
 
-      return this.transformToFrontend(updatedAthlete);
+      return this.transformToFrontend(result);
     } catch (error) {
       console.error("Error en changeStatus():", error);
       throw error;

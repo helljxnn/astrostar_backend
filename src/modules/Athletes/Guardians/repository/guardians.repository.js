@@ -49,10 +49,8 @@ export class GuardiansRepository {
 
   async create(guardianData) {
     try {
-      console.log('📥 Repository create - datos recibidos:', guardianData);
       
       const transformed = this.transformToBackend(guardianData);
-      console.log('🔄 Datos transformados:', transformed);
 
       const documentType = await prisma.documentType.findUnique({
         where: { id: parseInt(guardianData.documentTypeId) }
@@ -73,9 +71,7 @@ export class GuardiansRepository {
         }
       });
 
-      console.log('✅ Guardian creado:', newGuardian);
       const result = this.transformToFrontend(newGuardian);
-      console.log('📤 Datos para frontend:', result);
       
       return result;
     } catch (error) {
@@ -86,10 +82,8 @@ export class GuardiansRepository {
 
   async update(id, guardianData) {
     try {
-      console.log('📥 Repository update - ID:', id, 'Datos:', guardianData);
       
       const transformed = this.transformToBackend(guardianData);
-      console.log('🔄 Datos transformados:', transformed);
 
       let documentTypeId;
       if (guardianData.documentTypeId) {
@@ -116,7 +110,6 @@ export class GuardiansRepository {
         updateData.documentTypeId = documentTypeId;
       }
 
-      console.log('💾 Actualizando en BD:', updateData);
 
       const updatedGuardian = await prisma.guardian.update({
         where: { id: parseInt(id) },
@@ -126,9 +119,7 @@ export class GuardiansRepository {
         }
       });
 
-      console.log('✅ Guardian actualizado:', updatedGuardian);
       const result = this.transformToFrontend(updatedGuardian);
-      console.log('📤 Datos para frontend:', result);
 
       return result;
     } catch (error) {
@@ -171,14 +162,54 @@ export class GuardiansRepository {
         skip,
         take: limit,
         include: {
-          documentType: true
+          documentType: true,
+          athletes: {
+            include: {
+              user: {
+                select: {
+                  birthDate: true,
+                  firstName: true,
+                  lastName: true
+                }
+              }
+            }
+          }
         },
         orderBy: { createdAt: 'desc' }
       }),
       prisma.guardian.count({ where })
     ]);
 
-    const transformedGuardians = guardians.map(guardian => this.transformToFrontend(guardian));
+    // Transformar y agregar información de deportistas menores
+    const transformedGuardians = guardians.map(guardian => {
+      const transformed = this.transformToFrontend(guardian);
+      
+      // Calcular deportistas menores de edad
+      const today = new Date();
+      const minorAthletes = guardian.athletes?.filter(athlete => {
+        if (!athlete.user?.birthDate) return false;
+        
+        const birthDate = new Date(athlete.user.birthDate);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        
+        return age < 18;
+      }) || [];
+
+      // Agregar información de deportistas
+      transformed.totalAthletes = guardian.athletes?.length || 0;
+      transformed.minorAthletes = minorAthletes.length;
+      transformed.hasMinorAthletes = minorAthletes.length > 0;
+      transformed.minorAthletesNames = minorAthletes.map(a => 
+        `${a.user.firstName} ${a.user.lastName}`
+      );
+
+      return transformed;
+    });
 
     return {
       guardians: transformedGuardians,

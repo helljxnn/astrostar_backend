@@ -1,6 +1,26 @@
 import prisma from "../../../config/database.js";
 
 export const enrollmentsRepository = {
+  async normalizeStatuses() {
+    const now = new Date();
+
+    await prisma.enrollment.updateMany({
+      where: {
+        fechaVencimiento: { lt: now },
+        estado: { notIn: ["Vencida", "Pending_Payment"] }
+      },
+      data: { estado: "Vencida" }
+    });
+
+    await prisma.enrollment.updateMany({
+      where: {
+        estado: "Vencida",
+        fechaVencimiento: { gt: now },
+        fechaInicio: { not: null }
+      },
+      data: { estado: "Vigente" }
+    });
+  },
   async create(data) {
     return await prisma.enrollment.create({
       data,
@@ -15,11 +35,11 @@ export const enrollmentsRepository = {
     });
   },
 
-  async findAll({ estado, athleteId, search, page = 1, limit = 10, showAll = false, sortBy = 'createdAt', sortOrder = 'desc' }) {
+  async findAll({ estado, athleteId, search, searchText, searchEstado, searchNoActivation, searchDateRange, page = 1, limit = 10, showAll = false, sortBy = 'createdAt', sortOrder = 'desc', dateFrom, dateTo, vencimientoRange }) {
     const skip = (page - 1) * limit;
     
     console.log('🔍 [ENROLLMENTS REPO] Parámetros recibidos:', {
-      estado, athleteId, search, page, limit, showAll, sortBy, sortOrder
+      estado, athleteId, search, page, limit, showAll, sortBy, sortOrder, dateFrom, dateTo, vencimientoRange
     });
     
     // Si se especifica un athleteId, mostrar TODAS sus matrículas (historial completo)
@@ -39,16 +59,62 @@ export const enrollmentsRepository = {
         paramIndex++;
       }
 
-      if (search) {
-        const searchTerm = `%${search.trim()}%`;
-        whereConditions.push(`(
-          u.identification ILIKE $${paramIndex} OR
-          u."firstName" ILIKE $${paramIndex} OR
-          u."lastName" ILIKE $${paramIndex} OR
-          u."middleName" ILIKE $${paramIndex} OR
-          u."secondLastName" ILIKE $${paramIndex}
-        )`);
-        params.push(searchTerm);
+      if (searchText || searchEstado || searchNoActivation || searchDateRange) {
+        const orConditions = [];
+
+        if (searchText) {
+          const searchTerm = `%${searchText.trim()}%`;
+          orConditions.push(`u.identification ILIKE $${paramIndex}`);
+          orConditions.push(`u."firstName" ILIKE $${paramIndex}`);
+          orConditions.push(`u."lastName" ILIKE $${paramIndex}`);
+          orConditions.push(`u."middleName" ILIKE $${paramIndex}`);
+          orConditions.push(`u."secondLastName" ILIKE $${paramIndex}`);
+          params.push(searchTerm);
+          paramIndex++;
+        }
+
+        if (searchEstado) {
+          orConditions.push(`e.estado::text = $${paramIndex}`);
+          params.push(searchEstado);
+          paramIndex++;
+        }
+
+        if (searchNoActivation) {
+          orConditions.push(`e."fechaInicio" IS NULL`);
+        }
+
+        if (searchDateRange?.from && searchDateRange?.to) {
+          orConditions.push(`(e."createdAt" >= $${paramIndex} AND e."createdAt" <= $${paramIndex + 1})`);
+          orConditions.push(`(e."fechaInicio" >= $${paramIndex} AND e."fechaInicio" <= $${paramIndex + 1})`);
+          orConditions.push(`(e."fechaVencimiento" >= $${paramIndex} AND e."fechaVencimiento" <= $${paramIndex + 1})`);
+          params.push(searchDateRange.from, searchDateRange.to);
+          paramIndex += 2;
+        }
+
+        if (orConditions.length > 0) {
+          whereConditions.push(`(${orConditions.join(' OR ')})`);
+        }
+      }
+
+      if (dateFrom) {
+        whereConditions.push(`e."createdAt" >= $${paramIndex}`);
+        params.push(dateFrom);
+        paramIndex++;
+      }
+
+      if (dateTo) {
+        whereConditions.push(`e."createdAt" <= $${paramIndex}`);
+        params.push(dateTo);
+        paramIndex++;
+      }
+
+      if (vencimientoRange?.from && vencimientoRange?.to) {
+        whereConditions.push(`e."fechaVencimiento" IS NOT NULL`);
+        whereConditions.push(`e."fechaVencimiento" >= $${paramIndex}`);
+        params.push(vencimientoRange.from);
+        paramIndex++;
+        whereConditions.push(`e."fechaVencimiento" <= $${paramIndex}`);
+        params.push(vencimientoRange.to);
         paramIndex++;
       }
 
@@ -207,60 +273,85 @@ export const enrollmentsRepository = {
         where.athleteId = parseInt(athleteId);
       }
 
-      if (search) {
-        const searchTerm = search.trim();
-        where.OR = [
-          {
-            athlete: {
-              user: {
-                identification: {
-                  contains: searchTerm,
-                  mode: 'insensitive'
+      if (searchText || searchEstado || searchNoActivation || searchDateRange) {
+        const or = [];
+        if (searchText) {
+          const searchTerm = searchText.trim();
+          or.push(
+            {
+              athlete: {
+                user: {
+                  identification: { contains: searchTerm, mode: 'insensitive' }
+                }
+              }
+            },
+            {
+              athlete: {
+                user: {
+                  firstName: { contains: searchTerm, mode: 'insensitive' }
+                }
+              }
+            },
+            {
+              athlete: {
+                user: {
+                  lastName: { contains: searchTerm, mode: 'insensitive' }
+                }
+              }
+            },
+            {
+              athlete: {
+                user: {
+                  middleName: { contains: searchTerm, mode: 'insensitive' }
+                }
+              }
+            },
+            {
+              athlete: {
+                user: {
+                  secondLastName: { contains: searchTerm, mode: 'insensitive' }
                 }
               }
             }
-          },
-          {
-            athlete: {
-              user: {
-                firstName: {
-                  contains: searchTerm,
-                  mode: 'insensitive'
-                }
-              }
-            }
-          },
-          {
-            athlete: {
-              user: {
-                lastName: {
-                  contains: searchTerm,
-                  mode: 'insensitive'
-                }
-              }
-            }
-          },
-          {
-            athlete: {
-              user: {
-                middleName: {
-                  contains: searchTerm,
-                  mode: 'insensitive'
-                }
-              }
-            }
-          },
-          {
-            athlete: {
-              user: {
-                secondLastName: {
-                  contains: searchTerm,
-                  mode: 'insensitive'
-                }
-              }
-            }
-          }
-        ];
+          );
+        }
+
+        if (searchEstado) {
+          or.push({ estado: searchEstado });
+        }
+
+        if (searchNoActivation) {
+          or.push({ fechaInicio: null });
+        }
+
+        if (searchDateRange?.from && searchDateRange?.to) {
+          or.push(
+            { createdAt: { gte: searchDateRange.from, lte: searchDateRange.to } },
+            { fechaInicio: { gte: searchDateRange.from, lte: searchDateRange.to } },
+            { fechaVencimiento: { gte: searchDateRange.from, lte: searchDateRange.to } }
+          );
+        }
+
+        if (or.length > 0) {
+          where.OR = or;
+        }
+      }
+
+      if (dateFrom || dateTo) {
+        where.createdAt = {};
+        if (dateFrom) {
+          where.createdAt.gte = dateFrom;
+        }
+        if (dateTo) {
+          where.createdAt.lte = dateTo;
+        }
+      }
+
+      if (vencimientoRange?.from && vencimientoRange?.to) {
+        where.fechaVencimiento = {
+          gte: vencimientoRange.from,
+          lte: vencimientoRange.to
+        };
       }
 
       const [data, total] = await Promise.all([

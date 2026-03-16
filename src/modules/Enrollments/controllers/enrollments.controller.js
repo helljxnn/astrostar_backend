@@ -43,10 +43,10 @@ export const enrollmentsController = {
 
   async findAll(req, res) {
     try {
-      const { estado, athleteId, search, page, limit, sortBy, sortOrder } = req.query;
+      const { estado, athleteId, search, page, limit, sortBy, sortOrder, dateFrom, dateTo, vencimiento } = req.query;
       
       console.log('🔍 [ENROLLMENTS CONTROLLER] Parámetros:', {
-        estado, athleteId, search, page, limit, sortBy, sortOrder
+        estado, athleteId, search, page, limit, sortBy, sortOrder, dateFrom, dateTo, vencimiento
       });
       
       const result = await enrollmentsService.findAll({
@@ -56,7 +56,10 @@ export const enrollmentsController = {
         page: page ? parseInt(page) : 1,
         limit: limit ? parseInt(limit) : 7, // Usar 7 como default (igual que otros módulos)
         sortBy: sortBy || 'createdAt',
-        sortOrder: sortOrder || 'desc'
+        sortOrder: sortOrder || 'desc',
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        vencimiento: vencimiento || undefined
       });
 
       console.log('📊 [ENROLLMENTS CONTROLLER] Resultado:', {

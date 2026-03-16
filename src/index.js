@@ -1,4 +1,4 @@
-﻿// Load environment variables FIRST before any other imports
+// Load environment variables FIRST before any other imports
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 4000;
 // Inicializar servicios
 async function initializeServices() {
   try {
-    // Reinicializar el servicio de email para asegurar que las variables de entorno estén cargadas
+    // Reinicializar el servicio de email para asegurar que las variables de entorno están cargadas
     emailService.reinitialize();
 
     // Verificar conexión de email (se puede omitir con EMAIL_SKIP_VERIFY_ON_START=true)
@@ -26,16 +26,16 @@ async function initializeServices() {
       const emailOk = await emailService.verifyConnection();
       if (!emailOk) {
         console.warn(
-          "⚠️  Servicio de email no disponible (revisa EMAIL_USER/EMAIL_PASSWORD o conectividad SMTP).",
+          "  Servicio de email no disponible (revisa EMAIL_USER/EMAIL_PASSWORD o conectividad SMTP).",
         );
       }
     } else {
       console.log(
-        "✉️  Verificación de email omitida al inicio (EMAIL_SKIP_VERIFY_ON_START=true).",
+        "  Verificación de email omitida al inicio (EMAIL_SKIP_VERIFY_ON_START=true).",
       );
     }
 
-    // Iniciar job de vencimiento de matrÃ­culas
+    // Iniciar job de vencimiento de matrículas
     startEnrollmentExpirationJob();
 
     // Iniciar job de recordatorios RSVP (por defecto desactivado; activa con DISABLE_RSVP_JOB=false)
@@ -43,7 +43,7 @@ async function initializeServices() {
       (process.env.DISABLE_RSVP_JOB || "true").trim(),
     );
     if (disableRSVP) {
-      console.log("⏸️  Job RSVP deshabilitado por DISABLE_RSVP_JOB=true.");
+      console.log("  Job RSVP deshabilitado por DISABLE_RSVP_JOB=true.");
     } else {
       startRSVPReminderJob();
     }
@@ -57,13 +57,13 @@ async function initializeServices() {
     // Iniciar jobs de gestión de pagos
     initializePaymentJobs();
   } catch (error) {
-    console.warn("âš ï¸ Error inicializando servicios:", error.message);
+    console.warn("ï¿½aï¿½ï¸ Error inicializando servicios:", error.message);
   }
 }
 
 app.listen(PORT, "0.0.0.0", async () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Accessible from network at http://192.168.20.41:${PORT}`);
+  console.log(`=> Server running on port ${PORT}`);
+  console.log(`=> Accessible from network at http://192.168.20.41:${PORT}`);
 
   // Inicializar servicios adicionales
   await initializeServices();

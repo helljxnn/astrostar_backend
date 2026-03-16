@@ -628,6 +628,7 @@ export const enrollmentsService = {
             baseAmount: 40000,
             dueStart: new Date(),
             dueEnd: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)),
+            metadata: { enrollmentId: result.enrollment.id }
           }
         });
         console.log('✅ [ENROLLMENT] Obligación de pago inicial generada (background)');
@@ -685,10 +686,97 @@ export const enrollmentsService = {
   },
 
   async findAll(filters) {
+    await enrollmentsRepository.normalizeStatuses();
+    const rawSearch = String(filters?.search ?? "").trim();
+    const searchLower = rawSearch.toLowerCase();
+
+    const parseSearchDate = (value) => {
+      const isoMatch = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (isoMatch) {
+        const [, y, m, d] = isoMatch;
+        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+      }
+      const dmyMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (dmyMatch) {
+        const [, d, m, y] = dmyMatch;
+        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+      }
+      return null;
+    };
+
+    let searchEstado = null;
+    if (searchLower.includes('pendiente') && searchLower.includes('pago')) {
+      searchEstado = 'Pending_Payment';
+    } else if (searchLower.includes('vigente')) {
+      searchEstado = 'Vigente';
+    } else if (searchLower.includes('vencida') || searchLower.includes('vencido')) {
+      searchEstado = 'Vencida';
+    }
+
+    const searchNoActivation =
+      searchLower.includes('no activada') ||
+      searchLower.includes('no activado') ||
+      searchLower.includes('pendiente de activacion');
+
+    const searchDate = parseSearchDate(rawSearch);
+    let searchDateRange = null;
+    if (searchDate && !Number.isNaN(searchDate.getTime())) {
+      const from = new Date(searchDate);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(searchDate);
+      to.setHours(23, 59, 59, 999);
+      searchDateRange = { from, to };
+    }
+    const normalizeDate = (value, isEnd = false) => {
+      if (!value) return undefined;
+      let date;
+      if (value instanceof Date) {
+        date = new Date(value);
+      } else if (typeof value === 'string' && value.includes('/')) {
+        const parts = value.split('/');
+        if (parts.length === 3) {
+          const [d, m, y] = parts.map(p => parseInt(p, 10));
+          date = new Date(y, (m || 1) - 1, d || 1);
+        } else {
+          date = new Date(value);
+        }
+      } else {
+        date = new Date(value);
+      }
+      if (Number.isNaN(date.getTime())) return undefined;
+      if (isEnd) {
+        date.setHours(23, 59, 59, 999);
+      } else {
+        date.setHours(0, 0, 0, 0);
+      }
+      return date;
+    };
+
+    const normalizedDateFrom = normalizeDate(filters?.dateFrom, false);
+    const normalizedDateTo = normalizeDate(filters?.dateTo, true);
+
+    let vencimientoRange = null;
+    if (filters?.vencimiento === 'expiring') {
+      const now = new Date();
+      const from = new Date(now);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(now);
+      to.setDate(to.getDate() + 30);
+      to.setHours(23, 59, 59, 999);
+      vencimientoRange = { from, to };
+    }
+
     // 🚨 FORZAR showAll=false para mostrar solo la matrícula más reciente por deportista
     // Esto activa el DISTINCT ON en el repository
     const enhancedFilters = {
       ...filters,
+      searchText: rawSearch,
+      searchEstado,
+      searchNoActivation,
+      searchDateRange,
+      dateFrom: normalizedDateFrom,
+      dateTo: normalizedDateTo,
+      vencimientoRange,
       showAll: false // SIEMPRE mostrar solo la más reciente por deportista
     };
     

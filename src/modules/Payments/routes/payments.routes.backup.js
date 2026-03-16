@@ -37,25 +37,12 @@ router.post(
   paymentsValidator.validateObligationId,
   // Middleware de debug temporal
   (req, res, next) => {
-    console.log('🔍 [DEBUG] Antes de uploadPaymentReceipt:');
-    console.log('   Content-Type:', req.headers['content-type']);
-    console.log('   Body keys:', Object.keys(req.body || {}));
-    console.log('   Files:', req.files ? 'Present' : 'Not present');
-    console.log('   File:', req.file ? 'Present' : 'Not present');
     next();
   },
   uploadPaymentReceipt,
   // Middleware de debug después del upload
   (req, res, next) => {
-    console.log('🔍 [DEBUG] Después de uploadPaymentReceipt:');
-    console.log('   File:', req.file ? 'Present' : 'Not present');
     if (req.file) {
-      console.log('   File details:', {
-        fieldname: req.file.fieldname,
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
-      });
     }
     next();
   },

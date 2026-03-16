@@ -67,11 +67,24 @@ router.get(
   paymentsController.checkAthleteAccess
 );
 
+/**
+ * GET /payments/athletes/:athleteId/history
+ * Obtener historial completo de pagos de un atleta
+ */
+router.get(
+  '/athletes/:athleteId/history',
+  authenticateToken,
+  paymentsValidator.validateAthleteId,
+  requireAthleteOwnership,
+  paymentsController.getAthletePaymentHistory
+);
+
 // ============================================================================
 // RUTAS DE ADMINISTRACIÓN
 // ============================================================================
 
 // Rutas básicas - solo métodos que existen en el controller
+router.get('/dashboard/stats', authenticateToken, requirePaymentAdminPermissions, paymentsController.getDashboardStats); // Nuevo endpoint específico para dashboard
 router.get('/pending/report', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPendingPaymentsForReport); // ANTES de /pending
 router.get('/pending', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPendingPayments);
 router.get('/history/report', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPaymentHistoryForReport); // ANTES de /all

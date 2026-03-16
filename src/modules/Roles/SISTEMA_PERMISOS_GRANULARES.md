@@ -1,4 +1,4 @@
-﻿# 🛡️ SISTEMA DE PERMISOS GRANULARES - GUÍA PARA DESARROLLADORES
+# 🛡️ SISTEMA DE PERMISOS GRANULARES - GUÍA PARA DESARROLLADORES
 
 Hemos implementado un sistema de permisos granulares que permite controlar exactamente qué puede hacer cada usuario en cada módulo de la aplicación. **Los permisos se definen una sola vez al crear roles**, y luego cada módulo consulta automáticamente esos permisos.
 

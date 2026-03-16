@@ -291,7 +291,6 @@ export class SportsCategoryController {
   deleteSportsCategory = async (req, res) => {
     try {
       const { id } = req.params;
-      console.log(`Attempting to delete sports category with ID: ${id}`);
 
       if (!id) {
         return res.status(400).json({
@@ -302,7 +301,6 @@ export class SportsCategoryController {
       }
 
       const result = await this.sportsCategoryService.deleteSportsCategory(id);
-      console.log(`Delete result:`, result);
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
       console.error("Error en deleteSportsCategory controller:", error);

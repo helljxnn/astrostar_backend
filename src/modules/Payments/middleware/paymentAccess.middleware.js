@@ -124,13 +124,6 @@ export const requireAthleteOwnership = (req, res, next) => {
       userAthleteId = req.user.id;
     }
 
-    console.log('🔍 [OWNERSHIP DEBUG]', {
-      requestedAthleteId,
-      userAthleteId,
-      userRole: req.user.role?.name,
-      hasAthleteRelation: !!req.user.athlete,
-      athleteRelationId: req.user.athlete?.id
-    });
 
     // Si no se pudo determinar el athleteId del usuario
     if (!userAthleteId) {
@@ -143,10 +136,6 @@ export const requireAthleteOwnership = (req, res, next) => {
     // ✅ CORRECCIÓN CRÍTICA: Si el usuario está pidiendo su propio user.id pero tiene athlete.id diferente,
     // redirigir automáticamente al athlete.id correcto
     if (req.user.role?.name === 'Deportista' && req.user.athlete?.id && requestedAthleteId === req.user.id) {
-      console.log('🔄 [AUTO-REDIRECT] Redirigiendo de user.id a athlete.id:', {
-        from: req.user.id,
-        to: req.user.athlete.id
-      });
       
       // Modificar la URL para usar el athlete.id correcto
       req.params.athleteId = req.user.athlete.id.toString();

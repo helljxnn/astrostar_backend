@@ -156,7 +156,6 @@ Este es un email automático del sistema AstroStar.
 
     const ready = await this.ensureTransporter();
     if (!ready.ok) {
-      console.warn("⚠️  Notificación de cita no enviada:", ready.reason);
       return { success: false, error: ready.reason };
     }
 
@@ -185,7 +184,6 @@ Este es un email automático del sistema AstroStar.
       const result = await this.transporter.sendMail(mailOptions);
       return { success: true, messageId: result.messageId };
     } catch (error) {
-      console.warn("⚠️  Error enviando notificación de cita:", error.message);
       return { success: false, error: error.message };
     }
   }

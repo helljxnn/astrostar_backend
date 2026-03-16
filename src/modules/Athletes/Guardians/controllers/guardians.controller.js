@@ -71,9 +71,6 @@ export class GuardiansController {
 
   createGuardian = async (req, res) => {
     try {
-      console.log("📥 Datos recibidos en createGuardian:", req.body);
-      console.log("📋 Tipo de documentTypeId:", typeof req.body.documentTypeId);
-      console.log("📋 Valor de documentTypeId:", req.body.documentTypeId);
 
       const result = await this.guardiansService.createGuardian(req.body);
 
@@ -115,10 +112,6 @@ export class GuardiansController {
         });
       }
 
-      console.log("📥 Datos recibidos en updateGuardian:", {
-        id,
-        data: req.body,
-      });
 
       const result = await this.guardiansService.updateGuardian(id, req.body);
 
@@ -175,6 +168,72 @@ export class GuardiansController {
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al eliminar acudiente",
+      });
+    }
+  };
+
+  getGuardiansWithAthletes = async (req, res) => {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        search = "",
+        status,
+      } = req.query;
+
+      // Usar el mismo método getAllGuardians que ya incluye la información de deportistas
+      const result = await this.guardiansService.getAllGuardians({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        status,
+      });
+
+      res.json({
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
+        message: `Se encontraron ${result.pagination?.total || 0} acudientes con información de deportistas.`,
+      });
+    } catch (error) {
+      console.error("Error in getGuardiansWithAthletes controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener acudientes con información de deportistas",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  getGuardiansWithAthletes = async (req, res) => {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        search = "",
+        status,
+      } = req.query;
+
+      // Usar el mismo método getAllGuardians que ya incluye la información de deportistas
+      const result = await this.guardiansService.getAllGuardians({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        search,
+        status,
+      });
+
+      res.json({
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
+        message: `Se encontraron ${result.pagination?.total || 0} acudientes con información de deportistas.`,
+      });
+    } catch (error) {
+      console.error("Error in getGuardiansWithAthletes controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener acudientes con información de deportistas",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
