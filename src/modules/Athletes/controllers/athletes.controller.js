@@ -1,4 +1,4 @@
-import { AthletesService } from "../services/athletes.service.js";
+﻿import { AthletesService } from "../services/athletes.service.js";
 import { athletesService } from "../services/athletes.service.new.js";
 
 export class AthletesController {
@@ -76,7 +76,6 @@ export class AthletesController {
 
   createAthlete = async (req, res) => {
     try {
-      console.log("📥 Datos recibidos en createAthlete:", req.body);
 
       const result = await this.athletesService.createAthlete(req.body);
 
@@ -140,10 +139,6 @@ export class AthletesController {
         });
       }
 
-      console.log("📥 Datos recibidos en updateAthlete:", {
-        id,
-        data: req.body,
-      });
 
       const result = await this.athletesService.updateAthlete(id, req.body);
 
@@ -424,3 +419,5 @@ export class AthletesController {
 }
 
 export default new AthletesController();
+
+

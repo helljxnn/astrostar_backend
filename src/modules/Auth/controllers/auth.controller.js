@@ -1,4 +1,4 @@
-import { AuthService } from "../services/auth.service.js";
+﻿import { AuthService } from "../services/auth.service.js";
 import prisma from "../../../config/database.js";
 
 export class AuthController {
@@ -836,3 +836,4 @@ export class AuthController {
     }
   };;
 }
+

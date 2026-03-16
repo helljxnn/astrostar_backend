@@ -1,4 +1,4 @@
-import materialsRepository from "../repository/materials.repository.js";
+﻿import materialsRepository from "../repository/materials.repository.js";
 import categoriesRepository from "../repository/categories.repository.js";
 
 class MaterialsService {
@@ -573,3 +573,4 @@ class MaterialsService {
 }
 
 export default new MaterialsService();
+

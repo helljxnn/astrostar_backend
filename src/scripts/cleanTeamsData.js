@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+﻿import prisma from '../config/database.js';
 
 /**
  * Script para limpiar datos de equipos y deportistas
@@ -72,3 +72,4 @@ cleanTeamsData()
     console.error('❌ Error:', error);
     process.exit(1);
   });
+

@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../generated/prisma/index.js";
+﻿import { PrismaClient } from "../../generated/prisma/index.js";
 
 const isDevelopment = process.env.NODE_ENV !== "production";
 
@@ -14,3 +14,4 @@ process.on("SIGINT", async () => {
 });
 
 export default prisma;
+

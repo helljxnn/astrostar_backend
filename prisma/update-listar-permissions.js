@@ -1,36 +1,7 @@
-﻿import { PrismaClient } from "../generated/prisma/index.js";
+import { PrismaClient } from "../generated/prisma/index.js";
+import { normalizeRolePermissions } from "../src/modules/Roles/config/permissions.config.js";
 
 const prisma = new PrismaClient();
-
-const isAdminRole = (roleName) =>
-  roleName === "Administrador" || roleName === "admin";
-
-const ensureListar = (permissions, isAdmin) => {
-  const base =
-    permissions && typeof permissions === "object" && !Array.isArray(permissions)
-      ? { ...permissions }
-      : {};
-  const moduleKeys = new Set([...Object.keys(base), "sportsCategory"]);
-
-  for (const moduleKey of moduleKeys) {
-    const raw = base[moduleKey];
-
-    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-      const modulePerms = { ...raw };
-      if (modulePerms.Listar === undefined) {
-        modulePerms.Listar = isAdmin;
-      }
-      base[moduleKey] = modulePerms;
-      continue;
-    }
-
-    if (raw === undefined || raw === null) {
-      base[moduleKey] = { Listar: isAdmin };
-    }
-  }
-
-  return base;
-};
 
 async function main() {
   const roles = await prisma.role.findMany({
@@ -41,7 +12,7 @@ async function main() {
 
   for (const role of roles) {
     const current = role.permissions ?? {};
-    const next = ensureListar(current, isAdminRole(role.name));
+    const next = normalizeRolePermissions(current);
 
     if (JSON.stringify(current) !== JSON.stringify(next)) {
       await prisma.role.update({
@@ -52,12 +23,12 @@ async function main() {
     }
   }
 
-  console.log(`Actualizacion completada. Roles actualizados: ${updated}`);
+  console.log(`Actualizacion completada. Roles normalizados: ${updated}`);
 }
 
 main()
   .catch((error) => {
-    console.error("Error actualizando permisos Listar:", error);
+    console.error("Error normalizando permisos de roles:", error);
     process.exitCode = 1;
   })
   .finally(async () => {

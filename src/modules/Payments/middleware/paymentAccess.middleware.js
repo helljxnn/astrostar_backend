@@ -1,4 +1,8 @@
-import { paymentsService } from "../services/payments.service.js";
+﻿import { paymentsService } from "../services/payments.service.js";
+import {
+  hasNormalizedPermission,
+  resolveModuleKey,
+} from "../../Roles/config/permissions.config.js";
 
 /**
  * Middleware para verificar restricciones de acceso por pagos
@@ -95,6 +99,65 @@ export const requirePaymentAdminPermissions = (req, res, next) => {
 };
 
 /**
+ * Middleware para descarga de comprobantes:
+ * - Admin/staff: requiere paymentsManagement.Descargar
+ * - Deportista: solo puede descargar sus propios comprobantes
+ */
+export const requirePaymentReceiptAccess = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Acceso no autorizado",
+      });
+    }
+
+    const roleName = String(req.user.role?.name || "").toLowerCase();
+    const isAdminByRole = roleName === "admin" || roleName === "administrador";
+    const permissions = req.user.role?.permissions || {};
+    const resolvedPaymentsModule = resolveModuleKey("paymentsManagement", permissions);
+    const canDownloadAsAdmin =
+      isAdminByRole ||
+      hasNormalizedPermission(permissions, resolvedPaymentsModule, "Descargar");
+
+    if (canDownloadAsAdmin) {
+      return next();
+    }
+
+    const paymentId = Number.parseInt(req.params.paymentId, 10);
+    if (Number.isNaN(paymentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID de pago inválido",
+      });
+    }
+
+    const payment = await paymentsService.getPaymentById(paymentId);
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        message: "Comprobante no encontrado",
+      });
+    }
+
+    if (!req.user.athlete?.id || payment.athleteId !== req.user.athlete.id) {
+      return res.status(403).json({
+        success: false,
+        message: "No tienes permisos para descargar este comprobante",
+      });
+    }
+
+    return next();
+  } catch (error) {
+    console.error("[PAYMENT RECEIPT ACCESS] Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error interno del servidor",
+    });
+  }
+};
+
+/**
  * Middleware para verificar que el atleta solo acceda a sus propios datos
  */
 export const requireAthleteOwnership = (req, res, next) => {
@@ -124,14 +187,6 @@ export const requireAthleteOwnership = (req, res, next) => {
       userAthleteId = req.user.id;
     }
 
-    console.log('🔍 [OWNERSHIP DEBUG]', {
-      requestedAthleteId,
-      userAthleteId,
-      userRole: req.user.role?.name,
-      hasAthleteRelation: !!req.user.athlete,
-      athleteRelationId: req.user.athlete?.id
-    });
-
     // Si no se pudo determinar el athleteId del usuario
     if (!userAthleteId) {
       return res.status(403).json({
@@ -143,11 +198,6 @@ export const requireAthleteOwnership = (req, res, next) => {
     // ✅ CORRECCIÓN CRÍTICA: Si el usuario está pidiendo su propio user.id pero tiene athlete.id diferente,
     // redirigir automáticamente al athlete.id correcto
     if (req.user.role?.name === 'Deportista' && req.user.athlete?.id && requestedAthleteId === req.user.id) {
-      console.log('🔄 [AUTO-REDIRECT] Redirigiendo de user.id a athlete.id:', {
-        from: req.user.id,
-        to: req.user.athlete.id
-      });
-      
       // Modificar la URL para usar el athlete.id correcto
       req.params.athleteId = req.user.athlete.id.toString();
       return next();
@@ -170,3 +220,4 @@ export const requireAthleteOwnership = (req, res, next) => {
     });
   }
 };
+

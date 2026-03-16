@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio de Email para Empleados - AstroStar
  * Maneja todos los emails relacionados con empleados
  */
@@ -372,3 +372,4 @@ Este es un mensaje automático de AstroStar. Por favor no respondas a este corre
 
 // Exportar instancia singleton
 export default new EmployeeEmailService();
+

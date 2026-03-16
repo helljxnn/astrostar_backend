@@ -1,4 +1,4 @@
-// UsersController.js
+﻿// UsersController.js
 import usersService from "../services/users.service.js";
 
 export class UsersController {
@@ -158,3 +158,4 @@ export class UsersController {
 }
 
 export default new UsersController();
+

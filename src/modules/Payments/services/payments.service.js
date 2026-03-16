@@ -1,4 +1,4 @@
-import { paymentsRepository } from "../repository/payments.repository.js";
+﻿import { paymentsRepository } from "../repository/payments.repository.js";
 import { paymentSettingsRepository } from "../repository/paymentSettings.repository.js";
 import prisma from "../../../config/database.js";
 
@@ -127,7 +127,6 @@ export const paymentsService = {
     const { dueStart, dueEnd } = await calculateMonthlyDueDates(now.getFullYear(), now.getMonth() + 1);
     const settings = await getPaymentSettings();
 
-    console.log(`🔄 [PAYMENTS] Generando mensualidades para periodo: ${currentPeriod}`);
 
     return await prisma.$transaction(async (tx) => {
       // Buscar atletas activos, NO becados, con matrícula vigente Y activa
@@ -154,7 +153,6 @@ export const paymentsService = {
         }
       });
 
-      console.log(`📊 [PAYMENTS] Encontrados ${activeAthletes.length} atletas activos`);
 
       const results = [];
 
@@ -243,7 +241,6 @@ export const paymentsService = {
       const skipped = results.filter(r => r.status === 'skipped').length;
       const errors = results.filter(r => r.status === 'error').length;
 
-      console.log(`✅ [PAYMENTS] Mensualidades generadas: ${created}, omitidas: ${skipped}, errores: ${errors}`);
 
       return {
         period: currentPeriod,
@@ -642,9 +639,6 @@ export const paymentsService = {
       const now = new Date();
       const settings = await getPaymentSettings();
 
-      console.log('📊 [PAYMENTS] Procesando pagos pendientes:', {
-        page, limit, type, search
-      });
 
       const whereClause = {
         status: 'PENDING'
@@ -745,10 +739,6 @@ export const paymentsService = {
         };
       }));
 
-      console.log('✅ [PAYMENTS] Pagos pendientes procesados:', {
-        paymentsFound: payments.length,
-        totalInDB: total
-      });
 
       return {
         payments: paymentsWithDetails,
@@ -1020,9 +1010,6 @@ export const paymentsService = {
       const now = new Date();
       const settings = await getPaymentSettings();
 
-      console.log('📊 [PAYMENTS] Procesando gestión mensual:', {
-        page, limit, status, search, dateFrom, dateTo
-      });
 
       // Construir filtros dinámicos
       const whereClause = {
@@ -1218,11 +1205,6 @@ export const paymentsService = {
           .reduce((sum, o) => sum + o.lateFee, 0)
       };
 
-      console.log('✅ [PAYMENTS] Gestión mensual procesada:', {
-        obligationsFound: obligations.length,
-        totalInDB: total,
-        summary
-      });
 
       return {
         obligations: obligationsWithDetails,
@@ -1276,7 +1258,6 @@ export const paymentsService = {
         data: { status: 'Active', inactivityReason: null }
       });
 
-      console.log(`✅ [PAYMENTS] Matrícula renovada automáticamente para atleta ${athleteId}`);
     });
   },
 
@@ -1316,7 +1297,6 @@ export const paymentsService = {
         data: { status: 'Active' }
       });
 
-      console.log(`✅ [PAYMENTS] Matrícula inicial activada para atleta ${athleteId} — vigente hasta ${expirationDate.toISOString().split('T')[0]}`);
     });
   },
 
@@ -1333,7 +1313,6 @@ export const paymentsService = {
       const now = new Date();
       const settings = await getPaymentSettings();
 
-      console.log('📊 [PAYMENTS] Procesando reporte de pagos pendientes:', filters);
 
       // Obtener pagos del repositorio
       const payments = await paymentsRepository.getPendingPaymentsForReport(filters);
@@ -1373,9 +1352,6 @@ export const paymentsService = {
         };
       }));
 
-      console.log('✅ [PAYMENTS] Reporte de pagos pendientes procesado:', {
-        paymentsFound: payments.length
-      });
 
       return {
         success: true,
@@ -1400,3 +1376,5 @@ export const paymentsService = {
     };
   },
 };
+
+

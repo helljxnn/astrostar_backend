@@ -1,4 +1,4 @@
-import { formatEventDate, formatEventTime } from "../utils/dateFormatter.js";
+﻿import { formatEventDate, formatEventTime } from "../utils/dateFormatter.js";
 
 /**
  * Genera la página HTML de respuesta RSVP
@@ -216,3 +216,4 @@ export function getRSVPResponseHTML(result) {
 </html>
   `;
 }
+

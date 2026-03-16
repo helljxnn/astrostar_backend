@@ -1,4 +1,4 @@
-import { ProvidersService } from "../services/providers.service.js";
+﻿import { ProvidersService } from "../services/providers.service.js";
 
 export class ProvidersController {
   constructor() {
@@ -75,15 +75,8 @@ export class ProvidersController {
 
   createProvider = async (req, res) => {
     try {
-      console.log("=== DATOS RECIBIDOS EN BACKEND ===");
-      console.log(JSON.stringify(req.body, null, 2));
-      console.log("tipoEntidad:", req.body.tipoEntidad);
-      console.log("razonSocial:", req.body.razonSocial);
-      console.log("===================================");
 
-      console.log("Llamando al servicio createProvider...");
       const result = await this.providersService.createProvider(req.body);
-      console.log("Servicio completado exitosamente:", result.success);
 
       if (!result.success) {
         return res.status(result.statusCode || 400).json(result);
@@ -124,11 +117,6 @@ export class ProvidersController {
         });
       }
 
-      console.log("=== DATOS PARA ACTUALIZAR PROVEEDOR ===");
-      console.log("ID:", id);
-      console.log("Estado recibido:", req.body.estado);
-      console.log("Datos completos:", JSON.stringify(req.body, null, 2));
-      console.log("=======================================");
 
       const result = await this.providersService.updateProvider(id, req.body);
 
@@ -548,3 +536,4 @@ export class ProvidersController {
 }
 
 export default new ProvidersController();
+

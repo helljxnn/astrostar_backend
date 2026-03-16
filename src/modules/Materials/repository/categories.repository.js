@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../../../generated/prisma/index.js';
+﻿import { PrismaClient } from '../../../../generated/prisma/index.js';
 
 const prisma = new PrismaClient();
 
@@ -190,3 +190,4 @@ class CategoriesRepository {
 }
 
 export default new CategoriesRepository();
+

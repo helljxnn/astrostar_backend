@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+﻿import nodemailer from 'nodemailer';
 
 class AppointmentEmailService {
   constructor() {
@@ -395,4 +395,5 @@ class AppointmentEmailService {
 }
 
 export default new AppointmentEmailService();
+
 

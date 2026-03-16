@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio de Rate Limiting para Seguridad - AstroStar
  * Protege contra ataques de fuerza bruta y abuso del sistema
  */
@@ -469,3 +469,4 @@ class RateLimitService {
 }
 
 export default new RateLimitService();
+

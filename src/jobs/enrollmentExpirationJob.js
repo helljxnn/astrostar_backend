@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Job para procesar matrículas vencidas automáticamente
  * Se ejecuta diariamente a las 00:00
  */
@@ -56,3 +56,4 @@ export const runEnrollmentExpirationCheck = async () => {
     throw error;
   }
 };
+

@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+﻿import bcrypt from 'bcrypt';
 import { AthletesRepository } from "../repository/athletes.repository.js";
 import emailService from "../../../services/emailService.js";
 
@@ -58,8 +58,6 @@ export class AthletesService {
 
   async createAthlete(athleteData) {
     try {
-      console.log('🔍 [SERVICE] Datos recibidos:', JSON.stringify(athleteData, null, 2));
-      console.log('🔍 [SERVICE] preRegistrationId:', athleteData.preRegistrationId);
       
       // Establecer estado por defecto como "Activo" si no se proporciona
       const dataWithDefaults = {
@@ -91,13 +89,10 @@ export class AthletesService {
       const temporaryPassword = dataWithDefaults.identification?.trim();
       dataWithDefaults.temporaryPassword = temporaryPassword;
 
-      console.log('🔍 [SERVICE] Creando deportista en repositorio...');
       const newAthlete = await this.athletesRepository.create(dataWithDefaults);
 
       // 🔥 NUEVO: Si viene de inscripción del landing, marcarla como procesada
       if (athleteData.preRegistrationId) {
-        console.log('🔄 [SERVICE] Marcando inscripción como Procesada...');
-        console.log('🔄 [SERVICE] preRegistrationId:', athleteData.preRegistrationId);
         
         try {
           const prisma = (await import('../../../config/database.js')).default;
@@ -105,13 +100,11 @@ export class AthletesService {
             where: { id: parseInt(athleteData.preRegistrationId) },
             data: { status: "Processed" }, // ← Cambiado a inglés
           });
-          console.log('✅ [SERVICE] Inscripción marcada como Procesada exitosamente');
         } catch (error) {
           console.error('❌ [SERVICE] Error marcando inscripción como Procesada:', error);
           // No fallar la creación del atleta si falla marcar la inscripción
         }
       } else {
-        console.log('⚠️ [SERVICE] No hay preRegistrationId para marcar');
       }
 
       // Enviar email de bienvenida con credenciales
@@ -192,7 +185,6 @@ export class AthletesService {
       // Si el email cambió, enviar correo de verificación al nuevo email
       let emailSent = false;
       if (emailChanged) {
-        console.log(`📧 Email cambió de ${oldEmail} a ${updateData.email}, enviando correo de verificación...`);
         const emailResult = await this.sendWelcomeEmail(
           {
             email: updateData.email,
@@ -461,3 +453,5 @@ export class AthletesService {
     }
   }
 }
+
+

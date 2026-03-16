@@ -1,4 +1,4 @@
-import cron from "node-cron";
+﻿import cron from "node-cron";
 import prisma from "../config/database.js";
 import eventEmailService from "../modules/Events/services/EventEmailService.js";
 
@@ -123,3 +123,4 @@ export function startRSVPReminderJob() {
     "✅ [RSVP Job] Job de recordatorios RSVP iniciado (ejecuta cada hora)",
   );
 }
+

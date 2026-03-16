@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Templates de correo para notificaciones de asistencia
  */
 
@@ -327,3 +327,4 @@ Este es un correo automático.
 © ${new Date().getFullYear()} AstroStar
   `;
 }
+

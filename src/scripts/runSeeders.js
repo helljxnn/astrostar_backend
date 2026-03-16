@@ -1,4 +1,4 @@
-import { seedTeamsAndAthletes } from '../seeders/teamsAndAthletes.seeder.js';
+﻿import { seedTeamsAndAthletes } from '../seeders/teamsAndAthletes.seeder.js';
 
 /**
  * Script para ejecutar todos los seeders

@@ -2,10 +2,13 @@ import express from "express";
 import { EventsController } from "./events.controller.js";
 import { UploadController } from "./upload.controller.js";
 import upload from "../../middlewares/upload.middleware.js";
+import { authenticateToken } from "../../middlewares/auth.js";
+import { checkPermissions } from "../../middlewares/checkPermissions.js";
 
 const router = express.Router();
 const eventsController = new EventsController();
 const uploadController = new UploadController();
+router.use(authenticateToken);
 
 /**
  * @swagger
@@ -37,6 +40,7 @@ const uploadController = new UploadController();
  */
 router.post(
   "/upload/image",
+  checkPermissions("eventsManagement", "Editar"),
   upload.single("image"),
   uploadController.uploadEventImage,
 );
@@ -64,6 +68,7 @@ router.post(
  */
 router.post(
   "/upload/schedule",
+  checkPermissions("eventsManagement", "Editar"),
   upload.single("schedule"),
   uploadController.uploadEventSchedule,
 );
@@ -78,7 +83,11 @@ router.post(
  *       200:
  *         description: File deleted
  */
-router.delete("/upload/delete", uploadController.deleteFile);
+router.delete(
+  "/upload/delete",
+  checkPermissions("eventsManagement", "Editar"),
+  uploadController.deleteFile
+);
 
 /**
  * @swagger
@@ -90,7 +99,11 @@ router.delete("/upload/delete", uploadController.deleteFile);
  *       200:
  *         description: Stats retrieved
  */
-router.get("/stats", eventsController.getEventStats);
+router.get(
+  "/stats",
+  checkPermissions("eventsManagement", "Ver"),
+  eventsController.getEventStats
+);
 
 /**
  * @swagger
@@ -102,7 +115,11 @@ router.get("/stats", eventsController.getEventStats);
  *       200:
  *         description: Quarter data retrieved
  */
-router.get("/by-quarter", eventsController.getEventsByQuarter);
+router.get(
+  "/by-quarter",
+  checkPermissions("eventsManagement", "Ver"),
+  eventsController.getEventsByQuarter
+);
 
 /**
  * @swagger
@@ -114,7 +131,11 @@ router.get("/by-quarter", eventsController.getEventsByQuarter);
  *       200:
  *         description: Reference data retrieved
  */
-router.get("/reference-data", eventsController.getReferenceData);
+router.get(
+  "/reference-data",
+  checkPermissions("eventsManagement", "Ver"),
+  eventsController.getReferenceData
+);
 
 /**
  * @swagger
@@ -136,7 +157,11 @@ router.get("/reference-data", eventsController.getReferenceData);
  *       200:
  *         description: Availability result
  */
-router.get("/check-name", eventsController.checkEventName);
+router.get(
+  "/check-name",
+  checkPermissions("eventsManagement", "Ver"),
+  eventsController.checkEventName
+);
 
 /**
  * @swagger
@@ -154,8 +179,16 @@ router.get("/check-name", eventsController.checkEventName);
  *       201:
  *         description: Event created
  */
-router.get("/", eventsController.getAllEvents);
-router.post("/", eventsController.createEvent);
+router.get(
+  "/",
+  checkPermissions("eventsManagement", "Ver"),
+  eventsController.getAllEvents
+);
+router.post(
+  "/",
+  checkPermissions("eventsManagement", "Crear"),
+  eventsController.createEvent
+);
 
 /**
  * @swagger
@@ -197,9 +230,21 @@ router.post("/", eventsController.createEvent);
  *       200:
  *         description: Event deleted
  */
-router.get("/:id", eventsController.getEventById);
-router.put("/:id", eventsController.updateEvent);
-router.delete("/:id", eventsController.deleteEvent);
+router.get(
+  "/:id",
+  checkPermissions("eventsManagement", "Ver"),
+  eventsController.getEventById
+);
+router.put(
+  "/:id",
+  checkPermissions("eventsManagement", "Editar"),
+  eventsController.updateEvent
+);
+router.delete(
+  "/:id",
+  checkPermissions("eventsManagement", "Eliminar"),
+  eventsController.deleteEvent
+);
 
 /**
  * @swagger
@@ -219,6 +264,7 @@ router.delete("/:id", eventsController.deleteEvent);
  */
 router.post(
   "/:id/check-affected-registrations",
+  checkPermissions("eventsManagement", "Editar"),
   eventsController.checkAffectedRegistrations,
 );
 
@@ -238,7 +284,11 @@ router.post(
  *       200:
  *         description: Available athletes
  */
-router.get("/:id/available-athletes", eventsController.getAvailableAthletes);
+router.get(
+  "/:id/available-athletes",
+  checkPermissions("eventsManagement", "Inscribir"),
+  eventsController.getAvailableAthletes
+);
 
 /**
  * @swagger
@@ -256,7 +306,11 @@ router.get("/:id/available-athletes", eventsController.getAvailableAthletes);
  *       200:
  *         description: Athlete enrolled
  */
-router.post("/:id/enroll-athlete", eventsController.enrollAthlete);
+router.post(
+  "/:id/enroll-athlete",
+  checkPermissions("eventsManagement", "Inscribir"),
+  eventsController.enrollAthlete
+);
 
 /**
  * @swagger
@@ -281,6 +335,7 @@ router.post("/:id/enroll-athlete", eventsController.enrollAthlete);
  */
 router.delete(
   "/:id/unenroll-athlete/:athleteId",
+  checkPermissions("eventsManagement", "Inscribir"),
   eventsController.unenrollAthlete,
 );
 

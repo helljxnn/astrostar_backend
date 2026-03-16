@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../../../generated/prisma/index.js";
+﻿import { PrismaClient } from "../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
@@ -157,3 +157,4 @@ class EventMaterialsSummaryService {
 }
 
 export default new EventMaterialsSummaryService();
+

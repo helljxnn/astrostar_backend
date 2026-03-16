@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio de Email para Donantes y Patrocinadores - AstroStar
  * Maneja todos los correos relacionados con donaciones
  */
@@ -28,7 +28,6 @@ export class DonorEmailService extends BaseEmailService {
       const result = await this.sendMailWithFallback(mailOptions);
 
       if (result.success) {
-        console.log(`✅ Email de bienvenida enviado a ${tipo}: ${correo}`);
       } else {
         console.error(`❌ Error enviando email a ${correo}:`, result.error);
       }
@@ -139,3 +138,4 @@ export class DonorEmailService extends BaseEmailService {
 
 // Exportar instancia singleton
 export default new DonorEmailService();
+

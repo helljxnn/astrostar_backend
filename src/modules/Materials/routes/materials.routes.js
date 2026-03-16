@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import materialsController from "../controllers/materials.controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 import { checkPermissions } from "../../../middlewares/checkPermissions.js";
@@ -51,11 +51,11 @@ router.get(
 /**
  * GET /api/materials/:id/future-assignments
  * Verificar si un material tiene asignaciones futuras
- * Permiso: materials.Ver
+ * Permiso: materials.Registrar Baja de Material
  */
 router.get(
   "/:id/future-assignments",
-  checkPermissions("materials", "Ver"),
+  checkPermissions("materials", "Registrar Baja de Material"),
   materialsController.checkFutureAssignments,
 );
 
@@ -84,11 +84,11 @@ router.get(
 /**
  * POST /api/materials/:id/discharge
  * Registrar baja de material
- * Permiso: materials.Editar
+ * Permiso: materials.Registrar Baja de Material
  */
 router.post(
   "/:id/discharge",
-  checkPermissions("materials", "Editar"),
+  checkPermissions("materials", "Registrar Baja de Material"),
   materialsController.registerDischarge,
 );
 
@@ -137,3 +137,4 @@ router.delete(
 );
 
 export default router;
+

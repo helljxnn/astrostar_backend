@@ -1,10 +1,11 @@
-import express from "express";
+﻿import express from "express";
 import { AthletesController } from "../controllers/athletes.controller.js";
 import {
   athletesValidators,
   handleValidationErrors,
 } from "../validators/athletes.validator.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = express.Router();
 const athletesController = new AthletesController();
@@ -158,6 +159,7 @@ const athletesController = new AthletesController();
  */
 router.get("/check-email", 
   authenticateToken,
+  checkPermissions("athletesSection", "Editar"),
   athletesController.checkEmailAvailability
 );
 
@@ -206,6 +208,7 @@ router.get("/check-email",
  */
 router.get("/check-identification", 
   authenticateToken,
+  checkPermissions("athletesSection", "Editar"),
   athletesController.checkIdentificationAvailability
 );
 
@@ -244,6 +247,7 @@ router.get("/check-identification",
  */
 router.get("/document-types", 
   authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
   athletesController.getDocumentTypes
 );
 
@@ -298,6 +302,7 @@ router.get("/document-types",
  */
 router.get("/reference-data", 
   authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
   athletesController.getReferenceData
 );
 
@@ -338,6 +343,7 @@ router.get("/reference-data",
  */
 router.get("/stats", 
   authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
   athletesController.getAthleteStats
 );
 
@@ -380,6 +386,7 @@ router.get("/stats",
  */
 router.get("/report", 
   authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
   athletesController.getAllAthletesForReport
 );
 
@@ -458,6 +465,7 @@ router.get("/report",
 router.get(
   "/",
   authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
   athletesValidators.getAll,
   handleValidationErrors,
   athletesController.getAllAthletes
@@ -501,6 +509,7 @@ router.get(
 router.get(
   "/:id",
   authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
   athletesValidators.getById,
   handleValidationErrors,
   athletesController.getAthleteById
@@ -591,6 +600,7 @@ router.get(
 router.post(
   "/",
   authenticateToken,
+  checkPermissions("enrollments", "Aceptar"),
   athletesValidators.create,
   handleValidationErrors,
   athletesController.createAthlete
@@ -673,6 +683,7 @@ router.post(
 router.put(
   "/:id",
   authenticateToken,
+  checkPermissions("athletesSection", "Editar"),
   athletesValidators.update,
   handleValidationErrors,
   athletesController.updateAthlete
@@ -729,6 +740,7 @@ router.put(
 router.patch(
   "/:id/status",
   authenticateToken,
+  checkPermissions("athletesSection", "Editar"),
   athletesValidators.changeStatus,
   handleValidationErrors,
   athletesController.changeAthleteStatus
@@ -771,6 +783,7 @@ router.patch(
  */
 router.put("/:id/remove-guardian", 
   authenticateToken,
+  checkPermissions("athletesSection", "Acudiente"),
   athletesController.removeGuardian
 );
 
@@ -808,9 +821,11 @@ router.put("/:id/remove-guardian",
 router.delete(
   "/:id",
   authenticateToken,
+  checkPermissions("athletesSection", "Eliminar"),
   athletesValidators.delete,
   handleValidationErrors,
   athletesController.deleteAthlete
 );
 
 export default router;
+

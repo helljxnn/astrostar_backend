@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import { GroupController } from "../controllers/groups.controller.js";
 import {
   groupValidators,
@@ -70,3 +70,4 @@ router.delete(
 );
 
 export default router;
+

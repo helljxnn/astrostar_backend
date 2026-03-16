@@ -1,4 +1,4 @@
-import { body, param } from "express-validator";
+﻿import { body, param } from "express-validator";
 import { handleValidationErrors } from "./common.validator.js";
 
 /**
@@ -83,3 +83,4 @@ export const validateEnrollmentId = [
 // NOTA: El validador validateRenewEnrollment ha sido eliminado
 // La renovación se maneja automáticamente a través del sistema de pagos
 // No se requiere validación manual para este proceso
+

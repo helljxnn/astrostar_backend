@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Script para limpiar datos de prueba del rate limiting
  */
 
@@ -41,3 +41,4 @@ async function cleanupTestData() {
 }
 
 cleanupTestData();
+

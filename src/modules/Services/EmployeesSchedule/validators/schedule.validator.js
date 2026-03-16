@@ -1,4 +1,4 @@
-// 📁 Services/Employees/EmployeesSchedule/validators/schedule.validator.js
+﻿// 📁 Services/Employees/EmployeesSchedule/validators/schedule.validator.js
 import { body, param, query, validationResult } from 'express-validator';
 
 /**
@@ -285,3 +285,4 @@ export const hasMaximumDuration = (startTime, endTime, maxHours = 12) => {
   }
   return true;
 };
+

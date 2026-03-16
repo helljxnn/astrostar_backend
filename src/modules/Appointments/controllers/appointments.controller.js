@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 // Horario laboral simulado (en un caso real, esto vendría de la base de datos)
 const specialistSchedules = {

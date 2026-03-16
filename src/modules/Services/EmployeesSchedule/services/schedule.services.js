@@ -1,4 +1,4 @@
-// 📁 Services/Employees/EmployeesSchedule/services/schedule.services.js
+﻿// 📁 Services/Employees/EmployeesSchedule/services/schedule.services.js
 import { ScheduleRepository } from '../repository/schedule.repository.js';
 import emailService from '../../../../services/emailService.js';
 
@@ -447,11 +447,19 @@ export class ScheduleService {
   async getActiveEmployees() {
     try {
       const employees = await this.scheduleRepository.getActiveEmployees();
+      const specialtyLabels = {
+        psicologia: 'Psicologia',
+        fisioterapia: 'Fisioterapia',
+        nutricion: 'Nutricion'
+      };
+
       const formattedEmployees = employees.map(emp => ({
         id: emp.id,
         empleadoId: emp.id,
         nombre: `${emp.user.firstName} ${emp.user.middleName || ''} ${emp.user.lastName} ${emp.user.secondLastName || ''}`.replace(/\s+/g, ' ').trim(),
         cargo: emp.user.role?.name || 'Empleado',
+        specialty: emp.specialty || null,
+        specialtyLabel: emp.specialty ? (specialtyLabels[emp.specialty] || emp.specialty) : null,
         email: emp.user.email,
         identification: emp.user.identification
       }));
@@ -465,3 +473,4 @@ export class ScheduleService {
     }
   }
 }
+

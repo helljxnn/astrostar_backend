@@ -1,4 +1,4 @@
-import { RSVPRepository } from "./rsvp.repository.js";
+﻿import { RSVPRepository } from "./rsvp.repository.js";
 import eventEmailService from "../services/EventEmailService.js";
 import { generateRSVPToken } from "../../../utils/tokenGenerator.js";
 import { generateICS } from "../../../utils/icsGenerator.js";
@@ -283,3 +283,4 @@ export class RSVPService {
     }
   }
 }
+

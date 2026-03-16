@@ -1,4 +1,4 @@
-import { GuardiansService } from "../services/guardians.service.js";
+﻿import { GuardiansService } from "../services/guardians.service.js";
 
 export class GuardiansController {
   constructor() {
@@ -71,9 +71,6 @@ export class GuardiansController {
 
   createGuardian = async (req, res) => {
     try {
-      console.log("📥 Datos recibidos en createGuardian:", req.body);
-      console.log("📋 Tipo de documentTypeId:", typeof req.body.documentTypeId);
-      console.log("📋 Valor de documentTypeId:", req.body.documentTypeId);
 
       const result = await this.guardiansService.createGuardian(req.body);
 
@@ -115,10 +112,6 @@ export class GuardiansController {
         });
       }
 
-      console.log("📥 Datos recibidos en updateGuardian:", {
-        id,
-        data: req.body,
-      });
 
       const result = await this.guardiansService.updateGuardian(id, req.body);
 
@@ -240,3 +233,5 @@ export class GuardiansController {
 }
 
 export default new GuardiansController();
+
+

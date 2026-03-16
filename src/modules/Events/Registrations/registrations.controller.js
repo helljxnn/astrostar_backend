@@ -1,4 +1,4 @@
-import { RegistrationsService } from "./registrations.service.js";
+﻿import { RegistrationsService } from "./registrations.service.js";
 
 /**
  * @swagger
@@ -1081,3 +1081,4 @@ export class RegistrationsController {
 }
 
 export default new RegistrationsController();
+

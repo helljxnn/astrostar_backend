@@ -1,4 +1,4 @@
-import prisma from "../../../../config/database.js";
+﻿import prisma from "../../../../config/database.js";
 
 export class GuardiansRepository {
   
@@ -49,10 +49,8 @@ export class GuardiansRepository {
 
   async create(guardianData) {
     try {
-      console.log('📥 Repository create - datos recibidos:', guardianData);
       
       const transformed = this.transformToBackend(guardianData);
-      console.log('🔄 Datos transformados:', transformed);
 
       const documentType = await prisma.documentType.findUnique({
         where: { id: parseInt(guardianData.documentTypeId) }
@@ -73,9 +71,7 @@ export class GuardiansRepository {
         }
       });
 
-      console.log('✅ Guardian creado:', newGuardian);
       const result = this.transformToFrontend(newGuardian);
-      console.log('📤 Datos para frontend:', result);
       
       return result;
     } catch (error) {
@@ -86,10 +82,8 @@ export class GuardiansRepository {
 
   async update(id, guardianData) {
     try {
-      console.log('📥 Repository update - ID:', id, 'Datos:', guardianData);
       
       const transformed = this.transformToBackend(guardianData);
-      console.log('🔄 Datos transformados:', transformed);
 
       let documentTypeId;
       if (guardianData.documentTypeId) {
@@ -116,7 +110,6 @@ export class GuardiansRepository {
         updateData.documentTypeId = documentTypeId;
       }
 
-      console.log('💾 Actualizando en BD:', updateData);
 
       const updatedGuardian = await prisma.guardian.update({
         where: { id: parseInt(id) },
@@ -126,9 +119,7 @@ export class GuardiansRepository {
         }
       });
 
-      console.log('✅ Guardian actualizado:', updatedGuardian);
       const result = this.transformToFrontend(updatedGuardian);
-      console.log('📤 Datos para frontend:', result);
 
       return result;
     } catch (error) {
@@ -273,3 +264,4 @@ export class GuardiansRepository {
     return await prisma.guardian.findFirst({ where });
   }
 }
+

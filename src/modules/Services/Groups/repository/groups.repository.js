@@ -1,4 +1,4 @@
-import prisma from "../../../../config/database.js";
+﻿import prisma from "../../../../config/database.js";
 
 export class GroupRepository {
   /**
@@ -308,3 +308,4 @@ export class GroupRepository {
     };
   }
 }
+

@@ -1,28 +1,18 @@
-import { enrollmentsService } from "../services/enrollments.service.js";
+﻿import { enrollmentsService } from "../services/enrollments.service.js";
 import { enrollmentSchemas } from "../validators/enrollments.validator.js";
 
 export const enrollmentsController = {
   async create(req, res) {
     try {
-      console.log('📥 [ENROLLMENT CONTROLLER] ========================================');
-      console.log('📥 [ENROLLMENT CONTROLLER] CREANDO MATRÍCULA');
-      console.log('📥 [ENROLLMENT CONTROLLER] Body recibido:', JSON.stringify(req.body, null, 2));
-      console.log('📥 [ENROLLMENT CONTROLLER] preRegistrationId:', req.body.preRegistrationId);
-      console.log('📥 [ENROLLMENT CONTROLLER] Tipo de preRegistrationId:', typeof req.body.preRegistrationId);
-      console.log('📥 [ENROLLMENT CONTROLLER] ========================================');
       
       const { error, value } = enrollmentSchemas.create.validate(req.body);
       if (error) {
-        console.log('❌ [ENROLLMENT CONTROLLER] Error de validación:', error.details[0].message);
         return res.status(400).json({
           success: false,
           message: error.details[0].message,
         });
       }
 
-      console.log('✅ [ENROLLMENT CONTROLLER] Validación exitosa');
-      console.log('✅ [ENROLLMENT CONTROLLER] Value después de validación:', JSON.stringify(value, null, 2));
-      console.log('✅ [ENROLLMENT CONTROLLER] preRegistrationId en value:', value.preRegistrationId);
       
       const result = await enrollmentsService.create(value);
 
@@ -45,9 +35,6 @@ export const enrollmentsController = {
     try {
       const { estado, athleteId, search, page, limit, sortBy, sortOrder } = req.query;
       
-      console.log('🔍 [ENROLLMENTS CONTROLLER] Parámetros:', {
-        estado, athleteId, search, page, limit, sortBy, sortOrder
-      });
       
       const result = await enrollmentsService.findAll({
         estado,
@@ -59,10 +46,6 @@ export const enrollmentsController = {
         sortOrder: sortOrder || 'desc'
       });
 
-      console.log('📊 [ENROLLMENTS CONTROLLER] Resultado:', {
-        totalEncontrado: result.data.length,
-        paginacionTotal: result.pagination.total
-      });
 
       return res.json({
         success: true,
@@ -202,7 +185,6 @@ export const enrollmentsController = {
     try {
       const { athleteId } = req.params;
 
-      console.log(`🔍 [ENROLLMENT CONTROLLER] Obteniendo historial para deportista ID: ${athleteId}`);
 
       if (!athleteId || isNaN(parseInt(athleteId))) {
         return res.status(400).json({
@@ -223,3 +205,5 @@ export const enrollmentsController = {
     }
   },
 };
+
+

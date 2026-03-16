@@ -1,4 +1,4 @@
-import movementsService from '../services/movements.service.js';
+﻿import movementsService from '../services/movements.service.js';
 
 class MovementsController {
   /**
@@ -315,3 +315,4 @@ class MovementsController {
 }
 
 export default new MovementsController();
+

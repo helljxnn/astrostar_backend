@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export const athletesRepository = {
   async findAll({ estado, categoria, search, page = 1, limit = 10 }) {
@@ -223,3 +223,4 @@ export const athletesRepository = {
     }));
   },
 };
+

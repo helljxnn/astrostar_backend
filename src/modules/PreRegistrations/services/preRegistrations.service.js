@@ -1,4 +1,4 @@
-import { preRegistrationsRepository } from "../repository/preRegistrations.repository.js";
+﻿import { preRegistrationsRepository } from "../repository/preRegistrations.repository.js";
 import emailService from "../../../services/emailService.js";
 import prisma from "../../../config/database.js";
 
@@ -236,3 +236,4 @@ export const preRegistrationsService = {
     };
   },
 };
+

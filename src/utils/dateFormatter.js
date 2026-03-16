@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Formatea una fecha para mostrar en emails
  * @param {Date} date - Fecha a formatear
  * @returns {string} Fecha formateada (ej: "Sábado, 15 de Marzo de 2025")
@@ -54,3 +54,4 @@ export function formatEventTime(startTime, endTime) {
 
   return `${formatTime(startTime)} - ${formatTime(endTime)}`;
 }
+

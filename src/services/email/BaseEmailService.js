@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio Base de Email - AstroStar
  * Proporciona funcionalidad común para todos los servicios de email
  */
@@ -191,3 +191,4 @@ export class BaseEmailService {
     });
   }
 }
+

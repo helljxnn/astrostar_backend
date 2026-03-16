@@ -1,4 +1,4 @@
-// Validación simple sin dependencias externas
+﻿// Validación simple sin dependencias externas
 export const preRegistrationSchemas = {
   create: {
     validate: (data) => {
@@ -38,3 +38,4 @@ export const preRegistrationSchemas = {
     }
   }
 };
+

@@ -1,4 +1,4 @@
-# Módulo de Grupos - FASE 1
+﻿# Módulo de Grupos - FASE 1
 
 ## Descripción
 
@@ -226,3 +226,4 @@ GET /api/athletes/23/groups
 - El administrador/profesor gestiona todo
 - Los grupos son estructuras estables
 - Separación clara de responsabilidades entre Grupos y Clases
+

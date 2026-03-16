@@ -1,6 +1,7 @@
 import { Router } from "express";
 import eventMaterialsSummaryController from "../controllers/eventMaterialsSummary.controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = Router();
 
@@ -25,6 +26,7 @@ const router = Router();
 router.get(
   "/:eventoId/materials-summary",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsSummaryController.getSummary,
 );
 

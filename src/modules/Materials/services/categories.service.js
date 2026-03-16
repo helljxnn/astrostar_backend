@@ -1,4 +1,4 @@
-import categoriesRepository from '../repository/categories.repository.js';
+﻿import categoriesRepository from '../repository/categories.repository.js';
 
 class CategoriesService {
   /**
@@ -242,3 +242,4 @@ class CategoriesService {
 }
 
 export default new CategoriesService();
+

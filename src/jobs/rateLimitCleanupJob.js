@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Job para limpiar intentos antiguos de rate limiting
  * Se ejecuta diariamente a las 3:00 AM
  */
@@ -46,3 +46,4 @@ export function startRateLimitCleanupJob() {
 
 // Exportar función para ejecutar manualmente si es necesario
 export { cleanupOldAttempts };
+
