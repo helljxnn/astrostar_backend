@@ -41,10 +41,6 @@ export class TeamsRepository {
           excludeTeamId,
           errors,
         );
-      } else {
-        console.log(
-          `✅ Persona de fundación ${id} puede estar en múltiples equipos`,
-        );
       }
     }
 
@@ -158,17 +154,10 @@ export class TeamsRepository {
 
   async updateTemporaryPersonsCategory(temporaryPersonIds, category, teamName) {
     if (!temporaryPersonIds || temporaryPersonIds.length === 0) {
-      console.log("❌ No hay personas temporales para actualizar");
       return;
     }
 
     try {
-      console.log("🔄 Actualizando personas temporales:", {
-        ids: temporaryPersonIds,
-        category: category,
-        teamName: teamName,
-      });
-
       const updates = temporaryPersonIds.map((id) =>
         prisma.temporaryPerson.update({
           where: { id: parseInt(id) },
@@ -179,12 +168,7 @@ export class TeamsRepository {
         }),
       );
 
-      const results = await Promise.all(updates);
-      console.log(
-        "✅ Actualización completada para:",
-        results.length,
-        "personas",
-      );
+      await Promise.all(updates);
     } catch (error) {
       console.error("❌ Error actualizando personas temporales:", error);
       throw new Error(
@@ -195,7 +179,6 @@ export class TeamsRepository {
 
   async clearTemporaryPersonsCategory(temporaryPersonIds) {
     if (!temporaryPersonIds || temporaryPersonIds.length === 0) {
-      console.log("No hay personas para limpiar");
       return;
     }
 
@@ -210,9 +193,6 @@ export class TeamsRepository {
         }),
       );
       await Promise.all(updates);
-      console.log(
-        `✅ Limpiado categoría y equipo de ${temporaryPersonIds.length} personas temporales`,
-      );
     } catch (error) {
       console.error("❌ Error limpiando personas temporales:", error);
     }
@@ -390,11 +370,6 @@ export class TeamsRepository {
 
   async create(teamData) {
     try {
-      console.log(
-        "📥 Datos recibidos en repository:",
-        JSON.stringify(teamData, null, 2),
-      );
-
       const transformed = this.transformToBackend(teamData);
       const {
         deportistasIds = [],
@@ -410,8 +385,6 @@ export class TeamsRepository {
         teamType: transformed.teamType,
         status: "Active",
       };
-
-      console.log("🔧 Team Info transformado:", teamInfo);
 
       // Validar solo los deportistas
       await this.validateMembers(deportistasIds, transformed.teamType);
@@ -441,10 +414,6 @@ export class TeamsRepository {
 
         if (entrenador && entrenador.personType === "Entrenador") {
           entrenadorTemporalId = parseInt(entrenadorId);
-          console.log(
-            "✅ Entrenador temporal identificado:",
-            entrenadorTemporalId,
-          );
         }
       }
 
@@ -465,7 +434,6 @@ export class TeamsRepository {
 
       return await prisma.$transaction(async (tx) => {
         const newTeam = await tx.team.create({ data: teamInfo });
-        console.log("✅ Equipo creado con ID:", newTeam.id);
 
         const memberPromises = [];
 
@@ -1103,10 +1071,6 @@ export class TeamsRepository {
       if (existingMembership) {
         const person = existingMembership.temporaryPerson;
         const team = existingMembership.team;
-        console.log("⚠️ [REPO] Persona NO disponible:", {
-          person: `${person.firstName} ${person.lastName}`,
-          team: team.name,
-        });
         return {
           available: false,
           message: `${person.firstName} ${person.lastName} ya está asignado/a al equipo "${team.name}"`,
@@ -1114,7 +1078,6 @@ export class TeamsRepository {
         };
       }
 
-      console.log("✅ [REPO] Persona disponible");
       return {
         available: true,
         message: "Persona disponible",
@@ -1188,15 +1151,6 @@ export class TeamsRepository {
       });
 
       const isAssigned = participants.length > 0;
-
-      console.log("🔍 [REPO] Verificando asignación a eventos:", {
-        teamId,
-        isAssigned,
-        count: participants.length,
-        events: participants.map(
-          (p) => `${p.service.name} (${p.service.status})`,
-        ),
-      });
 
       return {
         isAssigned,

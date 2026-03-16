@@ -3,7 +3,7 @@ import emailService from "../../../../services/emailService.js";
 import appointmentEmailService from "./AppointmentEmail.service.js";
 
 const SPECIALTY_LABELS = {
-  psicologia: "Psicologia",
+  psicologia: "Psicología",
   fisioterapia: "Fisioterapia",
   nutricion: "Nutricion",
   medicina: "Medicina Deportiva",
