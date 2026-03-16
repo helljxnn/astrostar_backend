@@ -75,11 +75,14 @@ export const requirePaymentAdminPermissions = (req, res, next) => {
       });
     }
 
-    // Verificar permisos de administrador
+    // Verificar permisos por RBAC normalizado
+    const roleName = String(req.user.role?.name || "").toLowerCase();
+    const isAdminByRole = roleName === "admin" || roleName === "administrador";
     const userPermissions = req.user.role?.permissions || {};
-    const hasPaymentPermissions = userPermissions.Pagos?.Administrar || 
-                                 userPermissions.Admin || 
-                                 req.user.role?.name === 'Administrador';
+    const resolvedModule = resolveModuleKey("paymentsManagement", userPermissions);
+    const hasPaymentPermissions =
+      isAdminByRole ||
+      hasNormalizedPermission(userPermissions, resolvedModule, "Aprobar");
 
     if (!hasPaymentPermissions) {
       return res.status(403).json({
