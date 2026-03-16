@@ -5,9 +5,12 @@ import {
   handleValidationErrors,
 } from "../validators/groups.validator.js";
 import { authenticateToken } from "../../../../middlewares/auth.js";
+import { checkRole } from "../../../../middlewares/checkRole.js";
 
 const router = express.Router();
 const groupController = new GroupController();
+
+router.use(authenticateToken, checkRole("Administrador"));
 
 /**
  * @swagger
@@ -17,12 +20,11 @@ const groupController = new GroupController();
  */
 
 // Rutas específicas PRIMERO
-router.get("/stats", authenticateToken, groupController.getGroupStats);
+router.get("/stats", groupController.getGroupStats);
 
 // CRUD básico
 router.get(
   "/",
-  authenticateToken,
   groupValidators.getAll,
   handleValidationErrors,
   groupController.getAllGroups,
@@ -30,7 +32,6 @@ router.get(
 
 router.post(
   "/",
-  authenticateToken,
   groupValidators.create,
   handleValidationErrors,
   groupController.createGroup,
@@ -39,7 +40,6 @@ router.post(
 // Rutas con parámetros
 router.get(
   "/:id",
-  authenticateToken,
   groupValidators.getById,
   handleValidationErrors,
   groupController.getGroupById,
@@ -47,7 +47,6 @@ router.get(
 
 router.put(
   "/:id",
-  authenticateToken,
   groupValidators.update,
   handleValidationErrors,
   groupController.updateGroup,
@@ -55,7 +54,6 @@ router.put(
 
 router.patch(
   "/:id/status",
-  authenticateToken,
   groupValidators.updateStatus,
   handleValidationErrors,
   groupController.updateGroupStatus,
@@ -63,7 +61,6 @@ router.patch(
 
 router.delete(
   "/:id",
-  authenticateToken,
   groupValidators.delete,
   handleValidationErrors,
   groupController.deleteGroup,
