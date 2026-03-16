@@ -35,14 +35,6 @@ export class TeamsService {
       }
     }
 
-    if ((teamType === 'fundacion' || teamType === 'Fundacion') && deportistas && deportistas.length > 0) {
-      const firstCategory = deportistas[0].categoria;
-      const hasMixedCategories = deportistas.some(d => d.categoria !== firstCategory);
-      
-      if (hasMixedCategories) {
-        throw new Error('Todos los deportistas de fundación deben ser de la misma categoría deportiva');
-      }
-    }
   }
 
   async getAllTeams({
@@ -94,8 +86,6 @@ export class TeamsService {
 
   async createTeam(teamData) {
     try {
-      console.log('🔍 [SERVICE] Datos recibidos:', JSON.stringify(teamData, null, 2));
-      
       const normalizedTeamType = this.normalizeTeamType(teamData.teamType);
       teamData.teamType = normalizedTeamType;
 
@@ -108,10 +98,7 @@ export class TeamsService {
         throw new Error("El equipo debe tener al menos un deportista.");
       }
 
-      console.log('🔍 [SERVICE] Validando consistencia del equipo...');
       this.validateTeamConsistency(teamData);
-
-      console.log('🔍 [SERVICE] Creando equipo en repositorio...');
       const newTeam = await this.teamsRepository.create(teamData);
 
       return {
@@ -241,8 +228,6 @@ export class TeamsService {
 
       // Si se está activando un equipo temporal, validar que sus miembros no estén en otros equipos activos
       if (status === 'Activo' && existingTeam.teamType === 'Temporal' && existingTeam.estado === 'Inactivo') {
-        console.log('🔍 Validando miembros temporales antes de activar equipo...');
-        
         const temporalMemberIds = existingTeam.members
           ?.filter(m => m.temporaryPersonId)
           .map(m => m.temporaryPersonId) || [];

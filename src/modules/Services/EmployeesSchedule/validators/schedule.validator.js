@@ -1,6 +1,13 @@
 ﻿// 📁 Services/Employees/EmployeesSchedule/validators/schedule.validator.js
 import { body, param, query, validationResult } from 'express-validator';
 
+const normalizeFrequency = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
 /**
  * Middleware para manejar errores de validación
  */
@@ -126,6 +133,27 @@ export const scheduleValidators = {
         if (value !== null && typeof value !== 'object') {
           throw new Error('La repetición personalizada debe ser un objeto válido o null.');
         }
+        if (!value) return true;
+
+        const interval = Number(value.interval);
+        if (!Number.isInteger(interval) || interval < 1) {
+          throw new Error('En la repetición personalizada, "interval" debe ser un entero mayor a 0.');
+        }
+
+        const frequency = normalizeFrequency(value.frequency);
+        if (!['dia', 'semana', 'mes', 'anio'].includes(frequency)) {
+          throw new Error('En la repetición personalizada, "frequency" debe ser: dia, semana, mes o anio.');
+        }
+
+        if (value.dias !== undefined) {
+          if (!Array.isArray(value.dias)) {
+            throw new Error('En la repetición personalizada, "dias" debe ser un arreglo.');
+          }
+          const allValidDays = value.dias.every((day) => Number.isInteger(Number(day)) && Number(day) >= 0 && Number(day) <= 6);
+          if (!allValidDays) {
+            throw new Error('En la repetición personalizada, los días deben estar entre 0 (domingo) y 6 (sábado).');
+          }
+        }
         return true;
       }),
     body('descripcion')
@@ -176,7 +204,38 @@ export const scheduleValidators = {
       .isIn(['no', 'personalizado'])
       .withMessage('El tipo de repetición debe ser: no o personalizado.'),
     body('customRecurrence')
-      .optional(),
+      .optional()
+      .custom((value) => {
+        if (value !== null && typeof value !== 'object') {
+          throw new Error('La repetición personalizada debe ser un objeto válido o null.');
+        }
+        if (!value) return true;
+
+        if (value.interval !== undefined) {
+          const interval = Number(value.interval);
+          if (!Number.isInteger(interval) || interval < 1) {
+            throw new Error('En la repetición personalizada, "interval" debe ser un entero mayor a 0.');
+          }
+        }
+
+        if (value.frequency !== undefined) {
+          const frequency = normalizeFrequency(value.frequency);
+          if (!['dia', 'semana', 'mes', 'anio'].includes(frequency)) {
+            throw new Error('En la repetición personalizada, "frequency" debe ser: dia, semana, mes o anio.');
+          }
+        }
+
+        if (value.dias !== undefined) {
+          if (!Array.isArray(value.dias)) {
+            throw new Error('En la repetición personalizada, "dias" debe ser un arreglo.');
+          }
+          const allValidDays = value.dias.every((day) => Number.isInteger(Number(day)) && Number(day) >= 0 && Number(day) <= 6);
+          if (!allValidDays) {
+            throw new Error('En la repetición personalizada, los días deben estar entre 0 (domingo) y 6 (sábado).');
+          }
+        }
+        return true;
+      }),
     body('descripcion')
       .optional({ nullable: true, checkFalsy: true })
       .isLength({ min: 3, max: 500 })
