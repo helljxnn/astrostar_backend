@@ -48,6 +48,45 @@ export class ScheduleService {
     return { startTime, endTime };
   }
 
+  normalizeCustomFrequency(value) {
+    if (!value) return 'semana';
+    const normalized = String(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+    return ['dia', 'semana', 'mes', 'anio'].includes(normalized)
+      ? normalized
+      : 'semana';
+  }
+
+  normalizeCustomDays(days = []) {
+    if (!Array.isArray(days)) return [];
+    return [...new Set(days.map((day) => Number(day)))]
+      .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+      .sort((a, b) => a - b);
+  }
+
+  normalizeCustomRecurrence(value) {
+    if (!value) return null;
+    let raw = value;
+    if (typeof value === 'string') {
+      try {
+        raw = JSON.parse(value);
+      } catch (_error) {
+        return null;
+      }
+    }
+    if (!raw || typeof raw !== 'object') return null;
+
+    return {
+      ...raw,
+      interval: Math.max(1, Number(raw.interval) || 1),
+      frequency: this.normalizeCustomFrequency(raw.frequency),
+      dias: this.normalizeCustomDays(raw.dias),
+    };
+  }
+
   timeToMinutes(value) {
     if (!value) return null;
     const parts = String(value).split(':');
@@ -210,6 +249,10 @@ export class ScheduleService {
       const dayOfWeek = this.mapDayOfWeek(scheduleData.fecha);
 
       // 6. Preparar datos para la base de datos
+      const customRecurrence = this.normalizeCustomRecurrence(
+        scheduleData.customRecurrence,
+      );
+
       const scheduleDataForDB = {
         employeeId: parseInt(scheduleData.empleadoId),
         scheduleDate,
@@ -217,7 +260,7 @@ export class ScheduleService {
         startTime: scheduleData.horaInicio,
         endTime: scheduleData.horaFin,
         recurrence: scheduleData.repeticion || 'no',
-        customRecurrence: scheduleData.customRecurrence ? JSON.stringify(scheduleData.customRecurrence) : null,
+        customRecurrence: customRecurrence ? JSON.stringify(customRecurrence) : null,
         description: scheduleData.descripcion?.trim() || null
       };
 
@@ -288,8 +331,11 @@ export class ScheduleService {
       if (updateData.horaFin) scheduleDataForDB.endTime = updateData.horaFin;
       if (updateData.repeticion) scheduleDataForDB.recurrence = updateData.repeticion;
       if (updateData.customRecurrence !== undefined) {
-        scheduleDataForDB.customRecurrence = updateData.customRecurrence 
-          ? JSON.stringify(updateData.customRecurrence) 
+        const customRecurrence = this.normalizeCustomRecurrence(
+          updateData.customRecurrence,
+        );
+        scheduleDataForDB.customRecurrence = customRecurrence
+          ? JSON.stringify(customRecurrence)
           : null;
       }
       if (updateData.descripcion !== undefined) {
@@ -448,7 +494,7 @@ export class ScheduleService {
     try {
       const employees = await this.scheduleRepository.getActiveEmployees();
       const specialtyLabels = {
-        psicologia: 'Psicologia',
+        psicologia: 'Psicología',
         fisioterapia: 'Fisioterapia',
         nutricion: 'Nutricion'
       };
