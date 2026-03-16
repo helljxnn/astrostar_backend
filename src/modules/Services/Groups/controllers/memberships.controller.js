@@ -1,4 +1,4 @@
-import { MembershipService } from "../services/memberships.service.js";
+﻿import { MembershipService } from "../services/memberships.service.js";
 
 export class MembershipController {
   constructor() {
@@ -175,3 +175,4 @@ export class MembershipController {
     }
   };
 }
+

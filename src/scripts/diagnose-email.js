@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+﻿import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -121,3 +121,4 @@ runDiagnostics().catch(error => {
   console.error('\n❌ ERROR CRÍTICO:', error);
   process.exit(1);
 });
+

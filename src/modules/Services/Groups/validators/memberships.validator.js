@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -73,3 +73,4 @@ export const membershipValidators = {
       .withMessage("El ID de la deportista debe ser un número entero válido."),
   ],
 };
+

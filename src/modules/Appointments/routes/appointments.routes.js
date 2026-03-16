@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import { AppointmentController } from "../controllers/appointments.controller.js";
 
 const router = express.Router();
@@ -219,3 +219,4 @@ router.post("/", controller.Create);
 router.patch("/:id/cancel", controller.Cancel);
 
 export default router;
+

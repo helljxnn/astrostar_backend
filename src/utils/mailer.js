@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+﻿import nodemailer from "nodemailer";
 import 'dotenv/config';
 
 // Verificación de variables de entorno para evitar errores silenciosos
@@ -52,3 +52,4 @@ export async function sendPasswordResetEmail({ to, firstName, url }) {
   await transporter.sendMail(mailOptions);
   console.log(`Correo de restablecimiento de contraseña enviado a: ${to}`);
 }
+

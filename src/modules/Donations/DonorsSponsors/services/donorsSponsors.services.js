@@ -1,4 +1,4 @@
-import { DonorsSponsorsRepository } from "../repository/donorsSponsors.repository.js";
+﻿import { DonorsSponsorsRepository } from "../repository/donorsSponsors.repository.js";
 import emailService from "../../../../services/emailService.js";
 
 export class DonorsSponsorsService {
@@ -112,21 +112,16 @@ export class DonorsSponsorsService {
         autorizacion: payload.autorizacion || "Si",
       };
 
-      console.log("🔄 [SERVICE] Payload transformado:", landingPayload);
 
       await this.ensureUnique(landingPayload);
       const created = await this.donorsSponsorsRepository.create(landingPayload);
 
-      console.log("✅ [SERVICE] Donante creado en BD:", created.id);
-      console.log("📧 [SERVICE] Intentando enviar correo a:", created.correo);
 
       emailService
         .sendDonorWelcomeEmail(created)
         .then((result) => {
           if (result.success) {
-            console.log("✅ [EMAIL] Correo enviado exitosamente a:", created.correo);
             if (result.simulated) {
-              console.log("⚠️  [EMAIL] Correo simulado (SMTP no disponible)");
             }
           } else {
             console.warn("⚠️  [EMAIL] Error enviando correo:", result.error);
@@ -325,3 +320,4 @@ export class DonorsSponsorsService {
 }
 
 export default new DonorsSponsorsService();
+

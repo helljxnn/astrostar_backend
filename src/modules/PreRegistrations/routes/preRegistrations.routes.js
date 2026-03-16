@@ -1,7 +1,8 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { preRegistrationsController } from "../controllers/preRegistrations.controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = Router();
 
@@ -39,10 +40,20 @@ router.get("/check-document/:identification", preRegistrationsController.checkDo
 router.get("/check-email/:email", preRegistrationsController.checkEmail);
 
 // Protegidas - Requieren autenticación
-router.get("/report", authenticateToken, preRegistrationsController.findAllForReport); // ANTES de /:id
-router.get("/", authenticateToken, preRegistrationsController.findAll);
-router.get("/:id", authenticateToken, preRegistrationsController.findById);
-router.put("/:id/status", authenticateToken, preRegistrationsController.updateStatus);
-router.delete("/:id", authenticateToken, preRegistrationsController.delete);
+router.get("/report", authenticateToken, checkPermissions("enrollments", "Ver"), preRegistrationsController.findAllForReport); // ANTES de /:id
+router.get("/", authenticateToken, checkPermissions("enrollments", "Ver"), preRegistrationsController.findAll);
+router.get("/:id", authenticateToken, checkPermissions("enrollments", "Ver"), preRegistrationsController.findById);
+router.put(
+  "/:id/status",
+  authenticateToken,
+  (req, res, next) => {
+    const status = String(req.body?.status || "").toLowerCase();
+    const action = status === "rejected" ? "Rechazar" : "Aceptar";
+    return checkPermissions("enrollments", action)(req, res, next);
+  },
+  preRegistrationsController.updateStatus,
+);
+router.delete("/:id", authenticateToken, checkPermissions("enrollments", "Rechazar"), preRegistrationsController.delete);
 
 export default router;
+

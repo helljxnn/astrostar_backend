@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 const calculateAgeFromBirthDate = (birthDate) => {
   if (!birthDate) return null;
@@ -137,7 +137,7 @@ export class AthletesRepository {
               nombreArchivo: ins.paymentProofName,
               fechaSubida: ins.paymentProofUploadedAt,
               tipo: ins.paymentProofType,
-              tamaño: 0,
+              tamano: 0,
             }
           : null,
       })),
@@ -227,10 +227,6 @@ export class AthletesRepository {
 
   async create(athleteData) {
     try {
-      console.log(
-        "📥 Datos recibidos en repository:",
-        JSON.stringify(athleteData, null, 2)
-      );
 
       const { userData, athleteSpecificData } =
         this.transformToBackend(athleteData);
@@ -244,17 +240,8 @@ export class AthletesRepository {
         );
       }
 
-      console.log(
-        "🔄 userData transformado:",
-        JSON.stringify(userData, null, 2)
-      );
-      console.log(
-        "🔄 athleteSpecificData transformado:",
-        JSON.stringify(athleteSpecificData, null, 2)
-      );
 
       // Validar que el tipo de documento existe
-      console.log("🔍 Validando documentTypeId:", athleteData.documentTypeId);
       const documentType = await prisma.documentType.findUnique({
         where: { id: parseInt(athleteData.documentTypeId) },
       });
@@ -264,7 +251,6 @@ export class AthletesRepository {
           `Tipo de documento con ID "${athleteData.documentTypeId}" no encontrado`
         );
       }
-      console.log("✅ Tipo de documento encontrado:", documentType.name);
 
       // Buscar la categoría deportiva
       const sportsCategory = await prisma.sportsCategory.findFirst({
@@ -313,7 +299,6 @@ export class AthletesRepository {
           },
         });
 
-        console.log("✅ Usuario creado con ID:", newUser.id);
 
         // Crear atleta
         const newAthlete = await tx.athlete.create({
@@ -326,7 +311,6 @@ export class AthletesRepository {
           },
         });
 
-        console.log("✅ Atleta creado con ID:", newAthlete.id);
 
         // Crear inscripción inicial
         const inscriptionStatus =
@@ -1105,3 +1089,6 @@ export class AthletesRepository {
 
 // Exportar instancia para compatibilidad
 export const athletesRepository = new AthletesRepository();
+
+
+

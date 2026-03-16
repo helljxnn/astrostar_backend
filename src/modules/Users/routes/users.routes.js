@@ -1,5 +1,7 @@
-import express from "express";
+﻿import express from "express";
 import usersController from "../controllers/users.controller.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 //import { checkPermission } from '../../../middleware/authMiddleware.js';
 
 const router = express.Router();
@@ -82,7 +84,12 @@ const router = express.Router();
  *         description: Internal server error
  */
 //router.get('/', checkPermission('Users', 'Read'), usersController.getUsers);
-router.get("/", usersController.getUsers); // Without checkPermission for now
+router.get(
+  "/",
+  authenticateToken,
+  checkPermissions("users", "Ver"),
+  usersController.getUsers,
+);
 
 /**
  * @swagger
@@ -118,7 +125,12 @@ router.get("/", usersController.getUsers); // Without checkPermission for now
  *                 message:
  *                   type: string
  */
-router.get("/check-email", usersController.checkEmailAvailability);
+router.get(
+  "/check-email",
+  authenticateToken,
+  checkPermissions("users", "Ver"),
+  usersController.checkEmailAvailability,
+);
 
 /**
  * @swagger
@@ -153,7 +165,12 @@ router.get("/check-email", usersController.checkEmailAvailability);
  *                 message:
  *                   type: string
  */
-router.get("/check-identification", usersController.checkIdentificationAvailability);
+router.get(
+  "/check-identification",
+  authenticateToken,
+  checkPermissions("users", "Ver"),
+  usersController.checkIdentificationAvailability,
+);
 
 /**
  * @swagger
@@ -187,7 +204,12 @@ router.get("/check-identification", usersController.checkIdentificationAvailabil
  *       200:
  *         description: Complete user list for report
  */
-router.get("/report", usersController.getAllUsersForReport);
+router.get(
+  "/report",
+  authenticateToken,
+  checkPermissions("users", "Ver"),
+  usersController.getAllUsersForReport,
+);
 
 /**
  * @swagger
@@ -222,7 +244,12 @@ router.get("/report", usersController.getAllUsersForReport);
  *                       type: integer
  */
 //router.get('/stats', checkPermission('Users', 'Read'), usersController.getUserStats);
-router.get("/stats", usersController.getUserStats);
+router.get(
+  "/stats",
+  authenticateToken,
+  checkPermissions("users", "Ver"),
+  usersController.getUserStats,
+);
 /**
  * @swagger
  * /api/users/{id}:
@@ -256,6 +283,12 @@ router.get("/stats", usersController.getUserStats);
  *         description: Internal server error
  */
 //router.get('/:id', checkPermission('Users', 'Read'), usersController.getUserById);
-router.get("/:id", usersController.getUserById);
+router.get(
+  "/:id",
+  authenticateToken,
+  checkPermissions("users", "Ver"),
+  usersController.getUserById,
+);
 
 export default router;
+

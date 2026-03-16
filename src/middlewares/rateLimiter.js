@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+﻿import rateLimit from "express-rate-limit";
 
 const isDevelopment = process.env.NODE_ENV === "development";
 
@@ -135,3 +135,4 @@ export default {
   publicLimiter,
   uploadLimiter,
 };
+

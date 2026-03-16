@@ -1,4 +1,4 @@
-// Validación simple sin dependencias externas
+﻿// Validación simple sin dependencias externas
 const validateAthlete = (athlete) => {
   const errors = [];
   
@@ -84,3 +84,4 @@ export const enrollmentSchemas = {
     }
   }
 };
+

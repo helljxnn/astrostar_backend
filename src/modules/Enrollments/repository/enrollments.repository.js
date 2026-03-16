@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export const enrollmentsRepository = {
   async create(data) {
@@ -22,9 +22,6 @@ export const enrollmentsRepository = {
   async findAll({ estado, athleteId, search, page = 1, limit = 10, showAll = false, sortBy = 'createdAt', sortOrder = 'desc' }) {
     const skip = (page - 1) * limit;
     
-    console.log('🔍 [ENROLLMENTS REPO] Parámetros recibidos:', {
-      estado, athleteId, search, page, limit, showAll, sortBy, sortOrder
-    });
     
     // Si se especifica un athleteId, mostrar TODAS sus matrículas (historial completo)
     // Si NO se especifica athleteId y showAll=false, mostrar solo la más reciente por deportista
@@ -63,7 +60,6 @@ export const enrollmentsRepository = {
       const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
       const safeSortOrder = validSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toUpperCase() : 'DESC';
       
-      console.log('📊 [ENROLLMENTS REPO] Ordenamiento:', { safeSortBy, safeSortOrder });
 
       const whereClause = whereConditions.length > 0 
         ? `WHERE ${whereConditions.join(' AND ')}`
@@ -536,3 +532,5 @@ export const enrollmentsRepository = {
     return transformedData;
   },
 };
+
+

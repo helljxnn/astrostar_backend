@@ -1,11 +1,12 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { paymentsController } from "../controllers/payments.controller.js";
 import { paymentsValidator } from "../validators/payments.validator.js";
 import { 
-  requirePaymentAdminPermissions, 
-  requireAthleteOwnership 
+  requireAthleteOwnership,
+  requirePaymentReceiptAccess,
 } from "../middleware/paymentAccess.middleware.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 import { uploadPaymentReceipt } from "../../../services/shared/middleware/upload.middleware.js";
 
 const router = Router();
@@ -52,6 +53,7 @@ router.get(
   '/:paymentId/receipt',
   authenticateToken,
   paymentsValidator.validatePaymentId,
+  requirePaymentReceiptAccess,
   paymentsController.downloadPaymentReceipt
 );
 
@@ -72,12 +74,13 @@ router.get(
 // ============================================================================
 
 // Rutas básicas - solo métodos que existen en el controller
-router.get('/pending/report', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPendingPaymentsForReport); // ANTES de /pending
-router.get('/pending', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPendingPayments);
-router.get('/history/report', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPaymentHistoryForReport); // ANTES de /all
-router.get('/all', authenticateToken, requirePaymentAdminPermissions, paymentsController.getAllPayments);
-router.get('/monthly-management', authenticateToken, requirePaymentAdminPermissions, paymentsController.getMonthlyPaymentsManagement);
-router.patch('/:paymentId/approve', authenticateToken, requirePaymentAdminPermissions, paymentsController.approvePayment);
-router.patch('/:paymentId/reject', authenticateToken, requirePaymentAdminPermissions, paymentsController.rejectPayment);
+router.get('/pending/report', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getPendingPaymentsForReport); // ANTES de /pending
+router.get('/pending', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getPendingPayments);
+router.get('/history/report', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getPaymentHistoryForReport); // ANTES de /all
+router.get('/all', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getAllPayments);
+router.get('/monthly-management', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getMonthlyPaymentsManagement);
+router.patch('/:paymentId/approve', authenticateToken, checkPermissions("paymentsManagement", "Aprobar"), paymentsController.approvePayment);
+router.patch('/:paymentId/reject', authenticateToken, checkPermissions("paymentsManagement", "Rechazar"), paymentsController.rejectPayment);
 
 export default router;
+

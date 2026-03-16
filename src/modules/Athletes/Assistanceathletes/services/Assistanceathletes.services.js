@@ -17,8 +17,8 @@ export class AssistanceathletesService {
       console.error("Error en getAttendanceByDate:", error);
       return {
         success: false,
-        message: "Error al obtener la asistencia.",
-        statusCode: 500,
+        message: error?.message || "Error al obtener la asistencia.",
+        statusCode: error?.statusCode || 500,
       };
     }
   }
@@ -34,8 +34,8 @@ export class AssistanceathletesService {
       console.error("Error en saveAttendanceBulk:", error);
       return {
         success: false,
-        message: "Error al guardar la asistencia.",
-        statusCode: 500,
+        message: error?.message || "Error al guardar la asistencia.",
+        statusCode: error?.statusCode || 500,
       };
     }
   }
@@ -55,8 +55,8 @@ export class AssistanceathletesService {
       console.error("Error en getAthleteHistory:", error);
       return {
         success: false,
-        message: "Error al obtener el historial de asistencia.",
-        statusCode: 500,
+        message: error?.message || "Error al obtener el historial de asistencia.",
+        statusCode: error?.statusCode || 500,
       };
     }
   }
@@ -74,8 +74,8 @@ export class AssistanceathletesService {
       console.error("Error en getHistorySummary:", error);
       return {
         success: false,
-        message: "Error al obtener el resumen de asistencia.",
-        statusCode: 500,
+        message: error?.message || "Error al obtener el resumen de asistencia.",
+        statusCode: error?.statusCode || 500,
       };
     }
   }

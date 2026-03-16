@@ -1,4 +1,4 @@
-  import { paymentsService } from "../services/payments.service.js";
+﻿  import { paymentsService } from "../services/payments.service.js";
 import { validationResult } from "express-validator";
 
 const handleValidationErrors = (req, res) => {
@@ -216,9 +216,6 @@ export const paymentsController = {
   async getMonthlyPaymentsManagement(req, res) {
     try {
       const { page = 1, limit = 20, status, search, dateFrom, dateTo } = req.query;
-      console.log('📊 [PAYMENTS] Gestión mensual solicitada:', {
-        page: parseInt(page), limit: parseInt(limit), status, search, dateFrom, dateTo
-      });
       const result = await paymentsService.getMonthlyPaymentsManagement({
         page: parseInt(page), limit: parseInt(limit), status, search, dateFrom, dateTo
       });
@@ -270,3 +267,5 @@ export const paymentsController = {
     }
   },
 };
+
+

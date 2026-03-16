@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio de Email para Eventos - AstroStar
  * Maneja todos los emails relacionados con eventos
  */
@@ -211,3 +211,4 @@ export class EventEmailService extends BaseEmailService {
 
 // Exportar instancia singleton
 export default new EventEmailService();
+

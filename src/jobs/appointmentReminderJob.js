@@ -1,4 +1,4 @@
-import cron from "node-cron";
+﻿import cron from "node-cron";
 import prisma from "../config/database.js";
 import appointmentEmailService from "../modules/Services/AppointmentManagement/services/AppointmentEmail.service.js";
 
@@ -83,3 +83,4 @@ export function startAppointmentReminderJob() {
 
   console.log("✅ Job de recordatorios de citas iniciado (se ejecuta diariamente a las 9:00 AM)");
 }
+

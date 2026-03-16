@@ -1,4 +1,4 @@
-import PDFDocument from "pdfkit";
+﻿import PDFDocument from "pdfkit";
 import https from "https";
 
 export class CertificateService {
@@ -342,3 +342,4 @@ export class CertificateService {
     }).format(amount);
   }
 }
+

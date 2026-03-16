@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import { AuthController } from "../controllers/auth.controller.js";
 import {
   authValidators,
@@ -95,3 +95,4 @@ router.put("/profile", authenticateToken, authController.updateProfile);
 router.post("/logout-all", authenticateToken, authController.logoutAll);
 
 export default router;
+

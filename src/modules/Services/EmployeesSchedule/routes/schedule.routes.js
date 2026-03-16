@@ -1,8 +1,9 @@
-// 📁 Services/Employees/EmployeesSchedule/routes/schedule.routes.js
+﻿// 📁 Services/Employees/EmployeesSchedule/routes/schedule.routes.js
 import express from 'express';
 import { ScheduleController } from '../controllers/schedule.controller.js';
 import { scheduleValidators, handleValidationErrors } from '../validators/schedule.validator.js';
 import { authenticateToken } from '../../../../middlewares/auth.js';
+import { checkPermissions } from '../../../../middlewares/checkPermissions.js';
 
 const router = express.Router();
 const scheduleController = new ScheduleController();
@@ -108,6 +109,7 @@ const scheduleController = new ScheduleController();
  */
 router.get('/employees',
   authenticateToken,
+  checkPermissions('employeesSchedule', 'Ver'),
   scheduleController.getActiveEmployees
 );
 
@@ -130,6 +132,7 @@ router.get('/employees',
  */
 router.get('/employee/:employeeId',
   authenticateToken,
+  checkPermissions('employeesSchedule', 'Ver'),
   scheduleValidators.getByEmployeeId,
   handleValidationErrors,
   scheduleController.getSchedulesByEmployee
@@ -174,6 +177,7 @@ router.get('/employee/:employeeId',
  */
 router.get('/',
   authenticateToken,
+  checkPermissions('employeesSchedule', 'Ver'),
   scheduleValidators.getAll,
   handleValidationErrors,
   scheduleController.getAllSchedules
@@ -225,6 +229,7 @@ router.get('/',
  */
 router.post('/',
   authenticateToken,
+  checkPermissions('employeesSchedule', 'Crear'),
   scheduleValidators.create,
   handleValidationErrors,
   scheduleController.createSchedule
@@ -250,6 +255,7 @@ router.post('/',
  */
 router.get('/:id',
   authenticateToken,
+  checkPermissions('employeesSchedule', 'Ver'),
   scheduleValidators.getById,
   handleValidationErrors,
   scheduleController.getScheduleById
@@ -279,6 +285,7 @@ router.get('/:id',
  */
 router.put('/:id',
   authenticateToken,
+  checkPermissions('employeesSchedule', 'Editar'),
   scheduleValidators.update,
   handleValidationErrors,
   scheduleController.updateSchedule
@@ -329,6 +336,7 @@ router.put('/:id',
  */
 router.patch('/:id/novedad',
   authenticateToken,
+  checkPermissions('employeesSchedule', 'Editar'),
   scheduleValidators.novelty,
   handleValidationErrors,
   scheduleController.registerNovelty
@@ -354,9 +362,11 @@ router.patch('/:id/novedad',
  */
 router.delete('/:id',
   authenticateToken,
+  checkPermissions('employeesSchedule', 'Eliminar'),
   scheduleValidators.delete,
   handleValidationErrors,
   scheduleController.deleteSchedule
 );
 
 export default router;
+

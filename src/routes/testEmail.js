@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Rutas de prueba para el servicio de email
  * Solo disponible en modo desarrollo
  */

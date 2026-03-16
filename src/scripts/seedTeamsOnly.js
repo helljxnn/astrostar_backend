@@ -1,4 +1,4 @@
-import { seedTeamsAndAthletes } from '../seeders/teamsAndAthletes.seeder.js';
+﻿import { seedTeamsAndAthletes } from '../seeders/teamsAndAthletes.seeder.js';
 import prisma from '../config/database.js';
 
 /**
@@ -21,3 +21,4 @@ const runTeamsSeed = async () => {
 
 // Ejecutar seeder
 runTeamsSeed();
+

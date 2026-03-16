@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from 'express-validator';
+﻿import { body, param, query, validationResult } from 'express-validator';
 
 /**
  * Middleware para manejar errores de validación
@@ -74,3 +74,4 @@ export const sportsCategoryValidators = {
     param('id').isInt({ min: 1 }).withMessage('El ID de la categoría debe ser un número entero válido.').toInt()
   ]
 };
+

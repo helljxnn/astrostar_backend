@@ -6,6 +6,7 @@ import {
   handleValidationErrors,
 } from "../validators/donorsSponsors.validators.js";
 import { authenticateToken } from "../../../../middlewares/auth.js";
+import { checkPermissions } from "../../../../middlewares/checkPermissions.js";
 
 const router = express.Router();
 const controller = DonorsSponsorsController;
@@ -32,18 +33,21 @@ router.post(
 router.get(
   "/stats",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Ver"),
   controller.getStats
 );
 
 router.get(
   "/reference-data",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Ver"),
   controller.getReferenceData
 );
 
 router.get(
   "/check-identification",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Ver"),
   donorsSponsorsValidators.checkIdentification,
   handleValidationErrors,
   controller.checkIdentification
@@ -52,6 +56,7 @@ router.get(
 router.get(
   "/check-email",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Ver"),
   donorsSponsorsValidators.checkEmail,
   handleValidationErrors,
   controller.checkEmail
@@ -60,6 +65,7 @@ router.get(
 router.get(
   "/",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Ver"),
   donorsSponsorsValidators.list,
   handleValidationErrors,
   controller.getAll
@@ -68,6 +74,7 @@ router.get(
 router.post(
   "/",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Crear"),
   donorsSponsorsValidators.create,
   handleValidationErrors,
   controller.create
@@ -76,6 +83,7 @@ router.post(
 router.get(
   "/:id",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Ver"),
   donorsSponsorsValidators.getById,
   handleValidationErrors,
   controller.getById
@@ -84,6 +92,7 @@ router.get(
 router.put(
   "/:id",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Editar"),
   donorsSponsorsValidators.update,
   handleValidationErrors,
   controller.update
@@ -92,6 +101,7 @@ router.put(
 router.patch(
   "/:id/status",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Editar"),
   donorsSponsorsValidators.changeStatus,
   handleValidationErrors,
   controller.changeStatus
@@ -100,6 +110,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticateToken,
+  checkPermissions("donorsSponsors", "Eliminar"),
   donorsSponsorsValidators.delete,
   handleValidationErrors,
   controller.delete

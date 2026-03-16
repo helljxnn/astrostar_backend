@@ -1,4 +1,4 @@
-import { EventsRepository } from "./events.repository.js";
+﻿import { EventsRepository } from "./events.repository.js";
 import prisma from "../../config/database.js";
 
 export class EventsService {
@@ -900,3 +900,4 @@ export class EventsService {
     }
   }
 }
+

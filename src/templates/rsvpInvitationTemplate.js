@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Genera el HTML para el email de invitación RSVP
  * @param {Object} data - Datos para el template
  * @returns {string} HTML del email
@@ -125,3 +125,4 @@ export function getRSVPInvitationHTML(data) {
 </html>
   `;
 }
+

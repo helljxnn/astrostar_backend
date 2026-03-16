@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio de Email para Deportistas - AstroStar
  * Maneja todos los emails relacionados con deportistas
  */
@@ -543,3 +543,4 @@ Unidad Deportiva Cristo Rey, Copacabana, Antioquia`;
 
 // Exportar instancia singleton
 export default new AthleteEmailService();
+

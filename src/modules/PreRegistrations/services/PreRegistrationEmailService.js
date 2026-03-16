@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio de Email para Pre-Inscripciones - AstroStar
  * Maneja emails de inscripciones desde la landing page
  */
@@ -249,3 +249,4 @@ Este es un correo automático.
 
 // Exportar instancia singleton
 export default new PreRegistrationEmailService();
+

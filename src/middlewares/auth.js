@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+﻿import jwt from 'jsonwebtoken';
 import prisma from '../config/database.js';
 
 // Middleware de autenticación JWT
@@ -132,3 +132,4 @@ export const optionalAuth = async (req, res, next) => {
     next();
   }
 };
+

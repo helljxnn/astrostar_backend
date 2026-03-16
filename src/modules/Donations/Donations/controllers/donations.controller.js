@@ -1,4 +1,4 @@
-import DonationsService from "../services/donations.services.js";
+﻿import DonationsService from "../services/donations.services.js";
 
 export class DonationsController {
   list = async (req, res) => {
@@ -302,3 +302,4 @@ export class DonationsController {
 }
 
 export default new DonationsController();
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Controlador para envío de correos de citas con calendario
  */
 

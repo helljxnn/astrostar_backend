@@ -1,4 +1,4 @@
-
+﻿
 import { AppointmentService } from '../services/AppointmentManagement..services.js';
 
 export class AppointmentController {
@@ -295,4 +295,5 @@ export class AppointmentController {
   };
 
 }
+
 

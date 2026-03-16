@@ -1,4 +1,4 @@
-import { RoleService } from '../services/roles.services.js';
+﻿import { RoleService } from '../services/roles.services.js';
 
 export class RoleController {
   constructor() {
@@ -168,7 +168,10 @@ export class RoleController {
       }
 
       // Error de rol protegido
-      if (error.message.includes('Administrador')) {
+      if (
+        error.message.includes("rol base del sistema") ||
+        error.message.includes("no puede ser editado")
+      ) {
         return res.status(403).json({
           success: false,
           message: error.message
@@ -220,7 +223,11 @@ export class RoleController {
       }
 
       // Manejar errores específicos de restricciones
-      if (error.message.includes('Administrador') && error.message.includes('sistema')) {
+      if (
+        error.message.includes("rol base del sistema") ||
+        (error.message.includes("no puede ser eliminado") &&
+          error.message.includes("rol"))
+      ) {
         return res.status(403).json({
           success: false,
           message: error.message
@@ -330,3 +337,4 @@ export class RoleController {
 
 
 }
+

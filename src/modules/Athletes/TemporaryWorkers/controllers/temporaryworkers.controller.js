@@ -1,4 +1,4 @@
-import { TemporaryWorkersService } from "../services/temporaryworkers.service.js";
+﻿import { TemporaryWorkersService } from "../services/temporaryworkers.service.js";
 
 /**
  * @swagger
@@ -1040,3 +1040,4 @@ export class TemporaryWorkersController {
  *                 description: Detalles del error (solo en desarrollo)
  *                 example: "Database connection failed"
  */
+

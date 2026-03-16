@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export const preRegistrationsRepository = {
   async create(data) {
@@ -151,3 +151,4 @@ export const preRegistrationsRepository = {
     return data;
   },
 };
+

@@ -1,4 +1,4 @@
-import { body, query, validationResult } from "express-validator";
+﻿import { body, query, validationResult } from "express-validator";
 
 export const assistanceathletesValidators = {
   getByDate: [
@@ -63,3 +63,4 @@ export const handleValidationErrors = (req, res, next) => {
   }
   next();
 };
+

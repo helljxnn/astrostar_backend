@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Script de prueba para verificar el envío de emails de recuperación de contraseña
  * Ejecutar con: node src/scripts/test-password-reset-email.js
  */
@@ -74,3 +74,4 @@ testPasswordResetEmail().catch((error) => {
   console.error("❌ Error fatal:", error);
   process.exit(1);
 });
+

@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export class TeamsRepository {
   async validateTemporalPersonNotInOtherTeams(personId, excludeTeamId, errors) {
@@ -1372,3 +1372,4 @@ export class TeamsRepository {
     };
   }
 }
+
