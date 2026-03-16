@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+﻿import prisma from '../config/database.js';
 
 /**
  * Script para verificar que el rol de administrador tenga todos los permisos

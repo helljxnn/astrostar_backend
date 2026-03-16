@@ -1,4 +1,4 @@
-import { preRegistrationsService } from "../services/preRegistrations.service.js";
+﻿import { preRegistrationsService } from "../services/preRegistrations.service.js";
 import { preRegistrationSchemas } from "../validators/preRegistrations.validator.js";
 
 export const preRegistrationsController = {
@@ -171,4 +171,53 @@ export const preRegistrationsController = {
       });
     }
   },
+
+  async checkEmail(req, res) {
+    try {
+      const { email } = req.params;
+
+      if (!email) {
+        return res.status(400).json({
+          success: false,
+          message: "El email es requerido",
+        });
+      }
+
+      const result = await preRegistrationsService.checkEmailExists(email);
+
+      return res.json({
+        success: true,
+        exists: result.exists,
+        message: result.message,
+        location: result.location,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  /**
+   * GET /api/pre-registrations/report
+   * Obtener todas las inscripciones para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport(req, res) {
+    try {
+      const { status, search } = req.query;
+      const result = await preRegistrationsService.findAllForReport({
+        status,
+        search,
+      });
+
+      return res.json(result);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
 };
+

@@ -1,6 +1,7 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { enrollmentsController } from "../controllers/enrollments.controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = Router();
 
@@ -8,15 +9,19 @@ const router = Router();
 router.use(authenticateToken);
 
 // Rutas de matrículas
-router.post("/", enrollmentsController.create);
-router.get("/", enrollmentsController.findAll);
-router.get("/:id", enrollmentsController.findById);
-router.put("/:id", enrollmentsController.update);
-router.delete("/:id", enrollmentsController.delete);
-router.get("/athlete/:athleteId", enrollmentsController.findByAthleteId);
+router.post("/", checkPermissions("enrollments", "Aceptar"), enrollmentsController.create);
+router.get("/report", checkPermissions("enrollments", "Ver"), enrollmentsController.findAllForReport); // ANTES de /:id
+router.get("/", checkPermissions("enrollments", "Ver"), enrollmentsController.findAll);
+router.get("/:id", checkPermissions("enrollments", "Ver"), enrollmentsController.findById);
+router.put("/:id", checkPermissions("enrollments", "Aceptar"), enrollmentsController.update);
+router.delete("/:id", checkPermissions("enrollments", "Rechazar"), enrollmentsController.delete); // Bloqueada - devuelve error 403
+router.get("/athlete/:athleteId", checkPermissions("enrollments", "Ver"), enrollmentsController.findByAthleteId);
+router.get("/athlete/:athleteId/history", checkPermissions("enrollments", "Ver"), enrollmentsController.getAthleteHistory);
 
-// Nuevas rutas para vencimiento y renovación
-router.post("/process-expired", enrollmentsController.processExpired);
-router.post("/renew/:athleteId", enrollmentsController.renew);
+// Rutas para procesamiento de vencimientos (solo admin)
+router.post("/process-expired", checkPermissions("enrollments", "Aceptar"), enrollmentsController.processExpired);
+// NOTA: La renovación se maneja automáticamente a través del sistema de pagos
+// Endpoint: POST /api/payments/athletes/:athleteId/enrollment-renewal
 
 export default router;
+

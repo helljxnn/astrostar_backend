@@ -1,10 +1,12 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import multer from "multer";
 import DonationsController from "../controllers/donations.controller.js";
 import {
   donationValidators,
   handleDonationValidation,
 } from "../validators/donations.validators.js";
+import { authenticateToken } from "../../../../middlewares/auth.js";
+import { checkPermissions } from "../../../../middlewares/checkPermissions.js";
 
 const router = Router();
 
@@ -23,8 +25,12 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
 });
 
+// Todas las rutas requieren autenticación
+router.use(authenticateToken);
+
 router.get(
   "/",
+  checkPermissions("donations", "Ver"),
   donationValidators.list,
   handleDonationValidation,
   DonationsController.list,
@@ -32,6 +38,7 @@ router.get(
 
 router.get(
   "/:id",
+  checkPermissions("donations", "Ver"),
   donationValidators.getById,
   handleDonationValidation,
   DonationsController.getById,
@@ -39,6 +46,7 @@ router.get(
 
 router.post(
   "/",
+  checkPermissions("donations", "Crear"),
   donationValidators.create,
   handleDonationValidation,
   DonationsController.create,
@@ -46,6 +54,7 @@ router.post(
 
 router.put(
   "/:id",
+  checkPermissions("donations", "Editar"),
   donationValidators.update,
   handleDonationValidation,
   DonationsController.update,
@@ -53,6 +62,7 @@ router.put(
 
 router.patch(
   "/:id/status",
+  checkPermissions("donations", "Editar"),
   donationValidators.changeStatus,
   handleDonationValidation,
   DonationsController.changeStatus,
@@ -60,6 +70,7 @@ router.patch(
 
 router.delete(
   "/:id",
+  checkPermissions("donations", "Eliminar"),
   donationValidators.softDelete,
   handleDonationValidation,
   DonationsController.softDelete,
@@ -67,6 +78,7 @@ router.delete(
 
 router.post(
   "/:id/files",
+  checkPermissions("donations", "Editar"),
   donationValidators.uploadFiles,
   handleDonationValidation,
   upload.array("files"),
@@ -75,6 +87,7 @@ router.post(
 
 router.post(
   "/:id/convert-to-materials",
+  checkPermissions("donations", "Editar"),
   donationValidators.getById,
   handleDonationValidation,
   DonationsController.convertToMaterials,
@@ -82,6 +95,7 @@ router.post(
 
 router.post(
   "/:id/convert-and-assign-to-event",
+  checkPermissions("donations", "Editar"),
   donationValidators.getById,
   handleDonationValidation,
   DonationsController.convertAndAssignToEvent,
@@ -89,6 +103,7 @@ router.post(
 
 router.get(
   "/:id/materials",
+  checkPermissions("donations", "Ver"),
   donationValidators.getById,
   handleDonationValidation,
   DonationsController.getMaterials,
@@ -96,9 +111,11 @@ router.get(
 
 router.get(
   "/:id/certificate",
+  checkPermissions("donations", "Ver"),
   donationValidators.getById,
   handleDonationValidation,
   DonationsController.generateCertificate,
 );
 
 export default router;
+

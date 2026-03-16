@@ -1,4 +1,4 @@
-import bcrypt from "bcrypt";
+﻿import bcrypt from "bcrypt";
 import { EmployeeRepository } from "../repository/employees.repository.js";
 import { SignatureService } from "./signature.service.js";
 import emailService from "../../../../services/emailService.js";
@@ -7,6 +7,37 @@ export class EmployeeService {
   constructor() {
     this.employeeRepository = new EmployeeRepository();
     this.signatureService = new SignatureService();
+  }
+
+  normalizeText(value) {
+    return value
+      ? String(value)
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "")
+      : "";
+  }
+
+  normalizeSpecialty(value) {
+    const key = this.normalizeText(value);
+    if (!key) return "";
+    if (key.includes("psicolog")) return "psicologia";
+    if (key.includes("fisioterap") || key.includes("fisio")) return "fisioterapia";
+    if (key.includes("nutric")) return "nutricion";
+    return "";
+  }
+
+  isHealthProfessionalRole(roleName = "") {
+    const normalized = this.normalizeText(roleName);
+    return (
+      normalized === "profesionaldesalud" ||
+      normalized === "profesionaldelasalud"
+    );
+  }
+
+  isCoachRole(roleName = "") {
+    return this.normalizeText(roleName) === "entrenador";
   }
 
   /**
@@ -48,6 +79,22 @@ export class EmployeeService {
       throw error;
     }
   }
+  /**
+   * Obtener todos los empleados para reporte (sin paginación)
+   */
+  async getAllEmployeesForReport({ search = "", status = "" }) {
+    try {
+      const result = await this.employeeRepository.findAllForReport({
+        search,
+        status,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Service error - getAllEmployeesForReport:", error);
+      throw error;
+    }
+  }
 
   /**
    * Obtener empleado por ID
@@ -60,7 +107,7 @@ export class EmployeeService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el empleado con ID ${id}.`,
+          message: `No se encontr? el empleado con ID ${id}.`,
         };
       }
 
@@ -79,7 +126,17 @@ export class EmployeeService {
    */
   async createEmployee(employeeData, signatureFile = null) {
     try {
-      // 1. REGLA DE NEGOCIO: Verificar email único
+      const role = await this.employeeRepository.findRoleById(employeeData.roleId);
+      if (!role) {
+        throw new Error("Debe seleccionar un rol válido.");
+      }
+      const normalizedSpecialty = this.normalizeSpecialty(employeeData.specialty);
+      if (this.isHealthProfessionalRole(role.name) && !normalizedSpecialty) {
+        throw new Error(
+          "La especialidad es obligatoria para el rol Profesional de Salud.",
+        );
+      }
+      // 1. REGLA DE NEGOCIO: Verificar email ?nico
       const existingUserByEmail = await this.employeeRepository.findByEmail(
         employeeData.email,
       );
@@ -130,6 +187,9 @@ export class EmployeeService {
       // 5. Preparar datos del empleado
       const employeeDataForDB = {
         status: employeeData.status || "Activo",
+        specialty: this.isHealthProfessionalRole(role.name)
+          ? normalizedSpecialty
+          : null,
       };
 
       // 6. Crear empleado y usuario en transacción
@@ -187,7 +247,7 @@ export class EmployeeService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el empleado con ID ${id}.`,
+          message: `No se encontr? el empleado con ID ${id}.`,
         };
       }
 
@@ -200,7 +260,7 @@ export class EmployeeService {
         };
       }
 
-      // 3. REGLA DE NEGOCIO: Verificar email único (si se está actualizando)
+      // 3. REGLA DE NEGOCIO: Verificar email ?nico (si se está actualizando)
       if (
         updateData.email &&
         updateData.email !== existingEmployee.user.email
@@ -239,7 +299,38 @@ export class EmployeeService {
 
       // 5. Separar datos de usuario y empleado
       const userData = {};
-      const employeeData = { userId: existingEmployee.userId };
+      const employeeData = {};
+      const nextRoleId = updateData.roleId ?? existingEmployee.user?.roleId;
+      const nextRole = await this.employeeRepository.findRoleById(nextRoleId);
+      if (!nextRole) {
+        throw new Error("Debe seleccionar un rol válido.");
+      }
+
+      const currentRoleName = existingEmployee.user?.role?.name || "";
+      const roleIsChanging =
+        updateData.roleId !== undefined &&
+        parseInt(updateData.roleId) !== parseInt(existingEmployee.user?.roleId);
+      if (roleIsChanging && this.isCoachRole(currentRoleName)) {
+        const activeCoachTeams =
+          await this.employeeRepository.getActiveCoachTeamsByEmployeeId(
+            existingEmployee.id,
+          );
+
+        if (activeCoachTeams.length > 0 && !this.isCoachRole(nextRole.name)) {
+          const teamNames = activeCoachTeams
+            .map((item) => item.team?.name)
+            .filter(Boolean)
+            .slice(0, 3);
+          const teamSuffix =
+            teamNames.length > 0 ? ` (${teamNames.join(", ")})` : "";
+
+          return {
+            success: false,
+            statusCode: 400,
+            message: `No se puede cambiar el rol porque el empleado está asignado como entrenador en ${activeCoachTeams.length} equipo(s) activo(s)${teamSuffix}.`,
+          };
+        }
+      }
 
       // Campos de usuario
       if (updateData.firstName !== undefined)
@@ -279,11 +370,33 @@ export class EmployeeService {
       if (updateData.status !== undefined)
         employeeData.status = updateData.status || "Activo";
 
+      if (
+        this.isHealthProfessionalRole(nextRole.name) ||
+        updateData.specialty !== undefined
+      ) {
+        const sourceSpecialty =
+          updateData.specialty !== undefined
+            ? updateData.specialty
+            : existingEmployee.specialty;
+        const normalizedSpecialty = this.normalizeSpecialty(sourceSpecialty);
+
+        if (this.isHealthProfessionalRole(nextRole.name) && !normalizedSpecialty) {
+          throw new Error(
+            "La especialidad es obligatoria para el rol Profesional de Salud.",
+          );
+        }
+
+        employeeData.specialty = this.isHealthProfessionalRole(nextRole.name)
+          ? normalizedSpecialty
+          : null;
+      }
+
       // 6. Actualizar empleado
       const updatedEmployee = await this.employeeRepository.update(
         id,
         employeeData,
         userData,
+        existingEmployee.userId,
       );
 
       // 7. REGLA DE NEGOCIO: Si se actualizó el email o se solicita reenvío, generar nueva contraseña y enviar correo
@@ -337,7 +450,7 @@ export class EmployeeService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el empleado con ID ${id}.`,
+          message: `No se encontr? el empleado con ID ${id}.`,
         };
       }
 
@@ -372,6 +485,29 @@ export class EmployeeService {
       }
 
       // 5. Proceder con la eliminación (hard delete)
+      if (this.isCoachRole(employeeToDelete.user?.role?.name)) {
+        const activeCoachTeams =
+          await this.employeeRepository.getActiveCoachTeamsByEmployeeId(
+            employeeToDelete.id,
+          );
+
+        if (activeCoachTeams.length > 0) {
+          const teamNames = activeCoachTeams
+            .map((item) => item.team?.name)
+            .filter(Boolean)
+            .slice(0, 3);
+          const teamSuffix =
+            teamNames.length > 0 ? ` (${teamNames.join(", ")})` : "";
+
+          return {
+            success: false,
+            statusCode: 400,
+            message: `No se puede eliminar el empleado porque está asignado como entrenador en ${activeCoachTeams.length} equipo(s) activo(s)${teamSuffix}.`,
+          };
+        }
+      }
+
+      // 6. Proceder con la eliminación (hard delete)
       const deleted = await this.employeeRepository.delete(id);
 
       if (deleted) {
@@ -533,4 +669,27 @@ export class EmployeeService {
       return { success: false, error: error.message };
     }
   }
+
+  /**
+   * Obtener todos los empleados para reporte (sin paginación)
+   */
+  async getAllEmployeesForReport({ search = "", status = "" }) {
+    try {
+      const result = await this.employeeRepository.findAllForReport({
+        search,
+        status,
+      });
+
+      return result;
+    } catch (error) {
+      console.error("Service error - getAllEmployeesForReport:", error);
+      throw error;
+    }
+  }
 }
+
+
+
+
+
+

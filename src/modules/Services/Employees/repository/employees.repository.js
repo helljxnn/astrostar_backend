@@ -1,6 +1,28 @@
-import { PrismaClient } from "../../../../../generated/prisma/index.js";
+﻿import { PrismaClient } from "../../../../../generated/prisma/index.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const prisma = new PrismaClient();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const generatedSchemaPath = path.resolve(
+  __dirname,
+  "../../../../../generated/prisma/schema.prisma",
+);
+const supportsEmployeeSpecialty =
+  fs.existsSync(generatedSchemaPath) &&
+  /model\s+Employee[\s\S]*?\bspecialty\b/.test(
+    fs.readFileSync(generatedSchemaPath, "utf8"),
+  );
+
+const sanitizeEmployeeDataForGeneratedClient = (employeeData = {}) => {
+  const data = { ...employeeData };
+  if (!supportsEmployeeSpecialty) {
+    delete data.specialty;
+  }
+  return data;
+};
 
 export class EmployeeRepository {
   /**
@@ -10,18 +32,34 @@ export class EmployeeRepository {
     const skip = (page - 1) * limit;
 
     // Construir condiciones de búsqueda
+    const searchConditions = [];
+
+    if (search) {
+      // Búsqueda en campos de texto
+      searchConditions.push(
+        { user: { firstName: { contains: search, mode: "insensitive" } } },
+        { user: { lastName: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+        { user: { identification: { contains: search, mode: "insensitive" } } },
+        { user: { role: { name: { contains: search, mode: "insensitive" } } } },
+        { specialty: { contains: search, mode: "insensitive" } },
+      );
+
+      // Búsqueda en enum de estado (case-insensitive match)
+      const searchLower = search.toLowerCase();
+      const statusValues = ["Activo", "Licencia", "Desvinculado", "Fallecido"];
+      const matchingStatuses = statusValues.filter((s) =>
+        s.toLowerCase().includes(searchLower),
+      );
+
+      if (matchingStatuses.length > 0) {
+        searchConditions.push({ status: { in: matchingStatuses } });
+      }
+    }
+
     const where = {
       ...(status && { status }),
-      ...(search && {
-        OR: [
-          { user: { firstName: { contains: search, mode: "insensitive" } } },
-          { user: { lastName: { contains: search, mode: "insensitive" } } },
-          { user: { email: { contains: search, mode: "insensitive" } } },
-          {
-            user: { identification: { contains: search, mode: "insensitive" } },
-          },
-        ],
-      }),
+      ...(searchConditions.length > 0 && { OR: searchConditions }),
     };
 
     // Ejecutar consultas en paralelo para optimizar performance
@@ -101,6 +139,9 @@ export class EmployeeRepository {
    */
   async create(employeeData, userData) {
     return await prisma.$transaction(async (tx) => {
+      const employeeDataSafe =
+        sanitizeEmployeeDataForGeneratedClient(employeeData);
+
       // 1. Crear el usuario primero
       const newUser = await tx.user.create({
         data: userData,
@@ -113,7 +154,7 @@ export class EmployeeRepository {
       // 2. Crear el empleado vinculado al usuario
       const newEmployee = await tx.employee.create({
         data: {
-          ...employeeData,
+          ...employeeDataSafe,
           userId: newUser.id,
         },
         include: {
@@ -133,12 +174,18 @@ export class EmployeeRepository {
   /**
    * Actualizar empleado
    */
-  async update(id, employeeData, userData) {
+  async update(id, employeeData, userData, userId) {
     return await prisma.$transaction(async (tx) => {
+      const { userId: _ignoredUserId, ...employeeDataWithoutUser } =
+        employeeData || {};
+      const employeeDataSafe = sanitizeEmployeeDataForGeneratedClient(
+        employeeDataWithoutUser,
+      );
+
       // 1. Actualizar datos del usuario si se proporcionan
       if (userData && Object.keys(userData).length > 0) {
         await tx.user.update({
-          where: { id: employeeData.userId },
+          where: { id: userId },
           data: userData,
         });
       }
@@ -146,7 +193,7 @@ export class EmployeeRepository {
       // 2. Actualizar datos del empleado
       const updatedEmployee = await tx.employee.update({
         where: { id: parseInt(id) },
-        data: employeeData,
+        data: employeeDataSafe,
         include: {
           user: {
             include: {
@@ -247,6 +294,37 @@ export class EmployeeRepository {
     });
   }
 
+  async findRoleById(id) {
+    return await prisma.role.findUnique({
+      where: { id: parseInt(id) },
+      select: { id: true, name: true },
+    });
+  }
+
+  /**
+   * Obtener equipos activos asignados a un empleado como entrenador
+   */
+  async getActiveCoachTeamsByEmployeeId(employeeId) {
+    return await prisma.teamMember.findMany({
+      where: {
+        employeeId: parseInt(employeeId),
+        isActive: true,
+        OR: [{ position: "Entrenador" }, { memberType: "Employee" }],
+        team: {
+          status: "Active",
+        },
+      },
+      include: {
+        team: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+  }
+
   /**
    * Obtener tipos de documento (excluye NIT para personas naturales)
    */
@@ -336,4 +414,57 @@ export class EmployeeRepository {
       },
     });
   }
+
+  /**
+   * Obtener todos los empleados para reporte (sin paginación)
+   */
+  async findAllForReport({ search, status }) {
+    // Construir condiciones de búsqueda (misma lógica que findAll)
+    const searchConditions = [];
+
+    if (search) {
+      searchConditions.push(
+        { user: { firstName: { contains: search, mode: "insensitive" } } },
+        { user: { lastName: { contains: search, mode: "insensitive" } } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+        { user: { identification: { contains: search, mode: "insensitive" } } },
+        { user: { role: { name: { contains: search, mode: "insensitive" } } } },
+        { specialty: { contains: search, mode: "insensitive" } },
+      );
+
+      const searchLower = search.toLowerCase();
+      const statusValues = ["Activo", "Licencia", "Desvinculado", "Fallecido"];
+      const matchingStatuses = statusValues.filter((s) =>
+        s.toLowerCase().includes(searchLower),
+      );
+
+      if (matchingStatuses.length > 0) {
+        searchConditions.push({ status: { in: matchingStatuses } });
+      }
+    }
+
+    const where = {
+      ...(status && { status }),
+      ...(searchConditions.length > 0 && { OR: searchConditions }),
+    };
+
+    // Obtener TODOS los empleados sin paginación
+    const employees = await prisma.employee.findMany({
+      where,
+      include: {
+        user: {
+          include: {
+            role: true,
+            documentType: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      employees,
+    };
+  }
 }
+

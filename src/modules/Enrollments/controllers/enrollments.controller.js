@@ -1,28 +1,18 @@
-import { enrollmentsService } from "../services/enrollments.service.js";
+﻿import { enrollmentsService } from "../services/enrollments.service.js";
 import { enrollmentSchemas } from "../validators/enrollments.validator.js";
 
 export const enrollmentsController = {
   async create(req, res) {
     try {
-      console.log('📥 [ENROLLMENT CONTROLLER] ========================================');
-      console.log('📥 [ENROLLMENT CONTROLLER] CREANDO MATRÍCULA');
-      console.log('📥 [ENROLLMENT CONTROLLER] Body recibido:', JSON.stringify(req.body, null, 2));
-      console.log('📥 [ENROLLMENT CONTROLLER] preRegistrationId:', req.body.preRegistrationId);
-      console.log('📥 [ENROLLMENT CONTROLLER] Tipo de preRegistrationId:', typeof req.body.preRegistrationId);
-      console.log('📥 [ENROLLMENT CONTROLLER] ========================================');
       
       const { error, value } = enrollmentSchemas.create.validate(req.body);
       if (error) {
-        console.log('❌ [ENROLLMENT CONTROLLER] Error de validación:', error.details[0].message);
         return res.status(400).json({
           success: false,
           message: error.details[0].message,
         });
       }
 
-      console.log('✅ [ENROLLMENT CONTROLLER] Validación exitosa');
-      console.log('✅ [ENROLLMENT CONTROLLER] Value después de validación:', JSON.stringify(value, null, 2));
-      console.log('✅ [ENROLLMENT CONTROLLER] preRegistrationId en value:', value.preRegistrationId);
       
       const result = await enrollmentsService.create(value);
 
@@ -43,13 +33,19 @@ export const enrollmentsController = {
 
   async findAll(req, res) {
     try {
-      const { estado, athleteId, page, limit } = req.query;
+      const { estado, athleteId, search, page, limit, sortBy, sortOrder } = req.query;
+      
+      
       const result = await enrollmentsService.findAll({
         estado,
         athleteId,
+        search: search?.trim() || undefined,
         page: page ? parseInt(page) : 1,
-        limit: limit ? parseInt(limit) : 10,
+        limit: limit ? parseInt(limit) : 7, // Usar 7 como default (igual que otros módulos)
+        sortBy: sortBy || 'createdAt',
+        sortOrder: sortOrder || 'desc'
       });
+
 
       return res.json({
         success: true,
@@ -124,11 +120,11 @@ export const enrollmentsController = {
   },
 
   // ELIMINADO: Las matrículas NO deben poder eliminarse
-  // Solo pueden cambiar de estado (Vigente, Suspendida, Vencida, Cancelada)
+  // Solo pueden cambiar de estado (Vigente, Vencida, Pending_Payment)
   async delete(req, res) {
     return res.status(403).json({
       success: false,
-      message: "Las matrículas no pueden ser eliminadas. Solo pueden cambiar de estado (Vigente, Suspendida, Vencida, Cancelada).",
+      message: "Las matrículas no pueden ser eliminadas. Solo pueden cambiar de estado (Vigente, Vencida, Pending_Payment).",
     });
   },
 
@@ -154,28 +150,60 @@ export const enrollmentsController = {
     }
   },
 
+  // NOTA: La renovación de matrículas se maneja automáticamente a través del sistema de pagos
+  // 1. CRON detecta vencimiento → marca matrícula como 'Vencida'
+  // 2. CRON genera obligación ENROLLMENT_RENEWAL
+  // 3. Deportista paga → Admin aprueba → Sistema crea nueva matrícula
+  // Endpoint manual para generar obligación: POST /api/payments/athletes/:athleteId/enrollment-renewal
+
   /**
-   * Renovar matrícula de un deportista
-   * POST /api/enrollments/renew/:athleteId
+   * GET /api/enrollments/report
+   * Obtener todas las matrículas para reporte (SIN PAGINACIÓN)
    */
-  async renew(req, res) {
+  async findAllForReport(req, res) {
+    try {
+      const { estado, athleteId, search } = req.query;
+      const result = await enrollmentsService.findAllForReport({
+        estado,
+        athleteId,
+        search: search?.trim() || undefined,
+      });
+
+      return res.json(result);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+  /**
+   * GET /api/enrollments/athlete/:athleteId/history
+   * Obtener historial completo de matrículas de un deportista específico
+   */
+  async getAthleteHistory(req, res) {
     try {
       const { athleteId } = req.params;
-      const enrollmentData = req.body;
 
-      const result = await enrollmentsService.renewEnrollment(athleteId, enrollmentData);
 
-      return res.status(201).json({
-        success: true,
-        message: "Matrícula renovada exitosamente. Deportista reactivado.",
-        data: result,
-      });
+      if (!athleteId || isNaN(parseInt(athleteId))) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID de deportista inválido'
+        });
+      }
+
+      const result = await enrollmentsService.getAthleteEnrollmentHistory(parseInt(athleteId));
+
+      return res.json(result);
     } catch (error) {
-      console.error('Error renovando matrícula:', error);
-      return res.status(400).json({
+      console.error('❌ [ENROLLMENT CONTROLLER] Error obteniendo historial:', error);
+      return res.status(500).json({
         success: false,
         message: error.message,
       });
     }
   },
 };
+
+

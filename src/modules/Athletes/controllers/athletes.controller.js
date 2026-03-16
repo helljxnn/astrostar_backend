@@ -1,4 +1,5 @@
-import { AthletesService } from "../services/athletes.service.js";
+﻿import { AthletesService } from "../services/athletes.service.js";
+import { athletesService } from "../services/athletes.service.new.js";
 
 export class AthletesController {
   constructor() {
@@ -11,7 +12,7 @@ export class AthletesController {
         page = 1,
         limit = 10,
         search = "",
-        status = "Activo", // Por defecto solo deportistas activas
+        status, // Sin filtro por defecto - mostrar todos
         categoria,
         estadoInscripcion,
       } = req.query;
@@ -75,7 +76,6 @@ export class AthletesController {
 
   createAthlete = async (req, res) => {
     try {
-      console.log("📥 Datos recibidos en createAthlete:", req.body);
 
       const result = await this.athletesService.createAthlete(req.body);
 
@@ -139,10 +139,6 @@ export class AthletesController {
         });
       }
 
-      console.log("📥 Datos recibidos en updateAthlete:", {
-        id,
-        data: req.body,
-      });
 
       const result = await this.athletesService.updateAthlete(id, req.body);
 
@@ -393,6 +389,35 @@ export class AthletesController {
       });
     }
   };
+
+  /**
+   * GET /api/athletes/report
+   * Obtener todos los deportistas para reporte (SIN PAGINACIÓN)
+   */
+  getAllAthletesForReport = async (req, res) => {
+    try {
+      const { search = "", status, minAge, maxAge, category } = req.query;
+
+      const result = await athletesService.findAllForReport({
+        search,
+        status,
+        minAge: minAge ? parseInt(minAge) : undefined,
+        maxAge: maxAge ? parseInt(maxAge) : undefined,
+        category,
+      });
+
+      return res.json(result);
+    } catch (error) {
+      console.error("Controller error - getAllAthletesForReport:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener deportistas para reporte",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 }
 
 export default new AthletesController();
+
+

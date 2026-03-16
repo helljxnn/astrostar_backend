@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 export const teamsValidators = {
   // Validaciones para crear equipo

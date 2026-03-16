@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export class AuthRepository {
   /**
@@ -39,7 +39,7 @@ export class AuthRepository {
               status: true,
               guardianId: true,
               relationship: true,
-              otherRelationship: true,
+
               currentInscriptionStatus: true,
               createdAt: true,
               updatedAt: true,
@@ -239,7 +239,7 @@ export class AuthRepository {
               status: true,
               guardianId: true,
               relationship: true,
-              otherRelationship: true,
+
               currentInscriptionStatus: true,
               createdAt: true,
               updatedAt: true,
@@ -370,7 +370,7 @@ export class AuthRepository {
               status: true,
               guardianId: true,
               relationship: true,
-              otherRelationship: true,
+
               currentInscriptionStatus: true,
               createdAt: true,
               updatedAt: true,
@@ -423,7 +423,7 @@ export class AuthRepository {
               status: true,
               guardianId: true,
               relationship: true,
-              otherRelationship: true,
+
               currentInscriptionStatus: true,
               createdAt: true,
               updatedAt: true,
@@ -530,3 +530,4 @@ export class AuthRepository {
     }
   }
 }
+

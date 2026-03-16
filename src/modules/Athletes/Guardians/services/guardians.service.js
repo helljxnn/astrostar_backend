@@ -1,4 +1,4 @@
-import { GuardiansRepository } from "../repository/guardians.repository.js";
+﻿import { GuardiansRepository } from "../repository/guardians.repository.js";
 
 export class GuardiansService {
   constructor() {
@@ -116,13 +116,14 @@ export class GuardiansService {
         };
       }
 
-      // Verificar si tiene deportistas asociados
-      const hasAthletes = await this.guardiansRepository.hasAssociatedAthletes(id);
-      if (hasAthletes) {
+      // Verificar si tiene deportistas MENORES DE EDAD asociados
+      const minorAthletes = await this.guardiansRepository.getMinorAthletes(id);
+      if (minorAthletes.length > 0) {
+        const names = minorAthletes.map(a => `${a.user.firstName} ${a.user.lastName}`).join(', ');
         return {
           success: false,
           statusCode: 400,
-          message: `No se puede eliminar el acudiente "${guardianToDelete.nombreCompleto}" porque tiene deportistas asociados.`,
+          message: `No se puede eliminar el acudiente "${guardianToDelete.nombreCompleto}" porque está asignado a deportistas menores de edad: ${names}`,
         };
       }
 
@@ -199,3 +200,4 @@ export class GuardiansService {
     }
   }
 }
+

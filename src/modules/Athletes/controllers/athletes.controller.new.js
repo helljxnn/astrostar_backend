@@ -1,4 +1,4 @@
-import { athletesService } from "../services/athletes.service.new.js";
+﻿import { athletesService } from "../services/athletes.service.new.js";
 
 // Validación simple sin dependencias externas
 const validateUpdate = (data) => {
@@ -132,3 +132,4 @@ export const athletesController = {
     }
   },
 };
+

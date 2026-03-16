@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Template de correo de bienvenida para donantes
  * Con gradiente azul-morado según la imagen de referencia
  */
@@ -214,3 +214,4 @@ Este es un mensaje automático del sistema AstroStar.
 © ${new Date().getFullYear()} Fundación Manuela Vanegas
   `;
 }
+

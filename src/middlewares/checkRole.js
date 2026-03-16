@@ -1,4 +1,5 @@
-import prisma from '../config/database.js';
+﻿import prisma from '../config/database.js';
+import { hasNormalizedPermission, resolveModuleKey } from '../modules/Roles/config/permissions.config.js';
 
 // Middleware para verificar roles específicos
 export const checkRole = (requiredRoles) => {
@@ -106,13 +107,13 @@ export const checkPermission = (module, action) => {
 
       // Verificar permisos específicos
       const permissions = userRole.permissions || {};
-      const modulePermissions = permissions[module];
+      const resolvedModule = resolveModuleKey(module, permissions);
 
-      if (!modulePermissions || !modulePermissions[action]) {
+      if (!hasNormalizedPermission(permissions, resolvedModule, action)) {
         return res.status(403).json({
           success: false,
-          message: `Acceso denegado. No tiene permisos para ${action} en ${module}`,
-          required: { module, action },
+          message: `Acceso denegado. No tiene permisos para ${action} en ${resolvedModule}`,
+          required: { module: resolvedModule, action },
           current: permissions
         });
       }
@@ -131,13 +132,14 @@ export const checkPermission = (module, action) => {
 };
 
 // Middleware para verificar si el usuario puede gestionar roles
-export const canManageRoles = checkPermission('Roles', 'Update');
+export const canManageRoles = checkPermission('roles', 'Editar');
 
 // Middleware para verificar si el usuario puede crear roles
-export const canCreateRoles = checkPermission('Roles', 'Create');
+export const canCreateRoles = checkPermission('roles', 'Crear');
 
 // Middleware para verificar si el usuario puede eliminar roles
-export const canDeleteRoles = checkPermission('Roles', 'Delete');
+export const canDeleteRoles = checkPermission('roles', 'Eliminar');
 
 // Middleware para verificar si el usuario puede ver roles
-export const canReadRoles = checkPermission('Roles', 'Read');
+export const canReadRoles = checkPermission('roles', 'Ver');
+

@@ -1,4 +1,4 @@
-import { EmployeeRepository } from "../repository/employees.repository.js";
+﻿import { EmployeeRepository } from "../repository/employees.repository.js";
 import cloudinary from "../../../../services/shared/cloudinary.js";
 
 const ALLOWED_MIME_TYPES = ["image/png", "image/jpeg", "image/jpg"];
@@ -67,10 +67,6 @@ export class SignatureService {
           {
             folder: "astrostar/signatures",
             resource_type: "image",
-            transformation: [
-              { width: 500, height: 200, crop: "limit" }, // Limit size
-              { quality: "auto:good" }, // Optimize quality
-            ],
           },
           (error, uploaded) => {
             if (error) return reject(error);
@@ -163,3 +159,4 @@ export class SignatureService {
     }
   }
 }
+

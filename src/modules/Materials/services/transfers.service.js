@@ -1,4 +1,4 @@
-import materialsRepository from "../repository/materials.repository.js";
+﻿import materialsRepository from "../repository/materials.repository.js";
 
 class TransfersService {
   /**
@@ -150,3 +150,4 @@ class TransfersService {
 }
 
 export default new TransfersService();
+

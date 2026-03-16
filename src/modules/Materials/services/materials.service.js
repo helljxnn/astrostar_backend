@@ -1,4 +1,4 @@
-import materialsRepository from "../repository/materials.repository.js";
+﻿import materialsRepository from "../repository/materials.repository.js";
 import categoriesRepository from "../repository/categories.repository.js";
 
 class MaterialsService {
@@ -540,6 +540,37 @@ class MaterialsService {
       await prismaInstance.$disconnect();
     }
   }
+
+  /**
+   * Obtener todos los materiales para reporte (SIN PAGINACIÓN)
+   */
+  async getAllForReport({
+    search = "",
+    status,
+    categoriaId,
+    stockMin,
+    stockMax,
+  }) {
+    try {
+      const materials = await materialsRepository.findAllForReport({
+        search,
+        status,
+        categoriaId,
+        stockMin,
+        stockMax,
+      });
+
+      return {
+        success: true,
+        data: materials,
+        message: `Se encontraron ${materials.length} materiales para el reporte.`,
+      };
+    } catch (error) {
+      console.error("Error en getAllForReport:", error);
+      throw error;
+    }
+  }
 }
 
 export default new MaterialsService();
+

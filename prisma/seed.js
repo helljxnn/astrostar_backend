@@ -1,370 +1,357 @@
 /**
- * SEED DE DATOS MAESTROS DEL SISTEMA ASTROSTAR
- *
- * Este archivo carga los datos esenciales que el sistema necesita para funcionar:
- * - Tipos de documento (obligatorios para usuarios)
- * - Rol de Administrador (crítico para acceso inicial)
- * - Usuario Administrador por defecto
- *
- * Estos datos son considerados "maestros" y no deben ser modificados por usuarios finales.
- * Se ejecuta automáticamente en la inicialización de la base de datos.
+ * Master seed for client delivery.
+ * This file is idempotent and only creates base data required by the system.
  */
 
-import { PrismaClient } from "../generated/prisma/index.js";
 import bcrypt from "bcrypt";
+import { PrismaClient } from "../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  // Seed document types
-  await prisma.documentType.createMany({
-    data: [
-      { name: 'Cédula de Ciudadanía', description: 'Documento de identidad para ciudadanos colombianos' },
-      { name: 'Tarjeta de Identidad', description: 'Documento de identidad para menores de edad' },
-      { name: 'Permiso de Permanencia', description: 'Documento para extranjeros con permiso de permanencia' },
-      { name: 'Tarjeta de Extranjería', description: 'Documento de identidad para extranjeros' },
-      { name: 'Cédula de Extranjería', description: 'Documento de identidad para extranjeros residentes' },
-      { name: 'Número de Identificación Tributaria', description: 'Documento de identificación tributaria' },
-      { name: 'Pasaporte', description: 'Documento de identidad internacional' },
-      { name: 'Número de Identificación Extranjero', description: 'Documento de identificación para extranjeros' },
-    ],
-    skipDuplicates: true,
-  });
+const MODULES = [
+  "dashboard",
+  "users",
+  "roles",
+  "employees",
+  "employeesSchedule",
+  "appointmentManagement",
+  "sportsCategory",
+  "athletesSection",
+  "athletesAssistance",
+  "enrollments",
+  "paymentsManagement",
+  "myPayments",
+  "eventsManagement",
+  "temporaryWorkers",
+  "temporaryTeams",
+  "donorsSponsors",
+  "donationsManagement",
+  "materials",
+  "materialCategories",
+  "materialsRegistry",
+  "providers",
+  "purchasesManagement",
+];
 
-  // ROL DE ADMINISTRADOR (CRÍTICO PARA EL SISTEMA)
-  console.log("👑 Configurando rol de Administrador...");
-  const adminRole = await prisma.role.upsert({
-    where: { name: "Administrador" },
-    update: {}, // No actualizar si ya existe
-    create: {
-      name: "Administrador",
-      description:
-        "Acceso completo al sistema con todos los permisos. Este rol no puede ser eliminado.",
-      permissions: {
-        // Permisos completos para todos los módulos
-        dashboard: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        users: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        roles: { Ver: true, Crear: true, Editar: true, Eliminar: true },
-        materials: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-        },
-        materialCategories: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-        },
-        materialsRegistry: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        employees: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
-        employeesSchedule: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        appointmentManagement: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        sportsCategory: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        athletesSection: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        athletesAssistance: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        donorsSponsors: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        donationsManagement: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        eventsManagement: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        temporaryWorkers: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        temporaryTeams: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-        providers: { Ver: true, Crear: true, Editar: true, Eliminar: true, Listar: true },
-        purchasesManagement: {
-          Ver: true,
-          Crear: true,
-          Editar: true,
-          Eliminar: true,
-          Listar: true,
-        },
-      },
-    },
-  });
+const ACTIONS = ["Ver", "Crear", "Editar", "Eliminar"];
 
-  console.log(`   ✓ ${adminRole.name} configurado correctamente\n`);
+const MODULE_ALLOWED_ACTIONS = {
+  dashboard: ["Ver"],
+  users: ["Ver"],
+  roles: ["Crear", "Ver", "Editar", "Eliminar"],
+  employees: ["Crear", "Ver", "Editar", "Eliminar"],
+  employeesSchedule: ["Crear", "Ver", "Editar", "Eliminar"],
+};
 
-  // USUARIO ADMINISTRADOR POR DEFECTO
-  console.log("👤 Configurando usuario administrador por defecto...");
+const DOCUMENT_TYPES = [
+  {
+    name: "Cedula de Ciudadania",
+    description: "Documento de identidad para ciudadanos colombianos",
+  },
+  {
+    name: "Tarjeta de Identidad",
+    description: "Documento de identidad para menores de edad",
+  },
+  {
+    name: "Permiso de Permanencia",
+    description: "Documento para extranjeros con permiso de permanencia",
+  },
+  {
+    name: "Tarjeta de Extranjeria",
+    description: "Documento de identidad para extranjeros",
+  },
+  {
+    name: "Cedula de Extranjeria",
+    description: "Documento de identidad para extranjeros residentes",
+  },
+  {
+    name: "Numero de Identificacion Tributaria",
+    description: "Documento de identificacion tributaria",
+  },
+  {
+    name: "Pasaporte",
+    description: "Documento de identidad internacional",
+  },
+  {
+    name: "Numero de Identificacion Extranjero",
+    description: "Documento de identificacion para extranjeros",
+  },
+];
 
-  // Verificar si ya existe el usuario
-  const existingAdmin = await prisma.user.findUnique({
-    where: { email: "astrostar.java@gmail.com" },
-  });
+const EVENT_TYPES = [
+  {
+    name: "Clausura",
+    description: "Evento de cierre o finalizacion",
+  },
+  {
+    name: "Taller",
+    description: "Actividad formativa practica",
+  },
+  {
+    name: "Torneo",
+    description: "Competencia deportiva con inscripcion por equipos",
+  },
+  {
+    name: "Festival",
+    description: "Evento festivo con multiples actividades",
+  },
+];
 
-  if (!existingAdmin) {
-    // Obtener el tipo de documento "Cédula de Ciudadanía"
-    const documentType = await prisma.documentType.findFirst({
-      where: { name: "Cédula de Ciudadanía" },
-    });
+const BASE_ROLES = [
+  {
+    name: "Administrador",
+    description:
+      "Tiene acceso completo a todas las funcionalidades del aplicativo. Este rol es asignado a las personas encargadas de la administración de la fundación y permite gestionar todos los módulos del sistema, así como crear, editar, eliminar y ver detalle de la información registrada.",
+    permissionFactory: buildAdminPermissions,
+  },
+  {
+    name: "Entrenador",
+    description:
+      "Permite ver detalle y registrar novedad en el módulo de horario de empleado. También puede ver detalles en las categorías deportivas y en los deportistas. En el módulo de asistencia puede crear, editar y ver el historial de asistencia de las deportistas. Además, permite ver personas en temporales y ver detalle en los equipos.",
+    permissionFactory: () =>
+      buildRolePermissions([
+        ["dashboard", ["Ver"]],
+        ["employeesSchedule", ["Ver", "Editar"]],
+        ["sportsCategory", ["Ver"]],
+        ["athletesSection", ["Ver"]],
+        ["athletesAssistance", ["Crear", "Ver", "Editar"]],
+        ["temporaryWorkers", ["Ver"]],
+        ["temporaryTeams", ["Ver"]],
+      ]),
+  },
+  {
+    name: "Profesional de la Salud",
+    description:
+      "Permite crear, ver detalle, editar, eliminar y registrar novedad en el módulo de horario de empleado. En el módulo de citas puede crear, ver detalle, editar, completar y cancelar citas. También permite ver detalles en las categorías deportivas y ver detalle en los deportistas. Este rol corresponde a profesionales como nutricionista, psicóloga y fisioterapeuta encargados del acompañamiento de las deportistas.",
+    permissionFactory: () =>
+      buildRolePermissions([
+        ["dashboard", ["Ver"]],
+        ["employeesSchedule", ["Crear", "Ver", "Editar", "Eliminar"]],
+        ["appointmentManagement", ["Crear", "Ver", "Editar", "Eliminar"]],
+        ["sportsCategory", ["Ver"]],
+        ["athletesSection", ["Ver"]],
+      ]),
+  },
+  {
+    name: "Deportista",
+    description:
+      "Permite ver detalles y cancelar citas programadas. En el módulo de pagos permite ver detalle de los pagos realizados y subir comprobantes de pagos dentro del aplicativo.",
+    permissionFactory: () =>
+      buildRolePermissions([
+        ["dashboard", ["Ver"]],
+        ["appointmentManagement", ["Ver", "Editar"]],
+        ["myPayments", ["Ver", "Crear", "Editar"]],
+      ]),
+  },
+];
 
-    // Hash de la contraseña
-    const hashedPassword = await bcrypt.hash("Admin123*", 10);
+function normalizeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
 
-    await prisma.user.create({
-      data: {
-        firstName: "Administrador",
-        middleName: "del",
-        lastName: "Sistema",
-        secondLastName: "Astrostar",
-        identification: "1000000000",
-        documentTypeId: documentType.id,
-        email: "astrostar.java@gmail.com",
-        passwordHash: hashedPassword,
-        phoneNumber: "+57 300 0000000",
-        address: "Sede Principal Astrostar",
-        birthDate: new Date("1990-01-01"),
-        age: 34,
-        roleId: adminRole.id,
-        status: "Active",
-      },
-    });
-
-    console.log("   ✓ Usuario administrador creado exitosamente");
-    console.log("   📧 Email: astrostar.java@gmail.com");
-    console.log("   🔑 Contraseña: Admin123*\n");
-  } else {
-    console.log("   ℹ️  Usuario administrador ya existe\n");
+function createPermissionSkeleton() {
+  const permissions = {};
+  for (const moduleKey of MODULES) {
+    permissions[moduleKey] = {
+      Ver: false,
+      Crear: false,
+      Editar: false,
+      Eliminar: false,
+    };
   }
+  return permissions;
+}
 
-  // USUARIO PARA MOBILE
-  console.log("📱 Configurando usuario para aplicación móvil...");
+function getAllowedActions(moduleKey) {
+  return MODULE_ALLOWED_ACTIONS[moduleKey] || ACTIONS;
+}
 
-  const existingMobileUser = await prisma.user.findUnique({
-    where: { email: "astrostarmovil@gmail.com" },
-  });
-
-  if (!existingMobileUser) {
-    const documentType = await prisma.documentType.findFirst({
-      where: { name: "Cédula de Ciudadanía" },
-    });
-
-    const hashedPasswordMobile = await bcrypt.hash("Astrostar123!", 10);
-
-    await prisma.user.create({
-      data: {
-        firstName: "Usuario",
-        middleName: "Móvil",
-        lastName: "Astrostar",
-        secondLastName: "App",
-        identification: "1000000001",
-        documentTypeId: documentType.id,
-        email: "astrostarmovil@gmail.com",
-        passwordHash: hashedPasswordMobile,
-        phoneNumber: "+57 300 0000001",
-        address: "App Móvil Astrostar",
-        birthDate: new Date("1995-01-01"),
-        age: 29,
-        roleId: adminRole.id,
-        status: "Active",
-      },
-    });
-
-    console.log("   ✓ Usuario móvil creado exitosamente");
-    console.log("   📧 Email: astrostarmovil@gmail.com");
-    console.log("   🔑 Contraseña: Astrostar123!\n");
-  } else {
-    console.log("   ℹ️  Usuario móvil ya existe\n");
+function setModuleActions(permissions, moduleKey, actions = []) {
+  if (!permissions[moduleKey]) return;
+  const allowed = new Set(getAllowedActions(moduleKey));
+  const requested = new Set(actions);
+  for (const action of ACTIONS) {
+    permissions[moduleKey][action] = allowed.has(action) && requested.has(action);
   }
+}
 
-  // CATEGORÍAS DE EVENTOS
-  console.log("🏆 Configurando categorías de eventos...");
-  await prisma.eventCategory.createMany({
-    data: [
-      {
-        name: "Deportivo",
-        description:
-          "Eventos relacionados con actividades deportivas y competencias",
-      },
-      {
-        name: "Cultural",
-        description: "Eventos culturales y artísticos",
-      },
-      {
-        name: "Recreativo",
-        description: "Actividades recreativas y de esparcimiento",
-      },
-      {
-        name: "Formativo",
-        description: "Talleres, capacitaciones y eventos educativos",
-      },
-      {
-        name: "Social",
-        description: "Eventos sociales y comunitarios",
-      },
-    ],
-    skipDuplicates: true,
+function buildRolePermissions(moduleActions = []) {
+  const permissions = createPermissionSkeleton();
+  for (const [moduleKey, actions] of moduleActions) {
+    setModuleActions(permissions, moduleKey, actions);
+  }
+  return permissions;
+}
+
+function buildAdminPermissions() {
+  const permissions = createPermissionSkeleton();
+  for (const moduleKey of MODULES) {
+    setModuleActions(permissions, moduleKey, getAllowedActions(moduleKey));
+  }
+  return permissions;
+}
+
+async function upsertDocumentTypes() {
+  const existing = await prisma.documentType.findMany({
+    select: { id: true, name: true },
   });
-  console.log("   ✓ Categorías de eventos configuradas\n");
 
-  // TIPOS DE EVENTOS
-  console.log("📅 Configurando tipos de eventos...");
+  for (const item of DOCUMENT_TYPES) {
+    const match = existing.find(
+      (row) => normalizeText(row.name) === normalizeText(item.name),
+    );
 
-  const eventTypes = [
-    {
-      name: "Festival",
-      description:
-        "Evento festivo con múltiples actividades - Inscripción: Equipos",
-    },
-    {
-      name: "Torneo",
-      description:
-        "Competencia deportiva con múltiples participantes - Inscripción: Equipos",
-    },
-    {
-      name: "Clausura",
-      description: "Evento de cierre o finalización - Inscripción: Deportistas",
-    },
-    {
-      name: "Taller",
-      description: "Actividad formativa práctica - Inscripción: Deportistas",
-    },
-  ];
-
-  for (const eventType of eventTypes) {
-    try {
-      await prisma.serviceType.create({
-        data: eventType,
+    if (match) {
+      await prisma.documentType.update({
+        where: { id: match.id },
+        data: {
+          name: item.name,
+          description: item.description,
+        },
       });
-    } catch (error) {
-      // Si ya existe, actualizar
-      if (error.code === "P2002") {
-        await prisma.serviceType.updateMany({
-          where: { name: eventType.name },
-          data: { description: eventType.description },
-        });
-      } else {
-        throw error;
-      }
+      continue;
     }
+
+    await prisma.documentType.create({
+      data: item,
+    });
+  }
+}
+
+async function upsertRoles() {
+  for (const roleConfig of BASE_ROLES) {
+    const permissions = roleConfig.permissionFactory();
+    const existing = await prisma.role.findFirst({
+      where: { name: { equals: roleConfig.name, mode: "insensitive" } },
+      select: { id: true, name: true },
+    });
+
+    if (existing) {
+      await prisma.role.update({
+        where: { id: existing.id },
+        data: {
+          name: roleConfig.name,
+          description: roleConfig.description,
+          permissions,
+          status: "Active",
+        },
+      });
+      continue;
+    }
+
+    await prisma.role.create({
+      data: {
+        name: roleConfig.name,
+        description: roleConfig.description,
+        permissions,
+        status: "Active",
+      },
+    });
+  }
+}
+
+async function upsertEventTypes() {
+  for (const eventType of EVENT_TYPES) {
+    await prisma.serviceType.upsert({
+      where: { name: eventType.name },
+      update: { description: eventType.description },
+      create: eventType,
+    });
+  }
+}
+
+async function upsertAdminUser() {
+  const adminRole = await prisma.role.findFirst({
+    where: { name: { equals: "Administrador", mode: "insensitive" } },
+  });
+  if (!adminRole) {
+    throw new Error("No se pudo resolver el rol Administrador en el seed.");
   }
 
-  console.log("   ✓ Tipos de eventos configurados\n");
+  const defaultDocumentType =
+    (await prisma.documentType.findFirst({
+      where: { name: { equals: "Cedula de Ciudadania", mode: "insensitive" } },
+    })) || (await prisma.documentType.findFirst());
 
-  console.log("DEBUG: Antes de categorías deportivas");
+  if (!defaultDocumentType) {
+    throw new Error("No hay tipos de documento para crear el admin.");
+  }
 
-  // CATEGORÍAS DEPORTIVAS
-  console.log("🏅 Configurando categorías deportivas...");
-  await prisma.sportsCategory.createMany({
-    data: [
-      {
-        nombre: "Infantil",
-        edadMinima: 10,
-        edadMaxima: 12,
-        descripcion: "Categoría infantil para niños de 10 a 12 años",
-        estado: "Activo",
-        publicar: true,
-      },
-      {
-        nombre: "PreJuvenil",
-        edadMinima: 13,
-        edadMaxima: 15,
-        descripcion: "Categoría prejuvenil para adolescentes de 13 a 15 años",
-        estado: "Activo",
-        publicar: true,
-      },
-      {
-        nombre: "Juvenil",
-        edadMinima: 16,
-        edadMaxima: 18,
-        descripcion: "Categoría juvenil para jóvenes de 16 a 18 años",
-        estado: "Activo",
-        publicar: true,
-      },
-    ],
-    skipDuplicates: true,
+  const adminEmail = process.env.SEED_ADMIN_EMAIL || "astrostar.java@gmail.com";
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD || "Admin123*";
+  const adminHash = await bcrypt.hash(adminPassword, 10);
+
+  const existingAdmin = await prisma.user.findUnique({
+    where: { email: adminEmail },
+    select: { id: true },
   });
-  console.log("   ✓ Categorías deportivas configuradas\n");
 
-  console.log("🎉 Seed completado exitosamente!");
-  console.log("📊 Resumen:");
-  console.log("   • Tipos de documento: Configurados");
-  console.log("   • Rol Administrador: Listo para usar");
-  console.log("   • Usuario Administrador: Creado");
-  console.log("   • Categorías de eventos: Configuradas");
-  console.log("   • Tipos de eventos: Configurados");
+  if (existingAdmin) {
+    await prisma.user.update({
+      where: { id: existingAdmin.id },
+      data: {
+        roleId: adminRole.id,
+        status: "Active",
+      },
+    });
+    return { email: adminEmail, password: adminPassword, created: false };
+  }
+
+  await prisma.user.create({
+    data: {
+      firstName: "Administrador",
+      middleName: "del",
+      lastName: "Sistema",
+      secondLastName: "Astrostar",
+      identification: process.env.SEED_ADMIN_IDENTIFICATION || "1000000000",
+      documentTypeId: defaultDocumentType.id,
+      email: adminEmail,
+      passwordHash: adminHash,
+      phoneNumber: process.env.SEED_ADMIN_PHONE || "+57 300 0000000",
+      address: process.env.SEED_ADMIN_ADDRESS || "Sede principal Astrostar",
+      birthDate: new Date("1990-01-01"),
+      age: 36,
+      roleId: adminRole.id,
+      status: "Active",
+    },
+  });
+
+  return { email: adminEmail, password: adminPassword, created: true };
+}
+
+async function main() {
+  console.log("Starting master seed...");
+
+  await upsertDocumentTypes();
+  console.log("Document types ready.");
+
+  await upsertRoles();
+  console.log("Base roles ready.");
+
+  await upsertEventTypes();
+  console.log("Event types ready (Clausura, Taller, Torneo, Festival).");
+
+  const adminInfo = await upsertAdminUser();
   console.log(
-    "   • Categorías deportivas: Configuradas (Infantil, PreJuvenil, Juvenil)",
+    adminInfo.created
+      ? `Admin user created: ${adminInfo.email}`
+      : `Admin user already exists: ${adminInfo.email}`,
   );
-  console.log("\n💡 Puedes iniciar sesión con:");
-  console.log("   📧 Email: astrostar.java@gmail.com");
-  console.log("   🔑 Contraseña: Admin123*");
+
+  console.log("Master seed completed successfully.");
+  console.log(`Login email: ${adminInfo.email}`);
+  console.log(`Login password: ${adminInfo.password}`);
 }
 
 main()
-  .catch((e) => {
-    console.error('❌ Error seeding database:', e);
+  .catch((error) => {
+    console.error("Seed failed:", error);
     process.exit(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
-
-
-
-

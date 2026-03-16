@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export class UsersRepository {
   /**
@@ -319,6 +319,93 @@ export class UsersRepository {
     }
     return await prisma.user.findFirst({ where });
   }
+
+  /**
+   * Obtener todos los usuarios para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({
+    search = "",
+    status,
+    roleId,
+    userType,
+  }) {
+    const where = {
+      AND: [
+        search
+          ? {
+              OR: [
+                { firstName: { contains: search, mode: "insensitive" } },
+                { lastName: { contains: search, mode: "insensitive" } },
+                { email: { contains: search, mode: "insensitive" } },
+                { identification: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {},
+        status ? { status } : {},
+        roleId ? { roleId } : {},
+        userType ? this.getUserTypeFilter(userType) : {},
+      ].filter((condition) => Object.keys(condition).length > 0),
+    };
+
+    const users = await prisma.user.findMany({
+      where,
+      include: {
+        role: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        documentType: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        athlete: {
+          select: {
+            id: true,
+            status: true,
+            currentInscriptionStatus: true,
+            guardian: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        },
+        employee: {
+          select: {
+            id: true,
+            status: true,
+            employeePermissions: {
+              include: {
+                permission: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return {
+      users,
+    };
+  }
 }
 
 export default new UsersRepository();
+

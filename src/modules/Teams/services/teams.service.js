@@ -1,4 +1,4 @@
-import { TeamsRepository } from "../repository/teams.repository.js";
+﻿import { TeamsRepository } from "../repository/teams.repository.js";
 
 export class TeamsService {
   constructor() {
@@ -350,4 +350,29 @@ export class TeamsService {
       throw error;
     }
   }
+
+  /**
+   * Obtener todos los equipos para reporte (SIN PAGINACIÓN)
+   */
+  async getAllTeamsForReport({
+    search = "",
+    status,
+    teamType,
+  }) {
+    try {
+      const result = await this.teamsRepository.findAllForReport({
+        search,
+        status,
+        teamType,
+      });
+
+      return {
+        success: true,
+        data: result.teams,
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 }
+

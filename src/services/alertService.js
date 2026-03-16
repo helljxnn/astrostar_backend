@@ -1,4 +1,4 @@
-import logger from "../config/logger.js";
+﻿import logger from "../config/logger.js";
 import emailService from "./emailService.js";
 
 /**
@@ -218,3 +218,4 @@ class AlertService {
 }
 
 export default new AlertService();
+

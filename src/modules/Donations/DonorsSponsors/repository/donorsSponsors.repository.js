@@ -196,6 +196,9 @@ export class DonorsSponsorsRepository {
 
     if (status) {
       where.status = this.mapStatusToDb(status);
+    } else {
+      // Si no se especifica un estado, excluir "Por confirmar" (Pending)
+      where.status = { not: "Pending" };
     }
 
     if (tipo) {

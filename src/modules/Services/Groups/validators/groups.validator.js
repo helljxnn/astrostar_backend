@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -126,3 +126,4 @@ export const groupValidators = {
       .withMessage("El ID del grupo debe ser un número entero válido."),
   ],
 };
+

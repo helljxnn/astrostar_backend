@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export const preRegistrationsRepository = {
   async create(data) {
@@ -98,7 +98,7 @@ export const preRegistrationsRepository = {
           { identification: identification }
         ],
         status: {
-          not: 'Rejected' // Permitir solo si no está rechazada
+          not: 'Rejected'
         }
       },
       select: {
@@ -109,4 +109,46 @@ export const preRegistrationsRepository = {
       }
     });
   },
+
+  /**
+   * Obtener todas las inscripciones para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({ status, search }) {
+    const where = {};
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { identification: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    const data = await prisma.preRegistration.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        firstName: true,
+        middleName: true,
+        lastName: true,
+        secondLastName: true,
+        identification: true,
+        birthDate: true,
+        phoneNumber: true,
+        email: true,
+        status: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return data;
+  },
 };
+

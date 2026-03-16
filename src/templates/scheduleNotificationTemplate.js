@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Template de correo para notificaciones de horarios
  */
 
@@ -112,3 +112,4 @@ Este correo fue enviado al email registrado en tu perfil.
 © ${new Date().getFullYear()} AstroStar
   `;
 }
+

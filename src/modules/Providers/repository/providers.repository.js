@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export class ProvidersRepository {
   async getDocumentTypes() {
@@ -247,6 +247,14 @@ export class ProvidersRepository {
         return false;
       }
 
+      // Verificar si el proveedor tiene ingresos asociados
+      const hasIngresos = await this.checkHasIngresos(id);
+      if (hasIngresos) {
+        throw new Error(
+          `No se puede eliminar el proveedor "${provider.businessName}" porque está asociado a ingresos.`
+        );
+      }
+
       await prisma.provider.delete({
         where: { id: parseInt(id) },
       });
@@ -256,6 +264,22 @@ export class ProvidersRepository {
       if (error.code === "P2025") {
         return false;
       }
+      throw error;
+    }
+  }
+
+  async checkHasIngresos(providerId) {
+    try {
+      // Verificar si el proveedor tiene movimientos de materiales (entradas/ingresos) asociados
+      const count = await prisma.materialMovement.count({
+        where: { 
+          proveedorId: parseInt(providerId),
+          tipoMovimiento: 'Entrada' // Entradas = Ingresos de materiales
+        },
+      });
+      return count > 0;
+    } catch (error) {
+      console.error("Repository error - checkHasIngresos:", error);
       throw error;
     }
   }
@@ -428,6 +452,48 @@ export class ProvidersRepository {
     };
     return documentTypeMap[documentTypeName] || null;
   }
+
+  /**
+   * Obtener todos los proveedores para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({ search = "", status, entityType }) {
+    const where = {};
+
+    // Filtro de búsqueda
+    if (search && search.trim()) {
+      where.OR = [
+        { businessName: { contains: search, mode: "insensitive" } },
+        { nit: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+        { contactName: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    // Filtro de estado
+    if (status) {
+      where.status = status;
+    }
+
+    // Filtro de tipo de entidad
+    if (entityType) {
+      where.entityType = entityType;
+    }
+
+    const providers = await prisma.provider.findMany({
+      where,
+      include: {
+        documentType: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return providers.map((provider) => this.transformToFrontend(provider));
+  }
 }
 
 /**
@@ -447,3 +513,4 @@ export const getDocumentTypeName = async (documentTypeId) => {
 };
 
 export default new ProvidersRepository();
+

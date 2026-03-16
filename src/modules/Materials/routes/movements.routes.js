@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import movementsController from '../controllers/movements.controller.js';
 import { authenticateToken } from '../../../middlewares/auth.js';
 import { checkPermissions } from '../../../middlewares/checkPermissions.js';
@@ -49,6 +49,17 @@ router.get(
 );
 
 /**
+ * GET /api/materials/material-movements/report
+ * Obtener todos los movimientos para reporte (SIN PAGINACIÓN)
+ * Permiso: materialsRegistry.Ver
+ */
+router.get(
+  '/report',
+  checkPermissions('materialsRegistry', 'Ver'),
+  movementsController.getAllForReport
+);
+
+/**
  * GET /api/materials/material-movements/history/:materialId
  * Obtener historial de movimientos de un material
  * Permiso: materialsRegistry.Ver
@@ -84,11 +95,11 @@ router.get(
 /**
  * POST /api/materials/material-movements
  * Registrar nuevo movimiento (Entrada o Salida)
- * Permiso: materialsRegistry.Crear
+ * Permiso: materialsRegistry.Editar
  */
 router.post(
   '/',
-  checkPermissions('materialsRegistry', 'Crear'),
+  checkPermissions('materialsRegistry', 'Editar'),
   movementsController.create
 );
 
@@ -106,12 +117,13 @@ router.put(
 /**
  * DELETE /api/materials/material-movements/:id
  * Eliminar movimiento (solo permitido para Entradas)
- * Permiso: materialsRegistry.Eliminar
+ * Permiso: materialsRegistry.Editar
  */
 router.delete(
   '/:id',
-  checkPermissions('materialsRegistry', 'Eliminar'),
+  checkPermissions('materialsRegistry', 'Editar'),
   movementsController.delete
 );
 
 export default router;
+

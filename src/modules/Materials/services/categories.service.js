@@ -1,4 +1,4 @@
-import categoriesRepository from '../repository/categories.repository.js';
+﻿import categoriesRepository from '../repository/categories.repository.js';
 
 class CategoriesService {
   /**
@@ -219,6 +219,27 @@ class CategoriesService {
       throw new Error('El nombre no puede exceder 100 caracteres');
     }
   }
+
+  /**
+   * Obtener todas las categorías para reporte (SIN PAGINACIÓN)
+   */
+  async getAllForReport({ search = '', estado = null }) {
+    try {
+      const result = await categoriesRepository.findAllForReport({
+        search: search.toString().trim(),
+        estado,
+      });
+
+      return {
+        success: true,
+        data: result.categories,
+      };
+    } catch (error) {
+      console.error('Service error - getAllForReport:', error);
+      throw error;
+    }
+  }
 }
 
 export default new CategoriesService();
+

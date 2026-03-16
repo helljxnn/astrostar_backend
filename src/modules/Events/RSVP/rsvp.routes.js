@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { RSVPController } from "./rsvp.controller.js";
 
 const router = Router();
@@ -113,3 +113,4 @@ router.get("/rsvp/status/:token", rsvpController.getInvitationStatus);
 router.post("/rsvp/resend", rsvpController.resendInvitation);
 
 export default router;
+

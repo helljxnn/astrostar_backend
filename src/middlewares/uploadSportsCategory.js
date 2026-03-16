@@ -1,4 +1,4 @@
-import multer from "multer";
+﻿import multer from "multer";
 import path from "path";
 import fs from "fs";
 
@@ -24,3 +24,4 @@ const fileFilter = (req, file, cb) => {
 };
 
 export const uploadSportsCategory = multer({ storage, fileFilter });
+

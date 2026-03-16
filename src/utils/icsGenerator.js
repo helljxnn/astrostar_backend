@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Genera un archivo iCalendar (.ics) para agregar evento al calendario
  * @param {Object} event - Datos del evento
  * @param {Object} invitation - Datos de la invitación
@@ -77,3 +77,4 @@ function escapeICSText(text) {
     .replace(/,/g, "\\,")
     .replace(/\n/g, "\\n");
 }
+

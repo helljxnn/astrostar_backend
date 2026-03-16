@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Middleware para validaciones de lógica de negocio específicas
  * Validaciones que requieren conocimiento del contexto del negocio
  */

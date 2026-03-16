@@ -1,4 +1,4 @@
-import { TeamsService } from "../services/teams.service.js";
+﻿import { TeamsService } from "../services/teams.service.js";
 
 export class TeamsController {
   constructor() {
@@ -406,6 +406,38 @@ export class TeamsController {
       res.status(500).json({
         success: false,
         message: "Error al verificar asignación a eventos",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+  /**
+   * Obtener todos los equipos para reporte (sin paginación)
+   */
+  getAllTeamsForReport = async (req, res) => {
+    try {
+      const {
+        search = "",
+        status,
+        teamType,
+      } = req.query;
+
+      const result = await this.teamsService.getAllTeamsForReport({
+        search,
+        status,
+        teamType,
+      });
+
+      res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.length} equipos para el reporte.`,
+      });
+    } catch (error) {
+      console.error("Error in getAllTeamsForReport controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener equipos para reporte",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }

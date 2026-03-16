@@ -1,4 +1,4 @@
-import { EventsService } from "./events.services.js";
+﻿import { EventsService } from "./events.services.js";
 
 /**
  * @swagger
@@ -1360,3 +1360,4 @@ export class EventsController {
     }
   };
 }
+

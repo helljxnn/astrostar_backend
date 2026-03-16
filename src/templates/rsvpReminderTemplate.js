@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Template para recordatorio de invitación pendiente
  */
 export function getRSVPReminderHTML(data) {
@@ -180,3 +180,4 @@ export function getConfirmedReminderHTML(data) {
 </html>
   `;
 }
+

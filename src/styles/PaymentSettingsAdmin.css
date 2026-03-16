@@ -1,0 +1,166 @@
+.payment-settings-admin {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.settings-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.settings-header h1 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.settings-header p {
+  color: #7f8c8d;
+  font-size: 16px;
+}
+
+.settings-form {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.settings-section {
+  margin-bottom: 30px;
+}
+
+.settings-section h3 {
+  color: #34495e;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 2px solid #ecf0f1;
+  border-radius: 8px;
+  font-size: 16px;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.form-group small {
+  display: block;
+  color: #7f8c8d;
+  margin-top: 5px;
+  font-size: 14px;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 30px;
+}
+
+.btn-save, .btn-reset {
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.btn-save {
+  background: #27ae60;
+  color: white;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #229954;
+  transform: translateY(-2px);
+}
+
+.btn-save:disabled {
+  background: #95a5a6;
+  cursor: not-allowed;
+}
+
+.btn-reset {
+  background: #95a5a6;
+  color: white;
+}
+
+.btn-reset:hover {
+  background: #7f8c8d;
+  transform: translateY(-2px);
+}
+
+.settings-info {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px;
+  border-left: 4px solid #3498db;
+}
+
+.settings-info h4 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.settings-info ul {
+  list-style: none;
+  padding: 0;
+}
+
+.settings-info li {
+  padding: 5px 0;
+  color: #5d6d7e;
+}
+
+.settings-info li:before {
+  content: "• ";
+  color: #3498db;
+  font-weight: bold;
+}
+
+.payment-settings-loading {
+  text-align: center;
+  padding: 50px;
+  color: #7f8c8d;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .payment-settings-admin {
+    padding: 15px;
+  }
+  
+  .settings-form {
+    padding: 20px;
+  }
+  
+  .settings-actions {
+    flex-direction: column;
+  }
+  
+  .btn-save, .btn-reset {
+    width: 100%;
+  }
+}

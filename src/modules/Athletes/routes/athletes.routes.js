@@ -1,9 +1,11 @@
-import express from "express";
+﻿import express from "express";
 import { AthletesController } from "../controllers/athletes.controller.js";
 import {
   athletesValidators,
   handleValidationErrors,
 } from "../validators/athletes.validator.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = express.Router();
 const athletesController = new AthletesController();
@@ -155,7 +157,11 @@ const athletesController = new AthletesController();
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/check-email", athletesController.checkEmailAvailability);
+router.get("/check-email", 
+  authenticateToken,
+  checkPermissions("athletesSection", "Editar"),
+  athletesController.checkEmailAvailability
+);
 
 /**
  * @swagger
@@ -200,7 +206,11 @@ router.get("/check-email", athletesController.checkEmailAvailability);
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/check-identification", athletesController.checkIdentificationAvailability);
+router.get("/check-identification", 
+  authenticateToken,
+  checkPermissions("athletesSection", "Editar"),
+  athletesController.checkIdentificationAvailability
+);
 
 /**
  * @swagger
@@ -235,7 +245,11 @@ router.get("/check-identification", athletesController.checkIdentificationAvaila
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/document-types", athletesController.getDocumentTypes);
+router.get("/document-types", 
+  authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
+  athletesController.getDocumentTypes
+);
 
 /**
  * @swagger
@@ -286,7 +300,11 @@ router.get("/document-types", athletesController.getDocumentTypes);
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/reference-data", athletesController.getReferenceData);
+router.get("/reference-data", 
+  authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
+  athletesController.getReferenceData
+);
 
 /**
  * @swagger
@@ -323,7 +341,54 @@ router.get("/reference-data", athletesController.getReferenceData);
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/stats", athletesController.getAthleteStats);
+router.get("/stats", 
+  authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
+  athletesController.getAthleteStats
+);
+
+/**
+ * @swagger
+ * /api/athletes/report:
+ *   get:
+ *     summary: Obtener todos los deportistas para reporte (SIN PAGINACIÓN)
+ *     tags: [Athletes]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Búsqueda por nombre, apellido, documento o correo
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *         description: Filtrar por estado
+ *       - in: query
+ *         name: minAge
+ *         schema:
+ *           type: integer
+ *         description: Edad mínima
+ *       - in: query
+ *         name: maxAge
+ *         schema:
+ *           type: integer
+ *         description: Edad máxima
+ *       - in: query
+ *         name: category
+ *         schema:
+ *           type: string
+ *         description: Filtrar por categoría deportiva
+ *     responses:
+ *       200:
+ *         description: Todos los deportistas obtenidos para reporte
+ */
+router.get("/report", 
+  authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
+  athletesController.getAllAthletesForReport
+);
 
 /**
  * @swagger
@@ -399,6 +464,8 @@ router.get("/stats", athletesController.getAthleteStats);
  */
 router.get(
   "/",
+  authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
   athletesValidators.getAll,
   handleValidationErrors,
   athletesController.getAllAthletes
@@ -441,6 +508,8 @@ router.get(
  */
 router.get(
   "/:id",
+  authenticateToken,
+  checkPermissions("athletesSection", "Ver"),
   athletesValidators.getById,
   handleValidationErrors,
   athletesController.getAthleteById
@@ -530,6 +599,8 @@ router.get(
  */
 router.post(
   "/",
+  authenticateToken,
+  checkPermissions("enrollments", "Aceptar"),
   athletesValidators.create,
   handleValidationErrors,
   athletesController.createAthlete
@@ -611,6 +682,8 @@ router.post(
  */
 router.put(
   "/:id",
+  authenticateToken,
+  checkPermissions("athletesSection", "Editar"),
   athletesValidators.update,
   handleValidationErrors,
   athletesController.updateAthlete
@@ -666,6 +739,8 @@ router.put(
  */
 router.patch(
   "/:id/status",
+  authenticateToken,
+  checkPermissions("athletesSection", "Editar"),
   athletesValidators.changeStatus,
   handleValidationErrors,
   athletesController.changeAthleteStatus
@@ -706,7 +781,11 @@ router.patch(
  *       500:
  *         description: Error interno del servidor
  */
-router.put("/:id/remove-guardian", athletesController.removeGuardian);
+router.put("/:id/remove-guardian", 
+  authenticateToken,
+  checkPermissions("athletesSection", "Acudiente"),
+  athletesController.removeGuardian
+);
 
 /**
  * @swagger
@@ -741,9 +820,12 @@ router.put("/:id/remove-guardian", athletesController.removeGuardian);
  */
 router.delete(
   "/:id",
+  authenticateToken,
+  checkPermissions("athletesSection", "Eliminar"),
   athletesValidators.delete,
   handleValidationErrors,
   athletesController.deleteAthlete
 );
 
 export default router;
+

@@ -1,4 +1,4 @@
-import movementsService from '../services/movements.service.js';
+﻿import movementsService from '../services/movements.service.js';
 
 class MovementsController {
   /**
@@ -285,6 +285,34 @@ class MovementsController {
       });
     }
   }
+
+  /**
+   * GET /api/materials/material-movements/report
+   * Obtener todos los movimientos para reporte (SIN PAGINACIÓN)
+   */
+  async getAllForReport(req, res) {
+    try {
+      const { search = "", materialId, tipoMovimiento, startDate, endDate } = req.query;
+
+      const result = await movementsService.getAllForReport({
+        search,
+        materialId: materialId ? parseInt(materialId) : undefined,
+        tipoMovimiento,
+        startDate,
+        endDate,
+      });
+
+      return res.json(result);
+    } catch (error) {
+      console.error("Controller error - getAllForReport:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener movimientos para reporte",
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  }
 }
 
 export default new MovementsController();
+

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Script de prueba para verificar el sistema de rate limiting híbrido
  * Ejecutar con: node src/scripts/test-rate-limiting.js
  */
@@ -184,3 +184,4 @@ testRateLimiting()
     console.error("\n❌ Error en el script de prueba:", error);
     process.exit(1);
   });
+

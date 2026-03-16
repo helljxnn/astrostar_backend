@@ -1,4 +1,4 @@
-import { ProvidersService } from "../services/providers.service.js";
+﻿import { ProvidersService } from "../services/providers.service.js";
 
 export class ProvidersController {
   constructor() {
@@ -75,15 +75,8 @@ export class ProvidersController {
 
   createProvider = async (req, res) => {
     try {
-      console.log("=== DATOS RECIBIDOS EN BACKEND ===");
-      console.log(JSON.stringify(req.body, null, 2));
-      console.log("tipoEntidad:", req.body.tipoEntidad);
-      console.log("razonSocial:", req.body.razonSocial);
-      console.log("===================================");
 
-      console.log("Llamando al servicio createProvider...");
       const result = await this.providersService.createProvider(req.body);
-      console.log("Servicio completado exitosamente:", result.success);
 
       if (!result.success) {
         return res.status(result.statusCode || 400).json(result);
@@ -124,11 +117,6 @@ export class ProvidersController {
         });
       }
 
-      console.log("=== DATOS PARA ACTUALIZAR PROVEEDOR ===");
-      console.log("ID:", id);
-      console.log("Estado recibido:", req.body.estado);
-      console.log("Datos completos:", JSON.stringify(req.body, null, 2));
-      console.log("=======================================");
 
       const result = await this.providersService.updateProvider(id, req.body);
 
@@ -492,6 +480,60 @@ export class ProvidersController {
       });
     }
   };
+
+  checkHasIngresos = async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+
+      if (isNaN(id)) {
+        return res.status(400).json({
+          success: false,
+          message: "ID de proveedor inválido",
+        });
+      }
+
+      const result = await this.providersService.checkHasIngresos(id);
+
+      res.json({
+        success: true,
+        hasIngresos: result.hasIngresos,
+      });
+    } catch (error) {
+      console.error("Error in checkHasIngresos controller:", error);
+      res.status(500).json({
+        success: false,
+        message: "Error al verificar ingresos asociados",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
+
+    /**
+     * GET /api/providers/report
+     * Obtener todos los proveedores para reporte (SIN PAGINACIÓN)
+     */
+    getAllProvidersForReport = async (req, res) => {
+      try {
+        const { search = "", status, entityType } = req.query;
+
+        const result = await this.providersService.getAllProvidersForReport({
+          search,
+          status,
+          entityType,
+        });
+
+        return res.json(result);
+      } catch (error) {
+        console.error("Controller error - getAllProvidersForReport:", error);
+        return res.status(500).json({
+          success: false,
+          message: "Error interno del servidor al obtener proveedores para reporte",
+          error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        });
+      }
+    };
 }
 
 export default new ProvidersController();
+

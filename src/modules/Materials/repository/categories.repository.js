@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../../../generated/prisma/index.js';
+﻿import { PrismaClient } from '../../../../generated/prisma/index.js';
 
 const prisma = new PrismaClient();
 
@@ -162,6 +162,32 @@ class CategoriesRepository {
       },
     });
   }
+
+  /**
+   * Obtener todas las categorías para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({ search = '', estado = null }) {
+    const where = {};
+
+    if (search) {
+      where.OR = [
+        { nombre: { contains: search, mode: 'insensitive' } },
+        { descripcion: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (estado !== null) {
+      where.estado = estado;
+    }
+
+    const result = await prisma.materialCategory.findMany({
+      where,
+      orderBy: { nombre: 'asc' },
+    });
+
+    return { categories: result };
+  }
 }
 
 export default new CategoriesRepository();
+

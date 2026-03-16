@@ -1,4 +1,4 @@
-import usersRepository from "../repository/users.repository.js";
+﻿import usersRepository from "../repository/users.repository.js";
 
 export class UsersService {
   /**
@@ -93,7 +93,7 @@ export class UsersService {
       return {
         success: true,
         available: false,
-        message: `El email "${email}" ya está en uso.`,
+        message: 'Este email ya está registrado en el sistema',
       };
     } catch (error) {
       console.error("Error in checkEmailAvailability service:", error);
@@ -127,11 +127,33 @@ export class UsersService {
       return {
         success: true,
         available: false,
-        message: `La identificación "${identification}" ya está en uso.`,
+        message: 'Este documento ya está registrado en el sistema',
       };
     } catch (error) {
       console.error("Error in checkIdentificationAvailability service:", error);
       throw new Error(`Error verificando identificación: ${error.message}`);
+    }
+  }
+
+  /**
+   * Obtener todos los usuarios para reporte (SIN PAGINACIÓN)
+   */
+  async getAllUsersForReport(params = {}) {
+    try {
+      const result = await usersRepository.findAllForReport(params);
+
+      // Formatear respuesta
+      const formattedUsers = result.users.map((user) =>
+        this.formatUserResponse(user)
+      );
+
+      return {
+        success: true,
+        data: formattedUsers,
+      };
+    } catch (error) {
+      console.error("Error in getAllUsersForReport service:", error);
+      throw new Error(`Error obteniendo usuarios para reporte: ${error.message}`);
     }
   }
 
@@ -162,3 +184,4 @@ export class UsersService {
 }
 
 export default new UsersService();
+

@@ -1,11 +1,12 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { upload } from '../upload.middleware.js';
 import { uploadToCloudinary } from '../cloudinary.service.js';
+import { authenticateToken } from '../../../middlewares/auth.js';
 
 const router = Router();
 
 // POST /api/upload/image
-router.post('/image', upload.single('image'), async (req, res) => {
+router.post('/image', authenticateToken, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "No se envió ninguna imagen" });

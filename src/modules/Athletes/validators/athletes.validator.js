@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 export const athletesValidators = {
   // Validaciones para crear deportista
@@ -264,8 +264,8 @@ export const athletesValidators = {
 
     query("estadoInscripcion")
       .optional({ checkFalsy: true })
-      .isIn(["Vigente", "Suspendida", "Vencida"])
-      .withMessage("El estado de inscripción debe ser Vigente, Suspendida o Vencida.")
+      .isIn(["Vigente", "Vencida"])
+      .withMessage("El estado de inscripción debe ser Vigente o Vencida.")
   ]
 };
 
@@ -276,11 +276,6 @@ export const handleValidationErrors = (req, res, next) => {
   if (!errors.isEmpty()) {
     const firstError = errors.array()[0];
     
-    console.log("❌ Validation error:", {
-      field: firstError.path,
-      value: firstError.value,
-      message: firstError.msg
-    });
 
     return res.status(400).json({
       success: false,
@@ -293,3 +288,5 @@ export const handleValidationErrors = (req, res, next) => {
 
   next();
 };
+
+

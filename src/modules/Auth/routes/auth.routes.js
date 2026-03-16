@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import { AuthController } from "../controllers/auth.controller.js";
 import {
   authValidators,
@@ -68,6 +68,7 @@ router.post("/logout", authController.logout);
 
 // Rutas protegidas
 router.get("/me", authenticateToken, authController.me);
+router.get("/permissions", authenticateToken, authController.getPermissions);
 
 router.post(
   "/change-password",
@@ -94,3 +95,4 @@ router.put("/profile", authenticateToken, authController.updateProfile);
 router.post("/logout-all", authenticateToken, authController.logoutAll);
 
 export default router;
+

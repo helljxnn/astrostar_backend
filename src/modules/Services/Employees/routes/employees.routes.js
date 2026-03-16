@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import multer from "multer";
 import { EmployeeController } from "../controllers/employees.controller.js";
 import { SignatureController } from "../controllers/signature.controller.js";
@@ -8,6 +8,7 @@ import {
   parseEmployeeData,
 } from "../validators/employee.validator.js";
 import { authenticateToken } from "../../../../middlewares/auth.js";
+import { checkPermissions } from "../../../../middlewares/checkPermissions.js";
 
 const router = express.Router();
 const employeeController = new EmployeeController();
@@ -401,11 +402,23 @@ const upload = multer({
  */
 
 // Rutas específicas PRIMERO (antes de rutas con parámetros)
-router.get("/stats", authenticateToken, employeeController.getEmployeeStats);
+router.get(
+  "/stats",
+  authenticateToken,
+  checkPermissions("employees", "Ver"),
+  employeeController.getEmployeeStats,
+);
+router.get(
+  "/report",
+  authenticateToken,
+  checkPermissions("employees", "Ver"),
+  employeeController.getAllEmployeesForReport,
+);
 
 router.get(
   "/reference-data",
   authenticateToken,
+  checkPermissions("employees", "Ver"),
   employeeController.getReferenceData,
 );
 
@@ -426,12 +439,14 @@ router.get(
 router.get(
   "/administrators/with-signature",
   authenticateToken,
+  checkPermissions("employees", "Ver"),
   signatureController.getAdministratorsWithSignature,
 );
 
 router.get(
   "/check-email",
   authenticateToken,
+  checkPermissions("employees", "Ver"),
   employeeValidators.checkEmail,
   handleValidationErrors,
   employeeController.checkEmailAvailability,
@@ -440,6 +455,7 @@ router.get(
 router.get(
   "/check-identification",
   authenticateToken,
+  checkPermissions("employees", "Ver"),
   employeeValidators.checkIdentification,
   handleValidationErrors,
   employeeController.checkIdentificationAvailability,
@@ -449,6 +465,7 @@ router.get(
 router.get(
   "/",
   authenticateToken,
+  checkPermissions("employees", "Ver"),
   employeeValidators.getAll,
   handleValidationErrors,
   employeeController.getAllEmployees,
@@ -457,6 +474,7 @@ router.get(
 router.post(
   "/",
   authenticateToken,
+  checkPermissions("employees", "Crear"),
   upload.single("signature"), // Optional signature file
   parseEmployeeData, // Parse employeeData from FormData if present
   employeeValidators.create,
@@ -468,6 +486,7 @@ router.post(
 router.get(
   "/:id",
   authenticateToken,
+  checkPermissions("employees", "Ver"),
   employeeValidators.getById,
   handleValidationErrors,
   employeeController.getEmployeeById,
@@ -476,6 +495,7 @@ router.get(
 router.put(
   "/:id",
   authenticateToken,
+  checkPermissions("employees", "Editar"),
   employeeValidators.update,
   handleValidationErrors,
   employeeController.updateEmployee,
@@ -484,6 +504,7 @@ router.put(
 router.delete(
   "/:id",
   authenticateToken,
+  checkPermissions("employees", "Eliminar"),
   employeeValidators.delete,
   handleValidationErrors,
   employeeController.deleteEmployee,
@@ -544,6 +565,7 @@ router.delete(
 router.post(
   "/:id/signature",
   authenticateToken,
+  checkPermissions("employees", "Editar"),
   upload.single("signature"),
   signatureController.uploadSignature,
 );
@@ -551,7 +573,9 @@ router.post(
 router.delete(
   "/:id/signature",
   authenticateToken,
+  checkPermissions("employees", "Editar"),
   signatureController.deleteSignature,
 );
 
 export default router;
+

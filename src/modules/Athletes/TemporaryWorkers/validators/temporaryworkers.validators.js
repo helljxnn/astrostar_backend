@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 // Validaciones para crear persona temporal
 export const createTemporaryWorkerValidation = [
@@ -31,6 +31,15 @@ export const createTemporaryWorkerValidation = [
     .withMessage("El primer apellido solo puede contener letras y espacios")
     .trim(),
 
+  // Segundo Apellido - Opcional
+  body("secondLastName")
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 2, max: 100 })
+    .withMessage("El segundo apellido debe tener entre 2 y 100 caracteres")
+    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+    .withMessage("El segundo apellido solo puede contener letras y espacios")
+    .trim(),
+
   // Tipo de persona - Requerido
   body("personType")
     .notEmpty()
@@ -50,20 +59,26 @@ export const createTemporaryWorkerValidation = [
     )
     .trim(),
 
-  // Email - Requerido
+  // Email - Requerido solo para Entrenador
   body("email")
+    .if(body("personType").equals("Entrenador"))
     .notEmpty()
-    .withMessage("El email es requerido")
+    .withMessage("El email es requerido para entrenadores")
+    .bail()
+    .optional({ nullable: true, checkFalsy: true })
     .isEmail()
     .withMessage("El formato del email no es válido")
     .isLength({ max: 150 })
     .withMessage("El email no puede exceder 150 caracteres")
     .normalizeEmail(),
 
-  // Teléfono - Requerido
+  // Teléfono - Requerido solo para Entrenador
   body("phone")
+    .if(body("personType").equals("Entrenador"))
     .notEmpty()
-    .withMessage("El teléfono es requerido")
+    .withMessage("El teléfono es requerido para entrenadores")
+    .bail()
+    .optional({ nullable: true, checkFalsy: true })
     .matches(/^[0-9\s\-\+\(\)]+$/)
     .withMessage(
       "El teléfono solo puede contener números, espacios, guiones, paréntesis y el signo +",
@@ -80,7 +95,7 @@ export const createTemporaryWorkerValidation = [
     .withMessage(
       "La fecha de nacimiento debe tener un formato válido (YYYY-MM-DD)",
     )
-    .custom((value) => {
+    .custom((value, { req }) => {
       const birthDate = new Date(value);
       const today = new Date();
       const minDate = new Date(
@@ -102,6 +117,38 @@ export const createTemporaryWorkerValidation = [
       if (birthDate > maxDate) {
         throw new Error("La persona debe tener al menos 5 años de edad");
       }
+
+      // Validar que entrenadores sean mayores de edad (18 años)
+      if (req.body.personType === "Entrenador") {
+        const minDateForTrainer = new Date(
+          today.getFullYear() - 18,
+          today.getMonth(),
+          today.getDate(),
+        );
+        if (birthDate > minDateForTrainer) {
+          throw new Error("Los entrenadores deben ser mayores de 18 años");
+        }
+      }
+
+      // Validar edad según tipo de documento
+      if (req.body.documentTypeId) {
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        const actualAge = monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate()) ? age - 1 : age;
+
+        // Asumiendo que documentTypeId 1 = CC (Cédula) y 2 = TI (Tarjeta de Identidad)
+        // Esto debería ajustarse según los IDs reales en la base de datos
+        if (req.body.documentTypeId == 1) { // Cédula de Ciudadanía
+          if (actualAge < 18) {
+            throw new Error("Para cédula de ciudadanía la persona debe ser mayor de edad (18 años)");
+          }
+        } else if (req.body.documentTypeId == 2) { // Tarjeta de Identidad
+          if (actualAge >= 18) {
+            throw new Error("Para tarjeta de identidad la persona debe ser menor de edad (menor a 18 años)");
+          }
+        }
+      }
+
       return true;
     }),
 
@@ -111,10 +158,13 @@ export const createTemporaryWorkerValidation = [
     .isInt({ min: 5, max: 100 })
     .withMessage("La edad debe estar entre 5 y 100 años"),
 
-  // Dirección - Requerido
+  // Dirección - Requerido solo para Entrenador
   body("address")
+    .if(body("personType").equals("Entrenador"))
     .notEmpty()
-    .withMessage("La dirección es requerida")
+    .withMessage("La dirección es requerida para entrenadores")
+    .bail()
+    .optional({ nullable: true, checkFalsy: true })
     .isLength({ max: 200 })
     .withMessage("La dirección no puede exceder 200 caracteres")
     .trim(),
@@ -137,7 +187,14 @@ export const createTemporaryWorkerValidation = [
   body("documentTypeId")
     .optional({ nullable: true })
     .isInt({ min: 1 })
-    .withMessage("El tipo de documento debe ser un número válido"),
+    .withMessage("El tipo de documento debe ser un número válido")
+    .custom((value, { req }) => {
+      // Validar que entrenadores no puedan usar Tarjeta de Identidad (ID 2)
+      if (req.body.personType === "Entrenador" && value == 2) {
+        throw new Error("Los entrenadores no pueden usar Tarjeta de Identidad ya que deben ser mayores de edad");
+      }
+      return true;
+    }),
 
   // Estado - Opcional, por defecto Active
   body("status")
@@ -178,6 +235,14 @@ export const updateTemporaryWorkerValidation = [
     .withMessage("El primer apellido solo puede contener letras y espacios")
     .trim(),
 
+  body("secondLastName")
+    .optional({ nullable: true, checkFalsy: true })
+    .isLength({ min: 2, max: 100 })
+    .withMessage("El segundo apellido debe tener entre 2 y 100 caracteres")
+    .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+    .withMessage("El segundo apellido solo puede contener letras y espacios")
+    .trim(),
+
   body("personType")
     .optional()
     .isIn(["Deportista", "Entrenador"])
@@ -217,7 +282,7 @@ export const updateTemporaryWorkerValidation = [
     .withMessage(
       "La fecha de nacimiento debe tener un formato válido (YYYY-MM-DD)",
     )
-    .custom((value) => {
+    .custom((value, { req }) => {
       const birthDate = new Date(value);
       const today = new Date();
       const minDate = new Date(
@@ -239,6 +304,19 @@ export const updateTemporaryWorkerValidation = [
       if (birthDate > maxDate) {
         throw new Error("La persona debe tener al menos 5 años de edad");
       }
+
+      // Validar que entrenadores sean mayores de edad (18 años)
+      if (req.body.personType === "Entrenador") {
+        const minDateForTrainer = new Date(
+          today.getFullYear() - 18,
+          today.getMonth(),
+          today.getDate(),
+        );
+        if (birthDate > minDateForTrainer) {
+          throw new Error("Los entrenadores deben ser mayores de 18 años");
+        }
+      }
+
       return true;
     }),
 
@@ -268,7 +346,14 @@ export const updateTemporaryWorkerValidation = [
   body("documentTypeId")
     .optional({ nullable: true })
     .isInt({ min: 1 })
-    .withMessage("El tipo de documento debe ser un número válido"),
+    .withMessage("El tipo de documento debe ser un número válido")
+    .custom((value, { req }) => {
+      // Validar que entrenadores no puedan usar Tarjeta de Identidad (ID 2)
+      if (req.body.personType === "Entrenador" && value == 2) {
+        throw new Error("Los entrenadores no pueden usar Tarjeta de Identidad ya que deben ser mayores de edad");
+      }
+      return true;
+    }),
 
   body("status")
     .optional()
@@ -396,3 +481,4 @@ export const handleValidationErrors = (req, res, next) => {
   }
   next();
 };
+

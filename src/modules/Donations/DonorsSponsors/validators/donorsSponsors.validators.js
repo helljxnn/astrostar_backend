@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
@@ -314,3 +314,4 @@ export const donorsSponsorsValidators = {
     body("direccion").optional().isLength({ min: 4, max: 200 }),
   ],
 };
+

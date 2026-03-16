@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export class RegistrationsRepository {
   /**
@@ -997,3 +997,4 @@ export class RegistrationsRepository {
     }));
   }
 }
+

@@ -1,4 +1,4 @@
-import movementsRepository from "../repository/movements.repository.js";
+﻿import movementsRepository from "../repository/movements.repository.js";
 import materialsRepository from "../repository/materials.repository.js";
 
 class MovementsService {
@@ -425,6 +425,37 @@ class MovementsService {
       throw new Error("Las observaciones no pueden exceder 1000 caracteres");
     }
   }
+
+  /**
+   * Obtener todos los movimientos para reporte (SIN PAGINACIÓN)
+   */
+  async getAllForReport({
+    search = "",
+    materialId,
+    tipoMovimiento,
+    startDate,
+    endDate,
+  }) {
+    try {
+      const movements = await movementsRepository.findAllForReport({
+        search,
+        materialId,
+        tipoMovimiento,
+        startDate,
+        endDate,
+      });
+
+      return {
+        success: true,
+        data: movements,
+        message: `Se encontraron ${movements.length} movimientos para el reporte.`,
+      };
+    } catch (error) {
+      console.error("Error en getAllForReport:", error);
+      throw error;
+    }
+  }
 }
 
 export default new MovementsService();
+

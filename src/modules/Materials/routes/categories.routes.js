@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import categoriesController from '../controllers/categories.controller.js';
 import { authenticateToken } from '../../../middlewares/auth.js';
 import { checkPermissions } from '../../../middlewares/checkPermissions.js';
@@ -70,6 +70,36 @@ const router = express.Router();
 
 // Todas las rutas requieren autenticación
 router.use(authenticateToken);
+
+/**
+ * @swagger
+ * /api/materials/categories/report:
+ *   get:
+ *     summary: Obtener todas las categorías para reporte (sin paginación)
+ *     tags: [Material Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Búsqueda por nombre o descripción
+ *       - in: query
+ *         name: estado
+ *         schema:
+ *           type: string
+ *           enum: [Activo, Inactivo]
+ *         description: Filtrar por estado
+ *     responses:
+ *       200:
+ *         description: Lista completa de categorías para reporte
+ */
+router.get(
+  '/report',
+  checkPermissions('materialCategories', 'Ver'),
+  categoriesController.getAllForReport
+);
 
 /**
  * @swagger
@@ -489,3 +519,4 @@ router.delete(
 );
 
 export default router;
+

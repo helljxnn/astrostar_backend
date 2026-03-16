@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../../../generated/prisma/index.js";
+﻿import { PrismaClient } from "../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
@@ -36,10 +36,8 @@ class MaterialsRepository {
     // Filter by stock type
     if (stockType === "eventos") {
       where.stockEventos = { gt: 0 };
-      // Don't filter by esReutilizable for eventos - can show all materials with stock
     } else if (stockType === "fundacion") {
       where.stockFundacion = { gt: 0 };
-      where.esReutilizable = true; // Only reusables for fundacion
     }
 
     const [materials, total] = await Promise.all([
@@ -57,7 +55,6 @@ class MaterialsRepository {
           stockEventos: true,
           stockEventosReservado: true,
           unidadMedida: true,
-          esReutilizable: true,
           estado: true,
           createdAt: true,
           updatedAt: true,
@@ -142,7 +139,6 @@ class MaterialsRepository {
         stockEventos: true,
         stockEventosReservado: true,
         unidadMedida: true,
-        esReutilizable: true,
         estado: true,
         createdAt: true,
         updatedAt: true,
@@ -242,9 +238,9 @@ class MaterialsRepository {
         categoria: category.nombre,
         descripcion: data.descripcion?.trim() || null,
         unidadMedida: data.unidad_medida?.trim().toLowerCase() || "unidad",
-        stockFundacion: 0, // Starts at 0
-        stockEventos: 0, // Starts at 0
-        estado: "Activo",
+        stockFundacion: 0,
+        stockEventos: 0,
+                estado: "Activo",
         createdBy: userId,
       },
       include: {
@@ -756,6 +752,47 @@ class MaterialsRepository {
       orderBy: { fecha: "desc" },
       take: limit,
     });
+  }
+  /**
+   * Obtener todos los materiales para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({
+    search = "",
+    status,
+    categoriaId,
+  }) {
+    const where = {};
+
+    if (search && search.trim()) {
+      where.OR = [
+        { nombre: { contains: search, mode: "insensitive" } },
+        { codigo: { contains: search, mode: "insensitive" } },
+        { descripcion: { contains: search, mode: "insensitive" } },
+      ];
+    }
+
+    if (status) {
+      where.estado = status;
+    }
+
+    if (categoriaId) {
+      where.categoriaId = parseInt(categoriaId);
+    }
+
+    const materials = await prisma.material.findMany({
+      where,
+      include: {
+        categoria: {
+          select: {
+            id: true,
+            nombre: true,
+          },
+        },
+      },
+      orderBy: { nombre: "asc" },
+    });
+
+    return materials;
   }
 }
 

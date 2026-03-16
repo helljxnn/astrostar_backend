@@ -1,4 +1,4 @@
-// src/services/providers.service.js
+﻿// src/services/providers.service.js
 import { ProvidersRepository } from "../repository/providers.repository.js";
 
 export class ProvidersService {
@@ -57,12 +57,6 @@ export class ProvidersService {
 
   async createProvider(providerData) {
     try {
-      console.log(
-        "🔍 SERVICE: Iniciando createProvider con datos:",
-        JSON.stringify(providerData, null, 2)
-      );
-
-      console.log("🔍 SERVICE: Verificando NIT existente...");
       const existingByNit = await this.providersRepository.findByNit(
         providerData.nit
       );
@@ -75,13 +69,7 @@ export class ProvidersService {
           `El ${fieldName} "${providerData.nit}" ya está registrado.`
         );
       }
-      console.log("✅ SERVICE: NIT disponible");
 
-      console.log("🔍 SERVICE: Verificando razón social existente...");
-      console.log(
-        "🔍 SERVICE: razonSocial a verificar:",
-        providerData.razonSocial
-      );
       const existingByName = await this.providersRepository.findByBusinessName(
         providerData.razonSocial,
         null,
@@ -94,10 +82,7 @@ export class ProvidersService {
           `El ${fieldName} "${providerData.razonSocial}" ya está registrado.`
         );
       }
-      console.log("✅ SERVICE: Razón social disponible");
 
-      console.log("🔍 SERVICE: Verificando email existente...");
-      console.log("🔍 SERVICE: correo a verificar:", providerData.correo);
       const existingByEmail = await this.providersRepository.findByEmail(
         providerData.correo
       );
@@ -106,11 +91,8 @@ export class ProvidersService {
           `El email "${providerData.correo}" ya está registrado.`
         );
       }
-      console.log("✅ SERVICE: Email disponible");
 
-      console.log("🔍 SERVICE: Creando proveedor en repository...");
       const newProvider = await this.providersRepository.create(providerData);
-      console.log("✅ SERVICE: Proveedor creado exitosamente:", newProvider.id);
 
       return {
         success: true,
@@ -204,6 +186,16 @@ export class ProvidersService {
         };
       }
 
+      // Verificar si el proveedor tiene ingresos asociados
+      const hasIngresos = await this.providersRepository.checkHasIngresos(id);
+      if (hasIngresos) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el proveedor "${providerToDelete.razonSocial}" porque está asociado a ingresos.`,
+        };
+      }
+
       const deletedProvider = await this.providersRepository.delete(id);
 
       return {
@@ -212,6 +204,21 @@ export class ProvidersService {
       };
     } catch (error) {
       console.error("Service error - deleteProvider:", error);
+      throw error;
+    }
+  }
+
+  async checkHasIngresos(providerId) {
+    try {
+      const hasIngresos = await this.providersRepository.checkHasIngresos(
+        providerId
+      );
+      return {
+        success: true,
+        hasIngresos,
+      };
+    } catch (error) {
+      console.error("Service error - checkHasIngresos:", error);
       throw error;
     }
   }
@@ -447,4 +454,27 @@ export class ProvidersService {
       throw error;
     }
   }
+
+  /**
+   * Obtener todos los proveedores para reporte (SIN PAGINACIÓN)
+   */
+  async getAllProvidersForReport({ search = "", status, entityType }) {
+    try {
+      const providers = await providersRepository.findAllForReport({
+        search,
+        status,
+        entityType,
+      });
+
+      return {
+        success: true,
+        data: providers,
+        message: `Se encontraron ${providers.length} proveedores para el reporte.`,
+      };
+    } catch (error) {
+      console.error("Error en getAllProvidersForReport:", error);
+      throw error;
+    }
+  }
 }
+

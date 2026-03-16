@@ -1,4 +1,4 @@
-import { DonorsSponsorsService } from "../services/donorsSponsors.services.js";
+﻿import { DonorsSponsorsService } from "../services/donorsSponsors.services.js";
 
 export class DonorsSponsorsController {
   constructor() {
@@ -96,14 +96,11 @@ export class DonorsSponsorsController {
 
   createFromLanding = async (req, res) => {
     try {
-      console.log("📝 [LANDING] Recibiendo solicitud de donante desde landing");
-      console.log("📝 [LANDING] Body recibido:", JSON.stringify(req.body, null, 2));
       
       const result = await this.donorsSponsorsService.createFromLanding(
         req.body
       );
       
-      console.log("✅ [LANDING] Donante creado exitosamente:", result.data?.id);
       
       res.status(201).json(result);
     } catch (error) {
@@ -292,3 +289,4 @@ export class DonorsSponsorsController {
 }
 
 export default new DonorsSponsorsController();
+

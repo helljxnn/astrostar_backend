@@ -1,4 +1,4 @@
-import cloudinary from '../config/cloudinary.config.js';
+﻿import cloudinary from '../config/cloudinary.config.js';
 import streamifier from 'streamifier';
 
 class CloudinaryService {
@@ -112,3 +112,4 @@ class CloudinaryService {
 }
 
 export default new CloudinaryService();
+
