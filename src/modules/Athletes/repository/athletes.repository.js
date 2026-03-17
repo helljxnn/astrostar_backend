@@ -229,7 +229,8 @@ export class AthletesRepository {
       })() : null,
       age: athleteData.birthDate ? calculateAge(athleteData.birthDate) : null,
       address: athleteData.address || "N/A",
-      passwordHash: "temp_password_hash", // Se debe generar un hash real
+      // Solo incluir passwordHash si viene desde el servicio
+      ...(athleteData.passwordHash ? { passwordHash: athleteData.passwordHash } : {}),
     };
 
     const normalizedStatus = normalizeAthleteStatusInput(
@@ -420,14 +421,16 @@ export class AthletesRepository {
         // El cliente tiene control total sobre qué deportistas asignar a qué categorías
         // Sin restricciones de edad
 
-        // ✅ CORRECCIÓN CRÍTICA: NO actualizar passwordHash a menos que haya nueva contraseña
-        // Eliminar passwordHash de userData para evitar sobrescribir la contraseña existente
+        // ✅ NO actualizar passwordHash a menos que haya nueva contraseña
         const { passwordHash, ...userDataWithoutPassword } = userData;
+        const userUpdateData = passwordHash
+          ? { ...userDataWithoutPassword, passwordHash }
+          : userDataWithoutPassword;
 
-        // Actualizar usuario SIN tocar el passwordHash
+        // Actualizar usuario (solo incluye passwordHash si se envía)
         await tx.user.update({
           where: { id: currentAthlete.userId },
-          data: userDataWithoutPassword,
+          data: userUpdateData,
         });
 
         // Verificar si cambió el estado

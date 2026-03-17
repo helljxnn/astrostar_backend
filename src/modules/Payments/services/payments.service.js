@@ -537,6 +537,58 @@ export const paymentsService = {
   // CONSULTA DE ESTADO FINANCIERO
   // ============================================================================
 
+  _buildMonthlyDetails(obligations, athlete, enrollment, settings) {
+    let totalMonthlyDebt = 0;
+    let totalLateFee = 0;
+    let maxDaysLate = 0;
+    const details = [];
+
+    for (const obligation of obligations) {
+      const daysLate = calculateEffectiveLateDays(obligation.dueEnd, obligation.payments);
+      const lateFee = calculateLateFee(
+        daysLate,
+        settings.lateFeeDailyAmount,
+        athlete,
+        enrollment,
+        obligation.dueEnd
+      );
+      const latestPayment = obligation.payments
+        ?.filter(p => p?.uploadedAt)
+        .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
+
+      totalMonthlyDebt += obligation.baseAmount;
+      totalLateFee += lateFee;
+      maxDaysLate = Math.max(maxDaysLate, daysLate);
+
+      details.push({
+        id: obligation.id,
+        period: obligation.period,
+        baseAmount: obligation.baseAmount,
+        daysLate,
+        lateFee,
+        totalToPay: obligation.baseAmount + lateFee,
+        paymentStatus: this.getLatestPaymentStatus(obligation.payments),
+        dueStart: obligation.dueStart,
+        dueEnd: obligation.dueEnd,
+        uploadedAt: latestPayment?.uploadedAt || null,
+        reviewedAt: latestPayment?.reviewedAt || null,
+        receiptUrl: latestPayment?.receiptUrl || null,
+        receiptName: latestPayment?.receiptName || null,
+        latestPaymentId: latestPayment?.id || null,
+        rejectionReason: latestPayment?.rejectionReason || null
+      });
+    }
+
+    return {
+      details,
+      totals: {
+        totalMonthlyDebt,
+        totalLateFee,
+        maxDaysLate
+      }
+    };
+  },
+
   /**
    * Obtener estado financiero completo de un atleta (MEJORADO)
    * Incluye TODAS las obligaciones pendientes, no solo la actual
@@ -570,43 +622,9 @@ export const paymentsService = {
       ?.filter(p => p?.uploadedAt)
       .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
     
-    // Calcular deuda total mensual
-    let totalMonthlyDebt = 0;
-    let totalLateFee = 0;
-    let maxDaysLate = 0;
-    
-    const monthlyDetails = [];
-    
-    for (const obligation of monthlyObligations) {
-      const daysLate = calculateEffectiveLateDays(obligation.dueEnd, obligation.payments);
-      // ✅ Pasar atleta, enrollment y dueEnd para mora congelada
-      const lateFee = calculateLateFee(daysLate, settings.lateFeeDailyAmount, athlete, enrollment, obligation.dueEnd);
-      const latestPayment = obligation.payments
-        ?.filter(p => p?.uploadedAt)
-        .sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt))[0];
-      
-      totalMonthlyDebt += obligation.baseAmount;
-      totalLateFee += lateFee;
-      maxDaysLate = Math.max(maxDaysLate, daysLate);
-      
-      monthlyDetails.push({
-        id: obligation.id,
-        period: obligation.period,
-        baseAmount: obligation.baseAmount,
-        daysLate,
-        lateFee,
-        totalToPay: obligation.baseAmount + lateFee,
-        paymentStatus: this.getLatestPaymentStatus(obligation.payments),
-        dueStart: obligation.dueStart,
-        dueEnd: obligation.dueEnd,
-        uploadedAt: latestPayment?.uploadedAt || null,
-        reviewedAt: latestPayment?.reviewedAt || null,
-        receiptUrl: latestPayment?.receiptUrl || null,
-        receiptName: latestPayment?.receiptName || null,
-        latestPaymentId: latestPayment?.id || null,
-        rejectionReason: latestPayment?.rejectionReason || null
-      });
-    }
+    const monthlyCalc = this._buildMonthlyDetails(monthlyObligations, athlete, enrollment, settings);
+    const monthlyDetails = monthlyCalc.details;
+    const { totalMonthlyDebt, totalLateFee, maxDaysLate } = monthlyCalc.totals;
 
     // Buscar mensualidad actual específicamente
     const currentMonthObligation = monthlyDetails.find(m => m.period === currentMonth);
@@ -781,6 +799,119 @@ export const paymentsService = {
       console.error('❌ Error obteniendo historial de pagos:', error);
       throw new Error('Error al obtener historial de pagos del atleta');
     }
+  },
+
+  /**
+   * Resumen de mensualidades pendientes por atleta (para listado admin)
+   */
+  async getMonthlySummaryForAthletes(athleteIds = []) {
+    const ids = (athleteIds || [])
+      .map((id) => parseInt(id))
+      .filter((id) => !Number.isNaN(id));
+
+    if (ids.length === 0) {
+      return {};
+    }
+
+    const settings = await getPaymentSettings();
+
+    const [athletes, enrollments, obligations] = await Promise.all([
+      prisma.athlete.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, status: true, statusAssignedAt: true }
+      }),
+      prisma.enrollment.findMany({
+        where: { athleteId: { in: ids } },
+        orderBy: { createdAt: 'desc' },
+        distinct: ['athleteId'],
+        select: { athleteId: true, estado: true, fechaInicio: true, fechaVencimiento: true }
+      }),
+      paymentsRepository.getPendingMonthlyObligationsForAthletes(ids)
+    ]);
+
+    const athleteMap = new Map(athletes.map((a) => [a.id, a]));
+    const enrollmentMap = new Map(enrollments.map((e) => [e.athleteId, e]));
+
+    const summaryMap = {};
+    for (const id of ids) {
+      summaryMap[id] = {
+        baseAmount: 0,
+        lateFeeAmount: 0,
+        totalAmount: 0,
+        maxDaysLate: 0,
+        obligationsCount: 0
+      };
+    }
+
+    const obligationsByAthlete = new Map();
+    for (const obligation of obligations) {
+      if (!obligationsByAthlete.has(obligation.athleteId)) {
+        obligationsByAthlete.set(obligation.athleteId, []);
+      }
+      obligationsByAthlete.get(obligation.athleteId).push(obligation);
+    }
+
+    for (const [athleteId, athleteObligations] of obligationsByAthlete.entries()) {
+      const athlete = athleteMap.get(athleteId) || null;
+      const enrollment = enrollmentMap.get(athleteId) || null;
+      const monthlyCalc = this._buildMonthlyDetails(athleteObligations, athlete, enrollment, settings);
+
+      const entry = summaryMap[athleteId];
+      if (!entry) continue;
+      entry.baseAmount = monthlyCalc.totals.totalMonthlyDebt;
+      entry.lateFeeAmount = monthlyCalc.totals.totalLateFee;
+      entry.totalAmount = monthlyCalc.totals.totalMonthlyDebt + monthlyCalc.totals.totalLateFee;
+      entry.maxDaysLate = monthlyCalc.totals.maxDaysLate;
+      entry.obligationsCount = athleteObligations.length;
+    }
+
+    return summaryMap;
+  },
+
+  /**
+   * Historial completo de mensualidades de un atleta (para modal admin)
+   */
+  async getAthleteMonthlyHistory(athleteId) {
+    const settings = await getPaymentSettings();
+
+    const athlete = await prisma.athlete.findUnique({
+      where: { id: athleteId },
+      select: { id: true, status: true, statusAssignedAt: true }
+    });
+
+    const enrollment = await prisma.enrollment.findFirst({
+      where: { athleteId },
+      orderBy: { createdAt: 'desc' },
+      select: { estado: true, fechaInicio: true, fechaVencimiento: true }
+    });
+
+    const obligations = await prisma.paymentObligation.findMany({
+      where: { athleteId, type: 'MONTHLY' },
+      include: {
+        payments: { orderBy: { uploadedAt: 'desc' } }
+      },
+      orderBy: { dueStart: 'desc' }
+    });
+
+    const monthlyCalc = this._buildMonthlyDetails(obligations, athlete, enrollment, settings);
+    const history = monthlyCalc.details.map((item) => ({
+      id: item.id,
+      period: item.period,
+      dueStart: item.dueStart,
+      dueEnd: item.dueEnd,
+      baseAmount: item.baseAmount,
+      daysLate: item.daysLate,
+      lateFee: item.lateFee,
+      totalAmount: item.totalToPay,
+      paymentStatus: item.paymentStatus,
+      uploadedAt: item.uploadedAt,
+      reviewedAt: item.reviewedAt,
+      receiptUrl: item.receiptUrl,
+      receiptName: item.receiptName,
+      rejectionReason: item.rejectionReason
+    }));
+
+    return { history };
   },
 
 
@@ -994,16 +1125,23 @@ export const paymentsService = {
       };
     }
 
-    // Verificar bloqueo por mensualidad
-    const monthlyOverdue = overdueObligations.find(o => o.type === 'MONTHLY');
-    if (monthlyOverdue) {
-      const lateDays = calculateEffectiveLateDays(monthlyOverdue.dueEnd, monthlyOverdue.payments);
-      if (lateDays >= BUSINESS_CONSTANTS.MAX_LATE_DAYS_MONTHLY) { // ✅ Constante fija
+    // Verificar bloqueo por mensualidad (usar la mora MÁS ALTA entre todas las mensualidades vencidas)
+    const monthlyOverdueList = overdueObligations.filter(o => o.type === 'MONTHLY');
+    if (monthlyOverdueList.length > 0) {
+      let maxLateDays = 0;
+      for (const obligation of monthlyOverdueList) {
+        const lateDays = calculateEffectiveLateDays(obligation.dueEnd, obligation.payments);
+        if (lateDays > maxLateDays) {
+          maxLateDays = lateDays;
+        }
+      }
+
+      if (maxLateDays >= BUSINESS_CONSTANTS.MAX_LATE_DAYS_MONTHLY) { // ✅ Constante fija
         return {
           restricted: true,
           reason: 'MONTHLY_OVERDUE',
-          message: `Tu cuenta está bloqueada por mora en mensualidad. Días de retraso: ${lateDays}`,
-          lateDays
+          message: `Tu cuenta está bloqueada por mora en mensualidad. Días de retraso: ${maxLateDays}`,
+          lateDays: maxLateDays
         };
       }
     }

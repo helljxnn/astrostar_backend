@@ -82,6 +82,28 @@ export const paymentsRepository = {
   },
 
   /**
+   * Obtener obligaciones MENSUALES pendientes para varios atletas
+   */
+  async getPendingMonthlyObligationsForAthletes(athleteIds) {
+    if (!athleteIds || athleteIds.length === 0) return [];
+    return await prisma.paymentObligation.findMany({
+      where: {
+        athleteId: { in: athleteIds },
+        type: 'MONTHLY',
+        payments: {
+          none: { status: 'APPROVED' }
+        }
+      },
+      include: {
+        payments: {
+          orderBy: { uploadedAt: 'desc' }
+        }
+      },
+      orderBy: { dueEnd: 'asc' }
+    });
+  },
+
+  /**
    * Obtener estado financiero de un atleta (MÉTODO ORIGINAL - MANTENER COMPATIBILIDAD)
    */
   async getAthleteFinancialStatus(athleteId) {

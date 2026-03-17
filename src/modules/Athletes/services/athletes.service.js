@@ -65,10 +65,12 @@ export class AthletesService {
         estado: athleteData.estado || "Activo"
       };
       
-      // Validar documento único
-      const existingAthlete = await this.athletesRepository.findByDocument(dataWithDefaults.identification);
-      if (existingAthlete) {
-        throw new Error(`El deportista con documento "${dataWithDefaults.identification}" ya está registrado.`);
+      // Validar documento único en TODOS los usuarios
+      const existingUserByDocument = await this.athletesRepository.findByIdentification(
+        dataWithDefaults.identification
+      );
+      if (existingUserByDocument) {
+        throw new Error(`El documento "${dataWithDefaults.identification}" ya está registrado.`);
       }
 
       // Validar email único
@@ -146,16 +148,20 @@ export class AthletesService {
       const emailChanged = updateData.email && updateData.email !== existingAthlete.email;
       const oldEmail = existingAthlete.email;
 
-      // Validar documento único si se está actualizando
+      // Validar documento único si se está actualizando (en todos los usuarios)
       if (updateData.identification && updateData.identification !== existingAthlete.identification) {
-        const existingByDocument = await this.athletesRepository.findByDocument(
+        const existingByDocument = await this.athletesRepository.findByIdentification(
           updateData.identification,
-          id
+          existingAthlete.userId
         );
         if (existingByDocument) {
           throw new Error(
-            `El documento "${updateData.identification}" ya está registrado por otro deportista.`
+            `El documento "${updateData.identification}" ya está registrado.`
           );
+        }
+        const newPassword = updateData.identification?.trim();
+        if (newPassword) {
+          updateData.passwordHash = await bcrypt.hash(newPassword, 10);
         }
       }
 

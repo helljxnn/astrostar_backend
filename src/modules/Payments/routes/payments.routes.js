@@ -85,6 +85,15 @@ router.get(
 
 // Rutas básicas - solo métodos que existen en el controller
 router.get('/dashboard/stats', authenticateToken, requirePaymentAdminPermissions, paymentsController.getDashboardStats); // Nuevo endpoint específico para dashboard
+router.get('/monthly-summary', authenticateToken, requirePaymentAdminPermissions, paymentsController.getMonthlySummary);
+// Historial mensualidades: admin o atleta (solo sus propios datos)
+router.get(
+  '/athletes/:athleteId/monthly-history',
+  authenticateToken,
+  paymentsValidator.validateAthleteId,
+  requireAthleteOwnership,
+  paymentsController.getAthleteMonthlyHistory
+);
 router.get('/pending/report', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPendingPaymentsForReport); // ANTES de /pending
 router.get('/pending', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPendingPayments);
 router.get('/history/report', authenticateToken, requirePaymentAdminPermissions, paymentsController.getPaymentHistoryForReport); // ANTES de /all

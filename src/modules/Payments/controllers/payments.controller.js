@@ -174,6 +174,37 @@ export const paymentsController = {
     }
   },
 
+  async getMonthlySummary(req, res) {
+    try {
+      const athleteIdsRaw = String(req.query.athleteIds || '').trim();
+      const athleteIds = athleteIdsRaw
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+
+      const summary = await paymentsService.getMonthlySummaryForAthletes(athleteIds);
+      return res.status(200).json({
+        success: true,
+        data: summary
+      });
+    } catch (error) {
+      return handleError(res, error, "Error al obtener resumen de mensualidades");
+    }
+  },
+
+  async getAthleteMonthlyHistory(req, res) {
+    try {
+      const { athleteId } = req.params;
+      const result = await paymentsService.getAthleteMonthlyHistory(parseInt(athleteId));
+      return res.status(200).json({
+        success: true,
+        data: result.history
+      });
+    } catch (error) {
+      return handleError(res, error, "Error al obtener historial de mensualidades");
+    }
+  },
+
   async getAllPayments(req, res) {
     try {
       const { page = 1, limit = 20, status, type, dateFrom, dateTo, excludeStatus, search } = req.query;
