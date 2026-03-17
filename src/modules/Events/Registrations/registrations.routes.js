@@ -15,11 +15,11 @@ router.use(authenticateToken);
  * @swagger
  * /api/registrations/stats:
  *   get:
- *     summary: Obtener estad?sticas de inscripciones
+ *     summary: Obtener estadísticas de inscripciones
  *     tags: [Registrations]
  *     responses:
  *       200:
- *         description: Estad?sticas obtenidas exitosamente
+ *         description: Estadísticas obtenidas exitosamente
  */
 router.get(
   "/stats",
@@ -31,17 +31,17 @@ router.get(
  * @swagger
  * /api/registrations/teams/available:
  *   get:
- *     summary: Obtener equipos disponibles para inscripci?n (separados por tipo)
+ *     summary: Obtener equipos disponibles para inscripción (separados por tipo)
  *     tags: [Registrations]
  *     parameters:
  *       - in: query
  *         name: category
  *         schema:
  *           type: string
- *         description: Filtrar por categor?a deportiva
+ *         description: Filtrar por categoría deportiva
  *     responses:
  *       200:
- *         description: Lista de equipos disponibles separados por tipo (fundaci?n y temporales)
+ *         description: Lista de equipos disponibles separados por tipo (fundación y temporales)
  */
 router.get(
   "/teams/available",
@@ -53,7 +53,7 @@ router.get(
  * @swagger
  * /api/registrations/event/{serviceId}/teams:
  *   get:
- *     summary: Obtener equipos disponibles filtrados por categor?as del evento (optimizado)
+ *     summary: Obtener equipos disponibles filtrados por categorías del evento (optimizado)
  *     tags: [Registrations]
  *     parameters:
  *       - in: path
@@ -64,7 +64,7 @@ router.get(
  *         description: ID del evento
  *     responses:
  *       200:
- *         description: Lista de equipos disponibles filtrados por categor?a del evento
+ *         description: Lista de equipos disponibles filtrados por categoría del evento
  */
 router.get(
   "/event/:serviceId/teams",
@@ -76,7 +76,7 @@ router.get(
  * @swagger
  * /api/registrations/event/{serviceId}/athletes/available:
  *   get:
- *     summary: Obtener deportistas disponibles filtrados por categor?as del evento
+ *     summary: Obtener deportistas disponibles filtrados por categorías del evento
  *     tags: [Registrations]
  *     parameters:
  *       - in: path
@@ -160,7 +160,7 @@ router.get(
  * @swagger
  * /api/registrations/{id}:
  *   get:
- *     summary: Obtener inscripci?n por ID
+ *     summary: Obtener inscripción por ID
  *     tags: [Registrations]
  *     parameters:
  *       - in: path
@@ -170,7 +170,7 @@ router.get(
  *           type: integer
  *     responses:
  *       200:
- *         description: Inscripci?n encontrada
+ *         description: Inscripción encontrada
  */
 router.get(
   "/:id",
@@ -184,7 +184,7 @@ router.get(
  * @swagger
  * /api/registrations/bulk:
  *   post:
- *     summary: Inscribir m?ltiples equipos a un evento
+ *     summary: Inscribir múltiples equipos a un evento
  *     tags: [Registrations]
  *     requestBody:
  *       required: true
@@ -241,7 +241,7 @@ router.post(
  *                 description: ID del equipo
  *               sportsCategoryId:
  *                 type: integer
- *                 description: ID de la categor?a deportiva (opcional)
+ *                 description: ID de la categoría deportiva (opcional)
  *               notes:
  *                 type: string
  *                 description: Notas adicionales (opcional)
@@ -261,7 +261,7 @@ router.post(
  * @swagger
  * /api/registrations/{id}/status:
  *   patch:
- *     summary: Actualizar estado de inscripci?n
+ *     summary: Actualizar estado de inscripción
  *     tags: [Registrations]
  *     parameters:
  *       - in: path
@@ -299,7 +299,7 @@ router.patch(
  * @swagger
  * /api/registrations/{id}:
  *   delete:
- *     summary: Cancelar inscripci?n
+ *     summary: Cancelar inscripción
  *     tags: [Registrations]
  *     parameters:
  *       - in: path
@@ -309,7 +309,7 @@ router.patch(
  *           type: integer
  *     responses:
  *       200:
- *         description: Inscripci?n cancelada exitosamente
+ *         description: Inscripción cancelada exitosamente
  */
 router.delete(
   "/:id",
@@ -320,21 +320,21 @@ router.delete(
 );
 
 // ============================================
-// RUTAS PARA INSCRIPCI?"N DE DEPORTISTAS
+// RUTAS PARA INSCRIPCIÓN DE DEPORTISTAS
 // ============================================
 
 /**
  * @swagger
  * /api/registrations/athletes/available:
  *   get:
- *     summary: Obtener deportistas disponibles para inscripci?n
+ *     summary: Obtener deportistas disponibles para inscripción
  *     tags: [Registrations]
  *     parameters:
  *       - in: query
  *         name: sportsCategoryId
  *         schema:
  *           type: integer
- *         description: Filtrar por categor?a deportiva
+ *         description: Filtrar por categoría deportiva
  *     responses:
  *       200:
  *         description: Lista de deportistas disponibles
@@ -427,7 +427,7 @@ router.get(
  *                 description: ID del deportista
  *               sportsCategoryId:
  *                 type: integer
- *                 description: ID de la categor?a deportiva (opcional)
+ *                 description: ID de la categoría deportiva (opcional)
  *               notes:
  *                 type: string
  *                 description: Notas adicionales (opcional)
@@ -447,7 +447,7 @@ router.post(
  * @swagger
  * /api/registrations/athletes/bulk:
  *   post:
- *     summary: Inscribir m?ltiples deportistas a un evento
+ *     summary: Inscribir múltiples deportistas a un evento
  *     tags: [Registrations]
  *     requestBody:
  *       required: true
@@ -481,6 +481,7 @@ router.post(
 );
 
 export default router;
+
 
 
 
