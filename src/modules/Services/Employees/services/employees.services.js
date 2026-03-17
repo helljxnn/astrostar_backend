@@ -107,7 +107,7 @@ export class EmployeeService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontr? el empleado con ID ${id}.`,
+          message: `No se encontró el empleado con ID ${id}.`,
         };
       }
 
@@ -136,7 +136,7 @@ export class EmployeeService {
           "La especialidad es obligatoria para el rol Profesional de Salud.",
         );
       }
-      // 1. REGLA DE NEGOCIO: Verificar email ?nico
+      // 1. REGLA DE NEGOCIO: Verificar email único
       const existingUserByEmail = await this.employeeRepository.findByEmail(
         employeeData.email,
       );
@@ -247,7 +247,7 @@ export class EmployeeService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontr? el empleado con ID ${id}.`,
+          message: `No se encontró el empleado con ID ${id}.`,
         };
       }
 
@@ -260,7 +260,7 @@ export class EmployeeService {
         };
       }
 
-      // 3. REGLA DE NEGOCIO: Verificar email ?nico (si se está actualizando)
+      // 3. REGLA DE NEGOCIO: Verificar email único (si se está actualizando)
       if (
         updateData.email &&
         updateData.email !== existingEmployee.user.email
@@ -300,6 +300,16 @@ export class EmployeeService {
       // 5. Separar datos de usuario y empleado
       const userData = {};
       const employeeData = {};
+      const currentIdentification =
+        existingEmployee.user?.identification?.trim() || "";
+      const nextIdentification =
+        updateData.identification !== undefined
+          ? updateData.identification?.trim() || ""
+          : currentIdentification;
+      const identificationChanged =
+        updateData.identification !== undefined &&
+        nextIdentification !== currentIdentification;
+      let syncedInitialPasswordWithIdentification = false;
       const nextRoleId = updateData.roleId ?? existingEmployee.user?.roleId;
       const nextRole = await this.employeeRepository.findRoleById(nextRoleId);
       if (!nextRole) {
@@ -366,6 +376,25 @@ export class EmployeeService {
           ? parseInt(updateData.roleId)
           : null;
 
+      // Si el documento cambia y la contraseña actual aun es el documento anterior,
+      // sincronizarla para mantener el acceso con credenciales iniciales.
+      if (
+        identificationChanged &&
+        currentIdentification &&
+        nextIdentification &&
+        existingEmployee.user?.passwordHash
+      ) {
+        const isUsingCurrentIdentificationAsPassword = await bcrypt.compare(
+          currentIdentification,
+          existingEmployee.user.passwordHash,
+        );
+
+        if (isUsingCurrentIdentificationAsPassword) {
+          userData.passwordHash = await bcrypt.hash(nextIdentification, 10);
+          syncedInitialPasswordWithIdentification = true;
+        }
+      }
+
       // Campos de empleado
       if (updateData.status !== undefined)
         employeeData.status = updateData.status || "Activo";
@@ -431,7 +460,7 @@ export class EmployeeService {
       return {
         success: true,
         data: updatedEmployee,
-        message: `Empleado "${updatedEmployee.user.firstName} ${updatedEmployee.user.lastName}" actualizado exitosamente.${emailSent ? " Se ha enviado un correo con las nuevas credenciales." : ""}`,
+        message: `Empleado "${updatedEmployee.user.firstName} ${updatedEmployee.user.lastName}" actualizado exitosamente.${syncedInitialPasswordWithIdentification ? " La contraseña inicial se sincronizó con el nuevo documento." : ""}${emailSent ? " Se ha enviado un correo con las nuevas credenciales." : ""}`,
       };
     } catch (error) {
       console.error("Service error - updateEmployee:", error);
@@ -450,7 +479,7 @@ export class EmployeeService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontr? el empleado con ID ${id}.`,
+          message: `No se encontró el empleado con ID ${id}.`,
         };
       }
 
@@ -670,22 +699,6 @@ export class EmployeeService {
     }
   }
 
-  /**
-   * Obtener todos los empleados para reporte (sin paginación)
-   */
-  async getAllEmployeesForReport({ search = "", status = "" }) {
-    try {
-      const result = await this.employeeRepository.findAllForReport({
-        search,
-        status,
-      });
-
-      return result;
-    } catch (error) {
-      console.error("Service error - getAllEmployeesForReport:", error);
-      throw error;
-    }
-  }
 }
 
 

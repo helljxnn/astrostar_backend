@@ -771,7 +771,21 @@ export class AuthController {
   };
 
   /**
-   * Obtener permisos dinámicos basados en el estado de la matrícula
+   * @swagger
+   * /api/auth/permissions:
+   *   get:
+   *     summary: Obtener permisos del usuario autenticado
+   *     description: Retorna permisos dinámicos según rol y estado de matrícula en caso de deportista.
+   *     tags: [Auth]
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: Permisos obtenidos exitosamente
+   *       401:
+   *         description: No autorizado
+   *       500:
+   *         $ref: '#/components/responses/InternalServerError'
    */
   getPermissions = async (req, res) => {
     try {

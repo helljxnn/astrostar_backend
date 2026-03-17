@@ -1,4 +1,4 @@
-﻿import { body, param, query } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 import { RoleRepository } from "../repository/roles.repository.js";
 import { validateRolePermissionsShape } from "../config/permissions.config.js";
 
@@ -117,23 +117,17 @@ export const roleValidators = {
 };
 
 export const handleValidationErrors = (req, res, next) => {
-  import("express-validator")
-    .then(({ validationResult }) => {
-      const errors = validationResult(req);
-      if (!errors.isEmpty()) {
-        const firstError = errors.array()[0];
-        return res.status(400).json({
-          success: false,
-          message: firstError.msg,
-          field: firstError.path,
-          value: firstError.value,
-        });
-      }
-      next();
-    })
-    .catch((error) => {
-      console.error("Error importing validationResult:", error);
-      next();
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const firstError = errors.array()[0];
+    return res.status(400).json({
+      success: false,
+      message: firstError.msg,
+      field: firstError.path,
+      value: firstError.value,
     });
+  }
+  next();
 };
+
 
