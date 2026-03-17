@@ -4,9 +4,9 @@ import { paymentsValidator } from "../validators/payments.validator.js";
 import { 
   requireAthleteOwnership,
   requirePaymentReceiptAccess,
+  requirePaymentAdminPermissions,
 } from "../middleware/paymentAccess.middleware.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
-import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 import { uploadPaymentReceipt } from "../../../services/shared/middleware/upload.middleware.js";
 
 const router = Router();

@@ -125,9 +125,9 @@ $$;
   "updatedAt" timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );`,
 `INSERT INTO public.payment_settings
-  (id, "monthlyAmount", "enrollmentAmount", "lateFeeDailyAmount")
+  (id, "monthlyAmount", "enrollmentAmount", "lateFeeDailyAmount", "createdAt", "updatedAt")
 VALUES
-  (1, 30000, 40000, 2000)
+  (1, 30000, 40000, 2000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 ON CONFLICT (id) DO NOTHING;`],
   },
   {
