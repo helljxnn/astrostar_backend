@@ -3,30 +3,67 @@ import emailService from "../../../../services/emailService.js";
 import appointmentEmailService from "./AppointmentEmail.service.js";
 
 const SPECIALTY_LABELS = {
-  psicologia: "Psicología Deportiva",
+  psicologia: "Psicología",
   fisioterapia: "Fisioterapia",
-  nutricion: "Nutrición",
+  nutricion: "Nutricion",
   medicina: "Medicina Deportiva",
 };
+
+const APPOINTMENT_ALLOWED_SPECIALTIES = new Set([
+  "psicologia",
+  "fisioterapia",
+  "nutricion",
+]);
 
 export class AppointmentService {
   constructor() {
     this.appointmentRepository = new AppointmentRepository();
   }
 
+  pad2(value) {
+    return String(value).padStart(2, "0");
+  }
+
+  getDateKey(value) {
+    if (!value) return "";
+
+    // Keep literal YYYY-MM-DD without timezone side effects.
+    if (typeof value === "string") {
+      const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) return `${match[1]}-${match[2]}-${match[3]}`;
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return "";
+      return `${parsed.getFullYear()}-${this.pad2(parsed.getMonth() + 1)}-${this.pad2(parsed.getDate())}`;
+    }
+
+    if (value instanceof Date) {
+      if (Number.isNaN(value.getTime())) return "";
+
+      // Prisma Date fields (date-only) usually come as UTC midnight.
+      const isLikelyDateOnlyUtc =
+        value.getUTCHours() === 0 &&
+        value.getUTCMinutes() === 0 &&
+        value.getUTCSeconds() === 0 &&
+        value.getUTCMilliseconds() === 0;
+
+      if (isLikelyDateOnlyUtc) {
+        return `${value.getUTCFullYear()}-${this.pad2(value.getUTCMonth() + 1)}-${this.pad2(value.getUTCDate())}`;
+      }
+
+      return `${value.getFullYear()}-${this.pad2(value.getMonth() + 1)}-${this.pad2(value.getDate())}`;
+    }
+
+    return "";
+  }
+
   normalizeDateOnly(value) {
-    if (!value) return null;
-    const date = value instanceof Date ? new Date(value) : new Date(value);
-    if (Number.isNaN(date.getTime())) return null;
-    date.setHours(0, 0, 0, 0);
-    return date;
+    const dateKey = this.getDateKey(value);
+    if (!dateKey) return null;
+    return new Date(`${dateKey}T00:00:00`);
   }
 
   formatDateKey(value) {
-    if (!value) return "";
-    const date = value instanceof Date ? value : new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toLocaleDateString("sv-SE");
+    return this.getDateKey(value);
   }
 
   formatTime(value) {
@@ -90,7 +127,7 @@ export class AppointmentService {
     const endDate = new Date(endValue);
 
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      throw new Error("La fecha y hora de la cita no son válidas.");
+      throw new Error("La fecha y hora de la cita no son vlidas.");
     }
 
     return { startDate, endDate };
@@ -108,7 +145,7 @@ export class AppointmentService {
 
   normalizeFrequency(value = "") {
     const frequency = String(value || "").toLowerCase();
-    if (frequency === "año" || frequency === "ano") return "anio";
+    if (frequency === "ao" || frequency === "ano") return "anio";
     return frequency || "semana";
   }
 
@@ -267,7 +304,7 @@ export class AppointmentService {
     const recurrenceRaw = String(
       schedule.recurrence || schedule.repeticion || "no",
     ).toLowerCase();
-    const recurrence = recurrenceRaw === "año" ? "anio" : recurrenceRaw;
+    const recurrence = recurrenceRaw === "ao" ? "anio" : recurrenceRaw;
     const interval = Number(schedule.intervalo) || 1;
 
     if (recurrence === "personalizado") {
@@ -386,7 +423,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`,
+          message: `No se encontr la cita con ID ${id}.`,
         };
       }
       return {
@@ -418,13 +455,13 @@ export class AppointmentService {
       const athlete =
         await this.appointmentRepository.findAthleteById(athleteId);
       if (!athlete) {
-        throw new Error("El deportista no existe o no está activo.");
+        throw new Error("El deportista no existe o no est activo.");
       }
 
       const specialist =
         await this.appointmentRepository.findSpecialistById(specialistId);
       if (!specialist) {
-        throw new Error("El especialista no existe o no está activo.");
+        throw new Error("El especialista no existe o no est activo.");
       }
 
       const { startDate, endDate } = this.parseDateTimePayload(appointmentData);
@@ -434,7 +471,8 @@ export class AppointmentService {
       }
 
       const now = new Date();
-      if (startDate < now) {
+      const PAST_GRACE_MS = 60 * 1000; // prevent false negatives around current minute
+      if (startDate.getTime() < now.getTime() - PAST_GRACE_MS) {
         throw new Error(
           "No se puede crear una cita en una fecha u hora pasada.",
         );
@@ -443,7 +481,7 @@ export class AppointmentService {
       const startDateKey = this.formatDateKey(startDate);
       const endDateKey = this.formatDateKey(endDate);
       if (startDateKey !== endDateKey) {
-        throw new Error("La cita debe iniciar y finalizar el mismo día.");
+        throw new Error("La cita debe iniciar y finalizar el mismo da.");
       }
 
       const appointmentDate = this.normalizeDateOnly(startDate);
@@ -527,7 +565,7 @@ export class AppointmentService {
           },
         })
         .catch((err) =>
-          console.warn("⚠️  Error enviando email de cita:", err?.message),
+          console.warn("a️  Error enviando email de cita:", err?.message),
         );
 
       return {
@@ -551,7 +589,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`,
+          message: `No se encontr la cita con ID ${id}.`,
         };
       }
 
@@ -578,7 +616,7 @@ export class AppointmentService {
           return {
             success: false,
             statusCode: 400,
-            message: "El deportista no existe o no está activo.",
+            message: "El deportista no existe o no est activo.",
           };
         }
         payload.athleteId = parseInt(athleteId);
@@ -591,7 +629,7 @@ export class AppointmentService {
           return {
             success: false,
             statusCode: 400,
-            message: "El especialista no existe o no está activo.",
+            message: "El especialista no existe o no est activo.",
           };
         }
         payload.specialistId = parseInt(specialistId);
@@ -651,11 +689,12 @@ export class AppointmentService {
         const startKey = this.formatDateKey(startDate);
         const endKey = this.formatDateKey(endDate);
         if (startKey !== endKey) {
-          throw new Error("La cita debe iniciar y finalizar el mismo día.");
+          throw new Error("La cita debe iniciar y finalizar el mismo da.");
         }
 
         const now = new Date();
-        if (startDate < now) {
+        const PAST_GRACE_MS = 60 * 1000;
+        if (startDate.getTime() < now.getTime() - PAST_GRACE_MS) {
           throw new Error("No se puede reprogramar a una fecha u hora pasada.");
         }
 
@@ -729,7 +768,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`,
+          message: `No se encontr la cita con ID ${id}.`,
         };
       }
 
@@ -737,7 +776,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 400,
-          message: "La cita ya está cancelada.",
+          message: "La cita ya est cancelada.",
         };
       }
 
@@ -755,15 +794,15 @@ export class AppointmentService {
         conclusion: null,
       });
 
-      // Enviar correos de cancelación (no bloqueante)
+      // Enviar correos de cancelacin (no bloqueante)
       if (
         appointment.athlete &&
         appointment.athlete.user &&
         appointment.specialist &&
         appointment.specialist.user
       ) {
-        const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
-        const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
+        const athleteName = `${appointment.athlete.user.firstName || ''} ${appointment.athlete.user.lastName || ''}`.trim() || 'Deportista';
+        const specialistName = `${appointment.specialist.user.firstName || ''} ${appointment.specialist.user.lastName || ''}`.trim() || 'Especialista';
 
         appointmentEmailService
           .sendAppointmentCancelled(
@@ -779,7 +818,7 @@ export class AppointmentService {
           )
           .catch((err) =>
             console.warn(
-              "⚠️  Error enviando emails de cancelación:",
+              "a️  Error enviando emails de cancelacin:",
               err?.message,
             ),
           );
@@ -806,7 +845,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`,
+          message: `No se encontr la cita con ID ${id}.`,
         };
       }
 
@@ -814,7 +853,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 400,
-          message: "La cita ya está completada.",
+          message: "La cita ya est completada.",
         };
       }
 
@@ -823,6 +862,18 @@ export class AppointmentService {
           success: false,
           statusCode: 400,
           message: "No se puede completar una cita cancelada.",
+        };
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const apptDate = new Date(appointment.appointmentDate);
+      apptDate.setHours(0, 0, 0, 0);
+      if (apptDate > today) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "No se puede completar una cita que an no ha ocurrido.",
         };
       }
 
@@ -853,7 +904,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró la cita con ID ${id}.`,
+          message: `No se encontr la cita con ID ${id}.`,
         };
       }
 
@@ -921,7 +972,8 @@ export class AppointmentService {
             .replace(/\s+/g, " ")
             .trim();
         const roleName = emp.user.role?.name || "Especialista";
-        const specialtyKey = this.resolveSpecialtyKey(roleName);
+        const specialtySource = emp.specialty || roleName;
+        const specialtyKey = this.resolveSpecialtyKey(specialtySource);
         return {
           id: emp.id,
           specialistId: emp.id,
@@ -932,12 +984,14 @@ export class AppointmentService {
           email: emp.user.email,
           identification: emp.user.identification,
         };
-      });
+      }).filter((spec) => APPOINTMENT_ALLOWED_SPECIALTIES.has(spec.specialty));
 
       const normalizedFilter = this.resolveSpecialtyKey(specialty);
-      const filtered = normalizedFilter
+      const filtered = normalizedFilter && APPOINTMENT_ALLOWED_SPECIALTIES.has(normalizedFilter)
         ? formatted.filter((spec) => spec.specialty === normalizedFilter)
-        : formatted;
+        : normalizedFilter
+          ? []
+          : formatted;
 
       return {
         success: true,
@@ -979,3 +1033,5 @@ export class AppointmentService {
     }
   }
 }
+
+

@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export const paymentsRepository = {
   // ============================================================================
@@ -431,3 +431,4 @@ export const paymentsRepository = {
     return payments;
   }
 };
+

@@ -1,7 +1,9 @@
-import express from 'express';
+﻿import express from 'express';
 import { SportsCategoryController } from '../controllers/sportsCategory.controller.js';
 import { sportsCategoryValidators, handleValidationErrors } from '../validators/sportsCategory.Validation.js';
 import multer from 'multer';
+import { authenticateToken } from '../../../../middlewares/auth.js';
+import { checkPermissions } from '../../../../middlewares/checkPermissions.js';
 
 const upload = multer({ storage: multer.memoryStorage() });
 const router = express.Router();
@@ -28,6 +30,8 @@ const sportsCategoryController = new SportsCategoryController();
  */
 router.get(
   '/validate-name',
+  authenticateToken,
+  checkPermissions('sportsCategory', 'Ver'),
   sportsCategoryValidators.checkName,
   handleValidationErrors,
   (req, res) => sportsCategoryController.checkCategoryNameAvailability(req, res)
@@ -57,6 +61,8 @@ router.get(
  */
 router.get(
   '/stats',
+  authenticateToken,
+  checkPermissions('sportsCategory', 'Ver'),
   (req, res) => sportsCategoryController.getSportsCategoryStats(req, res)
 );
 
@@ -78,6 +84,8 @@ router.get(
  */
 router.get(
   '/:id',
+  authenticateToken,
+  checkPermissions('sportsCategory', 'Ver'),
   sportsCategoryValidators.getById,
   handleValidationErrors,
   (req, res) => sportsCategoryController.getSportsCategoryById(req, res)
@@ -97,6 +105,8 @@ router.get(
  */
 router.get(
   '/:id/athletes',
+  authenticateToken,
+  checkPermissions('sportsCategory', 'Listar deportistas'),
   sportsCategoryValidators.getById,
   handleValidationErrors,
   (req, res) => sportsCategoryController.getAthletesByCategory(req, res)
@@ -128,6 +138,8 @@ router.get(
  */
 router.get(
   '/',
+  authenticateToken,
+  checkPermissions('sportsCategory', 'Ver'),
   sportsCategoryValidators.getAll,
   handleValidationErrors,
   (req, res) => sportsCategoryController.getAllSportsCategories(req, res)
@@ -157,6 +169,8 @@ router.get(
  */
 router.post(
   '/',
+  authenticateToken,
+  checkPermissions('sportsCategory', 'Crear'),
   upload.single('file'),
   sportsCategoryValidators.create,
   handleValidationErrors,
@@ -190,6 +204,8 @@ router.post(
  */
 router.put(
   '/:id',
+  authenticateToken,
+  checkPermissions('sportsCategory', 'Editar'),
   upload.single('file'),
   sportsCategoryValidators.update,
   handleValidationErrors,
@@ -210,9 +226,12 @@ router.put(
  */
 router.delete(
   '/:id',
+  authenticateToken,
+  checkPermissions('sportsCategory', 'Eliminar'),
   sportsCategoryValidators.delete,
   handleValidationErrors,
   (req, res) => sportsCategoryController.deleteSportsCategory(req, res)
 );
 
 export default router;
+

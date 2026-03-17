@@ -1,12 +1,8 @@
-import prisma from "../../../config/database.js"; 
+﻿import prisma from "../../../config/database.js"; 
 
 export class AthletesController {
   async getAthletes(req, res) {
     try {
-      console.log('🔍 [AthletesController] Iniciando búsqueda de deportistas...');
-      console.log('📋 [AthletesController] Headers:', req.headers);
-      console.log('🔐 [AthletesController] Usuario autenticado:', req.user ? 'Sí' : 'No');
-      
       // 1. Deportistas de la fundación (con inscripciones activas)
       const athletes = await prisma.athlete.findMany({
         where: {
@@ -33,8 +29,6 @@ export class AthletesController {
         }
       });
 
-      console.log('🏃 Deportistas fundación:', athletes.length);
-
       const athletesFromFoundation = athletes.map(athlete => {
         const currentInscription = athlete.inscriptions[0]; // Primera inscripción activa
         const category = currentInscription?.sportsCategory?.nombre || "Sin categoría";
@@ -59,8 +53,6 @@ export class AthletesController {
         }
       });
 
-      console.log('⏱️ Deportistas temporales:', temporaryAthletes.length);
-
       const athletesFromTemporary = temporaryAthletes.map(temp => ({
         id: temp.id,
         name: `${temp.firstName} ${temp.lastName}`,
@@ -74,8 +66,6 @@ export class AthletesController {
 
       const allAthletes = [...athletesFromFoundation, ...athletesFromTemporary];
       
-      console.log('✅ Total deportistas:', allAthletes.length);
-
       res.json({
         success: true,
         data: allAthletes

@@ -1,14 +1,12 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 /**
  * Middleware para parsear employeeData cuando viene como FormData
  */
 export const parseEmployeeData = (req, res, next) => {
-  // Si hay archivo de firma, los datos vienen en employeeData como JSON string
   if (req.file && req.body.employeeData) {
     try {
       const parsedData = JSON.parse(req.body.employeeData);
-      // Reemplazar req.body con los datos parseados
       req.body = parsedData;
     } catch (error) {
       return res.status(400).json({
@@ -54,19 +52,16 @@ export const employeeValidators = {
       .isInt({ min: 1 })
       .withMessage("La página debe ser un número entero mayor a 0.")
       .toInt(),
-
     query("limit")
       .optional()
       .isInt({ min: 1, max: 100 })
       .withMessage("El límite debe ser un número entre 1 y 100.")
       .toInt(),
-
     query("search")
       .optional()
       .isLength({ max: 100 })
       .withMessage("La búsqueda no puede exceder 100 caracteres.")
       .trim(),
-
     query("status")
       .optional()
       .isIn(["Activo", "Licencia", "Desvinculado", "Fallecido"])
@@ -89,42 +84,36 @@ export const employeeValidators = {
    * Validación para crear empleado
    */
   create: [
-    // Datos personales básicos
     body("firstName")
       .notEmpty()
       .withMessage("El nombre es obligatorio.")
       .isLength({ min: 2, max: 100 })
       .withMessage("El nombre debe tener entre 2 y 100 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+      .matches(/^[\p{L}\p{M}\s]+$/u)
       .withMessage("El nombre solo puede contener letras y espacios.")
       .trim(),
-
     body("middleName")
       .optional({ nullable: true })
       .isLength({ max: 100 })
       .withMessage("El segundo nombre no puede exceder 100 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/)
+      .matches(/^[\p{L}\p{M}\s]*$/u)
       .withMessage("El segundo nombre solo puede contener letras y espacios.")
       .trim(),
-
     body("lastName")
       .notEmpty()
       .withMessage("El apellido es obligatorio.")
       .isLength({ min: 2, max: 100 })
       .withMessage("El apellido debe tener entre 2 y 100 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+      .matches(/^[\p{L}\p{M}\s]+$/u)
       .withMessage("El apellido solo puede contener letras y espacios.")
       .trim(),
-
     body("secondLastName")
       .optional({ nullable: true })
       .isLength({ max: 100 })
       .withMessage("El segundo apellido no puede exceder 100 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/)
+      .matches(/^[\p{L}\p{M}\s]*$/u)
       .withMessage("El segundo apellido solo puede contener letras y espacios.")
       .trim(),
-
-    // Contacto
     body("email")
       .notEmpty()
       .withMessage("El email es obligatorio.")
@@ -134,7 +123,6 @@ export const employeeValidators = {
       .withMessage("El email no puede exceder 150 caracteres.")
       .trim()
       .toLowerCase(),
-
     body("phoneNumber")
       .notEmpty()
       .withMessage("El número telefónico es obligatorio.")
@@ -142,15 +130,12 @@ export const employeeValidators = {
       .withMessage("El teléfono debe tener entre 7 y 20 caracteres.")
       .matches(/^\+?[\d\s\-()]+$/)
       .withMessage("El formato del teléfono no es válido."),
-
     body("address")
       .notEmpty()
       .withMessage("La dirección es obligatoria.")
       .isLength({ min: 10, max: 200 })
       .withMessage("La dirección debe tener entre 10 y 200 caracteres.")
       .trim(),
-
-    // Identificación
     body("identification")
       .notEmpty()
       .withMessage("La identificación es obligatoria.")
@@ -161,15 +146,12 @@ export const employeeValidators = {
         "La identificación solo puede contener números, letras y guiones.",
       )
       .trim(),
-
     body("documentTypeId")
       .notEmpty()
       .withMessage("El tipo de documento es obligatorio.")
       .isInt({ min: 1 })
       .withMessage("Debe seleccionar un tipo de documento válido.")
       .toInt(),
-
-    // Fecha de nacimiento
     body("birthDate")
       .notEmpty()
       .withMessage("La fecha de nacimiento es obligatoria.")
@@ -182,33 +164,28 @@ export const employeeValidators = {
         const today = new Date();
         const age = today.getFullYear() - birthDate.getFullYear();
 
-        if (age < 16) {
-          throw new Error("El empleado debe ser mayor de 16 años.");
-        }
-
-        if (age > 80) {
-          throw new Error("La edad no puede ser mayor a 80 años.");
-        }
-
+        if (age < 16) throw new Error("El empleado debe ser mayor de 16 años.");
+        if (age > 80) throw new Error("La edad no puede ser mayor a 80 años.");
         return true;
       }),
-
-    // Datos de empleado
     body("roleId")
       .notEmpty()
       .withMessage("El rol es obligatorio.")
       .isInt({ min: 1 })
       .withMessage("Debe seleccionar un rol válido.")
       .toInt(),
-
+    body("specialty")
+      .optional({ nullable: true, checkFalsy: true })
+      .isIn(["psicologia", "fisioterapia", "nutricion"])
+      .withMessage(
+        "La especialidad debe ser: psicologia, fisioterapia o nutricion.",
+      ),
     body("status")
       .optional()
       .isIn(["Activo", "Licencia", "Desvinculado", "Fallecido"])
       .withMessage(
         "El estado debe ser: Activo, Licencia, Desvinculado o Fallecido.",
       ),
-
-    // Contraseña temporal (opcional)
     body("temporaryPassword")
       .optional()
       .isLength({ min: 6, max: 50 })
@@ -227,40 +204,34 @@ export const employeeValidators = {
       .isInt({ min: 1 })
       .withMessage("El ID del empleado debe ser un número entero válido.")
       .toInt(),
-
-    // Todos los campos son opcionales en actualización
     body("firstName")
       .optional()
       .isLength({ min: 2, max: 100 })
       .withMessage("El nombre debe tener entre 2 y 100 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+      .matches(/^[\p{L}\p{M}\s]+$/u)
       .withMessage("El nombre solo puede contener letras y espacios.")
       .trim(),
-
     body("middleName")
       .optional({ nullable: true })
       .isLength({ max: 100 })
       .withMessage("El segundo nombre no puede exceder 100 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/)
+      .matches(/^[\p{L}\p{M}\s]*$/u)
       .withMessage("El segundo nombre solo puede contener letras y espacios.")
       .trim(),
-
     body("lastName")
       .optional()
       .isLength({ min: 2, max: 100 })
       .withMessage("El apellido debe tener entre 2 y 100 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+      .matches(/^[\p{L}\p{M}\s]+$/u)
       .withMessage("El apellido solo puede contener letras y espacios.")
       .trim(),
-
     body("secondLastName")
       .optional({ nullable: true })
       .isLength({ max: 100 })
       .withMessage("El segundo apellido no puede exceder 100 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/)
+      .matches(/^[\p{L}\p{M}\s]*$/u)
       .withMessage("El segundo apellido solo puede contener letras y espacios.")
       .trim(),
-
     body("email")
       .optional()
       .isEmail()
@@ -269,20 +240,17 @@ export const employeeValidators = {
       .withMessage("El email no puede exceder 150 caracteres.")
       .trim()
       .toLowerCase(),
-
     body("phoneNumber")
       .optional()
       .isLength({ min: 7, max: 20 })
       .withMessage("El teléfono debe tener entre 7 y 20 caracteres.")
       .matches(/^\+?[\d\s\-()]+$/)
       .withMessage("El formato del teléfono no es válido."),
-
     body("address")
       .optional()
       .isLength({ min: 10, max: 200 })
       .withMessage("La dirección debe tener entre 10 y 200 caracteres.")
       .trim(),
-
     body("identification")
       .optional()
       .isLength({ min: 6, max: 50 })
@@ -292,13 +260,11 @@ export const employeeValidators = {
         "La identificación solo puede contener números, letras y guiones.",
       )
       .trim(),
-
     body("documentTypeId")
       .optional()
       .isInt({ min: 1 })
       .withMessage("Debe seleccionar un tipo de documento válido.")
       .toInt(),
-
     body("birthDate")
       .optional()
       .isISO8601()
@@ -310,23 +276,21 @@ export const employeeValidators = {
         const today = new Date();
         const age = today.getFullYear() - birthDate.getFullYear();
 
-        if (age < 16) {
-          throw new Error("El empleado debe ser mayor de 16 años.");
-        }
-
-        if (age > 80) {
-          throw new Error("La edad no puede ser mayor a 80 años.");
-        }
-
+        if (age < 16) throw new Error("El empleado debe ser mayor de 16 años.");
+        if (age > 80) throw new Error("La edad no puede ser mayor a 80 años.");
         return true;
       }),
-
     body("roleId")
       .optional()
       .isInt({ min: 1 })
       .withMessage("Debe seleccionar un rol válido.")
       .toInt(),
-
+    body("specialty")
+      .optional({ nullable: true, checkFalsy: true })
+      .isIn(["psicologia", "fisioterapia", "nutricion"])
+      .withMessage(
+        "La especialidad debe ser: psicologia, fisioterapia o nutricion.",
+      ),
     body("status")
       .optional()
       .isIn(["Activo", "Licencia", "Desvinculado", "Fallecido"])
@@ -356,7 +320,6 @@ export const employeeValidators = {
       .withMessage("Debe proporcionar un email válido.")
       .trim()
       .toLowerCase(),
-
     query("excludeUserId")
       .optional()
       .isInt({ min: 1 })
@@ -380,7 +343,6 @@ export const employeeValidators = {
         "La identificación solo puede contener números, letras y guiones.",
       )
       .trim(),
-
     query("excludeUserId")
       .optional()
       .isInt({ min: 1 })
@@ -390,3 +352,4 @@ export const employeeValidators = {
       .toInt(),
   ],
 };
+

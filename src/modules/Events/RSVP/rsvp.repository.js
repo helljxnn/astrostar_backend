@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export class RSVPRepository {
   /**
@@ -112,3 +112,4 @@ export class RSVPRepository {
     });
   }
 }
+

@@ -1,4 +1,4 @@
-import express from "express";
+﻿import express from "express";
 import { SportsEquipment } from "../controllers/sportEquipment.controller.js";
 import multer from "multer";
 
@@ -326,3 +326,4 @@ router.post(
 );
 
 export default router;
+

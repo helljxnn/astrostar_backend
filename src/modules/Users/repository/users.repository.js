@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export class UsersRepository {
   /**
@@ -408,3 +408,4 @@ export class UsersRepository {
 }
 
 export default new UsersRepository();
+

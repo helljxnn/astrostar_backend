@@ -1,4 +1,4 @@
-import materialsService from "../services/materials.service.js";
+﻿import materialsService from "../services/materials.service.js";
 
 class MaterialsController {
   /**
@@ -413,3 +413,4 @@ class MaterialsController {
 }
 
 export default new MaterialsController();
+

@@ -33,7 +33,7 @@ Un material es cualquier elemento físico que la fundación utiliza o entrega en
 - **Categoría**: Clasificación (ej: Balones, Uniformes, Equipamiento)
 - **Unidad de medida**: Cómo se cuenta (unidad, par, set, kg, etc.)
 - **Estado**: Activo o Inactivo
-- **Tipo**: Reutilizable o Consumible (flag `esReutilizable`)
+- **Tipo**: Reutilizable (stock fundación) o Consumible (stock eventos)
 
 ### Inventarios Separados
 
@@ -653,9 +653,9 @@ Intento de baja: 15 conos
 - Si el evento NO ha iniciado: Se puede eliminar la reserva sin problema
 - Si el evento YA inició: NO se puede eliminar (los materiales están en uso)
 
-### ¿Puedo cambiar un material de reutilizable a consumible?
+- **¿Puedo cambiar un material de reutilizable a consumible?**
 
-No directamente. El flag `esReutilizable` define el comportamiento del material. Si necesitas cambiar:
+No directamente. El tipo se determina por el stock: si tiene `stockFundacion > 0` aparece en "Materiales a Usar"; si tiene `stockEventos > 0` aparece en "Materiales a Entregar". Si necesitas cambiar:
 
 1. Crear un nuevo material con el tipo correcto
 2. Transferir el stock al nuevo material

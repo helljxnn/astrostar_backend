@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Script de prueba para verificar el envío de invitaciones RSVP
  * Ejecutar con: node src/scripts/test-rsvp-email.js
  */
@@ -109,3 +109,4 @@ testRSVPEmail().catch((error) => {
   console.error("❌ Error fatal:", error);
   process.exit(1);
 });
+

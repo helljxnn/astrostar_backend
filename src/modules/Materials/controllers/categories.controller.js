@@ -1,4 +1,4 @@
-import categoriesService from '../services/categories.service.js';
+﻿import categoriesService from '../services/categories.service.js';
 
 class CategoriesController {
   /**
@@ -282,3 +282,4 @@ class CategoriesController {
 }
 
 export default new CategoriesController();
+

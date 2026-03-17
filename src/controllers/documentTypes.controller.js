@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+﻿import prisma from '../config/database.js';
 
 class DocumentTypesController {
   async getDocumentTypes(req, res) {
@@ -108,3 +108,4 @@ class DocumentTypesController {
 }
 
 export default new DocumentTypesController();
+

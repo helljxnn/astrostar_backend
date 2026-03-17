@@ -1,12 +1,15 @@
-import express from "express";
+﻿import express from "express";
 import { TeamsController } from "../controllers/teams.controller.js";
 import {
   teamsValidators,
   handleValidationErrors,
 } from "../validators/teams.validator.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = express.Router();
 const teamsController = new TeamsController();
+router.use(authenticateToken);
 
 /**
  * @swagger
@@ -115,6 +118,7 @@ const teamsController = new TeamsController();
  */
 router.get(
   "/check-name",
+  checkPermissions("temporaryTeams", "Ver"),
   teamsValidators.checkName,
   handleValidationErrors,
   teamsController.checkNameAvailability
@@ -148,7 +152,11 @@ router.get(
  *       200:
  *         description: Lista completa de equipos para reporte
  */
-router.get("/report", teamsController.getAllTeamsForReport);
+router.get(
+  "/report",
+  checkPermissions("temporaryTeams", "Ver"),
+  teamsController.getAllTeamsForReport,
+);
 
 /**
  * @swagger
@@ -185,7 +193,11 @@ router.get("/report", teamsController.getAllTeamsForReport);
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/stats", teamsController.getTeamStats);
+router.get(
+  "/stats",
+  checkPermissions("temporaryTeams", "Ver"),
+  teamsController.getTeamStats,
+);
 
 /**
  * @swagger
@@ -222,7 +234,11 @@ router.get("/stats", teamsController.getTeamStats);
  *       500:
  *         description: Error interno del servidor
  */
-router.get("/sports-categories", teamsController.getSportsCategories);
+router.get(
+  "/sports-categories",
+  checkPermissions("temporaryTeams", "Ver"),
+  teamsController.getSportsCategories,
+);
 
 /**
  * @swagger
@@ -276,6 +292,7 @@ router.get("/sports-categories", teamsController.getSportsCategories);
  */
 router.get(
   "/check-duplicate-temporal",
+  checkPermissions("temporaryTeams", "Ver"),
   teamsController.checkDuplicateTemporalTeam
 );
 
@@ -322,6 +339,7 @@ router.get(
  */
 router.get(
   "/check-temporal-person-availability",
+  checkPermissions("temporaryTeams", "Ver"),
   teamsController.checkTemporalPersonAvailability
 );
 
@@ -373,6 +391,7 @@ router.get(
  */
 router.get(
   "/:id/check-event-assignments",
+  checkPermissions("temporaryTeams", "Ver"),
   teamsController.checkTeamAssignedToEvents
 );
 
@@ -445,6 +464,7 @@ router.get(
  */
 router.get(
   "/",
+  checkPermissions("temporaryTeams", "Ver"),
   teamsValidators.getAll,
   handleValidationErrors,
   teamsController.getAllTeams
@@ -487,6 +507,7 @@ router.get(
  */
 router.get(
   "/:id",
+  checkPermissions("temporaryTeams", "Ver"),
   teamsValidators.getById,
   handleValidationErrors,
   teamsController.getTeamById
@@ -566,6 +587,7 @@ router.get(
  */
 router.post(
   "/",
+  checkPermissions("temporaryTeams", "Crear"),
   teamsValidators.create,
   handleValidationErrors,
   teamsController.createTeam
@@ -635,6 +657,7 @@ router.post(
  */
 router.put(
   "/:id",
+  checkPermissions("temporaryTeams", "Editar"),
   teamsValidators.update,
   handleValidationErrors,
   teamsController.updateTeam
@@ -690,6 +713,7 @@ router.put(
  */
 router.patch(
   "/:id/status",
+  checkPermissions("temporaryTeams", "Editar"),
   teamsValidators.changeStatus,
   handleValidationErrors,
   teamsController.changeTeamStatus
@@ -730,9 +754,11 @@ router.patch(
  */
 router.delete(
   "/:id",
+  checkPermissions("temporaryTeams", "Eliminar"),
   teamsValidators.delete,
   handleValidationErrors,
   teamsController.deleteTeam
 );
 
 export default router;
+

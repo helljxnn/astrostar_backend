@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 const calculateAgeFromBirthDate = (birthDate) => {
   if (!birthDate) return null;
@@ -147,7 +147,7 @@ export class AthletesRepository {
               nombreArchivo: ins.paymentProofName,
               fechaSubida: ins.paymentProofUploadedAt,
               tipo: ins.paymentProofType,
-              tamaño: 0,
+              tamano: 0,
             }
           : null,
       })),
@@ -1178,3 +1178,6 @@ export class AthletesRepository {
 
 // Exportar instancia para compatibilidad
 export const athletesRepository = new AthletesRepository();
+
+
+

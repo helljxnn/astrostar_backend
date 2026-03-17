@@ -1,4 +1,4 @@
-import movementsRepository from "../repository/movements.repository.js";
+﻿import movementsRepository from "../repository/movements.repository.js";
 import materialsRepository from "../repository/materials.repository.js";
 
 class MovementsService {
@@ -458,3 +458,4 @@ class MovementsService {
 }
 
 export default new MovementsService();
+

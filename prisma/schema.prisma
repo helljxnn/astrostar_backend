@@ -139,6 +139,7 @@ model RefreshToken {
 model Employee {
   id                   Int                  @id @default(autoincrement())
   status               EmployeeStatus       @default(Activo)
+  specialty            String?              @db.VarChar(30)
   statusAssignedAt     DateTime             @default(now())
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
@@ -290,7 +291,7 @@ model Guardian {
   firstName        String       @db.VarChar(100)
   lastName         String       @db.VarChar(100)
   identification   String       @unique @db.VarChar(50)
-  email            String       @db.VarChar(150)
+  email            String       @unique @db.VarChar(150)
   phone            String       @db.VarChar(20)
   address          String?      @db.VarChar(200)
   occupation       String?      @db.VarChar(100)
@@ -356,10 +357,10 @@ model Enrollment {
   athleteId        Int
   estado           EnrollmentStatus @default(Pending_Payment)
   observaciones    String?
-  createdAt        DateTime         @default(now()) // Cuando se creó la matrícula
+  createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
-  fechaInicio      DateTime?        // NULL hasta que se apruebe el pago inicial (cuando se activa)
-  fechaVencimiento DateTime?        // NULL hasta que se apruebe el pago inicial (fechaInicio + 1 año)
+  fechaInicio      DateTime?
+  fechaVencimiento DateTime?
   athlete          Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
 
   @@index([athleteId])
@@ -401,9 +402,7 @@ model Inscription {
 model TemporaryPerson {
   id             Int                   @id @default(autoincrement())
   firstName      String
-  middleName     String?
   lastName       String
-  secondLastName String?
   identification String?
   email          String?
   phone          String?
@@ -623,15 +622,15 @@ model Donation {
   deletedAt      DateTime?
   serviceId      Int?
   responsibleId  Int?                  @map("responsible_id")
+  employeeId     Int?
   donorSponsor   Sponsor?              @relation(fields: [donorSponsorId], references: [id])
   service        Service?              @relation(fields: [serviceId], references: [id])
   responsible    Employee?             @relation("ResponsibleDonation", fields: [responsibleId], references: [id], onDelete: SetNull)
+  employee       Employee?             @relation(fields: [employeeId], references: [id])
   details        DonationDetail[]
   files          DonationFile[]
   transactions   DonationTransaction[]
   eventMaterials EventMaterial[]
-  employee       Employee?             @relation(fields: [employeeId], references: [id])
-  employeeId     Int?
 
   @@index([status, type, donationAt])
   @@index([donorSponsorId])
@@ -640,20 +639,20 @@ model Donation {
 }
 
 model DonationDetail {
-  id             Int            @id @default(autoincrement())
+  id             Int          @id @default(autoincrement())
   donationId     Int
   kind           DonationType
   recordType     String
   description    String?
-  quantity       Decimal?       @db.Decimal(10, 2)
-  amount         Decimal?       @db.Decimal(15, 2)
+  quantity       Decimal?     @db.Decimal(10, 2)
+  amount         Decimal?     @db.Decimal(15, 2)
   channel        String?
   classification String?
   expiresAt      DateTime?
-  materialId     Int?           @map("material_id")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  donation       Donation       @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  materialId     Int?         @map("material_id")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  donation       Donation     @relation(fields: [donationId], references: [id], onDelete: Cascade)
   files          DonationFile[]
 }
 
@@ -890,7 +889,7 @@ model purchases {
   totalAmount    Decimal   @db.Decimal(12, 2)
   notes          String?
   createdAt      DateTime  @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime  @updatedAt
   providerId     Int
   employeeId     Int?
   concept        String?   @db.VarChar(500)
@@ -920,17 +919,13 @@ model email_verification_attempts {
   @@index([ip_address])
 }
 
-// ============================================
-// MODELOS PARA GESTIÓN DE PAGOS
-// ============================================
-
 model PaymentSettings {
-  id               Int      @id @default(1)
-  monthlyAmount    Int
-  enrollmentAmount Int
-  lateFeeDailyAmount Int   @default(2000)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                  Int      @id @default(1)
+  monthlyAmount       Int
+  enrollmentAmount    Int
+  lateFeeDailyAmount  Int      @default(2000)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@map("payment_settings")
 }

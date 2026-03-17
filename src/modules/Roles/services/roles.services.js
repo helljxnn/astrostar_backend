@@ -1,229 +1,184 @@
 import { RoleRepository } from "../repository/roles.repository.js";
+import {
+  normalizeRolePermissions,
+  validateRolePermissionsShape,
+  ROLE_MODULES,
+  ROLE_ACTIONS,
+  MODULE_ALLOWED_ACTIONS,
+} from "../config/permissions.config.js";
+
+const PROTECTED_SYSTEM_ROLES = new Set([
+  "administrador",
+  "deportista",
+  "entrenador",
+  "profesionaldelasalud",
+  "profesionaldesalud",
+]);
+
+const normalizeRoleName = (value = "") =>
+  String(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+
+const isProtectedSystemRole = (roleName = "") =>
+  PROTECTED_SYSTEM_ROLES.has(normalizeRoleName(roleName));
 
 export class RoleService {
   constructor() {
     this.roleRepository = new RoleRepository();
   }
 
-  // Get all roles with pagination and search
   async getAllRoles({ page = 1, limit = 10, search = "" }) {
     try {
-      const result = await this.roleRepository.findAll({
-        page,
-        limit,
-        search,
-      });
-
-      return result;
+      return await this.roleRepository.findAll({ page, limit, search });
     } catch (error) {
       console.error("Service error - getAllRoles:", error);
       throw error;
     }
   }
 
-  // Create a new role
   async createRole(roleData) {
     try {
-      // Check if role name already exists
-      const existingRole = await this.roleRepository.findByName(roleData.name);
+      const existingRole = await this.roleRepository.findByNameCaseInsensitive(
+        roleData.name,
+      );
       if (existingRole) {
-        throw new Error(
-          `El nombre "${roleData.name}" ya está en uso. Elija otro nombre.`,
-        );
+        throw new Error(`El nombre "${roleData.name}" ya esta en uso. Elija otro nombre.`);
       }
 
-      const newRole = await this.roleRepository.create(roleData);
-      return newRole;
+      const validationResult = validateRolePermissionsShape(roleData.permissions || {});
+      if (!validationResult.isValid) {
+        throw new Error(validationResult.message);
+      }
+
+      return await this.roleRepository.create({
+        ...roleData,
+        permissions: normalizeRolePermissions(roleData.permissions || {}),
+      });
     } catch (error) {
       console.error("Service error - createRole:", error);
       throw error;
     }
   }
 
-  // Get role by ID
   async getRoleById(id) {
     try {
-      const role = await this.roleRepository.findById(id);
-      return role;
+      return await this.roleRepository.findById(id);
     } catch (error) {
       console.error("Service error - getRoleById:", error);
       throw error;
     }
   }
 
-  // Update role
   async updateRole(id, roleData) {
     try {
-      // Check if role exists
       const existingRole = await this.roleRepository.findById(id);
-      if (!existingRole) {
-        return null;
-      }
+      if (!existingRole) return null;
 
-      // Verificar si es el rol de Administrador y se está intentando cambiar el nombre
-      if (
-        existingRole.name === "Administrador" &&
-        roleData.name &&
-        roleData.name !== "Administrador"
-      ) {
+      if (isProtectedSystemRole(existingRole.name)) {
         throw new Error(
-          'El rol "Administrador" es un rol del sistema y su nombre no puede ser modificado por razones de seguridad.',
+          `El rol "${existingRole.name}" es un rol base del sistema y no puede ser editado ni cambiar sus permisos.`,
         );
       }
 
-      // If name is being changed, check if new name already exists
       if (roleData.name && roleData.name !== existingRole.name) {
         const nameExists = await this.roleRepository.findByName(roleData.name);
         if (nameExists) {
-          throw new Error(
-            `El nombre "${roleData.name}" ya está en uso. Elija otro nombre.`,
-          );
+          throw new Error(`El nombre "${roleData.name}" ya esta en uso. Elija otro nombre.`);
         }
       }
 
-      const updatedRole = await this.roleRepository.update(id, roleData);
-      return updatedRole;
+      const payload = { ...roleData };
+      if (roleData.permissions) {
+        const validationResult = validateRolePermissionsShape(roleData.permissions);
+        if (!validationResult.isValid) {
+          throw new Error(validationResult.message);
+        }
+        payload.permissions = normalizeRolePermissions(roleData.permissions);
+      }
+
+      return await this.roleRepository.update(id, payload);
     } catch (error) {
       console.error("Service error - updateRole:", error);
       throw error;
     }
   }
 
-  // Delete role
   async deleteRole(id) {
     try {
-      // Obtener información del rol antes de intentar eliminarlo
       const roleToDelete = await this.roleRepository.findById(id);
-
       if (!roleToDelete) {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el rol con ID ${id}. Verifique que el rol existe y que el ID es correcto.`,
+          message: `No se encontro el rol con ID ${id}. Verifique que el rol existe y que el ID es correcto.`,
+        };
+      }
+
+      if (isProtectedSystemRole(roleToDelete.name)) {
+        return {
+          success: false,
+          statusCode: 403,
+          message: `El rol "${roleToDelete.name}" es un rol base del sistema y no puede ser eliminado.`,
         };
       }
 
       const deleted = await this.roleRepository.delete(id);
-
       if (deleted) {
         return {
           success: true,
           message: `El rol "${roleToDelete.name}" ha sido eliminado exitosamente.`,
         };
-      } else {
-        return {
-          success: false,
-          statusCode: 404,
-          message: `No se pudo eliminar el rol "${roleToDelete.name}". Verifique que el rol existe.`,
-        };
       }
+
+      return {
+        success: false,
+        statusCode: 404,
+        message: `No se pudo eliminar el rol "${roleToDelete.name}". Verifique que el rol existe.`,
+      };
     } catch (error) {
       console.error("Service error - deleteRole:", error);
-
-      // Si el error contiene información específica, la pasamos tal como está
       if (
         error.message.includes("Administrador") ||
-        error.message.includes("está asignado a") ||
+        error.message.includes("esta asignado a") ||
         error.message.includes("usuario")
       ) {
         throw error;
       }
-
-      // Para otros errores, proporcionamos un mensaje genérico
-      throw new Error(
-        "Error interno al eliminar el rol. Por favor, inténtelo de nuevo.",
-      );
+      throw new Error("Error interno al eliminar el rol. Por favor, intentelo de nuevo.");
     }
   }
 
-  // Get role statistics
   async getRoleStats() {
     try {
-      const stats = await this.roleRepository.getStats();
-      return stats;
+      return await this.roleRepository.getStats();
     } catch (error) {
       console.error("Service error - getRoleStats:", error);
       throw error;
     }
   }
 
-  // Validate role permissions structure
   validatePermissions(permissions) {
-    if (!permissions || typeof permissions !== "object") {
-      return { isValid: false, message: "Permissions must be an object" };
-    }
-
-    // Expected structure: { "ModuleName": { "ActionName": boolean } }
-    for (const [moduleName, modulePermissions] of Object.entries(permissions)) {
-      if (typeof modulePermissions !== "object") {
-        return {
-          isValid: false,
-          message: `Permissions for module "${moduleName}" must be an object`,
-        };
-      }
-
-      for (const [actionName, hasPermission] of Object.entries(
-        modulePermissions,
-      )) {
-        if (typeof hasPermission !== "boolean") {
-          return {
-            isValid: false,
-            message: `Permission "${actionName}" in module "${moduleName}" must be a boolean`,
-          };
-        }
-      }
-    }
-
-    return { isValid: true };
+    return validateRolePermissionsShape(permissions);
   }
 
-  // Get available modules and actions for permissions
   getAvailablePermissions() {
     return {
-      modules: [
-        {
-          name: "Users",
-          icon: "👤",
-          actions: ["Create", "Read", "Update", "Delete"],
-        },
-        {
-          name: "Roles",
-          icon: "🛡️",
-          actions: ["Create", "Read", "Update", "Delete"],
-        },
-        {
-          name: "Athletes",
-          icon: "🏃",
-          actions: ["Create", "Read", "Update", "Delete"],
-        },
-        {
-          name: "Events",
-          icon: "📅",
-          actions: ["Create", "Read", "Update", "Delete"],
-        },
-        {
-          name: "Services",
-          icon: "⚙️",
-          actions: ["Create", "Read", "Update", "Delete"],
-        },
-      ],
+      modules: ROLE_MODULES,
+      actions: ROLE_ACTIONS,
+      moduleAllowedActions: MODULE_ALLOWED_ACTIONS,
     };
   }
 
-  // Check if role name exists (for real-time validation)
   async checkRoleNameExists(name, excludeId = null) {
     try {
-      const existingRole =
-        await this.roleRepository.findByNameCaseInsensitive(name);
-
-      // Convertir excludeId a número si es necesario para comparación correcta
-      const excludeIdNum = excludeId ? parseInt(excludeId) : null;
-
-      // Si encontramos un rol y no es el que estamos excluyendo
+      const existingRole = await this.roleRepository.findByNameCaseInsensitive(name);
+      const excludeIdNum = excludeId ? parseInt(excludeId, 10) : null;
       if (existingRole && existingRole.id !== excludeIdNum) {
         return existingRole;
       }
-
       return null;
     } catch (error) {
       console.error("Service error - checkRoleNameExists:", error);

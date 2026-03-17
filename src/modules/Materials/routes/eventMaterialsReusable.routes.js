@@ -1,6 +1,7 @@
 import { Router } from "express";
 import eventMaterialsReusableController from "../controllers/eventMaterialsReusable.controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = Router();
 
@@ -25,6 +26,7 @@ const router = Router();
 router.get(
   "/:eventoId/reusables",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsReusableController.getByEvent,
 );
 
@@ -65,6 +67,7 @@ router.get(
 router.post(
   "/:eventoId/reusables",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsReusableController.assignMaterial,
 );
 
@@ -89,6 +92,7 @@ router.post(
 router.delete(
   "/reusables/:assignmentId",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsReusableController.removeAssignment,
 );
 
@@ -130,6 +134,7 @@ router.delete(
 router.post(
   "/reusables/bulk-availability",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsReusableController.checkBulkAvailability,
 );
 
@@ -170,6 +175,7 @@ router.post(
 router.get(
   "/reusables/:materialId/availability",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsReusableController.checkAvailability,
 );
 
@@ -209,6 +215,7 @@ router.get(
 router.get(
   "/reusables/:materialId/assignments",
   authenticateToken,
+  checkPermissions("materials", "Ver Asignaciones del Material"),
   eventMaterialsReusableController.getReusableMaterialAssignments,
 );
 
@@ -248,6 +255,7 @@ router.get(
 router.get(
   "/consumables/:materialId/assignments",
   authenticateToken,
+  checkPermissions("materials", "Ver Asignaciones del Material"),
   eventMaterialsReusableController.getMaterialAssignments,
 );
 

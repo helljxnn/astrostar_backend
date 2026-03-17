@@ -1,6 +1,7 @@
 import { Router } from "express";
 import eventMaterialsConsumableController from "../controllers/eventMaterialsConsumable.controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = Router();
 
@@ -25,6 +26,7 @@ const router = Router();
 router.get(
   "/:eventoId/consumables",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsConsumableController.getByEvent,
 );
 
@@ -49,6 +51,7 @@ router.get(
 router.post(
   "/:eventoId/consumables/load-donations",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsConsumableController.loadDonationMaterials,
 );
 
@@ -89,6 +92,7 @@ router.post(
 router.post(
   "/:eventoId/consumables",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsConsumableController.assignMaterial,
 );
 
@@ -113,6 +117,7 @@ router.post(
 router.delete(
   "/consumables/:assignmentId",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsConsumableController.removeAssignment,
 );
 
@@ -137,6 +142,7 @@ router.delete(
 router.post(
   "/:eventoId/finalize-consumables",
   authenticateToken,
+  checkPermissions("eventsManagement", "Materiales"),
   eventMaterialsConsumableController.finalizeEvent,
 );
 

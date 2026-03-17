@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 import { enrollmentsRepository } from "../repository/enrollments.repository.js";
 import emailService from "../../../services/emailService.js";
 import { paymentsService } from "../../Payments/services/payments.service.js";
@@ -187,7 +187,6 @@ const getOrCreateAthleteRole = async (tx) => {
       }
     });
     
-    console.log('✅ [ENROLLMENT] Rol de Athlete creado con permisos básicos');
   }
 
   return athleteRole;
@@ -305,19 +304,16 @@ const createEnrollment = async (tx, athleteId, enrollmentData) => {
  */
 const markPreRegistrationAsProcessed = async (tx, preRegistrationId, email, identification) => {
   if (preRegistrationId) {
-    console.log('🔄 [ENROLLMENT] Marcando inscripción como Procesada, ID:', preRegistrationId);
     
     await tx.preRegistration.update({
       where: { id: preRegistrationId },
       data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
     });
     
-    console.log('✅ [ENROLLMENT] Inscripción marcada como Procesada');
     return;
   }
 
   // Buscar por email o documento
-  console.log('⚠️ [ENROLLMENT] No hay preRegistrationId, buscando por email/documento...');
   
   let preRegistration = await tx.preRegistration.findFirst({
     where: {
@@ -338,14 +334,11 @@ const markPreRegistrationAsProcessed = async (tx, preRegistrationId, email, iden
   }
 
   if (preRegistration) {
-    console.log('✅ [ENROLLMENT] Inscripción encontrada:', preRegistration.id);
     await tx.preRegistration.update({
       where: { id: preRegistration.id },
       data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
     });
-    console.log('✅ [ENROLLMENT] Inscripción marcada como Procesada');
   } else {
-    console.log('⚠️ [ENROLLMENT] No se encontró inscripción pendiente');
   }
 };
 
@@ -369,7 +362,6 @@ const sendWelcomeEmail = async (user, tempPassword) => {
 
     // Envío asíncrono sin await para no bloquear
     emailService.sendAthleteWelcomeEmail(athleteInfo, credentials)
-      .then(() => console.log('✅ [ENROLLMENT] Email de bienvenida enviado'))
       .catch(error => console.error('❌ [ENROLLMENT] Error enviando email:', error));
       
   } catch (emailError) {
@@ -391,10 +383,6 @@ export const enrollmentsService = {
    * @returns {Promise<Object>} Resultado de la creación
    */
   async create({ preRegistrationId, athlete, enrollment }) {
-    console.log('🔍 [ENROLLMENT] ========================================');
-    console.log('🔍 [ENROLLMENT] INICIANDO CREACIÓN DE MATRÍCULA ULTRA-OPTIMIZADA');
-    console.log('🔍 [ENROLLMENT] preRegistrationId:', preRegistrationId, 'Tipo:', typeof preRegistrationId);
-    console.log('🔍 [ENROLLMENT] ========================================');
     
     const startTime = Date.now();
     
@@ -404,7 +392,6 @@ export const enrollmentsService = {
     const cleanIdentification = normalizedAthlete.identification?.trim();
     const age = calculateAge(new Date(normalizedAthlete.birthDate));
     
-    console.log('📊 [ENROLLMENT] Edad calculada:', age, 'años');
 
     // PASO 2: Validaciones críticas en paralelo (fuera de transacción)
     const [existingUser, athleteRole, guardian] = await Promise.all([
@@ -464,7 +451,6 @@ export const enrollmentsService = {
     const tempPassword = cleanIdentification;
     const passwordHash = await bcrypt.default.hash(tempPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
 
-    console.log(`⏱️ [ENROLLMENT] Preparación completada en ${Date.now() - startTime}ms`);
 
     // PASO 4: Transacción ULTRA-OPTIMIZADA (solo operaciones críticas)
     const transactionStart = Date.now();
@@ -551,7 +537,6 @@ export const enrollmentsService = {
       isolationLevel: 'ReadCommitted' // Nivel de aislamiento más eficiente
     });
 
-    console.log(`⚡ [ENROLLMENT] Transacción completada en ${Date.now() - transactionStart}ms`);
 
     // OPERACIONES POST-TRANSACCIÓN (ejecutar en background sin await)
     
@@ -577,7 +562,6 @@ export const enrollmentsService = {
                 concept: `Inscripción inicial en categoría ${sportsCategory.nombre}`,
               },
             });
-            console.log('✅ [ENROLLMENT] Inscripción con categoría creada (background)');
           }
         } catch (error) {
           console.error('⚠️ [ENROLLMENT] Error creando inscripción:', error.message);
@@ -600,7 +584,6 @@ export const enrollmentsService = {
         };
 
         await emailService.sendAthleteWelcomeEmail(athleteInfo, credentials);
-        console.log('✅ [ENROLLMENT] Email de bienvenida enviado (background)');
       } catch (emailError) {
         console.error('❌ [ENROLLMENT] Error enviando email:', emailError.message);
       }
@@ -631,14 +614,12 @@ export const enrollmentsService = {
             metadata: { enrollmentId: result.enrollment.id }
           }
         });
-        console.log('✅ [ENROLLMENT] Obligación de pago inicial generada (background)');
       } catch (paymentError) {
         console.error('⚠️ [ENROLLMENT] Error generando obligación:', paymentError.message);
       }
     });
 
     const totalTime = Date.now() - startTime;
-    console.log(`🚀 [ENROLLMENT] Proceso completo en ${totalTime}ms (transacción: ${Date.now() - transactionStart}ms)`);
 
     // Retornar resultado inmediatamente
     return {
@@ -678,7 +659,6 @@ export const enrollmentsService = {
           where: { id: preRegistration.id },
           data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
         });
-        console.log('✅ [ENROLLMENT] Pre-inscripción procesada por datos:', preRegistration.id);
       }
     } catch (error) {
       console.error('❌ [ENROLLMENT] Error procesando pre-inscripción por datos:', error);
@@ -780,7 +760,6 @@ export const enrollmentsService = {
       showAll: false // SIEMPRE mostrar solo la más reciente por deportista
     };
     
-    console.log('🔍 [ENROLLMENTS SERVICE] Filtros enviados al repository:', enhancedFilters);
     
     return await enrollmentsRepository.findAll(enhancedFilters);
   },
@@ -838,7 +817,6 @@ export const enrollmentsService = {
         }
       });
 
-      console.log(`🔍 [ENROLLMENT] Encontradas ${expiredEnrollments.length} matrículas vencidas para procesar`);
 
       const results = [];
 
@@ -851,7 +829,6 @@ export const enrollmentsService = {
             data: { estado: ENROLLMENT_STATUS.EXPIRED }
           });
 
-          console.log(`✅ [ENROLLMENT] Matrícula ${enrollment.id} marcada como vencida - Atleta: ${enrollment.athlete.user.firstName} ${enrollment.athlete.user.lastName}`);
 
           results.push({
             enrollmentId: enrollment.id,
@@ -873,7 +850,6 @@ export const enrollmentsService = {
       const processed = results.filter(r => r.status === 'processed').length;
       const errors = results.filter(r => r.status === 'error').length;
 
-      console.log(`📊 [ENROLLMENT] Procesamiento completado: ${processed} exitosas, ${errors} errores`);
 
       return {
         processed,
@@ -928,7 +904,6 @@ export const enrollmentsService = {
         }
       });
 
-      console.log('✅ [ENROLLMENT] Matrícula activada exitosamente');
 
       return {
         enrollment: activatedEnrollment,
@@ -965,7 +940,6 @@ export const enrollmentsService = {
    */
   async getAthleteEnrollmentHistory(athleteId) {
     try {
-      console.log(`🔍 [ENROLLMENT HISTORY] Obteniendo historial para deportista ID: ${athleteId}`);
 
       // Obtener TODAS las matrículas del deportista
       const enrollments = await prisma.enrollment.findMany({
@@ -1065,7 +1039,6 @@ export const enrollmentsService = {
         guardian: enrollments[0].athlete.guardian
       };
 
-      console.log(`✅ [ENROLLMENT HISTORY] Historial obtenido: ${enrollments.length} matrículas`);
 
       return {
         success: true,
@@ -1080,3 +1053,6 @@ export const enrollmentsService = {
     }
   },
 };
+
+
+

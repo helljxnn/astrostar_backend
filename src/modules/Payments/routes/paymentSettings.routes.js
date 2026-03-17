@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { paymentSettingsController } from "../controllers/paymentSettings.controller.js";
 import { paymentsValidator } from "../validators/payments.validator.js";
 import { requirePaymentAdminPermissions } from "../middleware/paymentAccess.middleware.js";
@@ -30,3 +30,4 @@ router.patch(
 );
 
 export default router;
+

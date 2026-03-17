@@ -1,4 +1,4 @@
-
+﻿
 import { body, param, query, validationResult } from 'express-validator';
 
 /**
@@ -230,3 +230,4 @@ export const appointmentValidators = {
       .toInt()
   ]
 };
+

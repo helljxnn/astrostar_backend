@@ -1,4 +1,4 @@
-// 📁 Services/Employees/EmployeesSchedule/services/schedule.services.js
+﻿// 📁 Services/Employees/EmployeesSchedule/services/schedule.services.js
 import { ScheduleRepository } from '../repository/schedule.repository.js';
 import emailService from '../../../../services/emailService.js';
 
@@ -46,6 +46,45 @@ export class ScheduleService {
     const endTime = this.normalizeTime(`${match[3]}:${match[4]}`);
     if (!startTime || !endTime) return null;
     return { startTime, endTime };
+  }
+
+  normalizeCustomFrequency(value) {
+    if (!value) return 'semana';
+    const normalized = String(value)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim();
+    return ['dia', 'semana', 'mes', 'anio'].includes(normalized)
+      ? normalized
+      : 'semana';
+  }
+
+  normalizeCustomDays(days = []) {
+    if (!Array.isArray(days)) return [];
+    return [...new Set(days.map((day) => Number(day)))]
+      .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+      .sort((a, b) => a - b);
+  }
+
+  normalizeCustomRecurrence(value) {
+    if (!value) return null;
+    let raw = value;
+    if (typeof value === 'string') {
+      try {
+        raw = JSON.parse(value);
+      } catch (_error) {
+        return null;
+      }
+    }
+    if (!raw || typeof raw !== 'object') return null;
+
+    return {
+      ...raw,
+      interval: Math.max(1, Number(raw.interval) || 1),
+      frequency: this.normalizeCustomFrequency(raw.frequency),
+      dias: this.normalizeCustomDays(raw.dias),
+    };
   }
 
   timeToMinutes(value) {
@@ -210,6 +249,10 @@ export class ScheduleService {
       const dayOfWeek = this.mapDayOfWeek(scheduleData.fecha);
 
       // 6. Preparar datos para la base de datos
+      const customRecurrence = this.normalizeCustomRecurrence(
+        scheduleData.customRecurrence,
+      );
+
       const scheduleDataForDB = {
         employeeId: parseInt(scheduleData.empleadoId),
         scheduleDate,
@@ -217,9 +260,8 @@ export class ScheduleService {
         startTime: scheduleData.horaInicio,
         endTime: scheduleData.horaFin,
         recurrence: scheduleData.repeticion || 'no',
-        customRecurrence: scheduleData.customRecurrence ? JSON.stringify(scheduleData.customRecurrence) : null,
-        description: scheduleData.descripcion?.trim() || null,
-        cancellationReason: null
+        customRecurrence: customRecurrence ? JSON.stringify(customRecurrence) : null,
+        description: scheduleData.descripcion?.trim() || null
       };
 
       // 7. Crear el horario
@@ -289,8 +331,11 @@ export class ScheduleService {
       if (updateData.horaFin) scheduleDataForDB.endTime = updateData.horaFin;
       if (updateData.repeticion) scheduleDataForDB.recurrence = updateData.repeticion;
       if (updateData.customRecurrence !== undefined) {
-        scheduleDataForDB.customRecurrence = updateData.customRecurrence 
-          ? JSON.stringify(updateData.customRecurrence) 
+        const customRecurrence = this.normalizeCustomRecurrence(
+          updateData.customRecurrence,
+        );
+        scheduleDataForDB.customRecurrence = customRecurrence
+          ? JSON.stringify(customRecurrence)
           : null;
       }
       if (updateData.descripcion !== undefined) {
@@ -448,11 +493,19 @@ export class ScheduleService {
   async getActiveEmployees() {
     try {
       const employees = await this.scheduleRepository.getActiveEmployees();
+      const specialtyLabels = {
+        psicologia: 'Psicología',
+        fisioterapia: 'Fisioterapia',
+        nutricion: 'Nutricion'
+      };
+
       const formattedEmployees = employees.map(emp => ({
         id: emp.id,
         empleadoId: emp.id,
         nombre: `${emp.user.firstName} ${emp.user.middleName || ''} ${emp.user.lastName} ${emp.user.secondLastName || ''}`.replace(/\s+/g, ' ').trim(),
         cargo: emp.user.role?.name || 'Empleado',
+        specialty: emp.specialty || null,
+        specialtyLabel: emp.specialty ? (specialtyLabels[emp.specialty] || emp.specialty) : null,
         email: emp.user.email,
         identification: emp.user.identification
       }));
@@ -466,3 +519,4 @@ export class ScheduleService {
     }
   }
 }
+

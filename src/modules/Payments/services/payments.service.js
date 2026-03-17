@@ -1,4 +1,4 @@
-import { paymentsRepository } from "../repository/payments.repository.js";
+﻿import { paymentsRepository } from "../repository/payments.repository.js";
 import { paymentSettingsRepository } from "../repository/paymentSettings.repository.js";
 import prisma from "../../../config/database.js";
 import emailService from "../../../services/emailService.js";
@@ -2144,3 +2144,5 @@ export const paymentsService = {
     };
   },
 };
+
+

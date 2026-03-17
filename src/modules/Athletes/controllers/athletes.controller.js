@@ -1,4 +1,4 @@
-import { AthletesService } from "../services/athletes.service.js";
+﻿import { AthletesService } from "../services/athletes.service.js";
 import { athletesService } from "../services/athletes.service.new.js";
 
 export class AthletesController {
@@ -419,3 +419,5 @@ export class AthletesController {
 }
 
 export default new AthletesController();
+
+

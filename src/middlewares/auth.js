@@ -1,5 +1,13 @@
-import jwt from 'jsonwebtoken';
+﻿import jwt from 'jsonwebtoken';
 import prisma from '../config/database.js';
+
+const getJwtSecret = () => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET no está configurado en variables de entorno');
+  }
+  return secret;
+};
 
 // Middleware de autenticación JWT
 export const authenticateToken = async (req, res, next) => {
@@ -14,10 +22,8 @@ export const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Verificar el token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    
-    // Obtener información completa del usuario
+    const decoded = jwt.verify(token, getJwtSecret());
+
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
       select: {
@@ -33,7 +39,6 @@ export const authenticateToken = async (req, res, next) => {
             permissions: true
           }
         },
-        // ✅ CORRECCIÓN: Incluir información del atleta si existe
         athlete: {
           select: {
             id: true,
@@ -58,27 +63,24 @@ export const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Agregar usuario al request
     req.user = user;
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
-      console.error('❌ Token inválido:', error.message);
       return res.status(403).json({
         success: false,
         message: 'Token inválido'
       });
     }
-    
+
     if (error.name === 'TokenExpiredError') {
-      console.error('❌ Token expirado:', error.message);
       return res.status(403).json({
         success: false,
         message: 'Token expirado'
       });
     }
 
-    console.error('❌ Error en autenticación:', error);
+    console.error('Error en autenticación:', error);
     return res.status(500).json({
       success: false,
       message: 'Error interno del servidor'
@@ -97,8 +99,8 @@ export const optionalAuth = async (req, res, next) => {
       return next();
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    
+    const decoded = jwt.verify(token, getJwtSecret());
+
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
       select: {
@@ -114,7 +116,6 @@ export const optionalAuth = async (req, res, next) => {
             permissions: true
           }
         },
-        // ✅ CORRECCIÓN: Incluir información del atleta si existe
         athlete: {
           select: {
             id: true,

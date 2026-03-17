@@ -1,11 +1,12 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 import { paymentsController } from "../controllers/payments.controller.js";
 import { paymentsValidator } from "../validators/payments.validator.js";
 import { 
-  requirePaymentAdminPermissions, 
-  requireAthleteOwnership 
+  requireAthleteOwnership,
+  requirePaymentReceiptAccess,
 } from "../middleware/paymentAccess.middleware.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 import { uploadPaymentReceipt } from "../../../services/shared/middleware/upload.middleware.js";
 
 const router = Router();
@@ -52,6 +53,7 @@ router.get(
   '/:paymentId/receipt',
   authenticateToken,
   paymentsValidator.validatePaymentId,
+  requirePaymentReceiptAccess,
   paymentsController.downloadPaymentReceipt
 );
 

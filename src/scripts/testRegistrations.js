@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+﻿import prisma from '../config/database.js';
 
 /**
  * Script de prueba para verificar que el módulo de inscripciones funciona correctamente
@@ -197,3 +197,4 @@ testRegistrations()
     console.error('Error fatal:', error);
     process.exit(1);
   });
+

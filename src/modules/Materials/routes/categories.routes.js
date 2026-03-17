@@ -1,4 +1,4 @@
-import express from 'express';
+﻿import express from 'express';
 import categoriesController from '../controllers/categories.controller.js';
 import { authenticateToken } from '../../../middlewares/auth.js';
 import { checkPermissions } from '../../../middlewares/checkPermissions.js';
@@ -519,3 +519,4 @@ router.delete(
 );
 
 export default router;
+

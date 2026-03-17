@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export const enrollmentsRepository = {
   async normalizeStatuses() {
@@ -125,7 +125,6 @@ export const enrollmentsRepository = {
       const safeSortBy = validSortFields.includes(sortBy) ? sortBy : 'createdAt';
       const safeSortOrder = validSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toUpperCase() : 'DESC';
       
-      console.log('📊 [ENROLLMENTS REPO] Ordenamiento:', { safeSortBy, safeSortOrder });
 
       const whereClause = whereConditions.length > 0 
         ? `WHERE ${whereConditions.join(' AND ')}`
@@ -441,7 +440,11 @@ export const enrollmentsRepository = {
       include: {
         athlete: {
           include: {
-            documentType: true,
+            user: {
+              include: {
+                documentType: true,
+              },
+            },
             guardian: true,
           },
         },
@@ -619,3 +622,5 @@ export const enrollmentsRepository = {
     return transformedData;
   },
 };
+
+

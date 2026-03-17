@@ -1,5 +1,7 @@
-import express from "express";
+﻿import express from "express";
 import { ProvidersController } from "../controllers/providers.controller.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 import {
   providersValidators,
   handleValidationErrors,
@@ -7,6 +9,7 @@ import {
 
 const router = express.Router();
 const providersController = new ProvidersController();
+router.use(authenticateToken);
 
 /**
  * @swagger
@@ -51,7 +54,11 @@ const providersController = new ProvidersController();
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/document-types", providersController.getDocumentTypes);
+router.get(
+  "/document-types",
+  checkPermissions("providers", "Ver"),
+  providersController.getDocumentTypes
+);
 
 /**
  * @swagger
@@ -63,7 +70,11 @@ router.get("/document-types", providersController.getDocumentTypes);
  *       200:
  *         description: Reference data retrieved successfully
  */
-router.get("/reference-data", providersController.getReferenceData);
+router.get(
+  "/reference-data",
+  checkPermissions("providers", "Ver"),
+  providersController.getReferenceData
+);
 
 /**
  * @swagger
@@ -77,6 +88,7 @@ router.get("/reference-data", providersController.getReferenceData);
  */
 router.get(
   "/document-validation-rules",
+  checkPermissions("providers", "Ver"),
   providersController.getDocumentValidationRules
 );
 
@@ -120,6 +132,7 @@ router.get(
  */
 router.get(
   "/check-nit",
+  checkPermissions("providers", "Ver"),
   providersValidators.checkNit,
   handleValidationErrors,
   providersController.checkNitAvailability
@@ -153,6 +166,7 @@ router.get(
  */
 router.get(
   "/check-business-name",
+  checkPermissions("providers", "Ver"),
   providersValidators.checkBusinessName,
   handleValidationErrors,
   providersController.checkBusinessNameAvailability
@@ -180,6 +194,7 @@ router.get(
  */
 router.get(
   "/check-email",
+  checkPermissions("providers", "Ver"),
   providersValidators.checkEmail,
   handleValidationErrors,
   providersController.checkEmailAvailability
@@ -207,6 +222,7 @@ router.get(
  */
 router.get(
   "/check-contact",
+  checkPermissions("providers", "Ver"),
   providersValidators.checkContact,
   handleValidationErrors,
   providersController.checkContactAvailability
@@ -234,6 +250,7 @@ router.get(
  */
 router.get(
   "/check-identification",
+  checkPermissions("providers", "Ver"),
   providersValidators.checkIdentification,
   handleValidationErrors,
   providersController.checkIdentificationAvailability
@@ -262,7 +279,11 @@ router.get(
  *       500:
  *         $ref: '#/components/responses/InternalServerError'
  */
-router.get("/stats", providersController.getProviderStats);
+router.get(
+  "/stats",
+  checkPermissions("providers", "Ver"),
+  providersController.getProviderStats
+);
 
 /**
  * @swagger
@@ -292,7 +313,11 @@ router.get("/stats", providersController.getProviderStats);
  *       200:
  *         description: All providers retrieved successfully for report
  */
-router.get("/report", providersController.getAllProvidersForReport);
+router.get(
+  "/report",
+  checkPermissions("providers", "Ver"),
+  providersController.getAllProvidersForReport
+);
 
 /**
  * @swagger
@@ -342,6 +367,7 @@ router.get("/report", providersController.getAllProvidersForReport);
  */
 router.get(
   "/",
+  checkPermissions("providers", "Ver"),
   providersValidators.getAll,
   handleValidationErrors,
   providersController.getAllProviders
@@ -356,11 +382,13 @@ router.get(
  */
 router.get(
   "/:id/check-ingresos",
+  checkPermissions("providers", "Ver"),
   providersController.checkHasIngresos
 );
 
 router.get(
   "/:id",
+  checkPermissions("providers", "Ver"),
   providersValidators.getById,
   handleValidationErrors,
   providersController.getProviderById
@@ -447,6 +475,7 @@ router.get(
  */
 router.post(
   "/",
+  checkPermissions("providers", "Crear"),
   providersValidators.create,
   handleValidationErrors,
   providersController.createProvider
@@ -523,6 +552,7 @@ router.post(
  */
 router.put(
   "/:id",
+  checkPermissions("providers", "Editar"),
   providersValidators.update,
   handleValidationErrors,
   providersController.updateProvider
@@ -537,6 +567,7 @@ router.put(
  */
 router.patch(
   "/:id/status",
+  checkPermissions("providers", "Editar"),
   providersValidators.changeStatus,
   handleValidationErrors,
   providersController.changeProviderStatus
@@ -566,9 +597,11 @@ router.patch(
  */
 router.delete(
   "/:id",
+  checkPermissions("providers", "Eliminar"),
   providersValidators.delete,
   handleValidationErrors,
   providersController.deleteProvider
 );
 
 export default router;
+

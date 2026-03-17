@@ -1,4 +1,4 @@
-// 📁 Services/Employees/EmployeesSchedule/repository/schedule.repository.js
+﻿// 📁 Services/Employees/EmployeesSchedule/repository/schedule.repository.js
 import { PrismaClient } from '../../../../../generated/prisma/index.js';
 const prisma = new PrismaClient();
 
@@ -29,7 +29,13 @@ export class ScheduleRepository {
                   lastName: true,
                   secondLastName: true,
                   email: true,
-                  phoneNumber: true
+                  phoneNumber: true,
+                  role: {
+                    select: {
+                      id: true,
+                      name: true
+                    }
+                  }
                 }
               }
             }
@@ -77,7 +83,13 @@ export class ScheduleRepository {
                 lastName: true,
                 secondLastName: true,
                 email: true,
-                phoneNumber: true
+                phoneNumber: true,
+                role: {
+                  select: {
+                    id: true,
+                    name: true
+                  }
+                }
               }
             }
           }
@@ -248,3 +260,4 @@ export class ScheduleRepository {
     });
   }
 }
+

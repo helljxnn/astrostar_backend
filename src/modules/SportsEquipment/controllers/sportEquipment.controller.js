@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 import { v2 as cloudinary } from "cloudinary";
 import dotenv from "dotenv";
 
@@ -378,3 +378,4 @@ export class SportsEquipment {
     }
   };
 }
+

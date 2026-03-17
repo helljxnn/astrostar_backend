@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 export const athletesValidators = {
   // Validaciones para crear deportista
@@ -308,3 +308,5 @@ export const handleValidationErrors = (req, res, next) => {
 
   next();
 };
+
+

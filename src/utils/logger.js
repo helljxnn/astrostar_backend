@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Sistema de logging configurable por niveles
  * Uso: import logger from './utils/logger.js'
  *      logger.info('mensaje'), logger.error('error'), etc.
@@ -50,3 +50,4 @@ const logger = {
 };
 
 export default logger;
+

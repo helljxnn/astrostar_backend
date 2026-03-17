@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export const preRegistrationsRepository = {
   async create(data) {
@@ -98,7 +98,7 @@ export const preRegistrationsRepository = {
           { identification: identification }
         ],
         status: {
-          not: 'Rejected' // Permitir solo si no está rechazada
+          not: 'Rejected'
         }
       },
       select: {
@@ -151,3 +151,4 @@ export const preRegistrationsRepository = {
     return data;
   },
 };
+

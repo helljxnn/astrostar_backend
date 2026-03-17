@@ -1,4 +1,4 @@
-import { paymentsService } from "../services/payments.service.js";
+﻿import { paymentsService } from "../services/payments.service.js";
 import { validationResult } from "express-validator";
 
 // ============================================================================
@@ -107,3 +107,4 @@ export const paymentSettingsController = {
     }
   }
 };
+

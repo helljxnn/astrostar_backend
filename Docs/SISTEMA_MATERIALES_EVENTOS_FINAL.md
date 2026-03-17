@@ -68,7 +68,6 @@ model Material {
   stockFundacion         Int      // Para materiales reutilizables
   stockEventos           Int      // Para materiales consumibles
   stockEventosReservado  Int      // NO USADO (legacy)
-  esReutilizable         Boolean  // Flag para identificar tipo
 }
 
 model EventMaterial {

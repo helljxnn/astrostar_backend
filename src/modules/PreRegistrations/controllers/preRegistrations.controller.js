@@ -1,4 +1,4 @@
-import { preRegistrationsService } from "../services/preRegistrations.service.js";
+﻿import { preRegistrationsService } from "../services/preRegistrations.service.js";
 import { preRegistrationSchemas } from "../validators/preRegistrations.validator.js";
 
 export const preRegistrationsController = {
@@ -220,3 +220,4 @@ export const preRegistrationsController = {
     }
   },
 };
+

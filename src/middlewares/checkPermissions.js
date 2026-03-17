@@ -1,15 +1,12 @@
 import prisma from "../config/database.js";
+import {
+  hasNormalizedPermission,
+  resolveModuleKey,
+} from "../modules/Roles/config/permissions.config.js";
 
-/**
- * Middleware para verificar permisos específicos por módulo y acción
- * @param {string} module - El módulo que se quiere acceder (ej: 'users', 'roles', 'dashboard')
- * @param {string} action - La acción que se quiere realizar (ej: 'Ver', 'Crear', 'Editar', 'Eliminar')
- * @returns {Function} Middleware function
- */
 export const checkPermissions = (module, action) => {
   return async (req, res, next) => {
     try {
-      // Obtener el usuario del token (asumiendo que ya está autenticado)
       const userId = req.user?.id;
       const userRole = req.user?.role;
 
@@ -20,15 +17,12 @@ export const checkPermissions = (module, action) => {
         });
       }
 
-      // Verificar si es admin (múltiples variantes)
       const roleName = userRole.name || userRole;
       const roleStr = String(roleName).toLowerCase();
-
       if (roleStr === "admin" || roleStr === "administrador") {
         return next();
       }
 
-      // Obtener el rol del usuario con sus permisos
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
@@ -48,21 +42,17 @@ export const checkPermissions = (module, action) => {
         });
       }
 
-      // Obtener los permisos del rol
       const permissions = user.role.permissions || {};
+      const resolvedModule = resolveModuleKey(module, permissions);
 
-      // Verificar si tiene permisos para el módulo y acción específica
-      const modulePermissions = permissions[module];
-
-      if (!modulePermissions || !modulePermissions[action]) {
+      if (!hasNormalizedPermission(permissions, resolvedModule, action)) {
         return res.status(403).json({
           success: false,
-          message: `No tienes permisos para ${action.toLowerCase()} en ${module}`,
-          requiredPermission: `${module}.${action}`,
+          message: `No tienes permisos para ${String(action).toLowerCase()} en ${resolvedModule}`,
+          requiredPermission: `${resolvedModule}.${action}`,
         });
       }
 
-      // Si llegamos aquí, el usuario tiene permisos
       req.userPermissions = permissions;
       next();
     } catch (error) {
@@ -75,11 +65,6 @@ export const checkPermissions = (module, action) => {
   };
 };
 
-/**
- * Middleware para verificar si el usuario tiene acceso a cualquier acción de un módulo
- * @param {string} module - El módulo que se quiere acceder
- * @returns {Function} Middleware function
- */
 export const checkModuleAccess = (module) => {
   return async (req, res, next) => {
     try {
@@ -93,15 +78,12 @@ export const checkModuleAccess = (module) => {
         });
       }
 
-      // Verificar si es admin (múltiples variantes)
       const roleName = userRole.name || userRole;
       const roleStr = String(roleName).toLowerCase();
-
       if (roleStr === "admin" || roleStr === "administrador") {
         return next();
       }
 
-      // Obtener el rol del usuario con sus permisos
       const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
@@ -121,16 +103,13 @@ export const checkModuleAccess = (module) => {
       }
 
       const permissions = user.role.permissions || {};
-      const modulePermissions = permissions[module];
+      const resolvedModule = resolveModuleKey(module, permissions);
+      const modulePermissions = permissions[resolvedModule];
 
-      // Verificar si tiene al menos un permiso en el módulo
-      if (
-        !modulePermissions ||
-        !Object.values(modulePermissions).some(Boolean)
-      ) {
+      if (!modulePermissions || !Object.values(modulePermissions).some(Boolean)) {
         return res.status(403).json({
           success: false,
-          message: `No tienes acceso al módulo ${module}`,
+          message: `No tienes acceso al modulo ${resolvedModule}`,
         });
       }
 
@@ -146,30 +125,15 @@ export const checkModuleAccess = (module) => {
   };
 };
 
-/**
- * Función helper para verificar permisos en controladores
- * @param {Object} permissions - Permisos del usuario
- * @param {string} module - Módulo a verificar
- * @param {string} action - Acción a verificar
- * @returns {boolean} True si tiene permisos, false si no
- */
 export const hasPermission = (permissions, module, action) => {
-  if (!permissions || !permissions[module]) {
-    return false;
-  }
-  return Boolean(permissions[module][action]);
+  const resolvedModule = resolveModuleKey(module, permissions || {});
+  return hasNormalizedPermission(permissions, resolvedModule, action);
 };
 
-/**
- * Función helper para obtener todos los módulos a los que tiene acceso un usuario
- * @param {Object} permissions - Permisos del usuario
- * @returns {Array} Array de módulos con acceso
- */
 export const getAccessibleModules = (permissions) => {
   if (!permissions) return [];
-
   return Object.keys(permissions).filter((module) => {
     const modulePermissions = permissions[module];
-    return Object.values(modulePermissions).some(Boolean);
+    return modulePermissions && Object.values(modulePermissions).some(Boolean);
   });
 };

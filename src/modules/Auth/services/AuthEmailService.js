@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio de Email para Autenticación - AstroStar
  * Maneja emails de recuperación de contraseña y verificación
  */
@@ -241,3 +241,4 @@ Este es un correo automático.
 
 // Exportar instancia singleton
 export default new AuthEmailService();
+

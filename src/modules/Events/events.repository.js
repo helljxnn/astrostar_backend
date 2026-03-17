@@ -1,4 +1,4 @@
-import { PrismaClient } from "../../../generated/prisma/index.js";
+﻿import { PrismaClient } from "../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
@@ -75,7 +75,8 @@ export class EventsRepository {
         event_categories: service.event_categories || null,
         ServiceType: service.ServiceType || null,
         ServiceSponsor: service.ServiceSponsor || [],
-        _count: service._count || { participants: 0, eventMaterials: 0 },
+        _count: service._count || { participants: 0 },
+        donationMaterialsCount: service.eventMaterials?.length ?? 0,
       };
     } catch (error) {
       console.error("Error transforming event:", service.id, error.message);
@@ -104,7 +105,8 @@ export class EventsRepository {
         event_categories: null,
         ServiceType: null,
         ServiceSponsor: [],
-        _count: { participants: 0, eventMaterials: 0 },
+        _count: { participants: 0 },
+        donationMaterialsCount: 0,
       };
     }
   }
@@ -203,8 +205,14 @@ export class EventsRepository {
             _count: {
               select: {
                 participants: true,
-                eventMaterials: true,
               },
+            },
+            eventMaterials: {
+              where: {
+                tipo: "CONSUMIBLE",
+                donacionId: { not: null },
+              },
+              select: { id: true },
             },
           },
           orderBy: {
@@ -1696,3 +1704,4 @@ export class EventsRepository {
     }
   }
 }
+

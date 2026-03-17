@@ -1,4 +1,4 @@
-import prisma from '../config/database.js';
+﻿import prisma from '../config/database.js';
 import bcrypt from 'bcrypt';
 
 /**
@@ -383,3 +383,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(1);
     });
 }
+

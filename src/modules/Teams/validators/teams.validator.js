@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 export const teamsValidators = {
   // Validaciones para crear equipo
@@ -214,12 +214,6 @@ export const handleValidationErrors = (req, res, next) => {
 
   if (!errors.isEmpty()) {
     const firstError = errors.array()[0];
-    
-    console.log("❌ Validation error:", {
-      field: firstError.path,
-      value: firstError.value,
-      message: firstError.msg
-    });
 
     return res.status(400).json({
       success: false,

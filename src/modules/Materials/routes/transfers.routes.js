@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import transfersController from '../controllers/transfers.controller.js';
 import { authenticateToken } from '../../../middlewares/auth.js';
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = Router();
 
@@ -60,6 +61,11 @@ const router = Router();
  *       404:
  *         description: Material not found
  */
-router.post('/:id/transfer', authenticateToken, transfersController.transferStock);
+router.post(
+  "/:id/transfer",
+  authenticateToken,
+  checkPermissions("materials", "Transferir Stock"),
+  transfersController.transferStock,
+);
 
 export default router;

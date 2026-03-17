@@ -1,9 +1,11 @@
-import express from "express";
+﻿import express from "express";
 import { GuardiansController } from "../controllers/guardians.controller.js";
 import {
   guardiansValidators,
   handleValidationErrors,
 } from "../validators/guardians.validator.js";
+import { authenticateToken } from "../../../../middlewares/auth.js";
+import { checkPermissions } from "../../../../middlewares/checkPermissions.js";
 
 const router = express.Router();
 const guardiansController = new GuardiansController();
@@ -26,3 +28,4 @@ router.put("/:id", guardiansValidators.update, handleValidationErrors, guardians
 router.delete("/:id", guardiansValidators.delete, handleValidationErrors, guardiansController.deleteGuardian);
 
 export default router;
+

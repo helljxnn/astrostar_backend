@@ -1,73 +1,104 @@
-import express from 'express';
-import { TemporaryWorkersController } from '../controllers/temporaryworkers.controller.js';
+import express from "express";
+import { TemporaryWorkersController } from "../controllers/temporaryworkers.controller.js";
 import {
   createTemporaryWorkerValidation,
   updateTemporaryWorkerValidation,
   getByIdValidation,
   deleteValidation,
   queryValidation,
-  checkAvailabilityValidation,
   checkIdentificationValidation,
   checkEmailValidation,
-  handleValidationErrors
-} from '../validators/temporaryworkers.validators.js';
+  handleValidationErrors,
+} from "../validators/temporaryworkers.validators.js";
 import {
   validateTemporaryPersonBusinessLogic,
   validateTemporaryPersonDeletion,
   validateCriticalUpdates,
-  sanitizeTemporaryPersonData
-} from '../../../../middlewares/businessValidation.js';
+  sanitizeTemporaryPersonData,
+} from "../../../../middlewares/businessValidation.js";
+import { authenticateToken } from "../../../../middlewares/auth.js";
+import { checkPermissions } from "../../../../middlewares/checkPermissions.js";
 
 const router = express.Router();
 const temporaryWorkersController = new TemporaryWorkersController();
 
-// Rutas de verificación (deben ir antes de las rutas con parámetros)
-router.get('/check-identification', 
-  checkIdentificationValidation, 
-  handleValidationErrors, 
-  temporaryWorkersController.checkIdentificationAvailability
-);
-router.get('/check-email', 
-  checkEmailValidation, 
-  handleValidationErrors, 
-  temporaryWorkersController.checkEmailAvailability
+router.use(authenticateToken);
+
+// Validation routes (must go before :id routes)
+router.get(
+  "/check-identification",
+  checkPermissions("temporaryWorkers", "Ver"),
+  checkIdentificationValidation,
+  handleValidationErrors,
+  temporaryWorkersController.checkIdentificationAvailability,
 );
 
-// Rutas de estadísticas y datos de referencia
-router.get('/stats', temporaryWorkersController.getTemporaryWorkerStats);
-router.get('/reference-data', temporaryWorkersController.getReferenceData);
+router.get(
+  "/check-email",
+  checkPermissions("temporaryWorkers", "Ver"),
+  checkEmailValidation,
+  handleValidationErrors,
+  temporaryWorkersController.checkEmailAvailability,
+);
 
-// Rutas CRUD principales
-router.get('/', 
-  queryValidation, 
-  handleValidationErrors, 
-  temporaryWorkersController.getAllTemporaryWorkers
+// Stats and reference data
+router.get(
+  "/stats",
+  checkPermissions("temporaryWorkers", "Ver"),
+  temporaryWorkersController.getTemporaryWorkerStats,
 );
-router.get('/:id', 
-  getByIdValidation, 
-  handleValidationErrors, 
-  temporaryWorkersController.getTemporaryWorkerById
+
+router.get(
+  "/reference-data",
+  checkPermissions("temporaryWorkers", "Ver"),
+  temporaryWorkersController.getReferenceData,
 );
-router.post('/', 
+
+// CRUD
+router.get(
+  "/",
+  checkPermissions("temporaryWorkers", "Ver"),
+  queryValidation,
+  handleValidationErrors,
+  temporaryWorkersController.getAllTemporaryWorkers,
+);
+
+router.get(
+  "/:id",
+  checkPermissions("temporaryWorkers", "Ver"),
+  getByIdValidation,
+  handleValidationErrors,
+  temporaryWorkersController.getTemporaryWorkerById,
+);
+
+router.post(
+  "/",
+  checkPermissions("temporaryWorkers", "Crear"),
   sanitizeTemporaryPersonData,
-  createTemporaryWorkerValidation, 
+  createTemporaryWorkerValidation,
   handleValidationErrors,
   validateTemporaryPersonBusinessLogic,
-  temporaryWorkersController.createTemporaryWorker
+  temporaryWorkersController.createTemporaryWorker,
 );
-router.put('/:id', 
+
+router.put(
+  "/:id",
+  checkPermissions("temporaryWorkers", "Editar"),
   sanitizeTemporaryPersonData,
-  updateTemporaryWorkerValidation, 
+  updateTemporaryWorkerValidation,
   handleValidationErrors,
   validateCriticalUpdates,
   validateTemporaryPersonBusinessLogic,
-  temporaryWorkersController.updateTemporaryWorker
+  temporaryWorkersController.updateTemporaryWorker,
 );
-router.delete('/:id', 
-  deleteValidation, 
+
+router.delete(
+  "/:id",
+  checkPermissions("temporaryWorkers", "Eliminar"),
+  deleteValidation,
   handleValidationErrors,
   validateTemporaryPersonDeletion,
-  temporaryWorkersController.deleteTemporaryWorker
+  temporaryWorkersController.deleteTemporaryWorker,
 );
 
 export default router;

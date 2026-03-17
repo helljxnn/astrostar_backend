@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Servicio de Email para Citas - AstroStar
  * Maneja todos los emails relacionados con citas médicas/deportivas
  */
@@ -368,3 +368,4 @@ Equipo AstroStar`;
 
 // Exportar instancia singleton
 export default new AppointmentEmailService();
+

@@ -1,4 +1,4 @@
-import { TeamsService } from "../services/teams.service.js";
+﻿import { TeamsService } from "../services/teams.service.js";
 
 export class TeamsController {
   constructor() {
@@ -73,8 +73,6 @@ export class TeamsController {
 
   createTeam = async (req, res) => {
     try {
-      console.log("📥 Datos recibidos en createTeam:", req.body);
-
       const result = await this.teamsService.createTeam(req.body);
 
       if (!result.success) {
@@ -127,11 +125,6 @@ export class TeamsController {
           message: "ID de equipo inválido",
         });
       }
-
-      console.log("📥 Datos recibidos en updateTeam:", {
-        id,
-        data: req.body,
-      });
 
       const result = await this.teamsService.updateTeam(id, req.body);
 
@@ -246,8 +239,6 @@ export class TeamsController {
     try {
       const { name, excludeId } = req.query;
 
-      console.log("🔍 Checking name availability:", { name, excludeId });
-
       if (!name) {
         return res.status(400).json({
           success: false,
@@ -349,8 +340,6 @@ export class TeamsController {
     try {
       const { personId, excludeTeamId } = req.query;
 
-      console.log('🔍 [CONTROLLER] Verificando disponibilidad:', { personId, excludeTeamId });
-
       if (!personId) {
         return res.status(400).json({
           success: false,
@@ -362,8 +351,6 @@ export class TeamsController {
       const excludeTeamIdNum = excludeTeamId ? parseInt(excludeTeamId) : null;
 
       const result = await this.teamsService.checkTemporalPersonAvailability(personIdNum, excludeTeamIdNum);
-
-      console.log('📡 [CONTROLLER] Resultado:', result);
 
       res.json({
         success: true,

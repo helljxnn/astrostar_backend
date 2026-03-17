@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Reglas de validación para tipos de documento en Colombia
  */
 
@@ -119,3 +119,4 @@ export const createDocumentValidator = (documentTypeField = 'documentTypeId') =>
     return true;
   };
 };
+

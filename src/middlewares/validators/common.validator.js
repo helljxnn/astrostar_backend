@@ -1,4 +1,4 @@
-import { param, validationResult } from "express-validator";
+﻿import { param, validationResult } from "express-validator";
 
 /**
  * Middleware para manejar errores de validación
@@ -39,3 +39,4 @@ export const validateUUID = (paramName = "id") => [
   param(paramName).isUUID().withMessage(`${paramName} debe ser un UUID válido`),
   handleValidationErrors,
 ];
+

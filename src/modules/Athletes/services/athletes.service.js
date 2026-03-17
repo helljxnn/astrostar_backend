@@ -1,4 +1,4 @@
-import bcrypt from 'bcrypt';
+﻿import bcrypt from 'bcrypt';
 import { AthletesRepository } from "../repository/athletes.repository.js";
 import emailService from "../../../services/emailService.js";
 
@@ -470,3 +470,5 @@ export class AthletesService {
     }
   }
 }
+
+

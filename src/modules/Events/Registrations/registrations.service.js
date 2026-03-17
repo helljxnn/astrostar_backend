@@ -1,4 +1,4 @@
-import { RegistrationsRepository } from "./registrations.repository.js";
+﻿import { RegistrationsRepository } from "./registrations.repository.js";
 import { RSVPService } from "../RSVP/rsvp.service.js";
 
 export class RegistrationsService {
@@ -1058,3 +1058,4 @@ export class RegistrationsService {
     }
   }
 }
+

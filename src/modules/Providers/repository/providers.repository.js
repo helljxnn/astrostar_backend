@@ -1,4 +1,4 @@
-import prisma from "../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 export class ProvidersRepository {
   async getDocumentTypes() {
@@ -513,3 +513,4 @@ export const getDocumentTypeName = async (documentTypeId) => {
 };
 
 export default new ProvidersRepository();
+

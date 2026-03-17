@@ -1,4 +1,4 @@
-import { body, param, query, validationResult } from "express-validator";
+﻿import { body, param, query, validationResult } from "express-validator";
 
 // Validaciones para crear persona temporal
 export const createTemporaryWorkerValidation = [
@@ -481,3 +481,4 @@ export const handleValidationErrors = (req, res, next) => {
   }
   next();
 };
+
