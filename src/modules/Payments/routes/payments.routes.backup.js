@@ -1,4 +1,4 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import { paymentsController } from "../controllers/payments.controller.js";
 import { paymentsValidator } from "../validators/payments.validator.js";
 import { 
@@ -164,9 +164,7 @@ router.post(
 // Manejo de errores específico para Multer
 router.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {
-    console.error('❌ [MULTER ERROR]', error);
-    
-    if (error.code === 'UNEXPECTED_FIELD') {
+if (error.code === 'UNEXPECTED_FIELD') {
       return res.status(400).json({
         success: false,
         message: `Campo de archivo inesperado: "${error.field}". Se esperaba: "receipt"`,
@@ -209,4 +207,3 @@ router.get(
 );
 
 export default router;
-

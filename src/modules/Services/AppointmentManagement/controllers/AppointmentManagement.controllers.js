@@ -1,5 +1,4 @@
-﻿
-import { AppointmentService } from '../services/AppointmentManagement..services.js';
+﻿import { AppointmentService } from "../services/AppointmentManagement..services.js";
 
 export class AppointmentController {
   constructor() {
@@ -14,40 +13,44 @@ export class AppointmentController {
       const {
         page = 1,
         limit = 10,
-        search = '',
-        status = '',
+        search = "",
+        status = "",
         athleteId,
         specialistId,
-        specialty = '',
-        startDate = '',
-        endDate = ''
+        specialty = "",
+        startDate = "",
+        endDate = "",
       } = req.query;
 
-      const result = await this.appointmentService.getAllAppointments({
-        page: parseInt(page),
-        limit: parseInt(limit),
-        
-        search,
-        status,
-        athleteId: athleteId ? parseInt(athleteId) : null,
-        specialistId: specialistId ? parseInt(specialistId) : null,
-        specialty,
-        startDate,
-        endDate
-      });
+      const result = await this.appointmentService.getAllAppointments(
+        {
+          page: parseInt(page),
+          limit: parseInt(limit),
+
+          search,
+          status,
+          athleteId: athleteId ? parseInt(athleteId) : null,
+          specialistId: specialistId ? parseInt(specialistId) : null,
+          specialty,
+          startDate,
+          endDate,
+        },
+        req.user,
+      );
 
       res.json({
         success: true,
         data: result.appointments,
         pagination: result.pagination,
-        message: `Se encontraron ${result.pagination.total} citas.`
+        message: `Se encontraron ${result.pagination.total} citas.`,
       });
     } catch (error) {
-      console.error('Error fetching appointments:', error);
+      console.error("Error fetching appointments:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener citas.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener citas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -62,20 +65,21 @@ export class AppointmentController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
       res.json({
         success: true,
         data: result.data,
-        message: 'Cita encontrada exitosamente.'
+        message: "Cita encontrada exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching appointment by ID:', error);
+      console.error("Error fetching appointment by ID:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener la cita.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener la cita.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -86,17 +90,18 @@ export class AppointmentController {
   createAppointment = async (req, res) => {
     try {
       const appointmentData = req.body;
-      const result = await this.appointmentService.createAppointment(appointmentData);
+      const result =
+        await this.appointmentService.createAppointment(appointmentData);
       res.status(201).json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error creating appointment:', error);
+      console.error("Error creating appointment:", error);
       return res.status(400).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
   };
@@ -108,23 +113,26 @@ export class AppointmentController {
     try {
       const { id } = req.params;
       const updateData = req.body;
-      const result = await this.appointmentService.updateAppointment(id, updateData);
+      const result = await this.appointmentService.updateAppointment(
+        id,
+        updateData,
+      );
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
       res.json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error updating appointment:', error);
+      console.error("Error updating appointment:", error);
       return res.status(400).json({
         success: false,
-        message: error.message
+        message: error.message,
       });
     }
   };
@@ -139,27 +147,31 @@ export class AppointmentController {
       if (!cancelReason || !cancelReason.trim()) {
         return res.status(400).json({
           success: false,
-          message: 'El motivo de cancelación es obligatorio.'
+          message: "El motivo de cancelación es obligatorio.",
         });
       }
-      const result = await this.appointmentService.cancelAppointment(id, cancelReason);
+      const result = await this.appointmentService.cancelAppointment(
+        id,
+        cancelReason,
+      );
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
       res.json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error cancelling appointment:', error);
+      console.error("Error cancelling appointment:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al cancelar la cita.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al cancelar la cita.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -171,34 +183,38 @@ export class AppointmentController {
     try {
       const { id } = req.params;
       const { conclusion } = req.body;
-      
+
       if (!conclusion || !conclusion.trim()) {
         return res.status(400).json({
           success: false,
-          message: 'La conclusión es obligatoria.'
+          message: "La conclusión es obligatoria.",
         });
       }
-      
-      const result = await this.appointmentService.completeAppointment(id, conclusion);
-      
+
+      const result = await this.appointmentService.completeAppointment(
+        id,
+        conclusion,
+      );
+
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
-      
+
       res.json({
         success: true,
         data: result.data,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error completing appointment:', error);
+      console.error("Error completing appointment:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al completar la cita.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al completar la cita.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -213,19 +229,20 @@ export class AppointmentController {
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
-          message: result.message
+          message: result.message,
         });
       }
       res.json({
         success: true,
-        message: result.message
+        message: result.message,
       });
     } catch (error) {
-      console.error('Error deleting appointment:', error);
+      console.error("Error deleting appointment:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al eliminar la cita.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al eliminar la cita.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -235,18 +252,19 @@ export class AppointmentController {
    */
   getActiveAthletes = async (req, res) => {
     try {
-      const result = await this.appointmentService.getActiveAthletes();
+      const result = await this.appointmentService.getActiveAthletes(req.user);
       res.json({
         success: true,
         data: result.data,
-        message: 'Deportistas activos obtenidos exitosamente.'
+        message: "Deportistas activos obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching active athletes:', error);
+      console.error("Error fetching active athletes:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener deportistas.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener deportistas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -256,19 +274,22 @@ export class AppointmentController {
    */
   getActiveSpecialists = async (req, res) => {
     try {
-      const { specialty = '' } = req.query;
-      const result = await this.appointmentService.getActiveSpecialists({ specialty });
+      const { specialty = "" } = req.query;
+      const result = await this.appointmentService.getActiveSpecialists({
+        specialty,
+      });
       res.json({
         success: true,
         data: result.data,
-        message: 'Especialistas activos obtenidos exitosamente.'
+        message: "Especialistas activos obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching active specialists:', error);
+      console.error("Error fetching active specialists:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener especialistas.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener especialistas.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -282,18 +303,16 @@ export class AppointmentController {
       res.json({
         success: true,
         data: result.data,
-        message: 'Especialidades obtenidas exitosamente.'
+        message: "Especialidades obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error('Error fetching specialties:', error);
+      console.error("Error fetching specialties:", error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al obtener especialidades.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al obtener especialidades.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
-
 }
-
-

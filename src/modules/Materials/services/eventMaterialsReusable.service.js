@@ -1,6 +1,17 @@
-﻿import { PrismaClient } from "../../../../generated/prisma/index.js";
+import { PrismaClient } from "../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
+
+const MATERIAL_SELECT = {
+  id: true,
+  nombre: true,
+  categoria: true,
+  estado: true,
+  unidadMedida: true,
+  stockFundacion: true,
+  stockEventos: true,
+  stockEventosReservado: true,
+};
 
 class EventMaterialsReusableService {
   /**
@@ -34,8 +45,7 @@ class EventMaterialsReusableService {
         data: materials,
       };
     } catch (error) {
-      console.error("Service error - getByEvent:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -50,6 +60,7 @@ class EventMaterialsReusableService {
       // 2. Get material
       const material = await prisma.material.findUnique({
         where: { id: parseInt(data.material_id) },
+        select: MATERIAL_SELECT,
       });
 
       if (!material) {
@@ -119,7 +130,9 @@ class EventMaterialsReusableService {
           createdByName: userName || null,
         },
         include: {
-          material: true,
+          material: {
+            select: MATERIAL_SELECT,
+          },
         },
       });
 
@@ -129,8 +142,7 @@ class EventMaterialsReusableService {
         message: `Successfully planned ${cantidad} units of "${material.nombre}" for event`,
       };
     } catch (error) {
-      console.error("❌ Error assigning reusable material:", error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -148,6 +160,7 @@ class EventMaterialsReusableService {
       // Get material stock
       const material = await prisma.material.findUnique({
         where: { id: materialId },
+        select: MATERIAL_SELECT,
       });
 
       if (!material) {
@@ -235,8 +248,7 @@ class EventMaterialsReusableService {
         })),
       };
     } catch (error) {
-      console.error("❌ Error checking availability:", error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -248,7 +260,11 @@ class EventMaterialsReusableService {
       // 1. Get assignment
       const assignment = await prisma.eventMaterialReusable.findUnique({
         where: { id: parseInt(assignmentId) },
-        include: { material: true },
+        include: {
+          material: {
+            select: MATERIAL_SELECT,
+          },
+        },
       });
 
       if (!assignment) {
@@ -269,8 +285,7 @@ class EventMaterialsReusableService {
         message: `Successfully removed ${assignment.cantidad} units`,
       };
     } catch (error) {
-      console.error("❌ Error removing assignment:", error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -297,8 +312,7 @@ class EventMaterialsReusableService {
         data: result,
       };
     } catch (error) {
-      console.error("❌ Error getting availability:", error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -386,8 +400,7 @@ class EventMaterialsReusableService {
         data: availabilityMap,
       };
     } catch (error) {
-      console.error("❌ Error getting bulk availability:", error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -505,8 +518,7 @@ class EventMaterialsReusableService {
         },
       };
     } catch (error) {
-      console.error("Error getting material assignments:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -626,8 +638,7 @@ class EventMaterialsReusableService {
         },
       };
     } catch (error) {
-      console.error("Error getting reusable material assignments:", error);
-      throw error;
+throw error;
     }
   }
 

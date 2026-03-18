@@ -87,13 +87,6 @@ router.patch('/:id/complete',
   appointmentController.completeAppointment
 );
 
-router.delete('/:id',
-  authenticateToken,
-  checkPermissions('appointmentManagement', 'Eliminar'),
-  appointmentValidators.delete,
-  handleValidationErrors,
-  appointmentController.deleteAppointment
-);
-
 export default router;
+
 

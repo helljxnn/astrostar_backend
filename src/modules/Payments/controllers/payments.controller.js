@@ -1,4 +1,4 @@
-﻿  import { paymentsService } from "../services/payments.service.js";
+  import { paymentsService } from "../services/payments.service.js";
 import { validationResult } from "express-validator";
 
 const handleValidationErrors = (req, res) => {
@@ -14,8 +14,7 @@ const handleValidationErrors = (req, res) => {
 };
 
 const handleError = (res, error, defaultMessage = "Error interno del servidor") => {
-  console.error('❌ [PAYMENTS CONTROLLER]', error);
-  return res.status(500).json({
+return res.status(500).json({
     success: false,
     message: error.message || defaultMessage
   });
@@ -126,18 +125,41 @@ export const paymentsController = {
     }
   },
 
+  async getAthletePaymentHistory(req, res) {
+    try {
+      const { athleteId } = req.params;
+      const { page = 1, limit = 20 } = req.query;
+      
+      const result = await paymentsService.getAthletePaymentHistory(parseInt(athleteId), {
+        page: parseInt(page),
+        limit: parseInt(limit)
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: "Historial de pagos obtenido exitosamente",
+        data: result.payments,
+        pagination: result.pagination
+      });
+    } catch (error) {
+      return handleError(res, error, "Error al obtener historial de pagos");
+    }
+  },
+
   // ============================================================================
   // MÉTODOS PARA ADMINISTRADORES
   // ============================================================================
 
   async getPendingPayments(req, res) {
     try {
-      const { page = 1, limit = 20, type, search } = req.query;
+      const { page = 1, limit = 20, type, search, dateFrom, dateTo } = req.query;
       const filters = { 
         page: parseInt(page), 
         limit: parseInt(limit), 
         ...(type && { type }),
-        ...(search && { search })
+        ...(search && { search }),
+        ...(dateFrom && { dateFrom }),
+        ...(dateTo && { dateTo })
       };
       const result = await paymentsService.getPendingPayments(filters);
       return res.status(200).json({
@@ -148,6 +170,37 @@ export const paymentsController = {
       });
     } catch (error) {
       return handleError(res, error, "Error al obtener pagos pendientes");
+    }
+  },
+
+  async getMonthlySummary(req, res) {
+    try {
+      const athleteIdsRaw = String(req.query.athleteIds || '').trim();
+      const athleteIds = athleteIdsRaw
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+
+      const summary = await paymentsService.getMonthlySummaryForAthletes(athleteIds);
+      return res.status(200).json({
+        success: true,
+        data: summary
+      });
+    } catch (error) {
+      return handleError(res, error, "Error al obtener resumen de mensualidades");
+    }
+  },
+
+  async getAthleteMonthlyHistory(req, res) {
+    try {
+      const { athleteId } = req.params;
+      const result = await paymentsService.getAthleteMonthlyHistory(parseInt(athleteId));
+      return res.status(200).json({
+        success: true,
+        data: result.history
+      });
+    } catch (error) {
+      return handleError(res, error, "Error al obtener historial de mensualidades");
     }
   },
 
@@ -225,8 +278,7 @@ export const paymentsController = {
         message: 'Gestión mensual obtenida correctamente'
       });
     } catch (error) {
-      console.error('❌ [PAYMENTS] Error en gestión mensual:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error al obtener gestión de pagos mensuales'
       });
@@ -244,6 +296,90 @@ export const paymentsController = {
       return res.status(200).json(result);
     } catch (error) {
       return handleError(res, error, "Error al obtener pagos pendientes para reporte");
+    }
+  },
+
+  /**
+   * GET /api/payments/dashboard/stats
+   * Obtener estadísticas de pagos para el dashboard
+   */
+  async getDashboardStats(req, res) {
+    try {
+      
+      // Obtener todos los pagos para estadísticas
+      const allPayments = await paymentsService.getPaymentHistoryForReport({});
+      
+      if (!allPayments.success || !allPayments.data) {
+        return res.status(200).json({
+          success: true,
+          data: {
+            stats: { total: 0, approved: 0, pending: 0, rejected: 0, thisMonth: 0 },
+            monthlyData: [],
+            payments: []
+          }
+        });
+      }
+      
+      const payments = allPayments.data;
+      
+      // Calcular estadísticas generales
+      const stats = {
+        total: payments.length,
+        approved: payments.filter(p => p.status === 'APPROVED').length,
+        pending: payments.filter(p => p.status === 'PENDING').length,
+        rejected: payments.filter(p => p.status === 'REJECTED').length,
+        thisMonth: 0
+      };
+      
+      // Calcular pagos de este mes (marzo 2026)
+      const currentMonth = 3; // Marzo
+      const currentYear = 2026;
+      
+      stats.thisMonth = payments.filter(payment => {
+        const dateField = payment.uploadedAt || payment.createdAt || payment.reviewedAt;
+        if (!dateField) return false;
+        
+        const uploadDate = new Date(dateField);
+        return uploadDate.getMonth() + 1 === currentMonth && uploadDate.getFullYear() === currentYear;
+      }).length;
+      
+      // Calcular datos mensuales para gráficas
+      const monthlyData = {};
+      
+      payments.forEach(payment => {
+        const dateField = payment.uploadedAt || payment.createdAt || payment.reviewedAt;
+        if (!dateField) return;
+        
+        const date = new Date(dateField);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = { approved: 0, pending: 0, rejected: 0, total: 0 };
+        }
+        
+        monthlyData[monthKey].total++;
+        if (payment.status === 'APPROVED') monthlyData[monthKey].approved++;
+        else if (payment.status === 'PENDING') monthlyData[monthKey].pending++;
+        else if (payment.status === 'REJECTED') monthlyData[monthKey].rejected++;
+      });
+      
+      // Convertir a array ordenado
+      const monthlyArray = Object.entries(monthlyData)
+        .map(([month, data]) => ({ month, ...data }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+      
+      
+      return res.status(200).json({
+        success: true,
+        data: {
+          stats,
+          monthlyData: monthlyArray,
+          payments: payments.slice(0, 100) // Limitar a 100 pagos más recientes
+        }
+      });
+      
+    } catch (error) {
+return handleError(res, error, "Error al obtener estadísticas de pagos para dashboard");
     }
   },
 

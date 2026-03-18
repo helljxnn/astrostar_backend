@@ -15,3 +15,4 @@ router.get('/all', authenticateToken, paymentsController.getAllPayments);
 router.get('/monthly-management', authenticateToken, paymentsController.getMonthlyPaymentsManagement);
 
 export default router;
+

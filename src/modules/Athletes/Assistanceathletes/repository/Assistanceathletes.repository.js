@@ -326,7 +326,7 @@ export class AssistanceathletesRepository {
 
     return records.map((record) => ({
       id: record.id,
-      date: record.date,
+      date: record.date ? record.date.toISOString().split("T")[0] : "",
       asistencia: record.asistencia,
       observacion: record.observacion || "",
     }));

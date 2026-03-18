@@ -1,4 +1,4 @@
-﻿import { DonorsSponsorsRepository } from "../repository/donorsSponsors.repository.js";
+import { DonorsSponsorsRepository } from "../repository/donorsSponsors.repository.js";
 import emailService from "../../../../services/emailService.js";
 
 export class DonorsSponsorsService {
@@ -24,7 +24,6 @@ export class DonorsSponsorsService {
         pagination: result.pagination,
       };
     } catch (error) {
-      console.error("Error in DonorsSponsorsService.getAll:", error);
       throw error;
     }
   }
@@ -42,7 +41,6 @@ export class DonorsSponsorsService {
 
       return { success: true, data: record };
     } catch (error) {
-      console.error("Error in DonorsSponsorsService.getById:", error);
       throw error;
     }
   }
@@ -54,11 +52,11 @@ export class DonorsSponsorsService {
       const existingById =
         await this.donorsSponsorsRepository.findByIdentification(
           identification,
-          excludeId
+          excludeId,
         );
       if (existingById) {
         throw new Error(
-          `La identificaci\u00f3n "${identification}" ya est\u00e1 registrada.`
+          `La identificaci\u00f3n "${identification}" ya est\u00e1 registrada.`,
         );
       }
     }
@@ -66,10 +64,12 @@ export class DonorsSponsorsService {
     if (payload.correo) {
       const existingByEmail = await this.donorsSponsorsRepository.findByEmail(
         payload.correo,
-        excludeId
+        excludeId,
       );
       if (existingByEmail) {
-        throw new Error(`El correo "${payload.correo}" ya est\u00e1 registrado.`);
+        throw new Error(
+          `El correo "${payload.correo}" ya est\u00e1 registrado.`,
+        );
       }
     }
   }
@@ -85,7 +85,6 @@ export class DonorsSponsorsService {
         message: `${created.tipo} "${created.nombre}" creado exitosamente.`,
       };
     } catch (error) {
-      console.error("Error in DonorsSponsorsService.create:", error);
       throw error;
     }
   }
@@ -112,24 +111,10 @@ export class DonorsSponsorsService {
         autorizacion: payload.autorizacion || "Si",
       };
 
-
       await this.ensureUnique(landingPayload);
-      const created = await this.donorsSponsorsRepository.create(landingPayload);
-
-
-      emailService
-        .sendDonorWelcomeEmail(created)
-        .then((result) => {
-          if (result.success) {
-            if (result.simulated) {
-            }
-          } else {
-            console.warn("⚠️  [EMAIL] Error enviando correo:", result.error);
-          }
-        })
-        .catch((err) =>
-          console.warn("❌ [EMAIL] Error enviando email de bienvenida a donante:", err.message)
-        );
+      const created =
+        await this.donorsSponsorsRepository.create(landingPayload);
+      emailService.sendDonorWelcomeEmail(created).catch(() => {});
 
       return {
         success: true,
@@ -138,7 +123,6 @@ export class DonorsSponsorsService {
           "Hemos recibido tu información. Te contactaremos pronto para confirmar la donación.",
       };
     } catch (error) {
-      console.error("Error in DonorsSponsorsService.createFromLanding:", error);
       throw error;
     }
   }
@@ -175,7 +159,6 @@ export class DonorsSponsorsService {
         message: `${updated.tipo} "${updated.nombre}" actualizado exitosamente.`,
       };
     } catch (error) {
-      console.error("Error in DonorsSponsorsService.update:", error);
       throw error;
     }
   }
@@ -209,8 +192,6 @@ export class DonorsSponsorsService {
         message: `${deleted.tipo} "${deleted.nombre}" eliminado exitosamente.`,
       };
     } catch (error) {
-      console.error("Error in DonorsSponsorsService.delete:", error);
-
       if (error.message?.includes("asociado a eventos")) {
         return {
           success: false,
@@ -236,7 +217,7 @@ export class DonorsSponsorsService {
 
       const updated = await this.donorsSponsorsRepository.changeStatus(
         id,
-        status
+        status,
       );
 
       return {
@@ -245,18 +226,16 @@ export class DonorsSponsorsService {
         message: `Estado actualizado a "${status}".`,
       };
     } catch (error) {
-      console.error("Error in DonorsSponsorsService.changeStatus:", error);
       throw error;
     }
   }
 
   async checkIdentificationAvailability(identification, excludeId = null) {
     try {
-      const existing =
-        await this.donorsSponsorsRepository.findByIdentification(
-          identification,
-          excludeId
-        );
+      const existing = await this.donorsSponsorsRepository.findByIdentification(
+        identification,
+        excludeId,
+      );
 
       if (!existing) return { available: true };
 
@@ -265,10 +244,6 @@ export class DonorsSponsorsService {
         message: `La identificaci\u00f3n "${identification}" ya est\u00e1 registrada.`,
       };
     } catch (error) {
-      console.error(
-        "Error in DonorsSponsorsService.checkIdentificationAvailability:",
-        error
-      );
       throw error;
     }
   }
@@ -277,7 +252,7 @@ export class DonorsSponsorsService {
     try {
       const existing = await this.donorsSponsorsRepository.findByEmail(
         email,
-        excludeId
+        excludeId,
       );
 
       if (!existing) return { available: true };
@@ -287,10 +262,6 @@ export class DonorsSponsorsService {
         message: `El correo "${email}" ya est\u00e1 registrado.`,
       };
     } catch (error) {
-      console.error(
-        "Error in DonorsSponsorsService.checkEmailAvailability:",
-        error
-      );
       throw error;
     }
   }
@@ -300,7 +271,6 @@ export class DonorsSponsorsService {
       const stats = await this.donorsSponsorsRepository.getStats();
       return { success: true, data: stats };
     } catch (error) {
-      console.error("Error in DonorsSponsorsService.getStats:", error);
       throw error;
     }
   }
@@ -310,14 +280,29 @@ export class DonorsSponsorsService {
       const data = await this.donorsSponsorsRepository.getReferenceData();
       return { success: true, data };
     } catch (error) {
-      console.error(
-        "Error in DonorsSponsorsService.getReferenceData:",
-        error
-      );
+      throw error;
+    }
+  }
+
+  // Método específico para reportes - obtiene todos los datos sin paginación
+  async getAllForReport(params = {}) {
+    try {
+      const reportParams = {
+        ...params,
+        limit: 10000, // Límite alto para obtener todos los datos
+        page: 1,
+      };
+
+      const result = await this.donorsSponsorsRepository.findAll(reportParams);
+      return {
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
+      };
+    } catch (error) {
       throw error;
     }
   }
 }
 
 export default new DonorsSponsorsService();
-

@@ -1,4 +1,4 @@
-﻿import prisma from "../../../config/database.js";
+import prisma from "../../../config/database.js";
 
 const calculateAgeFromBirthDate = (birthDate) => {
   if (!birthDate) return null;
@@ -11,6 +11,16 @@ const calculateAgeFromBirthDate = (birthDate) => {
     age--;
   }
   return age;
+};
+
+const normalizeAthleteStatusInput = (value) => {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "boolean") return value ? "Active" : "Inactive";
+
+  const normalized = String(value).trim().toLowerCase();
+  if (["activo", "active", "true", "1"].includes(normalized)) return "Active";
+  if (["inactivo", "inactive", "false", "0"].includes(normalized)) return "Inactive";
+  return null;
 };
 
 export class AthletesRepository {
@@ -170,7 +180,19 @@ export class AthletesRepository {
         "Amigo/a de la familia": "Family_Friend",
         Otro: "Other",
       };
-      return relationshipMap[parentesco] || null;
+      
+      // Si el parentesco existe en el mapa, usarlo
+      if (relationshipMap[parentesco]) {
+        return relationshipMap[parentesco];
+      }
+      
+      // Si no existe pero hay un valor, usar "Other" como fallback
+      if (parentesco && parentesco.trim() !== '') {
+        return "Other";
+      }
+      
+      // Solo devolver null si realmente no hay parentesco
+      return null;
     };
 
     // Calcular edad automáticamente
@@ -207,11 +229,16 @@ export class AthletesRepository {
       })() : null,
       age: athleteData.birthDate ? calculateAge(athleteData.birthDate) : null,
       address: athleteData.address || "N/A",
-      passwordHash: "temp_password_hash", // Se debe generar un hash real
+      // Solo incluir passwordHash si viene desde el servicio
+      ...(athleteData.passwordHash ? { passwordHash: athleteData.passwordHash } : {}),
     };
 
+    const normalizedStatus = normalizeAthleteStatusInput(
+      athleteData.estado ?? athleteData.status ?? athleteData.isActive ?? athleteData.active
+    );
+
     const athleteSpecificData = {
-      status: athleteData.estado === "Activo" ? "Active" : "Inactive",
+      ...(normalizedStatus ? { status: normalizedStatus } : {}),
       relationship: mapRelationship(athleteData.parentesco),
     };
 
@@ -220,6 +247,11 @@ export class AthletesRepository {
       athleteSpecificData.guardianId = athleteData.acudiente
         ? parseInt(athleteData.acudiente)
         : null;
+        
+      // Si hay acudiente pero no hay parentesco, usar "Other" como fallback
+      if (athleteSpecificData.guardianId && !athleteSpecificData.relationship) {
+        athleteSpecificData.relationship = "Other";
+      }
     }
 
     return { userData, athleteSpecificData };
@@ -358,8 +390,7 @@ export class AthletesRepository {
         return this.transformToFrontend(createdAthlete);
       });
     } catch (error) {
-      console.error("❌ Error en create():", error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -389,14 +420,16 @@ export class AthletesRepository {
         // El cliente tiene control total sobre qué deportistas asignar a qué categorías
         // Sin restricciones de edad
 
-        // ✅ CORRECCIÓN CRÍTICA: NO actualizar passwordHash a menos que haya nueva contraseña
-        // Eliminar passwordHash de userData para evitar sobrescribir la contraseña existente
+        // ✅ NO actualizar passwordHash a menos que haya nueva contraseña
         const { passwordHash, ...userDataWithoutPassword } = userData;
+        const userUpdateData = passwordHash
+          ? { ...userDataWithoutPassword, passwordHash }
+          : userDataWithoutPassword;
 
-        // Actualizar usuario SIN tocar el passwordHash
+        // Actualizar usuario (solo incluye passwordHash si se envía)
         await tx.user.update({
           where: { id: currentAthlete.userId },
-          data: userDataWithoutPassword,
+          data: userUpdateData,
         });
 
         // Verificar si cambió el estado
@@ -406,14 +439,18 @@ export class AthletesRepository {
 
         // Preparar datos de actualización del atleta
         const updateData = {
-          status: athleteSpecificData.status,
+          ...(athleteSpecificData.status ? { status: athleteSpecificData.status } : {}),
           relationship: athleteSpecificData.relationship,
-          currentInscriptionStatus:
-            athleteData.estado === "Inactivo"
-              ? "Suspended"
-              : athleteSpecificData.status === "Active"
-              ? "Active"
-              : currentAthlete.currentInscriptionStatus,
+          ...(athleteData.estado
+            ? {
+                currentInscriptionStatus:
+                  athleteData.estado === "Inactivo"
+                    ? "Suspended"
+                    : athleteSpecificData.status === "Active"
+                    ? "Active"
+                    : currentAthlete.currentInscriptionStatus,
+              }
+            : {}),
           ...(statusChanged && { statusAssignedAt: new Date() }),
         };
 
@@ -427,6 +464,14 @@ export class AthletesRepository {
           where: { id: parseInt(id) },
           data: updateData,
         });
+
+        // Sincronizar estado en users si se actualizó el estado del atleta
+        if (athleteSpecificData.status) {
+          await tx.user.update({
+            where: { id: currentAthlete.userId },
+            data: { status: athleteSpecificData.status },
+          });
+        }
 
         // Si se cambió el estado a Inactivo, actualizar inscripción
         if (
@@ -482,8 +527,7 @@ export class AthletesRepository {
         return this.transformToFrontend(finalAthlete);
       });
     } catch (error) {
-      console.error("Error en update():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -512,8 +556,7 @@ export class AthletesRepository {
         };
       });
     } catch (error) {
-      console.error("Error en delete():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -534,8 +577,9 @@ export class AthletesRepository {
 
       // Filtro por estado del atleta
       if (status) {
+        const normalizedStatus = normalizeAthleteStatusInput(status);
         where.AND.push({
-          status: status === "Activo" ? "Active" : "Inactive"
+          status: normalizedStatus ?? status
         });
       }
 
@@ -570,10 +614,22 @@ export class AthletesRepository {
 
         // Búsqueda exacta por estado
         const isStatusSearch = searchLower === "activo" || searchLower === "inactivo";
+        const inscriptionStatusMap = {
+          vigente: "Active",
+          vencida: "Expired",
+          suspendida: "Suspended",
+          suspendido: "Suspended",
+          pendiente: "Pending"
+        };
+        const inscriptionStatusSearch = inscriptionStatusMap[searchLower] || null;
 
         if (isStatusSearch) {
           where.AND.push({
             status: searchLower === "activo" ? "Active" : "Inactive"
+          });
+        } else if (inscriptionStatusSearch) {
+          where.AND.push({
+            currentInscriptionStatus: inscriptionStatusSearch
           });
         } else {
           // Búsqueda por múltiples campos usando OR
@@ -832,31 +888,60 @@ export class AthletesRepository {
 
   async changeStatus(id, status) {
     try {
-      const updatedAthlete = await prisma.athlete.update({
-        where: { id: parseInt(id) },
-        data: {
-          status: status === "Activo" ? "Active" : "Inactive",
-        },
-        include: {
-          user: {
-            include: {
-              documentType: true,
+      const normalizedStatus = normalizeAthleteStatusInput(status);
+      if (!normalizedStatus) {
+        throw new Error('Estado inválido. Use "Activo" o "Inactivo".');
+      }
+
+      // ✅ SOLUCIÓN: Actualizar AMBAS tablas en una transacción
+      const result = await prisma.$transaction(async (tx) => {
+        // 1. Obtener el atleta para conseguir el userId
+        const athlete = await tx.athlete.findUnique({
+          where: { id: parseInt(id) },
+          select: { userId: true }
+        });
+
+        if (!athlete) {
+          throw new Error(`Atleta con ID ${id} no encontrado`);
+        }
+
+        // 2. Actualizar tabla athletes
+        const updatedAthlete = await tx.athlete.update({
+          where: { id: parseInt(id) },
+          data: {
+            status: normalizedStatus,
+            statusAssignedAt: new Date() // ✅ Actualizar fecha de cambio de estado
+          },
+          include: {
+            user: {
+              include: {
+                documentType: true,
+              },
+            },
+            guardian: true,
+            inscriptions: {
+              include: {
+                sportsCategory: true,
+              },
+              orderBy: { inscriptionDate: "desc" },
             },
           },
-          guardian: true,
-          inscriptions: {
-            include: {
-              sportsCategory: true,
-            },
-            orderBy: { inscriptionDate: "desc" },
-          },
-        },
+        });
+
+        // 3. ✅ CRÍTICO: Actualizar tabla users para sincronizar el estado
+        await tx.user.update({
+          where: { id: athlete.userId },
+          data: {
+            status: normalizedStatus
+          }
+        });
+
+        return updatedAthlete;
       });
 
-      return this.transformToFrontend(updatedAthlete);
+      return this.transformToFrontend(result);
     } catch (error) {
-      console.error("Error en changeStatus():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -957,8 +1042,7 @@ export class AthletesRepository {
         sportsCategories: formattedCategories,
       };
     } catch (error) {
-      console.error("Error en getReferenceData():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -1001,8 +1085,7 @@ export class AthletesRepository {
 
       return orderedDocumentTypes;
     } catch (error) {
-      console.error("Error en getDocumentTypes():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -1023,8 +1106,7 @@ export class AthletesRepository {
       // Retornar el atleta actualizado con todas las relaciones
       return await this.findById(athleteId);
     } catch (error) {
-      console.error("Error en removeGuardianFromAthlete():", error);
-      throw error;
+throw error;
     }
   }
 

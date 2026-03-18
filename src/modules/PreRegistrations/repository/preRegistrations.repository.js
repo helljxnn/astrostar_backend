@@ -90,16 +90,23 @@ export const preRegistrationsRepository = {
   },
 
   // Validar unicidad considerando solo inscripciones activas
-  async findActiveByEmailOrDocument(email, identification) {
+  async findActiveByEmailOrDocument(email, identification, excludedStatuses = []) {
+    const hasExcludedStatuses =
+      Array.isArray(excludedStatuses) && excludedStatuses.length > 0;
+
     return await prisma.preRegistration.findFirst({
       where: {
         OR: [
           { email: email },
           { identification: identification }
         ],
-        status: {
-          not: 'Rejected'
-        }
+        ...(hasExcludedStatuses
+          ? {
+              status: {
+                notIn: excludedStatuses,
+              },
+            }
+          : {}),
       },
       select: {
         id: true,

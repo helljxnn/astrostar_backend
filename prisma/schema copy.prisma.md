@@ -1,0 +1,1287 @@
+﻿generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model DocumentType {
+  id               Int               @id @default(autoincrement())
+  name             String            @unique
+  description      String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  guardians        Guardian[]
+  providers        Provider[]
+  temporaryPersons TemporaryPerson[]
+  users            User[]
+
+  @@map("document_types")
+}
+
+model Role {
+  id          Int        @id @default(autoincrement())
+  name        String     @unique @db.VarChar(50)
+  description String     @db.VarChar(200)
+  status      RoleStatus @default(Active)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  permissions Json?      @default("{}")
+  users       User[]
+
+  @@index([name])
+  @@index([status])
+  @@map("roles")
+}
+
+model User {
+  id                      Int                      @id @default(autoincrement())
+  firstName               String
+  middleName              String?
+  lastName                String
+  secondLastName          String?
+  email                   String                   @unique
+  passwordHash            String
+  phoneNumber             String
+  address                 String
+  birthDate               DateTime
+  identification          String                   @unique
+  status                  UserStatus               @default(Active)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+  documentTypeId          Int
+  roleId                  Int
+  age                     Int?
+  avatarColorIndex        Int?                     @default(0)
+  athlete                 Athlete?
+  emailVerificationTokens EmailVerificationToken[]
+  employee                Employee?
+  passwordResets          PasswordResetToken[]
+  refreshTokens           RefreshToken[]
+  documentType            DocumentType             @relation(fields: [documentTypeId], references: [id])
+  role                    Role                     @relation(fields: [roleId], references: [id])
+
+  @@index([identification])
+  @@index([email])
+  @@index([status])
+  @@index([roleId])
+  @@index([documentTypeId])
+  @@map("users")
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent")
+  attempts  Int?     @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model PasswordResetAttempt {
+  id           Int       @id @default(autoincrement())
+  email        String    @db.VarChar(255)
+  ipAddress    String    @map("ip_address") @db.VarChar(45)
+  userAgent    String?   @map("user_agent")
+  success      Boolean?  @default(false)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  blockedUntil DateTime? @map("blocked_until")
+
+  @@index([email])
+  @@index([ipAddress])
+  @@index([createdAt])
+  @@index([blockedUntil])
+  @@map("password_reset_attempts")
+}
+
+model EmailVerificationToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  newEmail  String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent")
+  attempts  Int      @default(0)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("email_verification_tokens")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Employee {
+  id                   Int                  @id @default(autoincrement())
+  status               EmployeeStatus       @default(Activo)
+  specialty            String?              @db.VarChar(30)
+  statusAssignedAt     DateTime             @default(now())
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  employeeTypeId       Int?
+  userId               Int                  @unique
+  signatureUrl         String?              @map("signature_url") @db.VarChar(500)
+  signaturePublicId    String?              @map("signature_public_id") @db.VarChar(255)
+  appointments         Appointment[]
+  employeePermissions  EmployeePermission[]
+  employeeSchedules    EmployeeSchedule[]
+  user                 User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groups               Group[]
+  purchases            purchases[]
+  teamMembers          TeamMember[]
+  donationsResponsible Donation[]           @relation("ResponsibleDonation")
+  donations            Donation[]
+
+  @@map("employees")
+}
+
+model Permission {
+  id                  Int                  @id @default(autoincrement())
+  name                String               @unique
+  description         String?
+  icon                String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  employeePermissions EmployeePermission[]
+  privileges          Privilege[]
+
+  @@map("permissions")
+}
+
+model Privilege {
+  id           Int        @id @default(autoincrement())
+  name         String
+  description  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  permissionId Int
+  permission   Permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([name, permissionId])
+  @@map("privileges")
+}
+
+model EmployeePermission {
+  id           Int        @id @default(autoincrement())
+  employeeId   Int
+  permissionId Int
+  createdAt    DateTime   @default(now())
+  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, permissionId])
+  @@map("employee_permissions")
+}
+
+model EmployeeSchedule {
+  id                 Int                       @id @default(autoincrement())
+  employeeId         Int
+  scheduleDate       DateTime
+  dayOfWeek          String
+  startTime          String
+  endTime            String
+  recurrence         ScheduleRecurrence        @default(no)
+  customRecurrence   String?
+  description        String?
+  status             ScheduleStatus            @default(Programado)
+  cancellationReason String?
+  createdAt          DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
+  novelties          EmployeeScheduleNovelty[]
+  employee           Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@map("employee_schedules")
+}
+
+model EmployeeScheduleNovelty {
+  id         Int                 @id @default(autoincrement())
+  scheduleId Int
+  date       DateTime
+  type       ScheduleNoveltyType @default(full)
+  startTime  String?
+  endTime    String?
+  reason     String
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+  schedule   EmployeeSchedule    @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId, date])
+  @@map("employee_schedule_novelties")
+}
+
+model Appointment {
+  id              Int            @id @default(autoincrement())
+  athleteId       Int
+  specialistId    Int
+  appointmentDate DateTime
+  startTime       String
+  endTime         String
+  specialty       String
+  description     String?
+  status          ScheduleStatus @default(Programado)
+  cancelReason    String?
+  conclusion      String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  athlete         Athlete        @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  specialist      Employee       @relation(fields: [specialistId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId, appointmentDate])
+  @@index([specialistId, appointmentDate])
+  @@index([status])
+  @@map("appointments")
+}
+
+model SportsCategory {
+  id                      Int                     @id @default(autoincrement())
+  nombre                  String                  @db.VarChar(50)
+  edadMinima              Int
+  edadMaxima              Int
+  descripcion             String?                 @db.VarChar(500)
+  archivo                 String?
+  estado                  SportsCategoryStatus    @default(Activo)
+  publicar                Boolean                 @default(false)
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  inscriptions            Inscription[]
+  participants            Participant[]
+  serviceSportsCategories ServiceSportsCategory[]
+
+  @@map("sports_categories")
+}
+
+model EventCategory {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Service     Service[]
+
+  @@map("event_categories")
+}
+
+model Guardian {
+  id               Int          @id @default(autoincrement())
+  firstName        String       @db.VarChar(100)
+  lastName         String       @db.VarChar(100)
+  identification   String       @unique @db.VarChar(50)
+  email            String       @unique @db.VarChar(150)
+  phone            String       @db.VarChar(20)
+  address          String?      @db.VarChar(200)
+  occupation       String?      @db.VarChar(100)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  documentTypeId   Int
+  birthDate        DateTime?
+  statusAssignedAt DateTime     @default(now())
+  athletes         Athlete[]
+  documentType     DocumentType @relation(fields: [documentTypeId], references: [id])
+
+  @@map("guardians")
+}
+
+model Athlete {
+  id                       Int                   @id @default(autoincrement())
+  userId                   Int                   @unique
+  status                   AthleteStatus         @default(Active)
+  guardianId               Int?
+  relationship             GuardianRelationship?
+  otherRelationship        String?               @db.VarChar(100)
+  currentInscriptionStatus InscriptionStatus?
+  isScholarship            Boolean               @default(false)
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  inactivityReason         String?               @db.VarChar(200)
+  statusAssignedAt         DateTime              @default(now())
+  appointments             Appointment[]
+  attendances              AthleteAttendance[]
+  guardian                 Guardian?             @relation(fields: [guardianId], references: [id])
+  user                     User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  enrollments              Enrollment[]
+  groupMemberships         GroupMembership[]
+  inscriptions             Inscription[]
+  participants             Participant[]
+  teamMembers              TeamMember[]
+  paymentObligations       PaymentObligation[]
+  payments                 Payment[]
+
+  @@index([guardianId])
+  @@index([currentInscriptionStatus])
+  @@index([status])
+  @@map("athletes")
+}
+
+model AthleteAttendance {
+  id          Int      @id @default(autoincrement())
+  athleteId   Int
+  date        DateTime
+  asistencia  Boolean  @default(false)
+  observacion String?  @db.VarChar(500)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  athlete     Athlete  @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@unique([athleteId, date])
+  @@index([date])
+  @@map("athlete_attendances")
+}
+
+model Enrollment {
+  id               Int              @id @default(autoincrement())
+  athleteId        Int
+  estado           EnrollmentStatus @default(Pending_Payment)
+  observaciones    String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  fechaInicio      DateTime?
+  fechaVencimiento DateTime?
+  athlete          Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([athleteId])
+  @@index([estado])
+  @@index([createdAt])
+  @@index([fechaVencimiento])
+  @@map("enrollments")
+}
+
+model Inscription {
+  id                     Int                   @id @default(autoincrement())
+  athleteId              Int
+  sportsCategoryId       Int
+  type                   InscriptionRecordType @default(initial_inscription)
+  status                 InscriptionStatus     @default(Active)
+  previousStatus         InscriptionStatus?
+  inscriptionDate        DateTime              @default(now())
+  conceptDate            DateTime              @default(now())
+  expirationDate         DateTime
+  concept                String                @db.VarChar(500)
+  notes                  String?
+  paymentProofUrl        String?               @db.VarChar(500)
+  paymentProofName       String?               @db.VarChar(255)
+  paymentProofType       String?               @db.VarChar(50)
+  paymentProofUploadedAt DateTime?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  athlete                Athlete               @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  sportsCategory         SportsCategory        @relation(fields: [sportsCategoryId], references: [id])
+
+  @@index([athleteId])
+  @@index([sportsCategoryId])
+  @@index([status])
+  @@index([inscriptionDate])
+  @@index([expirationDate])
+  @@map("inscriptions")
+}
+
+model TemporaryPerson {
+  id             Int                   @id @default(autoincrement())
+  firstName      String
+  lastName       String
+  identification String?
+  email          String?
+  phone          String?
+  birthDate      DateTime?
+  age            Int?
+  address        String?
+  organization   String?
+  personType     TemporaryPersonType?  @map("person_type")
+  status         TemporaryPersonStatus @default(Active)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  documentTypeId Int?
+  teamMembers    TeamMember[]
+  documentType   DocumentType?         @relation(fields: [documentTypeId], references: [id])
+
+  @@map("temporary_persons")
+}
+
+model Team {
+  id           Int           @id @default(autoincrement())
+  name         String        @unique
+  description  String?
+  coach        String?
+  category     String?
+  status       TeamStatus    @default(Active)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  teamType     TeamType      @default(Temporal)
+  participants Participant[]
+  members      TeamMember[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id                Int              @id @default(autoincrement())
+  teamId            Int
+  memberType        MemberType
+  position          String?
+  jerseyNumber      Int?
+  isActive          Boolean          @default(true)
+  joinedAt          DateTime         @default(now())
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  athleteId         Int?
+  employeeId        Int?
+  temporaryPersonId Int?
+  athlete           Athlete?         @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  employee          Employee?        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  team              Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  temporaryPerson   TemporaryPerson? @relation(fields: [temporaryPersonId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, jerseyNumber], name: "unique_jersey_per_team")
+  @@map("team_members")
+}
+
+model Participant {
+  id               Int               @id @default(autoincrement())
+  type             ParticipantType
+  registrationDate DateTime          @default(now())
+  status           String            @default("Registered")
+  notes            String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  serviceId        Int
+  sportsCategoryId Int?
+  athleteId        Int?
+  teamId           Int?
+  eventInvitations EventInvitation[]
+  athlete          Athlete?          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  service          Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  sportsCategory   SportsCategory?   @relation(fields: [sportsCategoryId], references: [id])
+  team             Team?             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@map("participants")
+}
+
+model Provider {
+  id                Int                @id @default(autoincrement())
+  entityType        ProviderEntityType @default(legal)
+  businessName      String             @db.VarChar(200)
+  nit               String             @unique @db.VarChar(50)
+  mainContact       String             @db.VarChar(150)
+  email             String             @unique @db.VarChar(150)
+  phone             String             @db.VarChar(20)
+  address           String             @db.VarChar(200)
+  city              String             @db.VarChar(100)
+  description       String?
+  status            ProviderStatus     @default(Active)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  documentTypeId    Int?
+  statusAssignedAt  DateTime           @default(now())
+  materialMovements MaterialMovement[]
+  documentType      DocumentType?      @relation(fields: [documentTypeId], references: [id])
+  purchases         purchases[]
+
+  @@index([businessName])
+  @@index([entityType])
+  @@index([status])
+  @@map("providers")
+}
+
+model PreRegistration {
+  id             Int                   @id @default(autoincrement())
+  firstName      String                @map("first_name") @db.VarChar(100)
+  middleName     String?               @map("middle_name") @db.VarChar(100)
+  lastName       String                @map("last_name") @db.VarChar(100)
+  secondLastName String?               @map("second_last_name") @db.VarChar(100)
+  birthDate      DateTime              @map("birth_date")
+  phoneNumber    String                @map("phone_number") @db.VarChar(20)
+  email          String                @unique @db.VarChar(100)
+  status         PreRegistrationStatus @default(Pendiente)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  identification String?               @unique @db.VarChar(50)
+
+  @@index([createdAt])
+  @@index([status])
+  @@map("pre_registrations")
+}
+
+model Service {
+  id                      Int                     @id @default(autoincrement())
+  name                    String
+  description             String?
+  startDate               DateTime
+  endDate                 DateTime
+  startTime               String
+  endTime                 String
+  location                String
+  phone                   String
+  status                  EventStatus             @default(Programado)
+  imageUrl                String?
+  scheduleFile            String?
+  publish                 Boolean                 @default(false)
+  typeId                  Int
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+  categoryId              Int?
+  donations               Donation[]
+  event_categories        EventCategory?          @relation(fields: [categoryId], references: [id])
+  ServiceType             ServiceType             @relation(fields: [typeId], references: [id])
+  ServiceSponsor          ServiceSponsor[]
+  eventMaterials          EventMaterial[]
+  eventMaterialsReusable  EventMaterialReusable[]
+  participants            Participant[]
+  serviceSportsCategories ServiceSportsCategory[]
+}
+
+model ServiceSponsor {
+  id        Int     @id @default(autoincrement())
+  serviceId Int
+  sponsorId Int
+  Service   Service @relation(fields: [serviceId], references: [id])
+  Sponsor   Sponsor @relation(fields: [sponsorId], references: [id])
+
+  @@unique([serviceId, sponsorId])
+}
+
+model ServiceSportsCategory {
+  id               Int            @id @default(autoincrement())
+  serviceId        Int
+  sportsCategoryId Int
+  createdAt        DateTime       @default(now())
+  service          Service        @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  sportsCategory   SportsCategory @relation(fields: [sportsCategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, sportsCategoryId])
+  @@map("service_sports_categories")
+}
+
+model ServiceType {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  Service     Service[]
+}
+
+model Sponsor {
+  id             Int                    @id @default(autoincrement())
+  name           String                 @unique
+  description    String?
+  contactEmail   String?                @db.VarChar(150)
+  phone          String?                @db.VarChar(30)
+  status         SponsorStatus          @default(Active)
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  type           DonorSponsorType       @default(Donor)
+  personType     DonorSponsorPersonType @default(Natural)
+  documentType   String?                @db.VarChar(50)
+  identification String                 @unique @db.VarChar(100)
+  contactName    String?                @db.VarChar(150)
+  address        String?                @db.VarChar(200)
+  city           String?                @db.VarChar(120)
+  country        String?                @db.VarChar(120)
+  donations      Donation[]
+  ServiceSponsor ServiceSponsor[]
+}
+
+model Donation {
+  id             Int                   @id @default(autoincrement())
+  code           String                @unique
+  donorSponsorId Int?
+  anonymous      Boolean               @default(false)
+  type           DonationType
+  status         DonationStatus        @default(Recibida)
+  program        String?
+  donationAt     DateTime
+  notes          String?
+  cancelReason   String?
+  cancelAt       DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  deletedAt      DateTime?
+  serviceId      Int?
+  responsibleId  Int?                  @map("responsible_id")
+  employeeId     Int?
+  donorSponsor   Sponsor?              @relation(fields: [donorSponsorId], references: [id])
+  service        Service?              @relation(fields: [serviceId], references: [id])
+  responsible    Employee?             @relation("ResponsibleDonation", fields: [responsibleId], references: [id], onDelete: SetNull)
+  employee       Employee?             @relation(fields: [employeeId], references: [id])
+  details        DonationDetail[]
+  files          DonationFile[]
+  transactions   DonationTransaction[]
+  eventMaterials EventMaterial[]
+
+  @@index([status, type, donationAt])
+  @@index([donorSponsorId])
+  @@index([serviceId])
+  @@index([responsibleId], map: "idx_donations_responsible_id")
+}
+
+model DonationDetail {
+  id             Int            @id @default(autoincrement())
+  donationId     Int
+  kind           DonationType
+  recordType     String
+  description    String?
+  quantity       Decimal?       @db.Decimal(10, 2)
+  amount         Decimal?       @db.Decimal(15, 2)
+  channel        String?
+  classification String?
+  expiresAt      DateTime?
+  materialId     Int?           @map("material_id")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  donation       Donation       @relation(fields: [donationId], references: [id], onDelete: Cascade)
+  files          DonationFile[]
+}
+
+model DonationTransaction {
+  id         Int             @id @default(autoincrement())
+  donationId Int
+  fromStatus DonationStatus?
+  toStatus   DonationStatus
+  reason     String?
+  createdAt  DateTime        @default(now())
+  donation   Donation        @relation(fields: [donationId], references: [id], onDelete: Cascade)
+
+  @@index([donationId, createdAt])
+}
+
+model DonationFile {
+  id           Int              @id @default(autoincrement())
+  donationId   Int
+  detailId     Int?
+  fileType     DonationFileType
+  url          String
+  publicId     String
+  mimeType     String
+  size         Int
+  originalName String
+  createdAt    DateTime         @default(now())
+  detail       DonationDetail?  @relation(fields: [detailId], references: [id], onDelete: Cascade)
+  donation     Donation         @relation(fields: [donationId], references: [id], onDelete: Cascade)
+
+  @@index([donationId])
+}
+
+model Group {
+  id          Int               @id @default(autoincrement())
+  name        String            @db.VarChar(100)
+  level       GroupLevel
+  teacherId   Int
+  maxCapacity Int
+  status      GroupStatus       @default(ACTIVE)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  memberships GroupMembership[]
+  teacher     Employee          @relation(fields: [teacherId], references: [id])
+
+  @@index([teacherId])
+  @@index([status])
+  @@map("groups")
+}
+
+model GroupMembership {
+  id        Int              @id @default(autoincrement())
+  groupId   Int
+  athleteId Int
+  startDate DateTime         @default(now())
+  endDate   DateTime?
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  athlete   Athlete          @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  group     Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, athleteId, status])
+  @@index([groupId])
+  @@index([athleteId])
+  @@index([status])
+  @@map("group_memberships")
+}
+
+model EventInvitation {
+  id             Int                   @id @default(autoincrement())
+  participantId  Int
+  token          String                @unique @db.VarChar(64)
+  status         EventInvitationStatus @default(PENDING)
+  invitationType InvitationType
+  recipientEmail String                @db.VarChar(150)
+  recipientName  String                @db.VarChar(200)
+  sentAt         DateTime              @default(now())
+  respondedAt    DateTime?
+  expiresAt      DateTime
+  reminderSentAt DateTime?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  participant    Participant           @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([participantId])
+  @@map("event_invitations")
+}
+
+model MaterialCategory {
+  id          Int            @id(map: "categories_pkey") @default(autoincrement())
+  nombre      String         @unique(map: "categories_nombre_key") @db.VarChar(100)
+  estado      CategoryStatus @default(Activo)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  descripcion String?
+  createdBy   Int?           @map("created_by")
+  updatedBy   Int?           @map("updated_by")
+  materials   Material[]
+
+  @@index([estado], map: "idx_category_estado")
+  @@index([nombre], map: "idx_category_nombre")
+  @@map("material_categories")
+}
+
+model Material {
+  id                    Int            @id @default(autoincrement())
+  nombre                String         @db.VarChar(255)
+  categoriaId           Int            @map("categoria_id")
+  categoria             String         @db.VarChar(100)
+  descripcion           String?
+  estado                MaterialStatus @default(Activo)
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+  createdBy             Int?           @map("created_by")
+  updatedBy             Int?           @map("updated_by")
+  unidadMedida          String         @default("unidad") @map("unidad_medida") @db.VarChar(20)
+  stockFundacion        Int            @default(0) @map("stock_fundacion")
+  stockEventos          Int            @default(0) @map("stock_eventos")
+  stockEventosReservado Int            @default(0) @map("stock_eventos_reservado")
+
+  eventMaterials         EventMaterial[]
+  eventMaterialsReusable EventMaterialReusable[]
+  movements              MaterialMovement[]
+  category               MaterialCategory        @relation(fields: [categoriaId], references: [id], map: "materials_categoriaId_fkey")
+
+  @@unique([nombre, categoriaId], name: "unique_material_per_category", map: "unique_material_per_category")
+  @@index([categoriaId])
+  @@index([categoriaId], map: "idx_material_categoria")
+  @@index([estado], map: "idx_material_estado")
+  @@index([nombre], map: "idx_material_nombre")
+  @@index([unidadMedida])
+  @@index([stockFundacion])
+  @@index([stockEventos])
+  @@index([stockEventosReservado], map: "idx_materials_stock_eventos_reservado")
+  @@map("materials")
+}
+
+model MaterialMovement {
+  id                Int                @id @default(autoincrement())
+  materialId        Int                @map("material_id")
+  materialNombre    String             @map("material_nombre") @db.VarChar(255)
+  categoria         String             @db.VarChar(100)
+  tipoMovimiento    MovementType       @map("tipo_movimiento")
+  cantidad          Int
+  observaciones     String?
+  stockAnterior     Int                @map("stock_anterior")
+  stockNuevo        Int                @map("stock_nuevo")
+  referenceId       Int?               @map("reference_id")
+  referenceType     String?            @map("reference_type") @db.VarChar(50)
+  fecha             DateTime           @default(now())
+  createdBy         Int                @map("created_by")
+  createdByName     String?            @map("created_by_name") @db.VarChar(255)
+  destino           DestinoMovimiento?
+  eventoId          Int?               @map("evento_id")
+  donacionId        Int?               @map("donacion_id")
+  reservation_id    Int?
+  fechaIngreso      DateTime?          @map("fecha_ingreso") @db.Date
+  proveedorId       Int?               @map("proveedor_id")
+  tipoBaja          TipoBaja?          @map("tipo_baja")
+  destinoStock      DestinoStock?      @map("destino_stock")
+  inventarioOrigen  String?            @map("inventario_origen") @db.VarChar(20)
+  inventarioDestino String?            @map("inventario_destino") @db.VarChar(20)
+  material          Material           @relation(fields: [materialId], references: [id], map: "material_movements_materialId_fkey")
+  proveedor         Provider?          @relation(fields: [proveedorId], references: [id], onUpdate: NoAction)
+
+  @@index([materialId])
+  @@index([tipoMovimiento])
+  @@index([eventoId])
+  @@index([proveedorId])
+  @@index([fecha], map: "idx_movement_fecha")
+  @@index([materialId], map: "idx_movement_material")
+  @@index([tipoMovimiento], map: "idx_movement_tipo")
+  @@index([destinoStock])
+  @@index([donacionId])
+  @@index([fechaIngreso])
+  @@index([reservation_id])
+  @@index([tipoBaja])
+  @@index([inventarioOrigen])
+  @@index([inventarioDestino])
+  @@map("material_movements")
+}
+
+model EventMaterial {
+  id              Int               @id(map: "event_material_assignments_pkey") @default(autoincrement())
+  materialId      Int               @map("material_id")
+  eventoId        Int               @map("evento_id")
+  cantidad        Int               @map("cantidad_asignada")
+  fechaAsignacion DateTime          @default(now()) @map("fecha_asignacion")
+  observaciones   String?
+  createdBy       Int               @map("created_by")
+  createdByName   String?           @map("created_by_name") @db.VarChar(255)
+  updated_at      DateTime          @default(now())
+  tipo            EventMaterialType @default(CONSUMIBLE) @map("tipo")
+  donacionId      Int?              @map("donacion_id")
+  bloqueado       Boolean           @default(false) @map("bloqueado")
+  material        Material          @relation(fields: [materialId], references: [id], map: "event_material_assignments_material_id_fkey")
+  donacion        Donation?         @relation(fields: [donacionId], references: [id])
+  evento          Service           @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+
+  @@index([donacionId])
+  @@index([tipo])
+  @@index([eventoId], map: "event_material_assignments_evento_id_idx")
+  @@index([fechaAsignacion], map: "event_material_assignments_fecha_asignacion_idx")
+  @@index([materialId], map: "event_material_assignments_material_id_idx")
+  @@map("event_materials")
+}
+
+model EventMaterialReusable {
+  id              Int      @id @default(autoincrement())
+  materialId      Int      @map("material_id")
+  eventoId        Int      @map("evento_id")
+  cantidad        Int
+  fechaAsignacion DateTime @default(now()) @map("fecha_asignacion")
+  observaciones   String?
+  createdBy       Int      @map("created_by")
+  createdByName   String?  @map("created_by_name") @db.VarChar(255)
+  evento          Service  @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  material        Material @relation(fields: [materialId], references: [id])
+
+  @@index([materialId])
+  @@index([eventoId])
+  @@index([fechaAsignacion])
+  @@map("event_materials_reusable")
+}
+
+model purchases {
+  id             Int       @id @default(autoincrement())
+  purchaseNumber String    @unique @db.VarChar(50)
+  purchaseDate   DateTime  @default(now())
+  totalAmount    Decimal   @db.Decimal(12, 2)
+  notes          String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  providerId     Int
+  employeeId     Int?
+  concept        String?   @db.VarChar(500)
+  paymentMethod  String?   @db.VarChar(100)
+  invoiceUrl     String?   @db.VarChar(500)
+  invoiceName    String?   @db.VarChar(255)
+  employees      Employee? @relation(fields: [employeeId], references: [id])
+  providers      Provider  @relation(fields: [providerId], references: [id])
+
+  @@index([employeeId])
+  @@index([providerId])
+  @@index([purchaseDate])
+}
+
+model email_verification_attempts {
+  id            Int       @id @default(autoincrement())
+  email         String    @db.VarChar(255)
+  ip_address    String    @db.VarChar(45)
+  user_agent    String?
+  success       Boolean?  @default(false)
+  created_at    DateTime  @default(now())
+  blocked_until DateTime?
+
+  @@index([blocked_until])
+  @@index([created_at])
+  @@index([email])
+  @@index([ip_address])
+}
+
+model PaymentSettings {
+  id                 Int      @id @default(1)
+  monthlyAmount      Int
+  enrollmentAmount   Int
+  lateFeeDailyAmount Int      @default(2000)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("payment_settings")
+}
+
+model PaymentObligation {
+  id         Int         @id @default(autoincrement())
+  athleteId  Int
+  type       PaymentType
+  period     String?
+  baseAmount Int
+  dueStart   DateTime
+  dueEnd     DateTime
+  metadata   Json?       @default("{}")
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  athlete    Athlete     @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  payments   Payment[]
+
+  @@unique([athleteId, type, period], name: "unique_obligation_per_athlete_period")
+  @@index([athleteId])
+  @@index([type])
+  @@index([period])
+  @@index([dueEnd])
+  @@map("payment_obligations")
+}
+
+model Payment {
+  id              Int               @id @default(autoincrement())
+  obligationId    Int
+  athleteId       Int
+  receiptUrl      String
+  receiptName     String?
+  status          PaymentStatus     @default(PENDING)
+  uploadedAt      DateTime          @default(now())
+  reviewedAt      DateTime?
+  reviewedBy      Int?
+  rejectionReason String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  obligation      PaymentObligation @relation(fields: [obligationId], references: [id], onDelete: Cascade)
+  athlete         Athlete           @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@index([obligationId])
+  @@index([athleteId])
+  @@index([status])
+  @@index([uploadedAt])
+  @@map("payments")
+}
+
+// ==================== ENUMS ====================
+
+enum PreRegistrationStatus {
+  Pendiente
+  Procesada
+  Rechazada
+}
+
+enum EnrollmentStatus {
+  Pending_Payment
+  Vigente
+  Vencida
+}
+
+enum SponsorStatus {
+  Active
+  Inactive
+  Pending
+}
+
+enum DonorSponsorType {
+  Donor
+  Sponsor
+}
+
+enum DonorSponsorPersonType {
+  Natural
+  Juridica
+}
+
+enum SportsCategoryStatus {
+  Activo
+  Inactivo
+}
+
+enum AthleteStatus {
+  Active
+  Inactive
+}
+
+enum InscriptionStatus {
+  Active
+  Suspended
+  Expired
+}
+
+enum InscriptionRecordType {
+  initial_inscription
+  renewal
+  status_change
+}
+
+enum GuardianRelationship {
+  Mother
+  Father
+  Grandparent
+  Uncle_Aunt
+  Sibling
+  Cousin
+  Legal_Guardian
+  Neighbor
+  Family_Friend
+  Other
+}
+
+enum TemporaryPersonStatus {
+  Active
+  Inactive
+}
+
+enum TemporaryPersonType {
+  Deportista
+  Entrenador
+  Participante
+}
+
+enum TeamStatus {
+  Active
+  Inactive
+  Disbanded
+}
+
+enum MemberType {
+  Athlete
+  Employee
+  TemporaryPerson
+}
+
+enum ParticipantType {
+  Individual
+  Team
+}
+
+enum ProviderEntityType {
+  legal
+  natural
+}
+
+enum ProviderStatus {
+  Active
+  Inactive
+}
+
+enum PurchaseStatus {
+  Pending
+  Received
+  Partial
+  Cancelled
+}
+
+enum ScheduleRecurrence {
+  no
+  dia
+  semana
+  mes
+  anio
+  laboral
+  personalizado
+}
+
+enum ScheduleStatus {
+  Programado
+  Completado
+  Cancelado
+}
+
+enum ScheduleNoveltyType {
+  full
+  time
+}
+
+enum TeamMemberRole {
+  Player
+  Coach
+  Assistant
+  Manager
+  Captain
+}
+
+enum DonationType {
+  ECONOMICA
+  ESPECIE
+  ALIMENTOS
+}
+
+enum DonationStatus {
+  Recibida
+  EnProceso
+  Verificada
+  Ejecutada
+  Anulada
+}
+
+enum DonationFileType {
+  comprobante
+  soporte
+  factura
+  evidencia
+}
+
+enum RoleStatus {
+  Active
+  Inactive
+}
+
+enum UserStatus {
+  Active
+  Inactive
+  Suspended
+}
+
+enum EmployeeStatus {
+  Activo
+  Licencia
+  Desvinculado
+  Fallecido
+}
+
+enum EventStatus {
+  Programado
+  En_curso
+  Finalizado
+  Cancelado
+}
+
+enum TeamType {
+  Fundacion
+  Temporal
+}
+
+enum GroupStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum GroupLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum EventInvitationStatus {
+  PENDING
+  CONFIRMED
+  DECLINED
+}
+
+enum InvitationType {
+  INDIVIDUAL
+  TEAM
+}
+
+enum MaterialStatus {
+  Activo
+  Inactivo
+}
+
+enum EventMaterialType {
+  CONSUMIBLE
+  REUTILIZABLE
+}
+
+enum CategoryStatus {
+  Activo
+  Inactivo
+}
+
+enum MovementType {
+  Entrada
+  Baja
+  Consumo
+  Ajuste
+  TRANSFERENCIA
+  SALIDA_EVENTO
+  REVERSO_SALIDA_EVENTO
+  Salida
+  ASIGNACION_EVENTO
+  REVERSION_ASIGNACION
+}
+
+enum DestinoMovimiento {
+  Evento
+  ConsumoInterno
+  Dano
+  Perdida
+  Entrega
+}
+
+enum DestinoStock {
+  USO_INTERNO
+  EVENTOS
+}
+
+enum InventoryType {
+  FUNDACION
+  EVENTOS
+}
+
+enum TipoBaja {
+  DanoDeterioro
+  Perdida
+  Robo
+  AjusteInventario
+  Otro
+}
+
+enum OrigenMovimiento {
+  Compra
+  Donacion
+  AjustePositivo
+  AjusteNegativo
+  UsoEvento
+  Dano
+  Perdida
+  Entrega
+  ConsumoInterno
+}
+
+enum TipoMovimiento {
+  Entrada
+  Salida
+  ASIGNACION_EVENTO
+  REVERSION_ASIGNACION
+}
+
+enum EventAssignmentStatus {
+  RESERVADO
+  USADO
+  DEVUELTO
+  CANCELADO
+}
+
+enum PaymentType {
+  MONTHLY
+  ENROLLMENT_INITIAL
+  ENROLLMENT_RENEWAL
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

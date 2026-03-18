@@ -9,8 +9,7 @@ import { checkRole } from "../../../../middlewares/checkRole.js";
 
 const router = express.Router();
 const membershipController = new MembershipController();
-
-router.use(authenticateToken, checkRole("Administrador"));
+const adminGuard = [authenticateToken, checkRole("Administrador")];
 
 /**
  * @swagger
@@ -22,6 +21,7 @@ router.use(authenticateToken, checkRole("Administrador"));
 // Agregar miembro a un grupo
 router.post(
   "/groups/:id/members",
+  ...adminGuard,
   membershipValidators.addMember,
   handleValidationErrors,
   membershipController.addMember,
@@ -30,6 +30,7 @@ router.post(
 // Obtener miembros de un grupo
 router.get(
   "/groups/:id/members",
+  ...adminGuard,
   membershipValidators.getGroupMembers,
   handleValidationErrors,
   membershipController.getGroupMembers,
@@ -38,6 +39,7 @@ router.get(
 // Obtener grupos de una deportista
 router.get(
   "/athletes/:athleteId/groups",
+  ...adminGuard,
   membershipValidators.getAthleteGroups,
   handleValidationErrors,
   membershipController.getAthleteGroups,
@@ -46,6 +48,7 @@ router.get(
 // Actualizar membresía
 router.patch(
   "/memberships/:id",
+  ...adminGuard,
   membershipValidators.updateMembership,
   handleValidationErrors,
   membershipController.updateMembership,
@@ -54,6 +57,7 @@ router.patch(
 // Eliminar membresía
 router.delete(
   "/memberships/:id",
+  ...adminGuard,
   membershipValidators.deleteMembership,
   handleValidationErrors,
   membershipController.removeMember,

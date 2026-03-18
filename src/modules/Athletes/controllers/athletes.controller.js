@@ -1,4 +1,4 @@
-﻿import { AthletesService } from "../services/athletes.service.js";
+import { AthletesService } from "../services/athletes.service.js";
 import { athletesService } from "../services/athletes.service.new.js";
 
 export class AthletesController {
@@ -17,14 +17,17 @@ export class AthletesController {
         estadoInscripcion,
       } = req.query;
 
-      const result = await this.athletesService.getAllAthletes({
-        page: parseInt(page),
-        limit: parseInt(limit),
-        search,
-        status,
-        categoria,
-        estadoInscripcion,
-      });
+      const result = await this.athletesService.getAllAthletes(
+        {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          search,
+          status,
+          categoria,
+          estadoInscripcion,
+        },
+        req.user,
+      );
 
       res.json({
         success: true,
@@ -33,11 +36,12 @@ export class AthletesController {
         message: `Se encontraron ${result.pagination?.total || 0} deportistas.`,
       });
     } catch (error) {
-      console.error("Error in getAllAthletes controller:", error);
+      console.error("Error fetching athletes:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener deportistas",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -65,18 +69,17 @@ export class AthletesController {
         message: "Deportista encontrado exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getAthleteById controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener deportista",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
 
   createAthlete = async (req, res) => {
     try {
-
       const result = await this.athletesService.createAthlete(req.body);
 
       if (!result.success) {
@@ -86,17 +89,20 @@ export class AthletesController {
       res.status(201).json({
         success: true,
         data: result.data,
-        temporaryPassword: process.env.NODE_ENV === 'development' ? result.temporaryPassword : undefined,
+        temporaryPassword:
+          process.env.NODE_ENV === "development"
+            ? result.temporaryPassword
+            : undefined,
         emailSent: result.emailSent,
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in createAthlete controller:", error);
-
       // Manejar errores de validación
-      if (error.message.includes('ya está registrado') ||
-          error.message.includes('debe tener un acudiente') ||
-          error.message.includes('no existe')) {
+      if (
+        error.message.includes("ya está registrado") ||
+        error.message.includes("debe tener un acudiente") ||
+        error.message.includes("no existe")
+      ) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -104,16 +110,16 @@ export class AthletesController {
       }
 
       // Manejar errores de Prisma (duplicados)
-      if (error.code === 'P2002') {
+      if (error.code === "P2002") {
         const field = error.meta?.target?.[0];
-        let message = 'Ya existe un registro con estos datos.';
-        
-        if (field === 'email') {
+        let message = "Ya existe un registro con estos datos.";
+
+        if (field === "email") {
           message = `El correo electrónico "${req.body.email}" ya está registrado.`;
-        } else if (field === 'identification') {
+        } else if (field === "identification") {
           message = `El documento "${req.body.identification}" ya está registrado.`;
         }
-        
+
         return res.status(400).json({
           success: false,
           message: message,
@@ -139,7 +145,6 @@ export class AthletesController {
         });
       }
 
-
       const result = await this.athletesService.updateAthlete(id, req.body);
 
       if (!result.success) {
@@ -152,12 +157,12 @@ export class AthletesController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in updateAthlete controller:", error);
-
       // Manejar errores de validación
-      if (error.message.includes('ya está registrado') ||
-          error.message.includes('debe tener un acudiente') ||
-          error.message.includes('no existe')) {
+      if (
+        error.message.includes("ya está registrado") ||
+        error.message.includes("debe tener un acudiente") ||
+        error.message.includes("no existe")
+      ) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -165,16 +170,16 @@ export class AthletesController {
       }
 
       // Manejar errores de Prisma (duplicados)
-      if (error.code === 'P2002') {
+      if (error.code === "P2002") {
         const field = error.meta?.target?.[0];
-        let message = 'Ya existe un registro con estos datos.';
-        
-        if (field === 'email') {
+        let message = "Ya existe un registro con estos datos.";
+
+        if (field === "email") {
           message = `El correo electrónico "${req.body.email}" ya está registrado por otro deportista.`;
-        } else if (field === 'identification') {
+        } else if (field === "identification") {
           message = `El documento "${req.body.identification}" ya está registrado por otro deportista.`;
         }
-        
+
         return res.status(400).json({
           success: false,
           message: message,
@@ -184,7 +189,8 @@ export class AthletesController {
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al actualizar deportista",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -211,7 +217,6 @@ export class AthletesController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in deleteAthlete controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al eliminar deportista",
@@ -222,7 +227,7 @@ export class AthletesController {
   changeAthleteStatus = async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const { status } = req.body;
+      const status = req.body.status ?? req.body.estado;
 
       if (isNaN(id)) {
         return res.status(400).json({
@@ -231,7 +236,7 @@ export class AthletesController {
         });
       }
 
-      if (!status) {
+      if (status === undefined || status === null || status === "") {
         return res.status(400).json({
           success: false,
           message: "El estado es requerido",
@@ -250,7 +255,6 @@ export class AthletesController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in changeAthleteStatus controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al cambiar estado",
@@ -268,11 +272,11 @@ export class AthletesController {
         message: "Estadísticas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getAthleteStats controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener estadísticas",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -287,11 +291,11 @@ export class AthletesController {
         message: "Datos de referencia obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getReferenceData controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener datos de referencia",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -306,11 +310,11 @@ export class AthletesController {
         message: "Tipos de documento obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getDocumentTypes controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener tipos de documento",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -318,19 +322,22 @@ export class AthletesController {
   checkEmailAvailability = async (req, res) => {
     try {
       const { email, excludeUserId } = req.query;
-      const result = await this.athletesService.checkEmailAvailability(email, excludeUserId);
+      const result = await this.athletesService.checkEmailAvailability(
+        email,
+        excludeUserId,
+      );
 
       res.json({
         success: true,
         available: result.available,
-        message: result.available ? 'Email disponible.' : result.message
+        message: result.available ? "Email disponible." : result.message,
       });
     } catch (error) {
-      console.error('Error checking email availability:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al verificar email.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al verificar email.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -338,19 +345,24 @@ export class AthletesController {
   checkIdentificationAvailability = async (req, res) => {
     try {
       const { identification, excludeUserId } = req.query;
-      const result = await this.athletesService.checkIdentificationAvailability(identification, excludeUserId);
+      const result = await this.athletesService.checkIdentificationAvailability(
+        identification,
+        excludeUserId,
+      );
 
       res.json({
         success: true,
         available: result.available,
-        message: result.available ? 'Identificación disponible.' : result.message
+        message: result.available
+          ? "Identificación disponible."
+          : result.message,
       });
     } catch (error) {
-      console.error('Error checking identification availability:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al verificar identificación.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        message: "Error interno del servidor al verificar identificación.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -362,7 +374,7 @@ export class AthletesController {
       if (isNaN(athleteId)) {
         return res.status(400).json({
           success: false,
-          message: 'ID de deportista inválido.',
+          message: "ID de deportista inválido.",
         });
       }
 
@@ -381,11 +393,11 @@ export class AthletesController {
         message: result.message,
       });
     } catch (error) {
-      console.error('Error removing guardian:', error);
       res.status(500).json({
         success: false,
-        message: 'Error interno del servidor al remover acudiente.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+        message: "Error interno del servidor al remover acudiente.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
@@ -408,16 +420,15 @@ export class AthletesController {
 
       return res.json(result);
     } catch (error) {
-      console.error("Controller error - getAllAthletesForReport:", error);
       return res.status(500).json({
         success: false,
-        message: "Error interno del servidor al obtener deportistas para reporte",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
+        message:
+          "Error interno del servidor al obtener deportistas para reporte",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
 }
 
 export default new AthletesController();
-
-

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Servicio de Email para Eventos - AstroStar
  * Maneja todos los emails relacionados con eventos
  */
@@ -13,7 +13,6 @@ export class EventEmailService extends BaseEmailService {
     try {
       const ready = await this.ensureTransporter();
       if (!ready.ok) {
-        console.warn("⚠️  Invitación RSVP no enviada:", ready.reason);
         if (this.shouldSimulate()) {
           return {
             success: true,
@@ -67,7 +66,6 @@ export class EventEmailService extends BaseEmailService {
       const result = await this.sendMailWithFallback(mailOptions);
       return result;
     } catch (error) {
-      console.error("❌ Error enviando invitación RSVP:", error.message);
       if (this.shouldSimulate()) {
         return {
           success: true,
@@ -86,7 +84,6 @@ export class EventEmailService extends BaseEmailService {
     try {
       const ready = await this.ensureTransporter();
       if (!ready.ok) {
-        console.warn("⚠️  Recordatorio RSVP no enviado:", ready.reason);
         if (this.shouldSimulate()) {
           return {
             success: true,
@@ -133,7 +130,6 @@ export class EventEmailService extends BaseEmailService {
       const result = await this.sendMailWithFallback(mailOptions);
       return result;
     } catch (error) {
-      console.error("❌ Error enviando recordatorio RSVP:", error.message);
       if (this.shouldSimulate()) {
         return {
           success: true,
@@ -152,10 +148,6 @@ export class EventEmailService extends BaseEmailService {
     try {
       const ready = await this.ensureTransporter();
       if (!ready.ok) {
-        console.warn(
-          "⚠️  Recordatorio de evento confirmado no enviado:",
-          ready.reason,
-        );
         if (this.shouldSimulate()) {
           return {
             success: true,
@@ -193,10 +185,6 @@ export class EventEmailService extends BaseEmailService {
       const result = await this.sendMailWithFallback(mailOptions);
       return result;
     } catch (error) {
-      console.error(
-        "❌ Error enviando recordatorio de evento confirmado:",
-        error.message,
-      );
       if (this.shouldSimulate()) {
         return {
           success: true,
@@ -211,4 +199,3 @@ export class EventEmailService extends BaseEmailService {
 
 // Exportar instancia singleton
 export default new EventEmailService();
-

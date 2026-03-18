@@ -1,5 +1,23 @@
 import eventMaterialsConsumableService from "../services/eventMaterialsConsumable.service.js";
 
+const buildErrorResponse = (error, fallbackMessage) => {
+  const statusCode =
+    error?.statusCode ||
+    (error?.name?.includes("PrismaClientValidationError") ? 400 : 500);
+
+  const message = error?.message || fallbackMessage;
+  const response = {
+    success: false,
+    message,
+  };
+
+  if (error?.details) {
+    response.errors = error.details;
+  }
+
+  return { statusCode, response };
+};
+
 class EventMaterialsConsumableController {
   /**
    * Get consumable materials for event
@@ -11,12 +29,11 @@ class EventMaterialsConsumableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - getByEvent:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Error retrieving consumable materials",
-        error: error.message,
-      });
+      const { statusCode, response } = buildErrorResponse(
+        error,
+        "Error retrieving consumable materials",
+      );
+      return res.status(statusCode).json(response);
     }
   }
 
@@ -26,7 +43,7 @@ class EventMaterialsConsumableController {
   async loadDonationMaterials(req, res) {
     try {
       const { eventoId } = req.params;
-      const userId = req.user?.id || 1;
+      const userId = Number.parseInt(req.user?.id, 10) || 1;
       const userName = req.user?.name || "System";
 
       const result =
@@ -38,12 +55,11 @@ class EventMaterialsConsumableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - loadDonationMaterials:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Error loading donation materials",
-        error: error.message,
-      });
+      const { statusCode, response } = buildErrorResponse(
+        error,
+        "Error loading donation materials",
+      );
+      return res.status(statusCode).json(response);
     }
   }
 
@@ -53,7 +69,7 @@ class EventMaterialsConsumableController {
   async assignMaterial(req, res) {
     try {
       const { eventoId } = req.params;
-      const userId = req.user?.id || 1;
+      const userId = Number.parseInt(req.user?.id, 10) || 1;
       const userName = req.user?.name || "System";
 
       const result = await eventMaterialsConsumableService.assignMaterial(
@@ -69,12 +85,11 @@ class EventMaterialsConsumableController {
 
       return res.status(201).json(result);
     } catch (error) {
-      console.error("Controller error - assignMaterial:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Error assigning consumable material",
-        error: error.message,
-      });
+      const { statusCode, response } = buildErrorResponse(
+        error,
+        "Error assigning consumable material",
+      );
+      return res.status(statusCode).json(response);
     }
   }
 
@@ -84,7 +99,7 @@ class EventMaterialsConsumableController {
   async removeAssignment(req, res) {
     try {
       const { assignmentId } = req.params;
-      const userId = req.user?.id || 1;
+      const userId = Number.parseInt(req.user?.id, 10) || 1;
       const userName = req.user?.name || "System";
 
       const result = await eventMaterialsConsumableService.removeAssignment(
@@ -99,12 +114,11 @@ class EventMaterialsConsumableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - removeAssignment:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Error removing assignment",
-        error: error.message,
-      });
+      const { statusCode, response } = buildErrorResponse(
+        error,
+        "Error removing assignment",
+      );
+      return res.status(statusCode).json(response);
     }
   }
 
@@ -114,7 +128,7 @@ class EventMaterialsConsumableController {
   async finalizeEvent(req, res) {
     try {
       const { eventoId } = req.params;
-      const userId = req.user?.id || 1;
+      const userId = Number.parseInt(req.user?.id, 10) || 1;
       const userName = req.user?.name || "System";
 
       const result = await eventMaterialsConsumableService.finalizeEvent(
@@ -129,12 +143,11 @@ class EventMaterialsConsumableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - finalizeEvent:", error);
-      return res.status(500).json({
-        success: false,
-        message: "Error finalizing event",
-        error: error.message,
-      });
+      const { statusCode, response } = buildErrorResponse(
+        error,
+        "Error finalizing event",
+      );
+      return res.status(statusCode).json(response);
     }
   }
 }

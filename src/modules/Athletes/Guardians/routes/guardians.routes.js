@@ -17,16 +17,15 @@ const guardiansController = new GuardiansController();
  *   description: Gestión de acudientes de deportistas
  */
 
-router.use(authenticateToken);
-
-router.get("/check-email", checkPermissions("athletesSection", "Acudiente"), guardiansController.checkEmailAvailability);
-router.get("/check-identification", checkPermissions("athletesSection", "Acudiente"), guardiansController.checkIdentificationAvailability);
-router.get("/stats", checkPermissions("athletesSection", "Acudiente"), guardiansController.getGuardianStats);
-router.get("/", checkPermissions("athletesSection", "Acudiente"), guardiansValidators.getAll, handleValidationErrors, guardiansController.getAllGuardians);
-router.get("/:id", checkPermissions("athletesSection", "Acudiente"), guardiansValidators.getById, handleValidationErrors, guardiansController.getGuardianById);
-router.post("/", checkPermissions("athletesSection", "Acudiente"), guardiansValidators.create, handleValidationErrors, guardiansController.createGuardian);
-router.put("/:id", checkPermissions("athletesSection", "Acudiente"), guardiansValidators.update, handleValidationErrors, guardiansController.updateGuardian);
-router.delete("/:id", checkPermissions("athletesSection", "Acudiente"), guardiansValidators.delete, handleValidationErrors, guardiansController.deleteGuardian);
+router.get("/check-email", guardiansController.checkEmailAvailability);
+router.get("/check-identification", guardiansController.checkIdentificationAvailability);
+router.get("/with-athletes", guardiansController.getGuardiansWithAthletes);
+router.get("/stats", guardiansController.getGuardianStats);
+router.get("/", guardiansValidators.getAll, handleValidationErrors, guardiansController.getAllGuardians);
+router.get("/:id", guardiansValidators.getById, handleValidationErrors, guardiansController.getGuardianById);
+router.post("/", guardiansValidators.create, handleValidationErrors, guardiansController.createGuardian);
+router.put("/:id", guardiansValidators.update, handleValidationErrors, guardiansController.updateGuardian);
+router.delete("/:id", guardiansValidators.delete, handleValidationErrors, guardiansController.deleteGuardian);
 
 export default router;
 

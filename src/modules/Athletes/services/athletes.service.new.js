@@ -1,4 +1,4 @@
-﻿import prisma from "../../../config/database.js";
+import prisma from "../../../config/database.js";
 import { athletesRepository } from "../repository/athletes.repository.new.js";
 import { enrollmentsRepository } from "../../Enrollments/repository/enrollments.repository.js";
 
@@ -65,8 +65,7 @@ export const athletesService = {
           firstName: currentAthlete.user?.firstName || athleteData.firstName,
           lastName: currentAthlete.user?.lastName || athleteData.lastName,
         }).catch((error) => {
-          console.error("Error enviando correo de actualización de email:", error);
-        });
+});
       }
 
       // 4. Si cambió el estado y se solicita actualizar matrícula

@@ -1,36 +1,91 @@
-﻿import prisma from "../../../../config/database.js";
+import prisma from "../../../../config/database.js";
 
 export class SportsCategoryService {
   /**
+   * Normalizar clave de rol para comparaciones
+   */
+  normalizeRoleKey(value) {
+    return value
+      ? String(value)
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "")
+      : "";
+  }
+
+  /**
+   * Resolver filtros de alcance según el usuario
+   */
+  async resolveScopeFilters(filters = {}, user = null) {
+    const scoped = { ...filters };
+    const roleKey = this.normalizeRoleKey(user?.role?.name || user?.rol || "");
+    const isAdmin = roleKey === "admin" || roleKey === "administrador";
+    const isHealthProfessional =
+      roleKey === "profesionaldelasalud" || roleKey === "profesionaldesalud";
+
+    // Los administradores pueden ver todas las categorías
+    if (isAdmin) {
+      return scoped;
+    }
+
+    // Los profesionales de salud solo pueden ver categorías activas
+    if (isHealthProfessional) {
+      scoped.status = "Activo";
+      return scoped;
+    }
+
+    return scoped;
+  }
+
+  /**
    * Obtener todas las categorías con paginación y filtros
    */
-  async getAllSportsCategories({
-    page = 1,
-    limit = 10,
-    search = "",
-    status = "",
-  }) {
+  async getAllSportsCategories(
+    { page = 1, limit = 10, search = "", status = "" },
+    user = null,
+  ) {
     try {
-      const skip = (page - 1) * limit;
+      const scopedFilters = await this.resolveScopeFilters(
+        {
+          page,
+          limit,
+          search,
+          status,
+        },
+        user,
+      );
+
+      const skip = (scopedFilters.page - 1) * scopedFilters.limit;
       const where = {};
 
       // Búsqueda por nombre o descripción
-      if (search && search.trim()) {
+      if (scopedFilters.search && scopedFilters.search.trim()) {
         where.OR = [
-          { nombre: { contains: search.trim(), mode: "insensitive" } },
-          { descripcion: { contains: search.trim(), mode: "insensitive" } },
+          {
+            nombre: {
+              contains: scopedFilters.search.trim(),
+              mode: "insensitive",
+            },
+          },
+          {
+            descripcion: {
+              contains: scopedFilters.search.trim(),
+              mode: "insensitive",
+            },
+          },
         ];
       }
 
-      // Filtrar por estado
-      if (status && status.trim()) {
+      // Filtrar por estado (con filtros de alcance aplicados)
+      if (scopedFilters.status && scopedFilters.status.trim()) {
         const statusMap = {
           Active: "Activo",
           Inactive: "Inactivo",
           Activo: "Activo",
           Inactivo: "Inactivo",
         };
-        where.estado = statusMap[status] || status;
+        where.estado = statusMap[scopedFilters.status] || scopedFilters.status;
       }
 
       // Ejecutar queries
@@ -38,7 +93,7 @@ export class SportsCategoryService {
         prisma.sportsCategory.findMany({
           where,
           skip,
-          take: limit,
+          take: scopedFilters.limit,
           orderBy: [{ edadMinima: "asc" }, { edadMaxima: "asc" }],
           include: {
             _count: {
@@ -58,13 +113,12 @@ export class SportsCategoryService {
         data: categories.map((cat) => this._formatCategory(cat)),
         pagination: {
           total,
-          page,
-          pages: Math.ceil(total / limit),
-          limit,
+          page: scopedFilters.page,
+          pages: Math.ceil(total / scopedFilters.limit),
+          limit: scopedFilters.limit,
         },
       };
     } catch (error) {
-      console.error("Error en getAllSportsCategories:", error);
       return {
         success: false,
         message: "Error al obtener las categorías deportivas.",
@@ -108,7 +162,6 @@ export class SportsCategoryService {
         })),
       };
     } catch (error) {
-      console.error("Error en getPublicCategories:", error);
       return {
         success: false,
         message: "Error al obtener categorías públicas.",
@@ -149,7 +202,6 @@ export class SportsCategoryService {
         data: this._formatCategory(category),
       };
     } catch (error) {
-      console.error("Error en getSportsCategoryById:", error);
       return {
         success: false,
         message: "Error al obtener la categoría.",
@@ -256,7 +308,6 @@ export class SportsCategoryService {
         data: this._formatCategory(category),
       };
     } catch (error) {
-      console.error("Error en createSportsCategory:", error);
       return {
         success: false,
         message: "Error al crear la categoría.",
@@ -384,7 +435,6 @@ export class SportsCategoryService {
         data: this._formatCategory(updated),
       };
     } catch (error) {
-      console.error("Error en updateSportsCategory:", error);
       return {
         success: false,
         message: "Error al actualizar la categoría.",
@@ -455,13 +505,6 @@ export class SportsCategoryService {
         message: "Categoría eliminada exitosamente.",
       };
     } catch (error) {
-      console.error("Error en deleteSportsCategory:", error);
-      console.error("Error details:", {
-        code: error.code,
-        message: error.message,
-        meta: error.meta,
-      });
-
       // Manejar errores específicos de Prisma
       if (error.code === "P2003") {
         return {
@@ -526,7 +569,6 @@ export class SportsCategoryService {
         },
       };
     } catch (error) {
-      console.error("Error en checkCategoryNameExists:", error);
       return {
         success: false,
         data: { available: false },
@@ -539,8 +581,37 @@ export class SportsCategoryService {
   /**
    * Obtener atletas de una categoría
    */
-  async getAthletesByCategory(id) {
+  async getAthletesByCategory(id, user = null) {
     try {
+      const roleKey = this.normalizeRoleKey(
+        user?.role?.name || user?.rol || "",
+      );
+      const isAdmin = roleKey === "admin" || roleKey === "administrador";
+      const isHealthProfessional =
+        roleKey === "profesionaldelasalud" || roleKey === "profesionaldesalud";
+
+      // Verificar que la categoría existe
+      const category = await prisma.sportsCategory.findUnique({
+        where: { id: parseInt(id) },
+      });
+
+      if (!category) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: `No se encontró la categoría con ID ${id}.`,
+        };
+      }
+
+      // Los profesionales de salud solo pueden ver categorías activas
+      if (isHealthProfessional && category.estado !== "Activo") {
+        return {
+          success: false,
+          statusCode: 403,
+          message: "No tienes permisos para ver deportistas de esta categoría.",
+        };
+      }
+
       const calculateAge = (birthDate) => {
         if (!birthDate) return null;
         const today = new Date();
@@ -548,7 +619,10 @@ export class SportsCategoryService {
         if (Number.isNaN(birth.getTime())) return null;
         let age = today.getFullYear() - birth.getFullYear();
         const monthDiff = today.getMonth() - birth.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birth.getDate())
+        ) {
           age--;
         }
         return age;
@@ -630,7 +704,6 @@ export class SportsCategoryService {
         data,
       };
     } catch (error) {
-      console.error("Error en getAthletesByCategory:", error);
       return {
         success: false,
         message: "Error al obtener atletas.",
@@ -663,7 +736,6 @@ export class SportsCategoryService {
         },
       };
     } catch (error) {
-      console.error("Error en getSportsCategoryStats:", error);
       return {
         success: false,
         message: "Error al obtener estadísticas.",
@@ -704,5 +776,3 @@ export class SportsCategoryService {
     };
   }
 }
-
-

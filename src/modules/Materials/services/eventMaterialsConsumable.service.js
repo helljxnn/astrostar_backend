@@ -2,7 +2,31 @@
 
 const prisma = new PrismaClient();
 
+const MATERIAL_SELECT = {
+  id: true,
+  nombre: true,
+  categoria: true,
+  estado: true,
+  unidadMedida: true,
+  stockFundacion: true,
+  stockEventos: true,
+  stockEventosReservado: true,
+};
+
 class EventMaterialsConsumableService {
+  normalizeAssignmentData(data = {}) {
+    const materialId = data.material_id ?? data.materialId;
+    const cantidad = data.cantidad ?? data.quantity;
+    const observaciones =
+      typeof data.observaciones === "string" ? data.observaciones.trim() : "";
+
+    return {
+      material_id: materialId,
+      cantidad,
+      observaciones,
+    };
+  }
+
   /**
    * Get consumable materials assigned to an event (including donations)
    */
@@ -47,8 +71,7 @@ class EventMaterialsConsumableService {
         data: materials,
       };
     } catch (error) {
-      console.error("Service error - getByEvent:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -63,7 +86,7 @@ class EventMaterialsConsumableService {
           serviceId: parseInt(eventoId),
           type: "ESPECIE",
           status: {
-            in: ["Verificada", "Ejecutada"],
+            not: "Anulada",
           },
         },
         include: {
@@ -84,16 +107,34 @@ class EventMaterialsConsumableService {
       // 2. Process each donation
       for (const donation of donations) {
         for (const detail of donation.details) {
-          // Check if material exists by description
-          const material = await prisma.material.findFirst({
-            where: {
-              nombre: {
-                contains: detail.description,
-                mode: "insensitive",
-              },
-              estado: "Activo",
-            },
-          });
+          const detailRecordType = String(detail.recordType || "").toLowerCase();
+          if (detailRecordType && detailRecordType !== "item") {
+            continue;
+          }
+
+          // Resolve material primarily by materialId (most reliable), fallback to description match.
+          const material =
+            (detail.materialId
+              ? await prisma.material.findFirst({
+                  where: {
+                    id: Number(detail.materialId),
+                    estado: "Activo",
+                  },
+                  select: MATERIAL_SELECT,
+                })
+              : null) ||
+            (detail.description
+              ? await prisma.material.findFirst({
+                  where: {
+                    nombre: {
+                      contains: detail.description,
+                      mode: "insensitive",
+                    },
+                    estado: "Activo",
+                  },
+                  select: MATERIAL_SELECT,
+                })
+              : null);
 
           if (!material) {
             continue;
@@ -126,7 +167,9 @@ class EventMaterialsConsumableService {
               createdByName: userName || null,
             },
             include: {
-              material: true,
+              material: {
+                select: MATERIAL_SELECT,
+              },
               donacion: {
                 include: {
                   donorSponsor: true,
@@ -154,12 +197,15 @@ class EventMaterialsConsumableService {
    */
   async assignMaterial(eventoId, data, userId, userName) {
     try {
+      const normalizedData = this.normalizeAssignmentData(data);
+
       // 1. Validate data
-      this.validateAssignmentData(data);
+      this.validateAssignmentData(normalizedData);
 
       // 2. Get material
       const material = await prisma.material.findUnique({
-        where: { id: parseInt(data.material_id) },
+        where: { id: parseInt(normalizedData.material_id) },
+        select: MATERIAL_SELECT,
       });
 
       if (!material) {
@@ -179,7 +225,7 @@ class EventMaterialsConsumableService {
       }
 
       // 3. Check available stock (real stock, not reserved)
-      const cantidad = parseInt(data.cantidad);
+      const cantidad = parseInt(normalizedData.cantidad);
 
       if (material.stockEventos < cantidad) {
         return {
@@ -192,7 +238,7 @@ class EventMaterialsConsumableService {
       // 4. Get event to check if it has started
       const event = await prisma.service.findUnique({
         where: { id: parseInt(eventoId) },
-        select: { startDate: true },
+        select: { name: true, startDate: true },
       });
 
       if (!event) {
@@ -211,16 +257,19 @@ class EventMaterialsConsumableService {
 
         // Deduct stock IMMEDIATELY
         await tx.material.update({
-          where: { id: parseInt(data.material_id) },
+          where: { id: parseInt(normalizedData.material_id) },
           data: {
             stockEventos: newStockEventos,
+          },
+          select: {
+            id: true,
           },
         });
 
         // Create movement record
         await tx.materialMovement.create({
           data: {
-            materialId: parseInt(data.material_id),
+            materialId: parseInt(normalizedData.material_id),
             materialNombre: material.nombre,
             categoria: material.categoria,
             tipoMovimiento: "ASIGNACION_EVENTO",
@@ -228,7 +277,8 @@ class EventMaterialsConsumableService {
             inventarioOrigen: "EVENTOS",
             eventoId: parseInt(eventoId),
             observaciones:
-              data.observaciones || `Asignado al evento "${event.name}"`,
+              normalizedData.observaciones ||
+              `Asignado al evento "${event.name}"`,
             stockAnterior: stockAnterior,
             stockNuevo: stockNuevo,
             createdBy: userId,
@@ -239,17 +289,19 @@ class EventMaterialsConsumableService {
         // Create assignment
         return await tx.eventMaterial.create({
           data: {
-            materialId: parseInt(data.material_id),
+            materialId: parseInt(normalizedData.material_id),
             eventoId: parseInt(eventoId),
             cantidad: cantidad,
             tipo: "CONSUMIBLE",
             bloqueado: false,
-            observaciones: data.observaciones || null,
+            observaciones: normalizedData.observaciones || null,
             createdBy: userId,
             createdByName: userName || null,
           },
           include: {
-            material: true,
+            material: {
+              select: MATERIAL_SELECT,
+            },
           },
         });
       });
@@ -273,7 +325,9 @@ class EventMaterialsConsumableService {
       const assignment = await prisma.eventMaterial.findUnique({
         where: { id: parseInt(assignmentId) },
         include: {
-          material: true,
+          material: {
+            select: MATERIAL_SELECT,
+          },
           evento: {
             select: {
               id: true,
@@ -321,6 +375,9 @@ class EventMaterialsConsumableService {
             where: { id: assignment.materialId },
             data: {
               stockEventos: newStockEventos,
+            },
+            select: {
+              id: true,
             },
           });
 
@@ -381,6 +438,9 @@ class EventMaterialsConsumableService {
           data: {
             stockEventos: newStockEventos,
           },
+          select: {
+            id: true,
+          },
         });
 
         // Create movement record (reversal)
@@ -420,24 +480,47 @@ class EventMaterialsConsumableService {
    * Validate assignment data
    */
   validateAssignmentData(data) {
+    const errors = [];
+
     if (!data.material_id) {
-      throw new Error("Material is required");
+      errors.push({
+        field: "material_id",
+        message: "Material is required",
+      });
     }
 
     if (!data.cantidad) {
-      throw new Error("Quantity is required");
+      errors.push({
+        field: "cantidad",
+        message: "Quantity is required",
+      });
     }
 
     const cantidad = parseInt(data.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
-      throw new Error("Quantity must be a positive number");
+      errors.push({
+        field: "cantidad",
+        message: "Quantity must be a positive number",
+      });
     }
 
     if (data.observaciones && data.observaciones.length > 1000) {
-      throw new Error("Observations cannot exceed 1000 characters");
+      errors.push({
+        field: "observaciones",
+        message: "Observations cannot exceed 1000 characters",
+      });
+    }
+
+    if (errors.length > 0) {
+      const error = new Error("Invalid assignment data");
+      error.statusCode = 400;
+      error.details = errors;
+      throw error;
     }
   }
 }
 
 export default new EventMaterialsConsumableService();
+
+
 

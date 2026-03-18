@@ -1,4 +1,4 @@
-﻿import { paymentsService } from "../services/payments.service.js";
+import { paymentsService } from "../services/payments.service.js";
 import { validationResult } from "express-validator";
 
 // ============================================================================
@@ -18,9 +18,7 @@ const handleValidationErrors = (req, res) => {
 };
 
 const handleError = (res, error, defaultMessage = "Error interno del servidor") => {
-  console.error('❌ [PAYMENT SETTINGS CONTROLLER]', error);
-  
-  const statusCode = error.message.includes('no encontrado') ? 404 :
+const statusCode = error.message.includes('no encontrado') ? 404 :
                     error.message.includes('ya existe') ? 409 :
                     error.message.includes('obligatorio') ? 400 : 500;
 
@@ -107,3 +105,4 @@ export const paymentSettingsController = {
     }
   }
 };
+

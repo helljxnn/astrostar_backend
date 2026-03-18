@@ -226,11 +226,31 @@ export const athletesValidators = {
       .isInt({ min: 1 })
       .withMessage("El ID del deportista debe ser un número entero positivo."),
 
-    body("status")
-      .notEmpty()
-      .withMessage("El estado es obligatorio.")
-      .isIn(["Activo", "Inactivo"])
-      .withMessage("El estado debe ser Activo o Inactivo.")
+    body().custom((_, { req }) => {
+      const value = req.body.status ?? req.body.estado;
+
+      if (value === undefined || value === null || value === "") {
+        throw new Error("El estado es obligatorio.");
+      }
+
+      const normalized = String(value).trim().toLowerCase();
+      const allowed = [
+        "activo",
+        "inactivo",
+        "active",
+        "inactive",
+        "true",
+        "false",
+        "1",
+        "0",
+      ];
+
+      if (!allowed.includes(normalized)) {
+        throw new Error("El estado debe ser Activo o Inactivo.");
+      }
+
+      return true;
+    })
   ],
 
   // Validaciones para consultas con paginación

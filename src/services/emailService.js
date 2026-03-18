@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Servicio de Email Principal - AstroStar
  * Punto de entrada unificado que delega a servicios especializados
  * Mantiene compatibilidad con código existente

@@ -157,24 +157,9 @@ export class TeamsRepository {
       return;
     }
 
-    try {
-      const updates = temporaryPersonIds.map((id) =>
-        prisma.temporaryPerson.update({
-          where: { id: parseInt(id) },
-          data: {
-            category: category || null,
-            team: teamName || null,
-          },
-        }),
-      );
-
-      await Promise.all(updates);
-    } catch (error) {
-      console.error("❌ Error actualizando personas temporales:", error);
-      throw new Error(
-        `Error actualizando personas temporales: ${error.message}`,
-      );
-    }
+    // Campo legacy eliminado del modelo TemporaryPerson.
+    // La asignacion de equipo/categoria se obtiene desde Team y TeamMember.
+    return;
   }
 
   async clearTemporaryPersonsCategory(temporaryPersonIds) {
@@ -182,22 +167,9 @@ export class TeamsRepository {
       return;
     }
 
-    try {
-      const updates = temporaryPersonIds.map((id) =>
-        prisma.temporaryPerson.update({
-          where: { id: parseInt(id) },
-          data: {
-            category: null,
-            team: null,
-          },
-        }),
-      );
-      await Promise.all(updates);
-    } catch (error) {
-      console.error("❌ Error limpiando personas temporales:", error);
-    }
+    // Campo legacy eliminado del modelo TemporaryPerson.
+    return;
   }
-
   transformToFrontend(team) {
     if (!team) return null;
 
@@ -231,7 +203,7 @@ export class TeamsRepository {
                   }`.trim(),
                   identification: member.temporaryPerson.identification || "",
                   phoneNumber: member.temporaryPerson.phone || "",
-                  categoria: member.temporaryPerson.category || "",
+                  categoria: team.category || "",
                   type: "temporal",
                 };
               }
@@ -513,7 +485,7 @@ export class TeamsRepository {
         return this.transformToFrontend(createdTeam);
       });
     } catch (error) {
-      console.error("❌ Error en create():", error.message);
+      console.error("Error en create():", error.message);
       throw error;
     }
   }
@@ -1084,7 +1056,7 @@ export class TeamsRepository {
       };
     } catch (error) {
       console.error(
-        "❌ [REPO] Error checking temporal person availability:",
+        "[REPO] Error checking temporal person availability:",
         error,
       );
       throw error;
@@ -1125,7 +1097,7 @@ export class TeamsRepository {
 
       return conflicts;
     } catch (error) {
-      console.error("❌ [REPO] Error checking conflicts:", error);
+      console.error("[REPO] Error checking conflicts:", error);
       throw error;
     }
   }
@@ -1162,12 +1134,23 @@ export class TeamsRepository {
         })),
       };
     } catch (error) {
-      console.error("❌ [REPO] Error verificando asignación a eventos:", error);
+      console.error("[REPO] Error verificando asignacion a eventos:", error);
       throw error;
     }
   }
 
   transformToBackend(frontendData) {
+    const normalizeUtf8Text = (value) => {
+      if (typeof value !== "string") return null;
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      try {
+        return trimmed.normalize("NFC");
+      } catch {
+        return trimmed;
+      }
+    };
+
     const entrenadorId = frontendData.entrenadorData?.id || null;
     const segundoEntrenadorId = frontendData.segundoEntrenadorData?.id || null;
 
@@ -1181,10 +1164,10 @@ export class TeamsRepository {
       : "Active";
 
     return {
-      name: frontendData.nombre?.trim() || "",
-      description: frontendData.descripcion?.trim() || null,
-      coach: frontendData.entrenador?.trim() || null,
-      category: frontendData.categoria?.trim() || null,
+      name: normalizeUtf8Text(frontendData.nombre) || "",
+      description: normalizeUtf8Text(frontendData.descripcion),
+      coach: normalizeUtf8Text(frontendData.entrenador),
+      category: normalizeUtf8Text(frontendData.categoria),
       status,
       teamType,
       deportistasIds: frontendData.deportistasIds || [],
@@ -1194,7 +1177,7 @@ export class TeamsRepository {
   }
 
   /**
-   * Obtener todos los equipos para reporte (SIN PAGINACIÓN)
+   * Obtener todos los equipos para reporte (SIN PAGINACION)
    */
   async findAllForReport({
     search = "",

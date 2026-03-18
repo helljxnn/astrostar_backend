@@ -50,9 +50,9 @@ const upload = multer({
  *           example: 1
  *         status:
  *           type: string
- *           enum: [Active, Disabled, OnVacation, Retired]
+ *           enum: [Activo, Licencia, Desvinculado, Fallecido]
  *           description: Estado del empleado
- *           example: "Active"
+ *           example: "Activo"
  *         statusAssignedAt:
  *           type: string
  *           format: date-time
@@ -259,9 +259,9 @@ const upload = multer({
  *           description: "ID del rol asignado"
  *         status:
  *           type: string
- *           enum: [Active, Disabled, OnVacation, Retired]
- *           default: "Active"
- *           example: "Active"
+ *           enum: [Activo, Licencia, Desvinculado, Fallecido]
+ *           default: "Activo"
+ *           example: "Activo"
  *           description: "Estado inicial del empleado"
  *         temporaryPassword:
  *           type: string
@@ -328,8 +328,8 @@ const upload = multer({
  *           example: 2
  *         status:
  *           type: string
- *           enum: [Active, Disabled, OnVacation, Retired]
- *           example: "Active"
+ *           enum: [Activo, Licencia, Desvinculado, Fallecido]
+ *           example: "Activo"
  *     
  *     Pagination:
  *       type: object

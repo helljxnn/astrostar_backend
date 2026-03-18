@@ -157,7 +157,7 @@ router.get(
  *         multipart/form-data:
  *           schema:
  *             type: object
- *             required: [name, minAge, maxAge, file]
+ *             required: [name, minAge, maxAge]
  *             properties:
  *               name: { type: string, example: "Sub 12" }
  *               description: { type: string }
@@ -234,4 +234,3 @@ router.delete(
 );
 
 export default router;
-

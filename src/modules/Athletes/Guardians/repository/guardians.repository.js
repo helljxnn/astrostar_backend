@@ -1,4 +1,4 @@
-﻿import prisma from "../../../../config/database.js";
+import prisma from "../../../../config/database.js";
 
 export class GuardiansRepository {
   
@@ -75,8 +75,7 @@ export class GuardiansRepository {
       
       return result;
     } catch (error) {
-      console.error('❌ Error en create():', error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -123,8 +122,7 @@ export class GuardiansRepository {
 
       return result;
     } catch (error) {
-      console.error('❌ Error en update():', error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -138,8 +136,7 @@ export class GuardiansRepository {
         nombreCompleto: `${deletedGuardian.firstName} ${deletedGuardian.lastName}`,
       };
     } catch (error) {
-      console.error('❌ Error en delete():', error);
-      throw error;
+throw error;
     }
   }
 
@@ -162,14 +159,54 @@ export class GuardiansRepository {
         skip,
         take: limit,
         include: {
-          documentType: true
+          documentType: true,
+          athletes: {
+            include: {
+              user: {
+                select: {
+                  birthDate: true,
+                  firstName: true,
+                  lastName: true
+                }
+              }
+            }
+          }
         },
         orderBy: { createdAt: 'desc' }
       }),
       prisma.guardian.count({ where })
     ]);
 
-    const transformedGuardians = guardians.map(guardian => this.transformToFrontend(guardian));
+    // Transformar y agregar información de deportistas menores
+    const transformedGuardians = guardians.map(guardian => {
+      const transformed = this.transformToFrontend(guardian);
+      
+      // Calcular deportistas menores de edad
+      const today = new Date();
+      const minorAthletes = guardian.athletes?.filter(athlete => {
+        if (!athlete.user?.birthDate) return false;
+        
+        const birthDate = new Date(athlete.user.birthDate);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+          age--;
+        }
+        
+        return age < 18;
+      }) || [];
+
+      // Agregar información de deportistas
+      transformed.totalAthletes = guardian.athletes?.length || 0;
+      transformed.minorAthletes = minorAthletes.length;
+      transformed.hasMinorAthletes = minorAthletes.length > 0;
+      transformed.minorAthletesNames = minorAthletes.map(a => 
+        `${a.user.firstName} ${a.user.lastName}`
+      );
+
+      return transformed;
+    });
 
     return {
       guardians: transformedGuardians,
@@ -264,4 +301,3 @@ export class GuardiansRepository {
     return await prisma.guardian.findFirst({ where });
   }
 }
-

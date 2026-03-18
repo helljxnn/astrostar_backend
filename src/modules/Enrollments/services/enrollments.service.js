@@ -1,4 +1,4 @@
-﻿import prisma from "../../../config/database.js";
+import prisma from "../../../config/database.js";
 import { enrollmentsRepository } from "../repository/enrollments.repository.js";
 import emailService from "../../../services/emailService.js";
 import { paymentsService } from "../../Payments/services/payments.service.js";
@@ -27,8 +27,69 @@ const ATHLETE_STATUS = {
 };
 
 const PRE_REGISTRATION_STATUS = {
-  PENDING: 'Pending',
-  PROCESSED: 'Processed',
+  PENDING: 'pending',
+  PROCESSED: 'processed',
+};
+
+const PRE_REGISTRATION_STATUS_ALIASES = {
+  pending: ["pending", "pendiente"],
+  processed: ["processed", "procesado", "procesada"],
+};
+
+let preRegistrationEnumCache = null;
+
+const normalizeText = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const getPreRegistrationEnumValues = async () => {
+  if (preRegistrationEnumCache && preRegistrationEnumCache.length > 0) {
+    return preRegistrationEnumCache;
+  }
+
+  const rows = await prisma.$queryRaw`
+    SELECT e.enumlabel AS value
+    FROM pg_type t
+    JOIN pg_enum e ON t.oid = e.enumtypid
+    WHERE LOWER(t.typname) = LOWER('PreRegistrationStatus')
+    ORDER BY e.enumsortorder
+  `;
+
+  preRegistrationEnumCache = Array.isArray(rows)
+    ? rows.map((r) => r.value).filter(Boolean)
+    : [];
+
+  return preRegistrationEnumCache;
+};
+
+const resolvePreRegistrationStatus = async (canonicalStatus) => {
+  const canonical = normalizeText(canonicalStatus);
+  const aliases = PRE_REGISTRATION_STATUS_ALIASES[canonical];
+  if (!aliases) {
+    throw new Error(`Estado canónico no soportado para preinscripción: ${canonicalStatus}`);
+  }
+
+  const enumValues = await getPreRegistrationEnumValues();
+  const normalizedMap = new Map(enumValues.map((v) => [normalizeText(v), v]));
+
+  // Coincidencia exacta
+  if (normalizedMap.has(canonical)) {
+    return normalizedMap.get(canonical);
+  }
+
+  // Coincidencia por alias
+  for (const alias of aliases) {
+    const normalizedAlias = normalizeText(alias);
+    if (normalizedMap.has(normalizedAlias)) {
+      return normalizedMap.get(normalizedAlias);
+    }
+  }
+
+  // Fallback controlado
+  return canonical === "pending" ? enumValues[0] : enumValues[1] || enumValues[0];
 };
 
 // ============================================================================
@@ -51,6 +112,48 @@ const calculateAge = (birthDate) => {
   }
   
   return age;
+};
+
+const isTarjetaIdentidadDocument = (documentTypeName) => {
+  const normalized = normalizeText(documentTypeName);
+  return (
+    normalized === "ti" ||
+    (normalized.includes("tarjeta") && normalized.includes("identidad"))
+  );
+};
+
+const isCedulaDocument = (documentTypeName) => {
+  const normalized = normalizeText(documentTypeName);
+  return normalized.includes("cedula");
+};
+
+const validateDocumentTypeByAge = async (documentTypeId, age) => {
+  const parsedDocumentTypeId = parseInt(documentTypeId, 10);
+  if (!Number.isFinite(age) || Number.isNaN(parsedDocumentTypeId)) {
+    return;
+  }
+
+  const documentType = await prisma.documentType.findUnique({
+    where: { id: parsedDocumentTypeId },
+    select: { id: true, name: true },
+  });
+
+  if (!documentType) {
+    throw new Error("Tipo de documento no encontrado");
+  }
+
+  const isMinor = age < ENROLLMENT_CONSTANTS.ADULT_AGE;
+  if (isMinor && isCedulaDocument(documentType.name)) {
+    throw new Error(
+      "Si es menor de edad no puede usar cédula. Selecciona TI u otro documento válido.",
+    );
+  }
+
+  if (!isMinor && isTarjetaIdentidadDocument(documentType.name)) {
+    throw new Error(
+      "Si es mayor de edad no puede usar Tarjeta de Identidad (TI). Selecciona cédula u otro documento válido.",
+    );
+  }
 };
 
 /**
@@ -85,6 +188,12 @@ const calculateExpirationDate = (startDate, years = ENROLLMENT_CONSTANTS.ENROLLM
   const expirationDate = new Date(startDate);
   expirationDate.setFullYear(expirationDate.getFullYear() + years);
   return expirationDate;
+};
+
+const resolveEnrollmentDates = () => {
+  const fechaInicio = new Date();
+  const fechaVencimiento = calculateExpirationDate(fechaInicio);
+  return { fechaInicio, fechaVencimiento };
 };
 
 // ============================================================================
@@ -283,14 +392,15 @@ const createAthlete = async (tx, userId, guardianId, relationship) => {
  * @returns {Promise<Object>} Matrícula creada
  */
 const createEnrollment = async (tx, athleteId, enrollmentData) => {
+  const { fechaInicio, fechaVencimiento } = resolveEnrollmentDates();
   return await tx.enrollment.create({
     data: {
       athleteId: athleteId,
       estado: ENROLLMENT_STATUS.PENDING_PAYMENT, // Empieza en Pending_Payment
       observaciones: enrollmentData?.observaciones || null,
-      // createdAt = cuándo se creó | fechaInicio/fechaVencimiento = cuando se apruebe pago inicial
-      fechaInicio: null,
-      fechaVencimiento: null,
+      // DB actual exige campos no nulos; se inicializan aquí y se normalizan al aprobar pago inicial.
+      fechaInicio,
+      fechaVencimiento,
     },
   });
 };
@@ -303,11 +413,14 @@ const createEnrollment = async (tx, athleteId, enrollmentData) => {
  * @param {string} identification - Documento del atleta
  */
 const markPreRegistrationAsProcessed = async (tx, preRegistrationId, email, identification) => {
+  const pendingStatus = await resolvePreRegistrationStatus(PRE_REGISTRATION_STATUS.PENDING);
+  const processedStatus = await resolvePreRegistrationStatus(PRE_REGISTRATION_STATUS.PROCESSED);
+
   if (preRegistrationId) {
     
     await tx.preRegistration.update({
       where: { id: preRegistrationId },
-      data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
+      data: { status: processedStatus },
     });
     
     return;
@@ -318,7 +431,7 @@ const markPreRegistrationAsProcessed = async (tx, preRegistrationId, email, iden
   let preRegistration = await tx.preRegistration.findFirst({
     where: {
       email: email,
-      status: PRE_REGISTRATION_STATUS.PENDING
+      status: pendingStatus
     },
     orderBy: { createdAt: 'desc' }
   });
@@ -327,7 +440,7 @@ const markPreRegistrationAsProcessed = async (tx, preRegistrationId, email, iden
     preRegistration = await tx.preRegistration.findFirst({
       where: {
         identification: identification,
-        status: PRE_REGISTRATION_STATUS.PENDING
+        status: pendingStatus
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -336,7 +449,7 @@ const markPreRegistrationAsProcessed = async (tx, preRegistrationId, email, iden
   if (preRegistration) {
     await tx.preRegistration.update({
       where: { id: preRegistration.id },
-      data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
+      data: { status: processedStatus },
     });
   } else {
   }
@@ -362,11 +475,10 @@ const sendWelcomeEmail = async (user, tempPassword) => {
 
     // Envío asíncrono sin await para no bloquear
     emailService.sendAthleteWelcomeEmail(athleteInfo, credentials)
-      .catch(error => console.error('❌ [ENROLLMENT] Error enviando email:', error));
+      .catch(() => {});
       
   } catch (emailError) {
-    console.error('❌ [ENROLLMENT] Error preparando email de bienvenida:', emailError);
-  }
+}
 };
 
 // ============================================================================
@@ -391,7 +503,7 @@ export const enrollmentsService = {
     const cleanEmail = normalizeEmail(normalizedAthlete.email);
     const cleanIdentification = normalizedAthlete.identification?.trim();
     const age = calculateAge(new Date(normalizedAthlete.birthDate));
-    
+    await validateDocumentTypeByAge(normalizedAthlete.documentTypeId, age);
 
     // PASO 2: Validaciones críticas en paralelo (fuera de transacción)
     const [existingUser, athleteRole, guardian] = await Promise.all([
@@ -450,6 +562,7 @@ export const enrollmentsService = {
     const bcrypt = await import('bcrypt');
     const tempPassword = cleanIdentification;
     const passwordHash = await bcrypt.default.hash(tempPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
+    const processedPreRegistrationStatus = await resolvePreRegistrationStatus(PRE_REGISTRATION_STATUS.PROCESSED);
 
 
     // PASO 4: Transacción ULTRA-OPTIMIZADA (solo operaciones críticas)
@@ -500,13 +613,14 @@ export const enrollmentsService = {
       });
 
       // Crear matrícula (operación atómica)
+      const { fechaInicio, fechaVencimiento } = resolveEnrollmentDates();
       const newEnrollment = await tx.enrollment.create({
         data: {
           athleteId: newAthlete.id,
           estado: ENROLLMENT_STATUS.PENDING_PAYMENT,
           observaciones: enrollment?.observaciones || null,
-          fechaInicio: null,
-          fechaVencimiento: null,
+          fechaInicio,
+          fechaVencimiento,
         },
         select: {
           id: true,
@@ -520,7 +634,7 @@ export const enrollmentsService = {
       if (preRegistrationId) {
         await tx.preRegistration.update({
           where: { id: preRegistrationId },
-          data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
+          data: { status: processedPreRegistrationStatus },
         });
       }
 
@@ -564,8 +678,7 @@ export const enrollmentsService = {
             });
           }
         } catch (error) {
-          console.error('⚠️ [ENROLLMENT] Error creando inscripción:', error.message);
-        }
+}
       });
     }
 
@@ -585,8 +698,7 @@ export const enrollmentsService = {
 
         await emailService.sendAthleteWelcomeEmail(athleteInfo, credentials);
       } catch (emailError) {
-        console.error('❌ [ENROLLMENT] Error enviando email:', emailError.message);
-      }
+}
     });
 
     // 3. Procesar pre-inscripción por datos
@@ -595,8 +707,7 @@ export const enrollmentsService = {
         try {
           await this.processPreRegistrationByData(result.cleanEmail, result.cleanIdentification);
         } catch (error) {
-          console.error('⚠️ [ENROLLMENT] Error procesando pre-inscripción:', error.message);
-        }
+}
       });
     }
 
@@ -611,11 +722,11 @@ export const enrollmentsService = {
             baseAmount: 40000,
             dueStart: new Date(),
             dueEnd: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)),
+            metadata: { enrollmentId: result.enrollment.id }
           }
         });
       } catch (paymentError) {
-        console.error('⚠️ [ENROLLMENT] Error generando obligación:', paymentError.message);
-      }
+}
     });
 
     const totalTime = Date.now() - startTime;
@@ -635,10 +746,13 @@ export const enrollmentsService = {
    */
   async processPreRegistrationByData(email, identification) {
     try {
+      const pendingStatus = await resolvePreRegistrationStatus(PRE_REGISTRATION_STATUS.PENDING);
+      const processedStatus = await resolvePreRegistrationStatus(PRE_REGISTRATION_STATUS.PROCESSED);
+
       let preRegistration = await prisma.preRegistration.findFirst({
         where: {
           email: email,
-          status: PRE_REGISTRATION_STATUS.PENDING
+          status: pendingStatus
         },
         orderBy: { createdAt: 'desc' }
       });
@@ -647,7 +761,7 @@ export const enrollmentsService = {
         preRegistration = await prisma.preRegistration.findFirst({
           where: {
             identification: identification,
-            status: PRE_REGISTRATION_STATUS.PENDING
+            status: pendingStatus
           },
           orderBy: { createdAt: 'desc' }
         });
@@ -656,19 +770,105 @@ export const enrollmentsService = {
       if (preRegistration) {
         await prisma.preRegistration.update({
           where: { id: preRegistration.id },
-          data: { status: PRE_REGISTRATION_STATUS.PROCESSED },
+          data: { status: processedStatus },
         });
       }
     } catch (error) {
-      console.error('❌ [ENROLLMENT] Error procesando pre-inscripción por datos:', error);
-    }
+}
   },
 
   async findAll(filters) {
+    await enrollmentsRepository.normalizeStatuses();
+    const rawSearch = String(filters?.search ?? "").trim();
+    const searchLower = rawSearch.toLowerCase();
+
+    const parseSearchDate = (value) => {
+      const isoMatch = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+      if (isoMatch) {
+        const [, y, m, d] = isoMatch;
+        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+      }
+      const dmyMatch = value.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (dmyMatch) {
+        const [, d, m, y] = dmyMatch;
+        return new Date(parseInt(y), parseInt(m) - 1, parseInt(d));
+      }
+      return null;
+    };
+
+    let searchEstado = null;
+    if (searchLower.includes('pendiente') && searchLower.includes('pago')) {
+      searchEstado = 'Pending_Payment';
+    } else if (searchLower.includes('vigente')) {
+      searchEstado = 'Vigente';
+    } else if (searchLower.includes('vencida') || searchLower.includes('vencido')) {
+      searchEstado = 'Vencida';
+    }
+
+    const searchNoActivation =
+      searchLower.includes('no activada') ||
+      searchLower.includes('no activado') ||
+      searchLower.includes('pendiente de activacion');
+
+    const searchDate = parseSearchDate(rawSearch);
+    let searchDateRange = null;
+    if (searchDate && !Number.isNaN(searchDate.getTime())) {
+      const from = new Date(searchDate);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(searchDate);
+      to.setHours(23, 59, 59, 999);
+      searchDateRange = { from, to };
+    }
+    const normalizeDate = (value, isEnd = false) => {
+      if (!value) return undefined;
+      let date;
+      if (value instanceof Date) {
+        date = new Date(value);
+      } else if (typeof value === 'string' && value.includes('/')) {
+        const parts = value.split('/');
+        if (parts.length === 3) {
+          const [d, m, y] = parts.map(p => parseInt(p, 10));
+          date = new Date(y, (m || 1) - 1, d || 1);
+        } else {
+          date = new Date(value);
+        }
+      } else {
+        date = new Date(value);
+      }
+      if (Number.isNaN(date.getTime())) return undefined;
+      if (isEnd) {
+        date.setHours(23, 59, 59, 999);
+      } else {
+        date.setHours(0, 0, 0, 0);
+      }
+      return date;
+    };
+
+    const normalizedDateFrom = normalizeDate(filters?.dateFrom, false);
+    const normalizedDateTo = normalizeDate(filters?.dateTo, true);
+
+    let vencimientoRange = null;
+    if (filters?.vencimiento === 'expiring') {
+      const now = new Date();
+      const from = new Date(now);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(now);
+      to.setDate(to.getDate() + 30);
+      to.setHours(23, 59, 59, 999);
+      vencimientoRange = { from, to };
+    }
+
     // 🚨 FORZAR showAll=false para mostrar solo la matrícula más reciente por deportista
     // Esto activa el DISTINCT ON en el repository
     const enhancedFilters = {
       ...filters,
+      searchText: rawSearch,
+      searchEstado,
+      searchNoActivation,
+      searchDateRange,
+      dateFrom: normalizedDateFrom,
+      dateTo: normalizedDateTo,
+      vencimientoRange,
       showAll: false // SIEMPRE mostrar solo la más reciente por deportista
     };
     
@@ -750,8 +950,7 @@ export const enrollmentsService = {
             status: 'processed'
           });
         } catch (error) {
-          console.error(`❌ [ENROLLMENT] Error procesando matrícula ${enrollment.id}:`, error.message);
-          results.push({
+results.push({
             enrollmentId: enrollment.id,
             status: 'error',
             error: error.message
@@ -960,8 +1159,7 @@ export const enrollmentsService = {
       };
 
     } catch (error) {
-      console.error('❌ [ENROLLMENT HISTORY] Error:', error);
-      throw new Error(`Error obteniendo historial de matrículas: ${error.message}`);
+throw new Error(`Error obteniendo historial de matrículas: ${error.message}`);
     }
   },
 };

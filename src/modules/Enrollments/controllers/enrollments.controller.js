@@ -1,4 +1,4 @@
-﻿import { enrollmentsService } from "../services/enrollments.service.js";
+import { enrollmentsService } from "../services/enrollments.service.js";
 import { enrollmentSchemas } from "../validators/enrollments.validator.js";
 
 export const enrollmentsController = {
@@ -33,17 +33,18 @@ export const enrollmentsController = {
 
   async findAll(req, res) {
     try {
-      const { estado, athleteId, search, page, limit, sortBy, sortOrder } = req.query;
-      
-      
-      const result = await enrollmentsService.findAll({
+      const { estado, athleteId, search, page, limit, sortBy, sortOrder, dateFrom, dateTo, vencimiento } = req.query;
+const result = await enrollmentsService.findAll({
         estado,
         athleteId,
         search: search?.trim() || undefined,
         page: page ? parseInt(page) : 1,
         limit: limit ? parseInt(limit) : 7, // Usar 7 como default (igual que otros módulos)
         sortBy: sortBy || 'createdAt',
-        sortOrder: sortOrder || 'desc'
+        sortOrder: sortOrder || 'desc',
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        vencimiento: vencimiento || undefined
       });
 
 
@@ -142,8 +143,7 @@ export const enrollmentsController = {
         data: result,
       });
     } catch (error) {
-      console.error('Error procesando matrículas vencidas:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: error.message,
       });
@@ -197,8 +197,7 @@ export const enrollmentsController = {
 
       return res.json(result);
     } catch (error) {
-      console.error('❌ [ENROLLMENT CONTROLLER] Error obteniendo historial:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: error.message,
       });

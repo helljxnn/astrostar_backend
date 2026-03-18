@@ -4,9 +4,9 @@ import { paymentsValidator } from "../validators/payments.validator.js";
 import { 
   requireAthleteOwnership,
   requirePaymentReceiptAccess,
+  requirePaymentAdminPermissions,
 } from "../middleware/paymentAccess.middleware.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
-import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 import { uploadPaymentReceipt } from "../../../services/shared/middleware/upload.middleware.js";
 
 const router = Router();
@@ -69,18 +69,39 @@ router.get(
   paymentsController.checkAthleteAccess
 );
 
+/**
+ * GET /payments/athletes/:athleteId/history
+ * Obtener historial completo de pagos de un atleta
+ */
+router.get(
+  '/athletes/:athleteId/history',
+  authenticateToken,
+  paymentsValidator.validateAthleteId,
+  requireAthleteOwnership,
+  paymentsController.getAthletePaymentHistory
+);
+
 // ============================================================================
 // RUTAS DE ADMINISTRACIÓN
 // ============================================================================
 
 // Rutas básicas - solo métodos que existen en el controller
-router.get('/pending/report', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getPendingPaymentsForReport); // ANTES de /pending
-router.get('/pending', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getPendingPayments);
-router.get('/history/report', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getPaymentHistoryForReport); // ANTES de /all
-router.get('/all', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getAllPayments);
-router.get('/monthly-management', authenticateToken, checkPermissions("paymentsManagement", "Ver"), paymentsController.getMonthlyPaymentsManagement);
-router.patch('/:paymentId/approve', authenticateToken, checkPermissions("paymentsManagement", "Aprobar"), paymentsController.approvePayment);
-router.patch('/:paymentId/reject', authenticateToken, checkPermissions("paymentsManagement", "Rechazar"), paymentsController.rejectPayment);
+router.get('/dashboard/stats', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getDashboardStats); // Nuevo endpoint específico para dashboard
+router.get('/monthly-summary', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getMonthlySummary);
+// Historial mensualidades: admin o atleta (solo sus propios datos)
+router.get(
+  '/athletes/:athleteId/monthly-history',
+  authenticateToken,
+  paymentsValidator.validateAthleteId,
+  requireAthleteOwnership,
+  paymentsController.getAthleteMonthlyHistory
+);
+router.get('/pending/report', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getPendingPaymentsForReport); // ANTES de /pending
+router.get('/pending', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getPendingPayments);
+router.get('/history/report', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getPaymentHistoryForReport); // ANTES de /all
+router.get('/all', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getAllPayments);
+router.get('/monthly-management', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getMonthlyPaymentsManagement);
+router.patch('/:paymentId/approve', authenticateToken, requirePaymentAdminPermissions('Aprobar'), paymentsController.approvePayment);
+router.patch('/:paymentId/reject', authenticateToken, requirePaymentAdminPermissions('Rechazar'), paymentsController.rejectPayment);
 
 export default router;
-
