@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Servicio de Email para Donantes y Patrocinadores - AstroStar
  * Maneja todos los correos relacionados con donaciones
  */
@@ -14,8 +14,7 @@ export class DonorEmailService extends BaseEmailService {
       const { correo, nombreCompleto, tipo } = donorData;
 
       if (!correo) {
-        console.warn("⚠️  No se puede enviar email: correo no proporcionado");
-        return { success: false, error: "Correo no proporcionado" };
+return { success: false, error: "Correo no proporcionado" };
       }
 
       const mailOptions = {
@@ -29,13 +28,11 @@ export class DonorEmailService extends BaseEmailService {
 
       if (result.success) {
       } else {
-        console.error(`❌ Error enviando email a ${correo}:`, result.error);
-      }
+}
 
       return result;
     } catch (error) {
-      console.error("Error en sendDonorWelcomeEmail:", error);
-      return { success: false, error: error.message };
+return { success: false, error: error.message };
     }
   }
 

@@ -1,4 +1,4 @@
-﻿import { paymentsRepository } from "../repository/payments.repository.js";
+import { paymentsRepository } from "../repository/payments.repository.js";
 import { paymentSettingsRepository } from "../repository/paymentSettings.repository.js";
 import prisma from "../../../config/database.js";
 import emailService from "../../../services/emailService.js";
@@ -173,8 +173,7 @@ const calculateLateDaysForObligation = async (obligationId) => {
     return calculateLateDaysForPayment(obligation.dueEnd, firstUpload.uploadedAt);
     
   } catch (error) {
-    console.error('Error calculando mora para obligación:', error);
-    return calculateLateDays(obligation.dueEnd); // Fallback
+return calculateLateDays(obligation.dueEnd); // Fallback
   }
 };
 
@@ -796,8 +795,7 @@ export const paymentsService = {
         pagination: result.pagination
       };
     } catch (error) {
-      console.error('❌ Error obteniendo historial de pagos:', error);
-      throw new Error('Error al obtener historial de pagos del atleta');
+throw new Error('Error al obtener historial de pagos del atleta');
     }
   },
 
@@ -1365,8 +1363,7 @@ export const paymentsService = {
         }
       };
     } catch (error) {
-      console.error('❌ Error obteniendo pagos pendientes:', error);
-      throw new Error('Error al obtener pagos pendientes');
+throw new Error('Error al obtener pagos pendientes');
     }
   },
 
@@ -1560,8 +1557,7 @@ export const paymentsService = {
         }
       };
     } catch (error) {
-      console.error('❌ Error obteniendo todos los pagos:', error);
-      throw new Error('Error al obtener pagos');
+throw new Error('Error al obtener pagos');
     }
   },
 
@@ -1603,8 +1599,7 @@ export const paymentsService = {
 
       return updatedPayment;
     } catch (error) {
-      console.error('❌ Error aprobando pago:', error);
-      throw error;
+throw error;
     }
   },
 
@@ -1637,8 +1632,7 @@ export const paymentsService = {
 
       return updatedPayment;
     } catch (error) {
-      console.error('❌ Error rechazando pago:', error);
-      throw error;
+throw error;
     }
   },
 
@@ -1678,8 +1672,9 @@ export const paymentsService = {
             where: { id: targetEnrollment.id },
             data: {
               estado: 'Vigente',
-              fechaInicio: targetEnrollment.fechaInicio ?? now,
-              fechaVencimiento: targetEnrollment.fechaVencimiento ?? expirationDate,
+              // Al aprobar el pago inicial, la vigencia real inicia en este momento.
+              fechaInicio: now,
+              fechaVencimiento: expirationDate,
               observaciones: 'Activada automáticamente al aprobarse el pago inicial de matrícula'
             }
           });
@@ -1710,8 +1705,7 @@ export const paymentsService = {
         });
       }
     } catch (error) {
-      console.error('❌ Error activando matrícula:', error);
-      throw error;
+throw error;
     }
   },
 
@@ -1961,8 +1955,7 @@ export const paymentsService = {
       };
 
     } catch (error) {
-      console.error('❌ [PAYMENTS] Error en gestión mensual:', error);
-      throw new Error(`Error al obtener gestión mensual: ${error.message}`);
+throw new Error(`Error al obtener gestión mensual: ${error.message}`);
     }
   },
 
@@ -2096,8 +2089,7 @@ export const paymentsService = {
         message: `Se encontraron ${paymentsWithDetails.length} pagos pendientes para el reporte.`,
       };
     } catch (error) {
-      console.error('❌ Error en reporte de pagos pendientes:', error);
-      throw new Error('Error al obtener reporte de pagos pendientes');
+throw new Error('Error al obtener reporte de pagos pendientes');
     }
   },
 

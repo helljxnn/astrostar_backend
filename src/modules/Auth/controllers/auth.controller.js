@@ -78,10 +78,24 @@ export class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
       });
 
-      // Retornar solo el access token y datos del usuario
+      const clientType = (req.headers["x-client-type"] || "")
+        .toString()
+        .toLowerCase();
+      const isMobileClient = clientType === "mobile";
+
+      // En web mantenemos refresh token solo en cookie HttpOnly.
+      // En móvil lo enviamos también en JSON para que pueda refrescar sesión.
+      const responseData = isMobileClient
+        ? {
+            ...result.data,
+            refreshToken: result.refreshToken,
+          }
+        : result.data;
+
+      // Retornar access token + datos del usuario (y refresh token para móvil)
       res.json({
         success: true,
-        data: result.data,
+        data: responseData,
         message: "Login exitoso",
       });
     } catch (error) {
@@ -628,8 +642,8 @@ export class AuthController {
    */
   refresh = async (req, res) => {
     try {
-      // Obtener refresh token desde la cookie HttpOnly
-      const refreshToken = req.cookies.refreshToken;
+      // Web: cookie HttpOnly | Móvil: body.refreshToken
+      const refreshToken = req.cookies.refreshToken || req.body?.refreshToken;
 
       if (!refreshToken) {
         return res.status(401).json({
@@ -848,6 +862,7 @@ export class AuthController {
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
-  };;
+  };
 }
+
 

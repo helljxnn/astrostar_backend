@@ -17,9 +17,7 @@ export class TemporaryWorkersRepository {
       // Para campos de texto usar contains
       const textSearchConditions = [
         { firstName: { contains: search, mode: 'insensitive' } },
-        { middleName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { secondLastName: { contains: search, mode: 'insensitive' } }
+        { lastName: { contains: search, mode: 'insensitive' } }
       ];
 
       // Agregar campos opcionales solo si no son null
@@ -257,6 +255,7 @@ export class TemporaryWorkersRepository {
     ]);
 
     const typeStats = byType.reduce((acc, item) => {
+      if (!item.personType) return acc;
       acc[item.personType.toLowerCase()] = item._count.id;
       return acc;
     }, {});

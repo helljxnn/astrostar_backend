@@ -1,4 +1,4 @@
-﻿import { GuardiansService } from "../services/guardians.service.js";
+import { GuardiansService } from "../services/guardians.service.js";
 
 export class GuardiansController {
   constructor() {
@@ -28,8 +28,7 @@ export class GuardiansController {
         message: `Se encontraron ${result.pagination?.total || 0} acudientes.`,
       });
     } catch (error) {
-      console.error("Error in getAllGuardians controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener acudientes",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -60,8 +59,7 @@ export class GuardiansController {
         message: "Acudiente encontrado exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getGuardianById controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener acudiente",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -84,9 +82,7 @@ export class GuardiansController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in createGuardian controller:", error);
-
-      if (error.message.includes('ya está registrado')) {
+if (error.message.includes('ya está registrado')) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -125,9 +121,7 @@ export class GuardiansController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in updateGuardian controller:", error);
-
-      if (error.message.includes('ya está registrado')) {
+if (error.message.includes('ya está registrado')) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -164,8 +158,7 @@ export class GuardiansController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in deleteGuardian controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al eliminar acudiente",
       });
@@ -196,8 +189,7 @@ export class GuardiansController {
         message: `Se encontraron ${result.pagination?.total || 0} acudientes con información de deportistas.`,
       });
     } catch (error) {
-      console.error("Error in getGuardiansWithAthletes controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener acudientes con información de deportistas",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -229,8 +221,7 @@ export class GuardiansController {
         message: `Se encontraron ${result.pagination?.total || 0} acudientes con información de deportistas.`,
       });
     } catch (error) {
-      console.error("Error in getGuardiansWithAthletes controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener acudientes con información de deportistas",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -248,8 +239,7 @@ export class GuardiansController {
         message: "Estadísticas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getGuardianStats controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener estadísticas",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,
@@ -268,8 +258,7 @@ export class GuardiansController {
         message: result.available ? 'Email disponible.' : result.message
       });
     } catch (error) {
-      console.error('Error checking email availability:', error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: 'Error interno del servidor al verificar email.',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
@@ -288,8 +277,7 @@ export class GuardiansController {
         message: result.available ? 'Identificación disponible.' : result.message
       });
     } catch (error) {
-      console.error('Error checking identification availability:', error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: 'Error interno del servidor al verificar identificación.',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined

@@ -1,4 +1,4 @@
-﻿import { EventsRepository } from "./events.repository.js";
+import { EventsRepository } from "./events.repository.js";
 import prisma from "../../config/database.js";
 
 export class EventsService {
@@ -19,6 +19,23 @@ export class EventsService {
     } catch (error) {
       console.error("❌ Error en EventsService.getAllEvents:", error.message);
       console.error("Stack:", error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener eventos publicados para landing
+   */
+  async getPublicEvents(filters = {}) {
+    try {
+      await this.updateFinishedEventsStatus();
+
+      const events = await this.eventsRepository.findPublicEvents(filters);
+      return {
+        success: true,
+        data: events,
+      };
+    } catch (error) {
       throw error;
     }
   }
@@ -916,4 +933,3 @@ export class EventsService {
     }
   }
 }
-

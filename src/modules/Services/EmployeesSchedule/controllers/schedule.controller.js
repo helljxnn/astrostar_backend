@@ -17,7 +17,7 @@ export class ScheduleController {
         limit: parseInt(limit),
         employeeId: employeeId ? parseInt(employeeId) : null,
         dayOfWeek
-      });
+      }, req.user);
       res.json({
         success: true,
         data: result.schedules,
@@ -68,7 +68,7 @@ export class ScheduleController {
   getSchedulesByEmployee = async (req, res) => {
     try {
       const { employeeId } = req.params;
-      const result = await this.scheduleService.getSchedulesByEmployee(employeeId);
+      const result = await this.scheduleService.getSchedulesByEmployee(employeeId, req.user);
       res.json({
         success: true,
         data: result.data,
@@ -214,7 +214,7 @@ export class ScheduleController {
    */
   getActiveEmployees = async (req, res) => {
     try {
-      const result = await this.scheduleService.getActiveEmployees();
+      const result = await this.scheduleService.getActiveEmployees(req.user);
       res.json({
         success: true,
         data: result.data,

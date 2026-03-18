@@ -4,6 +4,17 @@ import { PrismaClient } from '../../../../../generated/prisma/index.js';
 const prisma = new PrismaClient();
 
 export class AppointmentRepository {
+  async findEmployeeByUserId(userId) {
+    if (!userId) return null;
+    return prisma.employee.findUnique({
+      where: { userId: parseInt(userId) },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+  }
+
   /**
    * Obtener todas las citas con filtros y paginación
    */
@@ -306,6 +317,24 @@ export class AppointmentRepository {
             email: true,
             identification: true
           }
+        },
+        inscriptions: {
+          where: {
+            status: 'Active'
+          },
+          orderBy: [
+            { inscriptionDate: 'desc' },
+            { createdAt: 'desc' }
+          ],
+          take: 1,
+          include: {
+            sportsCategory: {
+              select: {
+                id: true,
+                nombre: true
+              }
+            }
+          }
         }
       },
       orderBy: {
@@ -444,4 +473,5 @@ export class AppointmentRepository {
     };
   }
 }
+
 

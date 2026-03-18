@@ -91,16 +91,15 @@ const BASE_ROLES = [
   {
     name: "Administrador",
     description:
-      "Tiene acceso completo a todas las funcionalidades del aplicativo. Este rol es asignado a las personas encargadas de la administración de la fundación y permite gestionar todos los módulos del sistema, así como crear, editar, eliminar y ver detalle de la información registrada.",
+      "Acceso completo a todas las funcionalidades del aplicativo. Gestiona todos los módulos del sistema.",
     permissionFactory: buildAdminPermissions,
   },
   {
     name: "Entrenador",
     description:
-      "Permite ver detalle y registrar novedad en el módulo de horario de empleado. También puede ver detalles en las categorías deportivas y en los deportistas. En el módulo de asistencia puede crear, editar y ver el historial de asistencia de las deportistas. Además, permite ver personas en temporales y ver detalle en los equipos.",
+      "Gestiona horarios, categorías deportivas, deportistas y asistencia. Ve personas temporales y equipos.",
     permissionFactory: () =>
       buildRolePermissions([
-        ["dashboard", ["Ver"]],
         ["employeesSchedule", ["Ver", "Editar"]],
         ["sportsCategory", ["Ver"]],
         ["athletesSection", ["Ver"]],
@@ -112,10 +111,9 @@ const BASE_ROLES = [
   {
     name: "Profesional de la Salud",
     description:
-      "Permite crear, ver detalle, editar, eliminar y registrar novedad en el módulo de horario de empleado. En el módulo de citas puede crear, ver detalle, editar, completar y cancelar citas. También permite ver detalles en las categorías deportivas y ver detalle en los deportistas. Este rol corresponde a profesionales como nutricionista, psicóloga y fisioterapeuta encargados del acompañamiento de las deportistas.",
+      "Gestiona horarios y citas médicas. Ve categorías deportivas y deportistas. Nutricionista, psicóloga, fisioterapeuta.",
     permissionFactory: () =>
       buildRolePermissions([
-        ["dashboard", ["Ver"]],
         ["employeesSchedule", ["Crear", "Ver", "Editar", "Eliminar"]],
         ["appointmentManagement", ["Crear", "Ver", "Editar", "Cancelar"]],
         ["sportsCategory", ["Ver"]],
@@ -125,10 +123,9 @@ const BASE_ROLES = [
   {
     name: "Deportista",
     description:
-      "Permite ver detalles y cancelar citas programadas. En el módulo de pagos permite ver detalle de los pagos realizados y subir comprobantes de pagos dentro del aplicativo.",
+      "Ve y cancela citas programadas. Gestiona pagos y sube comprobantes de pago.",
     permissionFactory: () =>
       buildRolePermissions([
-        ["dashboard", ["Ver"]],
         ["appointmentManagement", ["Ver", "Cancelar"]],
         ["myPayments", ["Ver", "Crear", "Editar"]],
       ]),
@@ -347,7 +344,8 @@ async function upsertAnonymousDonor() {
     where: { identification: "0000000000" },
     update: {
       name: "Anonimo",
-      description: "Donante anonimo por defecto para registrar donaciones anónimas.",
+      description:
+        "Donante anonimo por defecto para registrar donaciones anónimas.",
       type: "Donor",
       personType: "Natural",
       status: "Active",
@@ -361,7 +359,8 @@ async function upsertAnonymousDonor() {
     },
     create: {
       name: "Anonimo",
-      description: "Donante anonimo por defecto para registrar donaciones anónimas.",
+      description:
+        "Donante anonimo por defecto para registrar donaciones anónimas.",
       type: "Donor",
       personType: "Natural",
       status: "Active",

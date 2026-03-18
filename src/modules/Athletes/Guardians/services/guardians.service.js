@@ -1,4 +1,4 @@
-﻿import { GuardiansRepository } from "../repository/guardians.repository.js";
+import { GuardiansRepository } from "../repository/guardians.repository.js";
 
 export class GuardiansService {
   constructor() {
@@ -170,8 +170,7 @@ export class GuardiansService {
         message: `El email "${email}" ya está en uso.` 
       };
     } catch (error) {
-      console.error('Service error - checkEmailAvailability:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -195,8 +194,7 @@ export class GuardiansService {
         message: `La identificación "${identification}" ya está en uso.` 
       };
     } catch (error) {
-      console.error('Service error - checkIdentificationAvailability:', error);
-      throw error;
+throw error;
     }
   }
 }

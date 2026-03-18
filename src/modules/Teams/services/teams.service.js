@@ -1,4 +1,4 @@
-﻿import { TeamsRepository } from "../repository/teams.repository.js";
+import { TeamsRepository } from "../repository/teams.repository.js";
 
 export class TeamsService {
   constructor() {
@@ -360,4 +360,3 @@ export class TeamsService {
     }
   }
 }
-

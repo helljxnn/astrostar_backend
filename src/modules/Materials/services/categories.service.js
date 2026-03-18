@@ -1,4 +1,4 @@
-﻿import categoriesRepository from '../repository/categories.repository.js';
+import categoriesRepository from '../repository/categories.repository.js';
 
 class CategoriesService {
   /**
@@ -24,8 +24,7 @@ class CategoriesService {
         },
       };
     } catch (error) {
-      console.error('Service error - getAll:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -49,8 +48,7 @@ class CategoriesService {
         data: category,
       };
     } catch (error) {
-      console.error('Service error - getById:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -80,8 +78,7 @@ class CategoriesService {
         message: `Categoría "${category.nombre}" creada exitosamente`,
       };
     } catch (error) {
-      console.error('Service error - create:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -121,8 +118,7 @@ class CategoriesService {
         message: `Categoría "${category.nombre}" actualizada exitosamente`,
       };
     } catch (error) {
-      console.error('Service error - update:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -139,8 +135,7 @@ class CategoriesService {
         message: `Estado actualizado a "${category.estado}"`,
       };
     } catch (error) {
-      console.error('Service error - toggleStatus:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -163,8 +158,7 @@ class CategoriesService {
           message: error.message,
         };
       }
-      console.error('Service error - delete:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -180,8 +174,7 @@ class CategoriesService {
         data: categories,
       };
     } catch (error) {
-      console.error('Service error - getActiveCategories:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -198,8 +191,7 @@ class CategoriesService {
         message: exists ? 'El nombre ya está en uso' : 'Nombre disponible',
       };
     } catch (error) {
-      console.error('Service error - checkNameAvailability:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -235,8 +227,7 @@ class CategoriesService {
         data: result.categories,
       };
     } catch (error) {
-      console.error('Service error - getAllForReport:', error);
-      throw error;
+throw error;
     }
   }
 }

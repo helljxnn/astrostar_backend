@@ -1,4 +1,4 @@
-﻿import movementsService from '../services/movements.service.js';
+import movementsService from '../services/movements.service.js';
 
 class MovementsController {
   /**
@@ -20,8 +20,7 @@ class MovementsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getAll:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor al obtener movimientos',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -52,8 +51,7 @@ class MovementsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getById:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -85,8 +83,7 @@ class MovementsController {
 
       return res.status(201).json(result);
     } catch (error) {
-      console.error('Controller error - create:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor al registrar movimiento',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -126,8 +123,7 @@ class MovementsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - update:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor al actualizar movimiento',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -166,8 +162,7 @@ class MovementsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - delete:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor al eliminar movimiento',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -198,8 +193,7 @@ class MovementsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getHistory:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -223,8 +217,7 @@ class MovementsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getStatistics:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -244,8 +237,7 @@ class MovementsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getRecent:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -277,8 +269,7 @@ class MovementsController {
 
       return res.json(result);
     } catch (error) {
-      console.error('Controller error - getByDateRange:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -304,8 +295,7 @@ class MovementsController {
 
       return res.json(result);
     } catch (error) {
-      console.error("Controller error - getAllForReport:", error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener movimientos para reporte",
         error: process.env.NODE_ENV === "development" ? error.message : undefined,

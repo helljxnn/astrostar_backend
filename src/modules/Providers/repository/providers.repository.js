@@ -1,4 +1,4 @@
-﻿import prisma from "../../../config/database.js";
+import prisma from "../../../config/database.js";
 
 export class ProvidersRepository {
   async getDocumentTypes() {
@@ -26,8 +26,7 @@ export class ProvidersRepository {
         description: docType.description,
       }));
     } catch (error) {
-      console.error("Repository error - getDocumentTypes:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -279,8 +278,7 @@ export class ProvidersRepository {
       });
       return count > 0;
     } catch (error) {
-      console.error("Repository error - checkHasIngresos:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -507,8 +505,7 @@ export const getDocumentTypeName = async (documentTypeId) => {
     });
     return documentType?.name || null;
   } catch (error) {
-    console.error("Error getting document type name:", error);
-    return null;
+return null;
   }
 };
 

@@ -1,4 +1,4 @@
-﻿import DonationsService from "../services/donations.services.js";
+import DonationsService from "../services/donations.services.js";
 
 export class DonationsController {
   list = async (req, res) => {
@@ -29,8 +29,7 @@ export class DonationsController {
         pagination: result.pagination,
       });
     } catch (error) {
-      console.error("Error list donations", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al listar donaciones",
       });
@@ -46,8 +45,7 @@ export class DonationsController {
       }
       res.json(result);
     } catch (error) {
-      console.error("Error get donation", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al obtener la donación",
       });
@@ -69,8 +67,7 @@ export class DonationsController {
       const result = await DonationsService.create(payload, userId, userName);
       res.status(201).json(result);
     } catch (error) {
-      console.error("Error create donation", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al crear la donación",
       });
@@ -84,11 +81,22 @@ export class DonationsController {
         ...req.body,
         serviceId: req.body.serviceId || req.body.eventId || undefined,
       };
-      const result = await DonationsService.update(id, payload);
+      const userId = req.user?.id || 1;
+      const userName =
+        req.user?.name ||
+        req.user?.username ||
+        `${req.user?.firstName || ""} ${req.user?.lastName || ""}`.trim() ||
+        "Sistema";
+
+      const result = await DonationsService.update(
+        id,
+        payload,
+        userId,
+        userName,
+      );
       res.json(result);
     } catch (error) {
-      console.error("Error update donation", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al actualizar la donación",
       });
@@ -102,8 +110,7 @@ export class DonationsController {
       const result = await DonationsService.changeStatus(id, status, reason);
       res.json(result);
     } catch (error) {
-      console.error("Error change status donation", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al cambiar estado de la donación",
       });
@@ -116,8 +123,7 @@ export class DonationsController {
       const result = await DonationsService.softDelete(id);
       res.json(result);
     } catch (error) {
-      console.error("Error delete donation", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al eliminar la donación",
       });
@@ -140,8 +146,7 @@ export class DonationsController {
       );
       res.status(201).json(result);
     } catch (error) {
-      console.error("Error upload donation files", error);
-      const status = error.message?.includes("5MB") ? 400 : 500;
+const status = error.message?.includes("5MB") ? 400 : 500;
       res.status(status).json({
         success: false,
         message:
@@ -183,8 +188,7 @@ export class DonationsController {
 
       res.status(201).json(result);
     } catch (error) {
-      console.error("Error converting donation to materials", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al convertir donación en materiales",
       });
@@ -206,8 +210,7 @@ export class DonationsController {
 
       res.json(result);
     } catch (error) {
-      console.error("Error getting materials by donation", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al obtener materiales de la donación",
       });
@@ -257,8 +260,7 @@ export class DonationsController {
 
       res.status(201).json(result);
     } catch (error) {
-      console.error("Error converting and assigning donation to event", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al convertir y asignar donación al evento",
       });
@@ -292,8 +294,7 @@ export class DonationsController {
       // Send PDF buffer
       res.send(result.pdfBuffer);
     } catch (error) {
-      console.error("Error generating donation certificate", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al generar el certificado de donación",
       });

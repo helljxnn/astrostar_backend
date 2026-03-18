@@ -9,7 +9,38 @@ const ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 const ALLOWED_FILE_TYPES = ["comprobante", "soporte", "factura", "evidencia"];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
+const MATERIAL_SELECT = {
+  id: true,
+  nombre: true,
+  categoria: true,
+  estado: true,
+  stockEventos: true,
+};
+const EVENT_PROGRAM_LABEL = "organizacion de eventos y festivales";
+const EVENT_PROGRAM_LABEL_VARIANTS = new Set([
+  EVENT_PROGRAM_LABEL,
+  "organzacion de eventos y festivales",
+]);
+
 export class DonationsService {
+  normalizeProgramLabel(program = "") {
+    return String(program || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ");
+  }
+
+  isEventProgram(program = "") {
+    const normalized = this.normalizeProgramLabel(program);
+    return EVENT_PROGRAM_LABEL_VARIANTS.has(normalized);
+  }
+
+  shouldAssignDonationToEvent(donation) {
+    return Boolean(donation?.serviceId) && this.isEventProgram(donation?.program);
+  }
+
   async list(params) {
     const resolved = {
       ...params,
@@ -31,27 +62,84 @@ export class DonationsService {
   }
 
   async create(payload, userId = 1, userName = "Sistema") {
+    const shouldLinkEvent =
+      this.isEventProgram(payload?.program) &&
+      (payload?.serviceId || payload?.eventId);
+
     const resolved = {
       ...payload,
-      serviceId: payload?.serviceId || payload?.eventId || null,
+      serviceId: shouldLinkEvent ? payload?.serviceId || payload?.eventId : null,
     };
     const data = await DonationsRepository.create(resolved);
 
-    // Auto-convert and assign to event if it's ESPECIE type with event
-    if (data.type === "ESPECIE" && data.serviceId) {
+    // Auto-process ESPECIE donations:
+    // - If it has event: assign directly to event
+    // - If it has no event: increase FUNDACION stock
+    if (data.type === "ESPECIE") {
       try {
-        await this.autoConvertAndAssignToEvent(
-          data.id,
-          data.serviceId,
-          userId,
-          userName,
+        if (this.shouldAssignDonationToEvent(data)) {
+          await this.autoConvertAndAssignToEvent(
+            data.id,
+            data.serviceId,
+            userId,
+            userName,
+          );
+        } else {
+          await this.autoConvertToFoundationStock(data.id, userId, userName);
+        }
+      } catch (error) {
+        const operation = this.shouldAssignDonationToEvent(data)
+          ? "auto-assign to event"
+          : "auto-convert to foundation stock";
+        console.error(
+          `[DonationsService] ${operation} failed:`,
+          error?.message || error,
         );
-      } catch {
-        // Don't fail the donation creation if auto-assignment fails
+        // Don't fail donation creation if auto-processing fails
       }
     }
 
     return { success: true, data };
+  }
+
+  /**
+   * Automatically convert ESPECIE donation items to material movements
+   * and increase FUNDACION stock.
+   */
+  async autoConvertToFoundationStock(donationId, userId, userName) {
+    const donation = await DonationsRepository.findById(donationId);
+    if (!donation || !donation.details || donation.details.length === 0) {
+      return;
+    }
+
+    const items = donation.details
+      .filter((detail) => {
+        const recordType = String(detail.recordType || "").toLowerCase();
+        return recordType === "item";
+      })
+      .map((detail) => ({
+        materialId: detail.materialId ? parseInt(detail.materialId) : null,
+        cantidad: detail.quantity ? parseInt(detail.quantity) : 0,
+        inventarioDestino: "FUNDACION",
+        observaciones: `Donación ${donation.code}`,
+      }))
+      .filter((item) => item.materialId && item.cantidad > 0);
+
+    if (items.length === 0) {
+      return;
+    }
+
+    const conversion = await this.convertToMaterials(
+      donationId,
+      items,
+      userId,
+      userName,
+    );
+
+    if (conversion?.data?.failed > 0 && conversion?.data?.processed === 0) {
+      const firstError = conversion.data.errors?.[0]?.error || "Error desconocido";
+      throw new Error(`No se pudo convertir donación ${donation.code} a stock FUNDACION: ${firstError}`);
+    }
   }
 
   /**
@@ -82,15 +170,35 @@ export class DonationsService {
 
       // Process each detail item
       for (const detail of donation.details) {
-        if (detail.recordType !== "item" || !detail.materialId) {
+        const detailRecordType = String(detail.recordType || "").toLowerCase();
+        if (detailRecordType && detailRecordType !== "item") {
           continue;
         }
 
         try {
-          // Get material by ID
-          const material = await prisma.material.findUnique({
-            where: { id: parseInt(detail.materialId) },
-          });
+          // Resolve material by materialId first, fallback to description matching.
+          const material =
+            (detail.materialId
+              ? await prisma.material.findFirst({
+                  where: {
+                    id: parseInt(detail.materialId),
+                    estado: "Activo",
+                  },
+                  select: MATERIAL_SELECT,
+                })
+              : null) ||
+            (detail.description
+              ? await prisma.material.findFirst({
+                  where: {
+                    nombre: {
+                      contains: detail.description,
+                      mode: "insensitive",
+                    },
+                    estado: "Activo",
+                  },
+                  select: MATERIAL_SELECT,
+                })
+              : null);
 
           if (!material || material.estado !== "Activo") {
             continue;
@@ -136,27 +244,65 @@ export class DonationsService {
             });
           });
         } catch (error) {
-          console.error(
-            `Error processing material ${detail.materialId}:`,
-            error,
-          );
-          // Continue with next item
+// Continue with next item
         }
       }
 
       await prisma.$disconnect();
     } catch (error) {
-      console.error("Error in autoConvertAndAssignToEvent:", error);
-      throw error;
+throw error;
     }
   }
 
-  async update(id, payload) {
+  async update(id, payload, userId = 1, userName = "Sistema") {
+    const hasProgramField = Object.prototype.hasOwnProperty.call(payload, "program");
+    const shouldLinkEvent =
+      this.isEventProgram(payload?.program) &&
+      (payload?.serviceId || payload?.eventId);
+
     const resolved = {
       ...payload,
-      serviceId: payload?.serviceId || payload?.eventId || undefined,
+      serviceId: hasProgramField
+        ? shouldLinkEvent
+          ? payload?.serviceId || payload?.eventId
+          : null
+        : payload?.serviceId || payload?.eventId || undefined,
     };
     const data = await DonationsRepository.update(id, resolved);
+
+    // Safety net: if ESPECIE donation has no linked movements yet,
+    // auto-process it based on destination (event vs foundation stock).
+    if (data.type === "ESPECIE") {
+      try {
+        const linkedMovements = await movementsRepository.findByDonationId(
+          data.id,
+        );
+        const hasLinkedMovements =
+          Array.isArray(linkedMovements) && linkedMovements.length > 0;
+
+        if (!hasLinkedMovements) {
+          if (this.shouldAssignDonationToEvent(data)) {
+            await this.autoConvertAndAssignToEvent(
+              data.id,
+              data.serviceId,
+              userId,
+              userName,
+            );
+          } else {
+            await this.autoConvertToFoundationStock(data.id, userId, userName);
+          }
+        }
+      } catch (error) {
+        const operation = this.shouldAssignDonationToEvent(data)
+          ? "auto-assign to event on update"
+          : "auto-convert to foundation stock on update";
+        console.error(
+          `[DonationsService] ${operation} failed:`,
+          error?.message || error,
+        );
+      }
+    }
+
     return { success: true, data };
   }
 
@@ -290,6 +436,9 @@ export class DonationsService {
             cantidad: parseInt(item.cantidad),
             inventario_destino: item.inventarioDestino || "FUNDACION",
             donacion_id: parseInt(donationId),
+            origen: "Donacion",
+            reference_id: parseInt(donationId),
+            reference_type: "DONACION",
             observaciones: item.observaciones || `Donación ${donation.code}`,
             fecha_ingreso: donation.donationAt,
             created_by_name: userName || null,
@@ -326,8 +475,7 @@ export class DonationsService {
         },
       };
     } catch (error) {
-      console.error("Error converting donation to materials:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -361,8 +509,7 @@ export class DonationsService {
         },
       };
     } catch (error) {
-      console.error("Error getting materials by donation:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -519,8 +666,7 @@ export class DonationsService {
         },
       };
     } catch (error) {
-      console.error("Error converting and assigning donation to event:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -575,11 +721,11 @@ export class DonationsService {
         filename,
       };
     } catch (error) {
-      console.error("Error generating donation certificate:", error);
-      throw error;
+throw error;
     }
   }
 }
 
 export default new DonationsService();
+
 

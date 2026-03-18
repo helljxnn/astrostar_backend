@@ -1,4 +1,4 @@
-﻿import prisma from "../../../config/database.js";
+import prisma from "../../../config/database.js";
 
 export const enrollmentsRepository = {
   async normalizeStatuses() {
@@ -37,12 +37,7 @@ export const enrollmentsRepository = {
 
   async findAll({ estado, athleteId, search, searchText, searchEstado, searchNoActivation, searchDateRange, page = 1, limit = 10, showAll = false, sortBy = 'createdAt', sortOrder = 'desc', dateFrom, dateTo, vencimientoRange }) {
     const skip = (page - 1) * limit;
-    
-    console.log('🔍 [ENROLLMENTS REPO] Parámetros recibidos:', {
-      estado, athleteId, search, page, limit, showAll, sortBy, sortOrder, dateFrom, dateTo, vencimientoRange
-    });
-    
-    // Si se especifica un athleteId, mostrar TODAS sus matrículas (historial completo)
+// Si se especifica un athleteId, mostrar TODAS sus matrículas (historial completo)
     // Si NO se especifica athleteId y showAll=false, mostrar solo la más reciente por deportista
     const shouldShowOnlyLatest = !athleteId && !showAll;
 
@@ -80,7 +75,7 @@ export const enrollmentsRepository = {
         }
 
         if (searchNoActivation) {
-          orConditions.push(`e."fechaInicio" IS NULL`);
+          orConditions.push(`(e.estado::text = 'Pending_Payment' OR e."fechaInicio" IS NULL)`);
         }
 
         if (searchDateRange?.from && searchDateRange?.to) {
@@ -320,7 +315,8 @@ export const enrollmentsRepository = {
         }
 
         if (searchNoActivation) {
-          or.push({ fechaInicio: null });
+          or.push({ estado: 'Pending_Payment' });
+          or.push({ fechaInicio: null }); // compatibilidad con registros antiguos
         }
 
         if (searchDateRange?.from && searchDateRange?.to) {
@@ -622,5 +618,4 @@ export const enrollmentsRepository = {
     return transformedData;
   },
 };
-
 
