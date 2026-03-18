@@ -1,4 +1,4 @@
-﻿import prisma from "../../../config/database.js";
+import prisma from "../../../config/database.js";
 
 const calculateAgeFromBirthDate = (birthDate) => {
   if (!birthDate) return null;
@@ -390,8 +390,7 @@ export class AthletesRepository {
         return this.transformToFrontend(createdAthlete);
       });
     } catch (error) {
-      console.error("❌ Error en create():", error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -528,8 +527,7 @@ export class AthletesRepository {
         return this.transformToFrontend(finalAthlete);
       });
     } catch (error) {
-      console.error("Error en update():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -558,8 +556,7 @@ export class AthletesRepository {
         };
       });
     } catch (error) {
-      console.error("Error en delete():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -944,8 +941,7 @@ export class AthletesRepository {
 
       return this.transformToFrontend(result);
     } catch (error) {
-      console.error("Error en changeStatus():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -1046,8 +1042,7 @@ export class AthletesRepository {
         sportsCategories: formattedCategories,
       };
     } catch (error) {
-      console.error("Error en getReferenceData():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -1090,8 +1085,7 @@ export class AthletesRepository {
 
       return orderedDocumentTypes;
     } catch (error) {
-      console.error("Error en getDocumentTypes():", error);
-      throw error;
+throw error;
     }
   }
 
@@ -1112,8 +1106,7 @@ export class AthletesRepository {
       // Retornar el atleta actualizado con todas las relaciones
       return await this.findById(athleteId);
     } catch (error) {
-      console.error("Error en removeGuardianFromAthlete():", error);
-      throw error;
+throw error;
     }
   }
 

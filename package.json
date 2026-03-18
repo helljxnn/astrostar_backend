@@ -10,6 +10,7 @@
         "prisma:migrate": "npx prisma migrate dev",
         "prisma:generate": "npx prisma generate",
         "prisma:seed": "npx prisma db seed",
+        "roles:sync-base": "node prisma/sync-base-role-permissions.js",
         "prisma:studio": "npx prisma studio",
         "prisma:push": "npx prisma db push",
         "prisma:pull": "npx prisma db pull",

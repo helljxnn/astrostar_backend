@@ -37,7 +37,12 @@ export class AuthService {
 
       // 2. Buscar usuario por email
       const cleanEmail = email.toLowerCase().trim();
-      const user = await this.authRepository.findByEmail(cleanEmail);
+      let user = await this.authRepository.findByEmail(cleanEmail);
+
+      // Fallback para alias de Gmail (puntos y +tag en el usuario)
+      if (!user) {
+        user = await this.authRepository.findByGmailAlias(cleanEmail);
+      }
 
       if (!user) {
         return {
@@ -92,6 +97,7 @@ export class AuthService {
         {
           id: user.id,
           type: "refresh",
+          jti: crypto.randomUUID(),
         },
         this.getJwtRefreshSecret(),
         { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" },

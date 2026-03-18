@@ -1,4 +1,4 @@
-﻿import { paymentsService } from "../services/payments.service.js";
+import { paymentsService } from "../services/payments.service.js";
 import {
   hasNormalizedPermission,
   resolveModuleKey,
@@ -56,8 +56,7 @@ export const checkPaymentRestrictions = async (req, res, next) => {
     });
 
   } catch (error) {
-    console.error('❌ [PAYMENT MIDDLEWARE] Error:', error);
-    // En caso de error, permitir acceso para no bloquear completamente
+// En caso de error, permitir acceso para no bloquear completamente
     return next();
   }
 };
@@ -65,40 +64,43 @@ export const checkPaymentRestrictions = async (req, res, next) => {
 /**
  * Middleware para verificar permisos de administrador en rutas de pagos
  */
-export const requirePaymentAdminPermissions = (req, res, next) => {
-  try {
-    // Verificar que el usuario esté autenticado
-    if (!req.user) {
-      return res.status(401).json({
+export const requirePaymentAdminPermissions = (requiredAction = "Ver") => {
+  return (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "Acceso no autorizado",
+        });
+      }
+
+      const roleName = String(req.user.role?.name || "").toLowerCase();
+      const isAdminByRole =
+        roleName === "admin" || roleName === "administrador";
+      const userPermissions = req.user.role?.permissions || {};
+      const resolvedModule = resolveModuleKey(
+        "paymentsManagement",
+        userPermissions
+      );
+      const hasPaymentPermissions =
+        isAdminByRole ||
+        hasNormalizedPermission(userPermissions, resolvedModule, requiredAction);
+
+      if (!hasPaymentPermissions) {
+        return res.status(403).json({
+          success: false,
+          message: "No tienes permisos para administrar pagos",
+        });
+      }
+
+      next();
+    } catch (error) {
+      return res.status(500).json({
         success: false,
-        message: "Acceso no autorizado"
+        message: "Error interno del servidor",
       });
     }
-
-    // Verificar permisos por RBAC normalizado
-    const roleName = String(req.user.role?.name || "").toLowerCase();
-    const isAdminByRole = roleName === "admin" || roleName === "administrador";
-    const userPermissions = req.user.role?.permissions || {};
-    const resolvedModule = resolveModuleKey("paymentsManagement", userPermissions);
-    const hasPaymentPermissions =
-      isAdminByRole ||
-      hasNormalizedPermission(userPermissions, resolvedModule, "Aprobar");
-
-    if (!hasPaymentPermissions) {
-      return res.status(403).json({
-        success: false,
-        message: "No tienes permisos para administrar pagos"
-      });
-    }
-
-    next();
-  } catch (error) {
-    console.error('❌ [PAYMENT ADMIN MIDDLEWARE] Error:', error);
-    return res.status(500).json({
-      success: false,
-      message: "Error interno del servidor"
-    });
-  }
+  };
 };
 
 /**
@@ -152,8 +154,7 @@ export const requirePaymentReceiptAccess = async (req, res, next) => {
 
     return next();
   } catch (error) {
-    console.error("[PAYMENT RECEIPT ACCESS] Error:", error);
-    return res.status(500).json({
+return res.status(500).json({
       success: false,
       message: "Error interno del servidor",
     });
@@ -218,8 +219,7 @@ export const requireAthleteOwnership = (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('❌ [ATHLETE OWNERSHIP MIDDLEWARE] Error:', error);
-    return res.status(500).json({
+return res.status(500).json({
       success: false,
       message: "Error interno del servidor"
     });

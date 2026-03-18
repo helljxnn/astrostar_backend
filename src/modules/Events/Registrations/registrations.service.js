@@ -1,4 +1,4 @@
-﻿import { RegistrationsRepository } from "./registrations.repository.js";
+import { RegistrationsRepository } from "./registrations.repository.js";
 import { RSVPService } from "../RSVP/rsvp.service.js";
 
 export class RegistrationsService {
@@ -115,16 +115,8 @@ export class RegistrationsService {
 
       // Enviar invitación RSVP
       try {
-        const rsvpResult = await this.rsvpService.createAndSendInvitation(
-          registration.id,
-        );
-        if (!rsvpResult.success) {
-          console.warn(
-            `⚠️  No se pudo enviar invitación RSVP: ${rsvpResult.message}`,
-          );
-        }
-      } catch (rsvpError) {
-        console.error("❌ Error enviando invitación RSVP:", rsvpError.message);
+        await this.rsvpService.createAndSendInvitation(registration.id);
+      } catch {
         // No fallar la inscripción si el email falla
       }
 
@@ -500,19 +492,8 @@ export class RegistrationsService {
 
           // Enviar invitación RSVP
           try {
-            const rsvpResult = await this.rsvpService.createAndSendInvitation(
-              registration.id,
-            );
-            if (!rsvpResult.success) {
-              console.warn(
-                `⚠️  No se pudo enviar invitación RSVP para equipo ${teamId}: ${rsvpResult.message}`,
-              );
-            }
-          } catch (rsvpError) {
-            console.error(
-              `❌ Error enviando invitación RSVP para equipo ${teamId}:`,
-              rsvpError.message,
-            );
+            await this.rsvpService.createAndSendInvitation(registration.id);
+          } catch {
             // No fallar la inscripción si el email falla
           }
 
@@ -680,16 +661,8 @@ export class RegistrationsService {
 
       // Enviar invitación RSVP
       try {
-        const rsvpResult = await this.rsvpService.createAndSendInvitation(
-          registration.id,
-        );
-        if (!rsvpResult.success) {
-          console.warn(
-            `⚠️  No se pudo enviar invitación RSVP: ${rsvpResult.message}`,
-          );
-        }
-      } catch (rsvpError) {
-        console.error("❌ Error enviando invitación RSVP:", rsvpError.message);
+        await this.rsvpService.createAndSendInvitation(registration.id);
+      } catch {
         // No fallar la inscripción si el email falla
       }
 
@@ -943,19 +916,8 @@ export class RegistrationsService {
 
           // Enviar invitación RSVP
           try {
-            const rsvpResult = await this.rsvpService.createAndSendInvitation(
-              registration.id,
-            );
-            if (!rsvpResult.success) {
-              console.warn(
-                `⚠️  No se pudo enviar invitación RSVP para deportista ${athleteId}: ${rsvpResult.message}`,
-              );
-            }
-          } catch (rsvpError) {
-            console.error(
-              `❌ Error enviando invitación RSVP para deportista ${athleteId}:`,
-              rsvpError.message,
-            );
+            await this.rsvpService.createAndSendInvitation(registration.id);
+          } catch {
             // No fallar la inscripción si el email falla
           }
 
@@ -1058,4 +1020,3 @@ export class RegistrationsService {
     }
   }
 }
-

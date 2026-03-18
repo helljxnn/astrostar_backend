@@ -1,4 +1,4 @@
-﻿import { SportsCategoryService } from "../services/sportsCategory.service.js";
+import { SportsCategoryService } from "../services/sportsCategory.service.js";
 import { uploadToCloudinary } from "../../../../services/shared/cloudinary.service.js";
 
 export class SportsCategoryController {
@@ -13,16 +13,19 @@ export class SportsCategoryController {
     try {
       const { page = 1, limit = 10, search = "", status = "" } = req.query;
 
-      const result = await this.sportsCategoryService.getAllSportsCategories({
-        page: parseInt(page),
-        limit: parseInt(limit),
-        search: search.trim(),
-        status: status.trim(),
-      });
+      const result = await this.sportsCategoryService.getAllSportsCategories(
+        {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          search: search.trim(),
+          status: status.trim(),
+        },
+        req.user,
+      );
 
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en getAllSportsCategories:", error);
+      console.error("Error fetching sports categories:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener categorías.",
@@ -40,7 +43,6 @@ export class SportsCategoryController {
       const result = await this.sportsCategoryService.getPublicCategories();
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en getPublicCategories:", error);
       res.status(500).json({
         success: false,
         message: "Error al obtener categorías públicas.",
@@ -58,7 +60,6 @@ export class SportsCategoryController {
       const result = await this.sportsCategoryService.getSportsCategoryById(id);
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en getSportsCategoryById:", error);
       res.status(500).json({
         success: false,
         message: "Error al obtener la categoría.",
@@ -84,12 +85,11 @@ export class SportsCategoryController {
 
       const result = await this.sportsCategoryService.checkCategoryNameExists(
         name.trim(),
-        excludeId ? Number(excludeId) : null
+        excludeId ? Number(excludeId) : null,
       );
 
       res.json(result);
     } catch (error) {
-      console.error("Error en checkCategoryNameAvailability:", error);
       res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad.",
@@ -106,7 +106,6 @@ export class SportsCategoryController {
       const result = await this.sportsCategoryService.getSportsCategoryStats();
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en getSportsCategoryStats:", error);
       res.status(500).json({
         success: false,
         message: "Error al obtener estadísticas.",
@@ -162,30 +161,23 @@ export class SportsCategoryController {
         });
       }
 
-      if (!req.file) {
-        return res.status(400).json({
-          success: false,
-          message: "La imagen es obligatoria para crear una categoría.",
-          statusCode: 400,
-        });
-      }
-
-      // Subir imagen a Cloudinary
+      // Subir imagen a Cloudinary solo si se envia archivo
       let imageUrl = null;
-      try {
-        imageUrl = await uploadToCloudinary(
-          req.file.buffer,
-          `sports-category-${name.trim().replace(/\s+/g, "-").toLowerCase()}`,
-          { folder: "astrostar/sports-categories" }
-        );
-      } catch (uploadError) {
-        console.error("Error al subir a Cloudinary:", uploadError);
-        return res.status(500).json({
-          success: false,
-          message:
-            "Error al subir la imagen. Verifica tus credenciales de Cloudinary.",
-          statusCode: 500,
-        });
+      if (req.file) {
+        try {
+          imageUrl = await uploadToCloudinary(
+            req.file.buffer,
+            `sports-category-${name.trim().replace(/\s+/g, "-").toLowerCase()}`,
+            { folder: "astrostar/sports-categories" },
+          );
+        } catch (uploadError) {
+          return res.status(500).json({
+            success: false,
+            message:
+              "Error al subir la imagen. Verifica tus credenciales de Cloudinary.",
+            statusCode: 500,
+          });
+        }
       }
 
       // Preparar datos
@@ -200,12 +192,10 @@ export class SportsCategoryController {
       };
 
       // Crear categoría
-      const result = await this.sportsCategoryService.createSportsCategory(
-        categoryData
-      );
+      const result =
+        await this.sportsCategoryService.createSportsCategory(categoryData);
       res.status(result.statusCode || 201).json(result);
     } catch (error) {
-      console.error("Error en createSportsCategory:", error);
       res.status(500).json({
         success: false,
         message: error.message || "Error al crear la categoría.",
@@ -251,11 +241,10 @@ export class SportsCategoryController {
               .trim()
               .replace(/\s+/g, "-")
               .toLowerCase()}`,
-            { folder: "astrostar/sports-categories" }
+            { folder: "astrostar/sports-categories" },
           );
           updateData.archivo = imageUrl;
         } catch (uploadError) {
-          console.error("Error al subir a Cloudinary:", uploadError);
           return res.status(500).json({
             success: false,
             message: "Error al subir la imagen a Cloudinary.",
@@ -272,11 +261,10 @@ export class SportsCategoryController {
       // Actualizar categoría
       const result = await this.sportsCategoryService.updateSportsCategory(
         id,
-        updateData
+        updateData,
       );
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en updateSportsCategory:", error);
       res.status(500).json({
         success: false,
         message: error.message || "Error al actualizar la categoría.",
@@ -303,7 +291,6 @@ export class SportsCategoryController {
       const result = await this.sportsCategoryService.deleteSportsCategory(id);
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en deleteSportsCategory controller:", error);
       res.status(500).json({
         success: false,
         message: error.message || "Error al eliminar la categoría.",
@@ -327,10 +314,13 @@ export class SportsCategoryController {
         });
       }
 
-      const result = await this.sportsCategoryService.getAthletesByCategory(id);
+      const result = await this.sportsCategoryService.getAthletesByCategory(
+        id,
+        req.user,
+      );
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en getAthletesByCategory:", error);
+      console.error("Error fetching athletes by category:", error);
       res.status(500).json({
         success: false,
         message: "Error al obtener atletas.",
@@ -339,5 +329,3 @@ export class SportsCategoryController {
     }
   };
 }
-
-

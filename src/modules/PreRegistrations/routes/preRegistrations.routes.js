@@ -47,8 +47,14 @@ router.put(
   "/:id/status",
   authenticateToken,
   (req, res, next) => {
-    const status = String(req.body?.status || "").toLowerCase();
-    const action = status === "rejected" ? "Rechazar" : "Aceptar";
+    const normalizedStatus = String(req.body?.status || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+    const isRejectAction =
+      normalizedStatus.includes("reject") ||
+      normalizedStatus.includes("rechaz");
+    const action = isRejectAction ? "Rechazar" : "Aceptar";
     return checkPermissions("enrollments", action)(req, res, next);
   },
   preRegistrationsController.updateStatus,

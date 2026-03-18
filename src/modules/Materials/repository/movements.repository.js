@@ -1,6 +1,14 @@
 ﻿import { PrismaClient } from "../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
+const MATERIAL_STOCK_SELECT = {
+  id: true,
+  nombre: true,
+  categoria: true,
+  estado: true,
+  stockFundacion: true,
+  stockEventos: true,
+};
 
 class MovementsRepository {
   /**
@@ -168,6 +176,7 @@ class MovementsRepository {
       // 1. Get material with lock
       const material = await tx.material.findUnique({
         where: { id: parseInt(data.material_id) },
+        select: MATERIAL_STOCK_SELECT,
       });
 
       if (!material) {
@@ -217,6 +226,7 @@ class MovementsRepository {
       const materialActualizado = await tx.material.update({
         where: { id: parseInt(data.material_id) },
         data: updateData,
+        select: MATERIAL_STOCK_SELECT,
       });
 
       // 7. Create movement record
@@ -455,6 +465,7 @@ class MovementsRepository {
       // 2. Get the material
       const material = await tx.material.findUnique({
         where: { id: movement.materialId },
+        select: MATERIAL_STOCK_SELECT,
       });
 
       if (!material) {
@@ -492,6 +503,7 @@ class MovementsRepository {
         data: {
           [stockField]: newStockValue,
         },
+        select: MATERIAL_STOCK_SELECT,
       });
 
       // 6. Delete the movement

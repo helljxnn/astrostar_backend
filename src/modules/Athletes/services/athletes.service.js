@@ -1,4 +1,4 @@
-﻿import bcrypt from 'bcrypt';
+import bcrypt from "bcrypt";
 import { AthletesRepository } from "../repository/athletes.repository.js";
 import emailService from "../../../services/emailService.js";
 
@@ -7,22 +7,67 @@ export class AthletesService {
     this.athletesRepository = new AthletesRepository();
   }
 
-  async getAllAthletes({
-    page = 1,
-    limit = 10,
-    search = "",
-    status,
-    categoria,
-    estadoInscripcion,
-  }) {
+  /**
+   * Normalizar clave de rol para comparaciones
+   */
+  normalizeRoleKey(value) {
+    return value
+      ? String(value)
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "")
+      : "";
+  }
+
+  /**
+   * Resolver filtros de alcance según el usuario
+   */
+  async resolveScopeFilters(filters = {}, user = null) {
+    const scoped = { ...filters };
+    const roleKey = this.normalizeRoleKey(user?.role?.name || user?.rol || "");
+    const isAdmin = roleKey === "admin" || roleKey === "administrador";
+    const isHealthProfessional =
+      roleKey === "profesionaldelasalud" || roleKey === "profesionaldesalud";
+
+    // Los administradores pueden ver todos los deportistas
+    if (isAdmin) {
+      return scoped;
+    }
+
+    // Los profesionales de salud solo pueden ver deportistas activos
+    if (isHealthProfessional) {
+      scoped.status = "Activo";
+      return scoped;
+    }
+
+    return scoped;
+  }
+
+  async getAllAthletes(
+    { page = 1, limit = 10, search = "", status, categoria, estadoInscripcion },
+    user = null,
+  ) {
     try {
+      const scopedFilters = await this.resolveScopeFilters(
+        {
+          page,
+          limit,
+          search,
+          status,
+          categoria,
+          estadoInscripcion,
+        },
+        user,
+      );
+
       const result = await this.athletesRepository.findAll({
-        page: parseInt(page),
-        limit: parseInt(limit),
-        search,
-        status,
-        categoria,
-        estadoInscripcion,
+        page: parseInt(scopedFilters.page),
+        limit: parseInt(scopedFilters.limit),
+        search: scopedFilters.search,
+        status: scopedFilters.status,
+        categoria: scopedFilters.categoria,
+        estadoInscripcion: scopedFilters.estadoInscripcion,
       });
 
       return {
@@ -58,40 +103,52 @@ export class AthletesService {
 
   async createAthlete(athleteData) {
     try {
-      
       // Establecer estado por defecto como "Activo" si no se proporciona
       const dataWithDefaults = {
         ...athleteData,
-        estado: athleteData.estado || "Activo"
+        estado: athleteData.estado || "Activo",
       };
-      
+
       // Validar documento único en TODOS los usuarios
-      const existingUserByDocument = await this.athletesRepository.findByIdentification(
-        dataWithDefaults.identification
-      );
+      const existingUserByDocument =
+        await this.athletesRepository.findByIdentification(
+          dataWithDefaults.identification,
+        );
       if (existingUserByDocument) {
-        throw new Error(`El documento "${dataWithDefaults.identification}" ya está registrado.`);
+        throw new Error(
+          `El documento "${dataWithDefaults.identification}" ya está registrado.`,
+        );
       }
 
       // Validar email único
       if (dataWithDefaults.email) {
-        const existingByEmail = await this.athletesRepository.findByEmail(dataWithDefaults.email);
+        const existingByEmail = await this.athletesRepository.findByEmail(
+          dataWithDefaults.email,
+        );
         if (existingByEmail) {
-          throw new Error(`El email "${dataWithDefaults.email}" ya está registrado por otro usuario.`);
+          throw new Error(
+            `El email "${dataWithDefaults.email}" ya está registrado por otro usuario.`,
+          );
         }
       }
 
       // Validar acudiente si es menor de edad
       const age = this.calculateAge(dataWithDefaults.birthDate);
       if (age < 18 && !dataWithDefaults.acudiente) {
-        throw new Error("Los menores de edad deben tener un acudiente asignado.");
+        throw new Error(
+          "Los menores de edad deben tener un acudiente asignado.",
+        );
       }
 
       // Validar que el acudiente existe si se proporciona
       if (dataWithDefaults.acudiente) {
-        const guardianExists = await this.athletesRepository.validateGuardian(dataWithDefaults.acudiente);
+        const guardianExists = await this.athletesRepository.validateGuardian(
+          dataWithDefaults.acudiente,
+        );
         if (!guardianExists) {
-          throw new Error(`El acudiente con ID ${dataWithDefaults.acudiente} no existe.`);
+          throw new Error(
+            `El acudiente con ID ${dataWithDefaults.acudiente} no existe.`,
+          );
         }
       }
 
@@ -103,32 +160,35 @@ export class AthletesService {
 
       // 🔥 NUEVO: Si viene de inscripción del landing, marcarla como procesada
       if (athleteData.preRegistrationId) {
-        
         try {
-          const prisma = (await import('../../../config/database.js')).default;
+          const prisma = (await import("../../../config/database.js")).default;
           await prisma.preRegistration.update({
             where: { id: parseInt(athleteData.preRegistrationId) },
             data: { status: "Processed" }, // ← Cambiado a inglés
           });
         } catch (error) {
-          console.error('❌ [SERVICE] Error marcando inscripción como Procesada:', error);
           // No fallar la creación del atleta si falla marcar la inscripción
         }
       } else {
       }
 
       // Enviar email de bienvenida con credenciales
-      const emailResult = await this.sendWelcomeEmail(newAthlete, temporaryPassword);
+      const emailResult = await this.sendWelcomeEmail(
+        newAthlete,
+        temporaryPassword,
+      );
 
       return {
         success: true,
         data: newAthlete,
-        temporaryPassword: process.env.NODE_ENV === 'development' ? temporaryPassword : undefined,
+        temporaryPassword:
+          process.env.NODE_ENV === "development"
+            ? temporaryPassword
+            : undefined,
         emailSent: emailResult.success,
-        message: `Deportista "${dataWithDefaults.firstName} ${dataWithDefaults.lastName}" creado exitosamente con estado Activo. ${emailResult.success ? 'Credenciales enviadas por email.' : 'Error enviando credenciales por email.'}`,
+        message: `Deportista "${dataWithDefaults.firstName} ${dataWithDefaults.lastName}" creado exitosamente con estado Activo. ${emailResult.success ? "Credenciales enviadas por email." : "Error enviando credenciales por email."}`,
       };
     } catch (error) {
-      console.error('❌ [SERVICE] Error en createAthlete:', error);
       throw error;
     }
   }
@@ -145,18 +205,23 @@ export class AthletesService {
       }
 
       // Detectar si el email cambió
-      const emailChanged = updateData.email && updateData.email !== existingAthlete.email;
+      const emailChanged =
+        updateData.email && updateData.email !== existingAthlete.email;
       const oldEmail = existingAthlete.email;
 
       // Validar documento único si se está actualizando (en todos los usuarios)
-      if (updateData.identification && updateData.identification !== existingAthlete.identification) {
-        const existingByDocument = await this.athletesRepository.findByIdentification(
-          updateData.identification,
-          existingAthlete.userId
-        );
+      if (
+        updateData.identification &&
+        updateData.identification !== existingAthlete.identification
+      ) {
+        const existingByDocument =
+          await this.athletesRepository.findByIdentification(
+            updateData.identification,
+            existingAthlete.userId,
+          );
         if (existingByDocument) {
           throw new Error(
-            `El documento "${updateData.identification}" ya está registrado.`
+            `El documento "${updateData.identification}" ya está registrado.`,
           );
         }
         const newPassword = updateData.identification?.trim();
@@ -169,11 +234,11 @@ export class AthletesService {
       if (emailChanged) {
         const existingByEmail = await this.athletesRepository.findByEmail(
           updateData.email,
-          existingAthlete.userId
+          existingAthlete.userId,
         );
         if (existingByEmail) {
           throw new Error(
-            `El email "${updateData.email}" ya está registrado por otro usuario.`
+            `El email "${updateData.email}" ya está registrado por otro usuario.`,
           );
         }
       }
@@ -182,19 +247,28 @@ export class AthletesService {
       if (updateData.birthDate) {
         const age = this.calculateAge(updateData.birthDate);
         if (age < 18 && !updateData.acudiente && !existingAthlete.acudiente) {
-          throw new Error("Los menores de edad deben tener un acudiente asignado.");
+          throw new Error(
+            "Los menores de edad deben tener un acudiente asignado.",
+          );
         }
       }
 
       // Validar que el acudiente existe si se proporciona
       if (updateData.acudiente) {
-        const guardianExists = await this.athletesRepository.validateGuardian(updateData.acudiente);
+        const guardianExists = await this.athletesRepository.validateGuardian(
+          updateData.acudiente,
+        );
         if (!guardianExists) {
-          throw new Error(`El acudiente con ID ${updateData.acudiente} no existe.`);
+          throw new Error(
+            `El acudiente con ID ${updateData.acudiente} no existe.`,
+          );
         }
       }
 
-      const updatedAthlete = await this.athletesRepository.update(id, updateData);
+      const updatedAthlete = await this.athletesRepository.update(
+        id,
+        updateData,
+      );
 
       // Si el email cambió, enviar correo de verificación al nuevo email
       let emailSent = false;
@@ -203,9 +277,9 @@ export class AthletesService {
           {
             email: updateData.email,
             firstName: updatedAthlete.firstName,
-            lastName: updatedAthlete.lastName
+            lastName: updatedAthlete.lastName,
           },
-          existingAthlete.identification // Usar el documento como contraseña
+          existingAthlete.identification, // Usar el documento como contraseña
         );
         emailSent = emailResult.success;
       }
@@ -214,10 +288,9 @@ export class AthletesService {
         success: true,
         data: updatedAthlete,
         emailSent,
-        message: `Deportista "${updatedAthlete.firstName} ${updatedAthlete.lastName}" actualizado exitosamente.${emailChanged ? (emailSent ? ' Credenciales enviadas al nuevo email.' : ' Error enviando credenciales al nuevo email.') : ''}`,
+        message: `Deportista "${updatedAthlete.firstName} ${updatedAthlete.lastName}" actualizado exitosamente.${emailChanged ? (emailSent ? " Credenciales enviadas al nuevo email." : " Error enviando credenciales al nuevo email.") : ""}`,
       };
     } catch (error) {
-      console.error('Error en updateAthlete:', error);
       throw error;
     }
   }
@@ -255,7 +328,10 @@ export class AthletesService {
         };
       }
 
-      const updatedAthlete = await this.athletesRepository.changeStatus(id, status);
+      const updatedAthlete = await this.athletesRepository.changeStatus(
+        id,
+        status,
+      );
       const athleteName =
         updatedAthlete?.nombreCompleto ||
         `${updatedAthlete?.firstName || ""} ${updatedAthlete?.lastName || ""}`.trim();
@@ -312,7 +388,10 @@ export class AthletesService {
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
       age--;
     }
     return age;
@@ -323,27 +402,30 @@ export class AthletesService {
    */
   generateTemporaryPassword() {
     // Caracteres seguros (sin caracteres ambiguos como 0, O, l, I)
-    const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lowercase = 'abcdefghijkmnpqrstuvwxyz';
-    const numbers = '23456789';
-    const symbols = '!@#$%&*';
-    
-    let password = '';
-    
+    const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    const lowercase = "abcdefghijkmnpqrstuvwxyz";
+    const numbers = "23456789";
+    const symbols = "!@#$%&*";
+
+    let password = "";
+
     // Asegurar al menos un carácter de cada tipo
     password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
     password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
     password += numbers.charAt(Math.floor(Math.random() * numbers.length));
     password += symbols.charAt(Math.floor(Math.random() * symbols.length));
-    
+
     // Completar con caracteres aleatorios
     const allChars = uppercase + lowercase + numbers + symbols;
     for (let i = 4; i < 12; i++) {
       password += allChars.charAt(Math.floor(Math.random() * allChars.length));
     }
-    
+
     // Mezclar la contraseña
-    return password.split('').sort(() => Math.random() - 0.5).join('');
+    return password
+      .split("")
+      .sort(() => Math.random() - 0.5)
+      .join("");
   }
 
   /**
@@ -354,19 +436,21 @@ export class AthletesService {
       const athleteInfo = {
         email: athleteData.email,
         firstName: athleteData.firstName,
-        lastName: athleteData.lastName
+        lastName: athleteData.lastName,
       };
 
       const credentials = {
         email: athleteData.email,
-        temporaryPassword
+        temporaryPassword,
       };
 
-      const result = await emailService.sendAthleteWelcomeEmail(athleteInfo, credentials);
-      
+      const result = await emailService.sendAthleteWelcomeEmail(
+        athleteInfo,
+        credentials,
+      );
+
       return result;
     } catch (error) {
-      console.error('❌ Error enviando email de bienvenida:', error);
       return { success: false, error: error.message };
     }
   }
@@ -376,8 +460,11 @@ export class AthletesService {
    */
   async checkEmailAvailability(email, excludeUserId = null) {
     try {
-      const existingUser = await this.athletesRepository.findByEmail(email, excludeUserId);
-      
+      const existingUser = await this.athletesRepository.findByEmail(
+        email,
+        excludeUserId,
+      );
+
       if (!existingUser) {
         return { available: true };
       }
@@ -386,12 +473,11 @@ export class AthletesService {
         return { available: true };
       }
 
-      return { 
-        available: false, 
-        message: 'Este email ya está registrado en el sistema' 
+      return {
+        available: false,
+        message: "Este email ya está registrado en el sistema",
       };
     } catch (error) {
-      console.error('Service error - checkEmailAvailability:', error);
       throw error;
     }
   }
@@ -401,8 +487,11 @@ export class AthletesService {
    */
   async checkIdentificationAvailability(identification, excludeUserId = null) {
     try {
-      const existingUser = await this.athletesRepository.findByIdentification(identification, excludeUserId);
-      
+      const existingUser = await this.athletesRepository.findByIdentification(
+        identification,
+        excludeUserId,
+      );
+
       if (!existingUser) {
         return { available: true };
       }
@@ -411,12 +500,11 @@ export class AthletesService {
         return { available: true };
       }
 
-      return { 
-        available: false, 
-        message: 'Este documento ya está registrado en el sistema' 
+      return {
+        available: false,
+        message: "Este documento ya está registrado en el sistema",
       };
     } catch (error) {
-      console.error('Service error - checkIdentificationAvailability:', error);
       throw error;
     }
   }
@@ -427,7 +515,7 @@ export class AthletesService {
   async removeGuardian(athleteId) {
     try {
       const athlete = await this.athletesRepository.findById(athleteId);
-      
+
       if (!athlete) {
         return {
           success: false,
@@ -440,14 +528,14 @@ export class AthletesService {
         return {
           success: false,
           statusCode: 400,
-          message: 'El deportista no tiene un acudiente asignado.',
+          message: "El deportista no tiene un acudiente asignado.",
         };
       }
 
       // 🔥 VALIDACIÓN: No permitir remover acudiente si es menor de edad
       // Nota: findById ya devuelve el objeto transformado con birthDate y age calculado
       const age = athlete.age || this.calculateAge(athlete.birthDate);
-      
+
       if (age < 18) {
         return {
           success: false,
@@ -457,18 +545,16 @@ export class AthletesService {
       }
 
       // Remover el acudiente usando Prisma directamente (solo actualizar el atleta, no el usuario)
-      const updatedAthlete = await this.athletesRepository.removeGuardianFromAthlete(athleteId);
+      const updatedAthlete =
+        await this.athletesRepository.removeGuardianFromAthlete(athleteId);
 
       return {
         success: true,
         data: updatedAthlete,
-        message: 'Acudiente removido correctamente del deportista.',
+        message: "Acudiente removido correctamente del deportista.",
       };
     } catch (error) {
-      console.error('Error removiendo acudiente:', error);
       throw error;
     }
   }
 }
-
-

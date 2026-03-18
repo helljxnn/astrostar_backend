@@ -87,6 +87,37 @@ export class ScheduleService {
     };
   }
 
+  normalizeRoleKey(value) {
+    return value
+      ? String(value)
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-z0-9]/g, "")
+      : "";
+  }
+
+  async resolveScopeFilters(filters = {}, user = null) {
+    const scoped = { ...filters };
+    const roleKey = this.normalizeRoleKey(user?.role?.name || user?.rol || "");
+    const isAdmin = roleKey === "admin" || roleKey === "administrador";
+
+    if (isAdmin) return scoped;
+
+    const employeeIdFromToken = user?.employee?.id || null;
+    if (employeeIdFromToken) {
+      scoped.employeeId = parseInt(employeeIdFromToken);
+      return scoped;
+    }
+
+    const employee = await this.scheduleRepository.findEmployeeByUserId(user?.id);
+    if (employee?.id) {
+      scoped.employeeId = parseInt(employee.id);
+    }
+
+    return scoped;
+  }
+
   timeToMinutes(value) {
     if (!value) return null;
     const parts = String(value).split(':');
@@ -152,13 +183,20 @@ export class ScheduleService {
   /**
    * Obtener todos los horarios con filtros
    */
-  async getAllSchedules({ page = 1, limit = 10, employeeId = null, dayOfWeek = '' }) {
+  async getAllSchedules(
+    { page = 1, limit = 10, employeeId = null, dayOfWeek = "" },
+    user = null,
+  ) {
     try {
+      const scopedFilters = await this.resolveScopeFilters(
+        { page, limit, employeeId, dayOfWeek },
+        user,
+      );
       const result = await this.scheduleRepository.findAll({
         page: parseInt(page),
         limit: parseInt(limit),
-        employeeId,
-        dayOfWeek
+        employeeId: scopedFilters.employeeId || null,
+        dayOfWeek: scopedFilters.dayOfWeek || "",
       });
       return result;
     } catch (error) {
@@ -193,9 +231,15 @@ export class ScheduleService {
   /**
    * Obtener horarios por empleado
    */
-  async getSchedulesByEmployee(employeeId) {
+  async getSchedulesByEmployee(employeeId, user = null) {
     try {
-      const schedules = await this.scheduleRepository.findByEmployeeId(employeeId);
+      const scopedFilters = await this.resolveScopeFilters(
+        { employeeId: parseInt(employeeId) },
+        user,
+      );
+      const schedules = await this.scheduleRepository.findByEmployeeId(
+        scopedFilters.employeeId,
+      );
       return {
         success: true,
         data: schedules
@@ -490,7 +534,7 @@ export class ScheduleService {
   /**
    * Obtener empleados activos
    */
-  async getActiveEmployees() {
+  async getActiveEmployees(user = null) {
     try {
       const employees = await this.scheduleRepository.getActiveEmployees();
       const specialtyLabels = {
@@ -499,7 +543,7 @@ export class ScheduleService {
         nutricion: 'Nutricion'
       };
 
-      const formattedEmployees = employees.map(emp => ({
+      let formattedEmployees = employees.map(emp => ({
         id: emp.id,
         empleadoId: emp.id,
         nombre: `${emp.user.firstName} ${emp.user.middleName || ''} ${emp.user.lastName} ${emp.user.secondLastName || ''}`.replace(/\s+/g, ' ').trim(),
@@ -509,6 +553,13 @@ export class ScheduleService {
         email: emp.user.email,
         identification: emp.user.identification
       }));
+
+      const scopedFilters = await this.resolveScopeFilters({}, user);
+      if (scopedFilters.employeeId) {
+        formattedEmployees = formattedEmployees.filter(
+          (emp) => String(emp.id) === String(scopedFilters.employeeId),
+        );
+      }
       return {
         success: true,
         data: formattedEmployees

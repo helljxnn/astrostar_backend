@@ -11,7 +11,10 @@ export class TemporaryWorkersService {
   async getAllTemporaryWorkers(filters) {
     try {
       const result = await this.temporaryWorkersRepository.findAll(filters);
-      return result;
+      const temporaryPersons = (result.temporaryPersons || []).map((worker) =>
+        this.mapBackendToFrontend(worker),
+      );
+      return { ...result, temporaryPersons };
     } catch (error) {
       console.error("Error in getAllTemporaryWorkers service:", error);
       throw error;
@@ -36,7 +39,7 @@ export class TemporaryWorkersService {
 
       return {
         success: true,
-        data: temporaryWorker,
+        data: this.mapBackendToFrontend(temporaryWorker),
       };
     } catch (error) {
       console.error("Error in getTemporaryWorkerById service:", error);
@@ -74,7 +77,7 @@ export class TemporaryWorkersService {
 
       return {
         success: true,
-        data: temporaryWorker,
+        data: this.mapBackendToFrontend(temporaryWorker),
         message: `Persona temporal '${temporaryWorker.firstName} ${temporaryWorker.lastName}' creada exitosamente.`,
       };
     } catch (error) {
@@ -122,7 +125,7 @@ export class TemporaryWorkersService {
 
       return {
         success: true,
-        data: updatedWorker,
+        data: this.mapBackendToFrontend(updatedWorker),
         message: `Persona temporal '${updatedWorker.firstName} ${updatedWorker.lastName}' actualizada exitosamente.`,
       };
     } catch (error) {
@@ -611,35 +614,91 @@ export class TemporaryWorkersService {
   }
 
   /**
+   * Mapear campos del backend al formato esperado por frontend
+   */
+  mapBackendToFrontend(backendData) {
+    if (!backendData) return backendData;
+
+    const normalizeUtf8Text = (value) => {
+      if (typeof value !== "string") return value;
+      try {
+        return value.normalize("NFC");
+      } catch {
+        return value;
+      }
+    };
+
+    const splitName = (value) => {
+      const normalized = normalizeUtf8Text(value || "").trim();
+      if (!normalized) return { primary: "", secondary: null };
+      const parts = normalized.split(/\s+/).filter(Boolean);
+      return {
+        primary: parts[0] || "",
+        secondary: parts.length > 1 ? parts.slice(1).join(" ") : null,
+      };
+    };
+
+    const first = splitName(backendData.firstName);
+    const last = splitName(backendData.lastName);
+
+    return {
+      ...backendData,
+      firstName: first.primary,
+      middleName: first.secondary,
+      lastName: last.primary,
+      secondLastName: last.secondary,
+      team: backendData.organization ?? null,
+    };
+  }
+
+  /**
    * Mapear campos del frontend al backend
    */
   mapFrontendToBackend(frontendData) {
     const backendData = {};
+    const normalizeUtf8Text = (value) => {
+      if (typeof value !== "string") return null;
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      try {
+        return trimmed.normalize("NFC");
+      } catch {
+        return trimmed;
+      }
+    };
 
     // Mapeo de campos
-    if (frontendData.firstName)
-      backendData.firstName = frontendData.firstName.trim();
-    if (frontendData.middleName)
-      backendData.middleName = frontendData.middleName.trim();
-    if (frontendData.lastName)
-      backendData.lastName = frontendData.lastName.trim();
-    if (frontendData.secondLastName)
-      backendData.secondLastName = frontendData.secondLastName.trim();
+    const firstName = normalizeUtf8Text(frontendData.firstName);
+    const middleName = normalizeUtf8Text(frontendData.middleName);
+    const lastName = normalizeUtf8Text(frontendData.lastName);
+    const secondLastName = normalizeUtf8Text(frontendData.secondLastName);
+
+    if (firstName || middleName) {
+      backendData.firstName = [firstName, middleName].filter(Boolean).join(" ");
+    }
+    // El modelo TemporaryPerson no tiene secondLastName separado.
+    if (lastName || secondLastName) {
+      backendData.lastName = [lastName, secondLastName].filter(Boolean).join(" ");
+    }
     if (frontendData.identification)
-      backendData.identification = frontendData.identification.trim();
-    if (frontendData.email)
-      backendData.email = frontendData.email.toLowerCase().trim();
-    if (frontendData.phone) backendData.phone = frontendData.phone.trim();
+      backendData.identification = normalizeUtf8Text(frontendData.identification);
+    if (frontendData.email) {
+      const normalizedEmail = normalizeUtf8Text(frontendData.email);
+      backendData.email = normalizedEmail ? normalizedEmail.toLowerCase() : null;
+    }
+    if (frontendData.phone)
+      backendData.phone = normalizeUtf8Text(frontendData.phone);
     if (frontendData.birthDate)
       backendData.birthDate = new Date(frontendData.birthDate);
     if (frontendData.age !== undefined)
       backendData.age = parseInt(frontendData.age);
-    if (frontendData.address) backendData.address = frontendData.address.trim();
+    if (frontendData.address)
+      backendData.address = normalizeUtf8Text(frontendData.address);
     if (frontendData.personType)
       backendData.personType = frontendData.personType;
     if (frontendData.team !== undefined)
       backendData.organization = frontendData.team
-        ? frontendData.team.trim()
+        ? normalizeUtf8Text(frontendData.team)
         : null;
     if (frontendData.status) backendData.status = frontendData.status;
     if (frontendData.documentTypeId) {
@@ -650,16 +709,17 @@ export class TemporaryWorkersService {
 
     // Mapeo de campos del modal actual (compatibilidad)
     if (frontendData.nombre && !backendData.firstName) {
-      const nombres = frontendData.nombre.split(" ");
+      const nombreNormalizado = normalizeUtf8Text(frontendData.nombre) || "";
+      const nombres = nombreNormalizado.split(" ");
       backendData.firstName = nombres[0];
       if (nombres.length > 1) {
         backendData.lastName = nombres.slice(1).join(" ");
       }
     }
     if (frontendData.apellido && !backendData.lastName)
-      backendData.lastName = frontendData.apellido;
+      backendData.lastName = normalizeUtf8Text(frontendData.apellido);
     if (frontendData.telefono && !backendData.phone)
-      backendData.phone = frontendData.telefono;
+      backendData.phone = normalizeUtf8Text(frontendData.telefono);
     if (frontendData.fechaNacimiento && !backendData.birthDate)
       backendData.birthDate = new Date(frontendData.fechaNacimiento);
     if (frontendData.estado && !backendData.status) {
@@ -667,7 +727,7 @@ export class TemporaryWorkersService {
         frontendData.estado === "Activo" ? "Active" : "Inactive";
     }
     if (frontendData.equipo !== undefined && !backendData.organization)
-      backendData.organization = frontendData.equipo;
+      backendData.organization = normalizeUtf8Text(frontendData.equipo);
 
     return backendData;
   }

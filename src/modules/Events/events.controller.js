@@ -1,4 +1,4 @@
-﻿import { EventsService } from "./events.services.js";
+import { EventsService } from "./events.services.js";
 
 /**
  * @swagger
@@ -11,6 +11,30 @@ export class EventsController {
   constructor() {
     this.eventsService = new EventsService();
   }
+
+  getPublicEvents = async (req, res) => {
+    try {
+      const { limit = 1000 } = req.query;
+      const parsedLimit = Number.parseInt(limit, 10);
+
+      const result = await this.eventsService.getPublicEvents({
+        limit: Number.isNaN(parsedLimit) ? 1000 : parsedLimit,
+      });
+
+      return res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data.length} eventos publicados.`,
+      });
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        message: "Error interno del servidor al obtener eventos publicos.",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
 
   /**
    * @swagger
@@ -1360,4 +1384,3 @@ export class EventsController {
     }
   };
 }
-

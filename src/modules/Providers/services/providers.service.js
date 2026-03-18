@@ -1,4 +1,4 @@
-﻿// src/services/providers.service.js
+// src/services/providers.service.js
 import { ProvidersRepository } from "../repository/providers.repository.js";
 
 export class ProvidersService {
@@ -28,8 +28,7 @@ export class ProvidersService {
         pagination: result.pagination,
       };
     } catch (error) {
-      console.error("Service error - getAllProviders:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -50,8 +49,7 @@ export class ProvidersService {
         data: provider,
       };
     } catch (error) {
-      console.error("Service error - getProviderById:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -100,8 +98,7 @@ export class ProvidersService {
         message: `Proveedor "${providerData.razonSocial}" creado exitosamente.`,
       };
     } catch (error) {
-      console.error("Service error - createProvider:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -170,8 +167,7 @@ export class ProvidersService {
         message: `Proveedor "${updatedProvider.razonSocial}" actualizado exitosamente.`,
       };
     } catch (error) {
-      console.error("Service error - updateProvider:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -203,8 +199,7 @@ export class ProvidersService {
         message: `Proveedor "${deletedProvider.razonSocial}" eliminado exitosamente.`,
       };
     } catch (error) {
-      console.error("Service error - deleteProvider:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -218,8 +213,7 @@ export class ProvidersService {
         hasIngresos,
       };
     } catch (error) {
-      console.error("Service error - checkHasIngresos:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -245,8 +239,7 @@ export class ProvidersService {
         message: `Estado del proveedor "${updatedProvider.razonSocial}" cambiado a "${status}" exitosamente.`,
       };
     } catch (error) {
-      console.error("Service error - changeProviderStatus:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -269,8 +262,7 @@ export class ProvidersService {
         message: `El ${fieldName} "${nit}" ya está registrado.`,
       };
     } catch (error) {
-      console.error("Service error - checkNitAvailability:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -297,8 +289,7 @@ export class ProvidersService {
         message: `El ${fieldName} "${businessName}" ya está registrado.`,
       };
     } catch (error) {
-      console.error("Service error - checkBusinessNameAvailability:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -321,8 +312,7 @@ export class ProvidersService {
         message: `El email "${email}" ya está registrado.`,
       };
     } catch (error) {
-      console.error("Service error - checkEmailAvailability:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -343,8 +333,7 @@ export class ProvidersService {
         message: `El contacto "${contact}" ya está registrado.`,
       };
     } catch (error) {
-      console.error("Service error - checkContactAvailability:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -367,8 +356,7 @@ export class ProvidersService {
         message: `La identificación "${identification}" ya está en uso.`,
       };
     } catch (error) {
-      console.error("Service error - checkIdentificationAvailability:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -380,8 +368,7 @@ export class ProvidersService {
         data: stats,
       };
     } catch (error) {
-      console.error("Service error - getProviderStats:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -394,8 +381,7 @@ export class ProvidersService {
         message: "Tipos de documento obtenidos exitosamente.",
       };
     } catch (error) {
-      console.error("Service error - getDocumentTypes:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -409,8 +395,7 @@ export class ProvidersService {
         },
       };
     } catch (error) {
-      console.error("Service error - getReferenceData:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -437,8 +422,7 @@ export class ProvidersService {
         data: rulesWithTypes,
       };
     } catch (error) {
-      console.error("Service error - getDocumentValidationRules:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -450,8 +434,7 @@ export class ProvidersService {
         data: documentTypes
       };
     } catch (error) {
-      console.error('Service error - getDocumentTypes:', error);
-      throw error;
+throw error;
     }
   }
 
@@ -472,8 +455,7 @@ export class ProvidersService {
         message: `Se encontraron ${providers.length} proveedores para el reporte.`,
       };
     } catch (error) {
-      console.error("Error en getAllProvidersForReport:", error);
-      throw error;
+throw error;
     }
   }
 }

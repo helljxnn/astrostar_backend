@@ -1,6 +1,29 @@
 ﻿import { PrismaClient } from "../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
+const MATERIAL_WITH_CATEGORY_SELECT = {
+  id: true,
+  nombre: true,
+  categoriaId: true,
+  categoria: true,
+  descripcion: true,
+  stockFundacion: true,
+  stockEventos: true,
+  stockEventosReservado: true,
+  unidadMedida: true,
+  estado: true,
+  createdAt: true,
+  updatedAt: true,
+  createdBy: true,
+  updatedBy: true,
+  category: {
+    select: {
+      id: true,
+      nombre: true,
+      estado: true,
+    },
+  },
+};
 
 class MaterialsRepository {
   /**
@@ -243,14 +266,7 @@ class MaterialsRepository {
                 estado: "Activo",
         createdBy: userId,
       },
-      include: {
-        category: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
-      },
+      select: MATERIAL_WITH_CATEGORY_SELECT,
     });
 
     // Add calculated fields
@@ -329,14 +345,7 @@ class MaterialsRepository {
     const materialActualizado = await prisma.material.update({
       where: { id: parseInt(id) },
       data: updateData,
-      include: {
-        category: {
-          select: {
-            id: true,
-            nombre: true,
-          },
-        },
-      },
+      select: MATERIAL_WITH_CATEGORY_SELECT,
     });
 
     // Add calculated total stock
@@ -364,6 +373,7 @@ class MaterialsRepository {
         estado: newStatus,
         updatedBy: userId,
       },
+      select: MATERIAL_WITH_CATEGORY_SELECT,
     });
 
     // Add calculated total stock
@@ -454,6 +464,14 @@ class MaterialsRepository {
       // 1. Get material with lock
       const material = await tx.material.findUnique({
         where: { id: parseInt(materialId) },
+        select: {
+          id: true,
+          nombre: true,
+          categoria: true,
+          estado: true,
+          stockFundacion: true,
+          stockEventos: true,
+        },
       });
 
       if (!material) {
@@ -534,14 +552,7 @@ class MaterialsRepository {
         data: {
           [stockField]: newStockValue,
         },
-        include: {
-          category: {
-            select: {
-              id: true,
-              nombre: true,
-            },
-          },
-        },
+        select: MATERIAL_WITH_CATEGORY_SELECT,
       });
 
       // 6. Map discharge type to enum value
@@ -622,6 +633,14 @@ class MaterialsRepository {
       // 1. Get material with lock
       const material = await tx.material.findUnique({
         where: { id: parseInt(materialId) },
+        select: {
+          id: true,
+          nombre: true,
+          categoria: true,
+          estado: true,
+          stockFundacion: true,
+          stockEventos: true,
+        },
       });
 
       if (!material) {
@@ -705,14 +724,7 @@ class MaterialsRepository {
           [fromField]: newFromStock,
           [toField]: newToStock,
         },
-        include: {
-          category: {
-            select: {
-              id: true,
-              nombre: true,
-            },
-          },
-        },
+        select: MATERIAL_WITH_CATEGORY_SELECT,
       });
 
       // 7. Create transfer movement

@@ -1,4 +1,4 @@
-﻿import categoriesService from '../services/categories.service.js';
+import categoriesService from '../services/categories.service.js';
 
 class CategoriesController {
   /**
@@ -18,8 +18,7 @@ class CategoriesController {
 
       return res.json(result);
     } catch (error) {
-      console.error('CategoriesController.getAll - Error:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor al obtener categorías',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -36,8 +35,7 @@ class CategoriesController {
       const result = await categoriesService.getActiveCategories();
       return res.json(result);
     } catch (error) {
-      console.error('CategoriesController.getActive - Error:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -68,8 +66,7 @@ class CategoriesController {
 
       return res.json(result);
     } catch (error) {
-      console.error('CategoriesController.getById - Error:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -100,8 +97,7 @@ class CategoriesController {
 
       return res.status(201).json(result);
     } catch (error) {
-      console.error('CategoriesController.create - Error:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor al crear categoría',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -140,8 +136,7 @@ class CategoriesController {
 
       return res.json(result);
     } catch (error) {
-      console.error('CategoriesController.update - Error:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor al actualizar categoría',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -180,8 +175,7 @@ class CategoriesController {
 
       return res.json(result);
     } catch (error) {
-      console.error('CategoriesController.toggleStatus - Error:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -212,8 +206,7 @@ class CategoriesController {
 
       return res.json(result);
     } catch (error) {
-      console.error('CategoriesController.delete - Error:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor al eliminar categoría',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -243,8 +236,7 @@ class CategoriesController {
 
       return res.json(result);
     } catch (error) {
-      console.error('CategoriesController.checkName - Error:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -271,8 +263,7 @@ class CategoriesController {
         message: `Se encontraron ${result.data.length} categorías para el reporte.`,
       });
     } catch (error) {
-      console.error('CategoriesController.getAllForReport - Error:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error interno del servidor al obtener categorías para reporte',
         error: process.env.NODE_ENV === 'development' ? error.message : undefined,

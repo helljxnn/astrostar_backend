@@ -1,4 +1,4 @@
-﻿import { DonorsSponsorsService } from "../services/donorsSponsors.services.js";
+import { DonorsSponsorsService } from "../services/donorsSponsors.services.js";
 
 export class DonorsSponsorsController {
   constructor() {
@@ -32,8 +32,7 @@ export class DonorsSponsorsController {
         message: `Se encontraron ${result.pagination?.total || 0} registros.`,
       });
     } catch (error) {
-      console.error("Error in DonorsSponsorsController.getAll:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message:
           "Error interno del servidor al obtener donantes/patrocinadores.",
@@ -58,8 +57,7 @@ export class DonorsSponsorsController {
         message: "Registro encontrado exitosamente.",
       });
     } catch (error) {
-      console.error("Error in DonorsSponsorsController.getById:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener el registro.",
         error:
@@ -73,9 +71,7 @@ export class DonorsSponsorsController {
       const result = await this.donorsSponsorsService.create(req.body);
       res.status(201).json(result);
     } catch (error) {
-      console.error("Error in DonorsSponsorsController.create:", error);
-
-      if (
+if (
         error.message?.includes("identificaci\u00f3n") ||
         error.message?.includes("correo")
       ) {
@@ -104,9 +100,7 @@ export class DonorsSponsorsController {
       
       res.status(201).json(result);
     } catch (error) {
-      console.error("❌ [LANDING] Error en createFromLanding:", error.message);
-      
-      const message =
+const message =
         error.message ||
         "Error interno del servidor al registrar el donante.";
       const status =
@@ -131,9 +125,7 @@ export class DonorsSponsorsController {
 
       res.json(result);
     } catch (error) {
-      console.error("Error in DonorsSponsorsController.update:", error);
-
-      if (
+if (
         error.message?.includes("identificaci\u00f3n") ||
         error.message?.includes("correo")
       ) {
@@ -163,8 +155,7 @@ export class DonorsSponsorsController {
 
       res.json(result);
     } catch (error) {
-      console.error("Error in DonorsSponsorsController.delete:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al eliminar el registro.",
         error:
@@ -185,8 +176,7 @@ export class DonorsSponsorsController {
 
       res.json(result);
     } catch (error) {
-      console.error("Error in DonorsSponsorsController.changeStatus:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al cambiar el estado.",
         error:
@@ -212,11 +202,7 @@ export class DonorsSponsorsController {
           : result.message,
       });
     } catch (error) {
-      console.error(
-        "Error in DonorsSponsorsController.checkIdentification:",
-        error
-      );
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno al verificar la identificaci\u00f3n.",
         error:
@@ -239,8 +225,7 @@ export class DonorsSponsorsController {
         message: result.available ? "Correo disponible." : result.message,
       });
     } catch (error) {
-      console.error("Error in DonorsSponsorsController.checkEmail:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno al verificar el correo.",
         error:
@@ -258,8 +243,7 @@ export class DonorsSponsorsController {
         message: "Estad\u00edsticas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error("Error in DonorsSponsorsController.getStats:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno al obtener estad\u00edsticas.",
         error:
@@ -277,8 +261,7 @@ export class DonorsSponsorsController {
         message: "Datos de referencia obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error("Error in DonorsSponsorsController.getReferenceData:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno al obtener datos de referencia.",
         error:
