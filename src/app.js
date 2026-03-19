@@ -69,7 +69,7 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.warn(`⚠️  CORS blocked request from origin: ${origin}`);
+        console.warn(`[WARN] CORS blocked request from origin: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -95,10 +95,10 @@ app.use(
   }),
 );
 
-// 💾 Servir imágenes subidas de categorías
+// Servir imagenes subidas de categorias
 app.use("/uploads/categories", express.static("src/uploads/categories"));
 
-// 💾 Servir assets públicos (imágenes para RSVP, etc.)
+// Servir assets publicos (imagenes para RSVP, etc.)
 app.use("/public", express.static("src/public"));
 
 // Swagger documentation - DEBE IR ANTES de las rutas API
