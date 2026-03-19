@@ -4,13 +4,17 @@ import { UploadController } from "./upload.controller.js";
 import upload from "../../middlewares/upload.middleware.js";
 import { authenticateToken } from "../../middlewares/auth.js";
 import { checkPermissions } from "../../middlewares/checkPermissions.js";
+import {
+  publicLimiter,
+  uploadLimiter,
+} from "../../middlewares/rateLimiter.js";
 
 const router = express.Router();
 const eventsController = new EventsController();
 const uploadController = new UploadController();
 
 // Endpoint público para landing (sin autenticación)
-router.get("/public", eventsController.getPublicEvents);
+router.get("/public", publicLimiter, eventsController.getPublicEvents);
 
 // El resto de endpoints sí requieren autenticación
 router.use(authenticateToken);
@@ -45,6 +49,7 @@ router.use(authenticateToken);
  */
 router.post(
   "/upload/image",
+  uploadLimiter,
   checkPermissions("eventsManagement", "Editar"),
   upload.single("image"),
   uploadController.uploadEventImage,
@@ -73,6 +78,7 @@ router.post(
  */
 router.post(
   "/upload/schedule",
+  uploadLimiter,
   checkPermissions("eventsManagement", "Editar"),
   upload.single("schedule"),
   uploadController.uploadEventSchedule,
@@ -164,6 +170,7 @@ router.get(
  */
 router.get(
   "/check-name",
+  publicLimiter,
   checkPermissions("eventsManagement", "Ver"),
   eventsController.checkEventName
 );
