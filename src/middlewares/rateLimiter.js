@@ -34,7 +34,7 @@ export const apiLimiter = rateLimit({
   legacyHeaders: false, // Deshabilita headers `X-RateLimit-*`
   // Handler cuando se excede el límite
   handler: (req, res) => {
-    console.warn(`⚠️  Rate limit excedido para IP: ${req.ip}`);
+    console.warn(`[WARN] Rate limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       success: false,
       message:
@@ -66,7 +66,7 @@ export const authLimiter = rateLimit({
   skipSuccessfulRequests: true, // No contar requests exitosos
   handler: (req, res) => {
     console.warn(
-      `⚠️  Intentos de login excedidos para IP: ${req.ip}, Email: ${req.body?.email}`,
+      `[WARN] Login attempts exceeded for IP: ${req.ip}, Email: ${req.body?.email}`,
     );
     res.status(429).json({
       success: false,
@@ -92,7 +92,7 @@ export const createLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    console.warn(`⚠️  Límite de creación excedido para IP: ${req.ip}`);
+    console.warn(`[WARN] Create limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       success: false,
       message: "Límite de creación alcanzado. Por favor intenta más tarde.",
@@ -133,7 +133,7 @@ export const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    console.warn(`⚠️  Límite de uploads excedido para IP: ${req.ip}`);
+    console.warn(`[WARN] Upload limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       success: false,
       message:

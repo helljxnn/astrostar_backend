@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { dashboardController } from "../controllers/dashboard.controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
-import { checkPermissions } from "../../../middlewares/permissions.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
 
 const router = Router();
 
