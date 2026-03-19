@@ -1,6 +1,5 @@
 ﻿// 📁 Services/Employees/EmployeesSchedule/repository/schedule.repository.js
-import { PrismaClient } from '../../../../../generated/prisma/index.js';
-const prisma = new PrismaClient();
+import prisma from "../../../../../config/database.js";
 
 export class ScheduleRepository {
   async findEmployeeByUserId(userId) {
@@ -21,7 +20,7 @@ export class ScheduleRepository {
     const skip = (page - 1) * limit;
     const where = {
       ...(employeeId && { employeeId: parseInt(employeeId) }),
-      ...(dayOfWeek && { dayOfWeek })
+      ...(dayOfWeek && { dayOfWeek }),
     };
 
     const [schedules, total] = await Promise.all([
@@ -44,25 +43,22 @@ export class ScheduleRepository {
                   role: {
                     select: {
                       id: true,
-                      name: true
-                    }
-                  }
-                }
-              }
-            }
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
           },
           novelties: {
             orderBy: {
-              date: 'desc'
-            }
-          }
+              date: "desc",
+            },
+          },
         },
-        orderBy: [
-          { scheduleDate: 'desc' },
-          { startTime: 'asc' }
-        ]
+        orderBy: [{ scheduleDate: "desc" }, { startTime: "asc" }],
       }),
-      prisma.employeeSchedule.count({ where })
+      prisma.employeeSchedule.count({ where }),
     ]);
 
     return {
@@ -72,8 +68,8 @@ export class ScheduleRepository {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -98,19 +94,19 @@ export class ScheduleRepository {
                 role: {
                   select: {
                     id: true,
-                    name: true
-                  }
-                }
-              }
-            }
-          }
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
         },
         novelties: {
           orderBy: {
-            date: 'desc'
-          }
-        }
-      }
+            date: "desc",
+          },
+        },
+      },
     });
   }
 
@@ -123,26 +119,29 @@ export class ScheduleRepository {
       include: {
         employee: {
           include: {
-            user: true
-          }
+            user: true,
+          },
         },
         novelties: {
           orderBy: {
-            date: 'desc'
-          }
-        }
+            date: "desc",
+          },
+        },
       },
-      orderBy: [
-        { scheduleDate: 'desc' },
-        { startTime: 'asc' }
-      ]
+      orderBy: [{ scheduleDate: "desc" }, { startTime: "asc" }],
     });
   }
 
   /**
    * Verificar conflicto de horarios
    */
-  async checkScheduleConflict(employeeId, scheduleDate, startTime, endTime, excludeScheduleId = null) {
+  async checkScheduleConflict(
+    employeeId,
+    scheduleDate,
+    startTime,
+    endTime,
+    excludeScheduleId = null,
+  ) {
     const where = {
       employeeId: parseInt(employeeId),
       scheduleDate: new Date(scheduleDate),
@@ -150,23 +149,20 @@ export class ScheduleRepository {
         {
           AND: [
             { startTime: { lte: startTime } },
-            { endTime: { gt: startTime } }
-          ]
+            { endTime: { gt: startTime } },
+          ],
         },
         {
-          AND: [
-            { startTime: { lt: endTime } },
-            { endTime: { gte: endTime } }
-          ]
+          AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }],
         },
         {
           AND: [
             { startTime: { gte: startTime } },
-            { endTime: { lte: endTime } }
-          ]
-        }
+            { endTime: { lte: endTime } },
+          ],
+        },
       ],
-      ...(excludeScheduleId && { id: { not: parseInt(excludeScheduleId) } })
+      ...(excludeScheduleId && { id: { not: parseInt(excludeScheduleId) } }),
     };
 
     return await prisma.employeeSchedule.findFirst({ where });
@@ -181,10 +177,10 @@ export class ScheduleRepository {
       include: {
         employee: {
           include: {
-            user: true
-          }
-        }
-      }
+            user: true,
+          },
+        },
+      },
     });
   }
 
@@ -198,15 +194,15 @@ export class ScheduleRepository {
       include: {
         employee: {
           include: {
-            user: true
-          }
+            user: true,
+          },
         },
         novelties: {
           orderBy: {
-            date: 'desc'
-          }
-        }
-      }
+            date: "desc",
+          },
+        },
+      },
     });
   }
 
@@ -215,7 +211,7 @@ export class ScheduleRepository {
    */
   async createNovelty(noveltyData) {
     return await prisma.employeeScheduleNovelty.create({
-      data: noveltyData
+      data: noveltyData,
     });
   }
 
@@ -225,11 +221,11 @@ export class ScheduleRepository {
   async delete(id) {
     try {
       await prisma.employeeSchedule.delete({
-        where: { id: parseInt(id) }
+        where: { id: parseInt(id) },
       });
       return true;
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (error.code === "P2025") {
         return false;
       }
       throw error;
@@ -241,9 +237,9 @@ export class ScheduleRepository {
    */
   async getActiveEmployees() {
     return await prisma.employee.findMany({
-      where: { 
-        status: 'Activo',
-        user: { status: 'Active' }
+      where: {
+        status: "Activo",
+        user: { status: "Active" },
       },
       include: {
         user: {
@@ -257,18 +253,17 @@ export class ScheduleRepository {
             identification: true,
             role: {
               select: {
-                name: true
-              }
-            }
-          }
-        }
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         user: {
-          firstName: 'asc'
-        }
-      }
+          firstName: "asc",
+        },
+      },
     });
   }
 }
-
