@@ -1,6 +1,4 @@
-﻿import { PrismaClient } from "../../../../generated/prisma/index.js";
-
-const prisma = new PrismaClient();
+﻿import prisma from "../../../../config/database.js";
 
 const MATERIAL_SELECT = {
   id: true,
@@ -71,7 +69,7 @@ class EventMaterialsConsumableService {
         data: materials,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -107,7 +105,9 @@ throw error;
       // 2. Process each donation
       for (const donation of donations) {
         for (const detail of donation.details) {
-          const detailRecordType = String(detail.recordType || "").toLowerCase();
+          const detailRecordType = String(
+            detail.recordType || "",
+          ).toLowerCase();
           if (detailRecordType && detailRecordType !== "item") {
             continue;
           }
@@ -521,6 +521,3 @@ throw error;
 }
 
 export default new EventMaterialsConsumableService();
-
-
-

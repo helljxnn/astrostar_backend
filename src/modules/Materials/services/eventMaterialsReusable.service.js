@@ -1,6 +1,4 @@
-import { PrismaClient } from "../../../../generated/prisma/index.js";
-
-const prisma = new PrismaClient();
+import prisma from "../../../../config/database.js";
 
 const MATERIAL_SELECT = {
   id: true,
@@ -45,7 +43,7 @@ class EventMaterialsReusableService {
         data: materials,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -83,7 +81,8 @@ throw error;
         return {
           success: false,
           statusCode: 400,
-          message: "Este material no tiene stock en fundación. Solo los materiales con stock de fundación pueden planificarse como reutilizables.",
+          message:
+            "Este material no tiene stock en fundación. Solo los materiales con stock de fundación pueden planificarse como reutilizables.",
         };
       }
 
@@ -142,7 +141,7 @@ throw error;
         message: `Successfully planned ${cantidad} units of "${material.nombre}" for event`,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -248,7 +247,7 @@ throw error;
         })),
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -285,7 +284,7 @@ throw error;
         message: `Successfully removed ${assignment.cantidad} units`,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -312,7 +311,7 @@ throw error;
         data: result,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -400,7 +399,7 @@ throw error;
         data: availabilityMap,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -518,7 +517,7 @@ throw error;
         },
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -638,7 +637,7 @@ throw error;
         },
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -712,4 +711,3 @@ throw error;
 }
 
 export default new EventMaterialsReusableService();
-
