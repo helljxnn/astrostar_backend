@@ -251,7 +251,7 @@ export class EventsRepository {
           // Solo loguear errores en desarrollo
           if (process.env.NODE_ENV === "development") {
             console.error(
-              `Ã¢ÂÅ’ Error transformando evento ${index + 1}/${services.length}:`,
+              `[ERROR] Error transforming event ${index + 1}/${services.length}:`,
               {
                 id: service.id,
                 name: sanitizeText(service.name),

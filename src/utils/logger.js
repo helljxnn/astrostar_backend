@@ -18,33 +18,33 @@ const isProduction = process.env.NODE_ENV === "production";
 const logger = {
   error: (...args) => {
     if (currentLevel >= LOG_LEVELS.error) {
-      console.error("❌", ...args);
+      console.error("[ERROR]", ...args);
     }
   },
 
   warn: (...args) => {
     if (currentLevel >= LOG_LEVELS.warn) {
-      console.warn("⚠️", ...args);
+      console.warn("[WARN]", ...args);
     }
   },
 
   info: (...args) => {
     if (currentLevel >= LOG_LEVELS.info) {
-      console.log("ℹ️", ...args);
+      console.log("[INFO]", ...args);
     }
   },
 
   debug: (...args) => {
     if (currentLevel >= LOG_LEVELS.debug) {
-      console.log("🔍", ...args);
+      console.log("[DEBUG]", ...args);
     }
   },
 
   // Método especial para requests HTTP (solo en desarrollo)
   http: (method, url, statusCode) => {
     if (!isProduction && currentLevel >= LOG_LEVELS.debug) {
-      const emoji = statusCode >= 400 ? "❌" : "✅";
-      console.log(`${emoji} ${method} ${url} - ${statusCode}`);
+      const level = statusCode >= 400 ? "[ERROR]" : "[OK]";
+      console.log(`${level} ${method} ${url} - ${statusCode}`);
     }
   },
 };
