@@ -11,6 +11,7 @@ node_modules
 .env.development
 .env.test
 .env.example
+.env.backup
 # Archivos temporales y logs
 *.log
 logs/

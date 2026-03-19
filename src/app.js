@@ -58,6 +58,11 @@ const allowedOrigins =
 app.use(
   cors({
     origin: (origin, callback) => {
+      // En desarrollo, permitir todas las conexiones (incluyendo móvil)
+      if (process.env.NODE_ENV !== "production") {
+        return callback(null, true);
+      }
+
       // Permitir requests sin origin (mobile apps, Postman, curl, etc.)
       if (!origin) return callback(null, true);
 
@@ -161,4 +166,3 @@ app.use((error, req, res, next) => {
 });
 
 export default app;
-
