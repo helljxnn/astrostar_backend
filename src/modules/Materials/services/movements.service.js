@@ -1,4 +1,4 @@
-﻿import movementsRepository from "../repository/movements.repository.js";
+import movementsRepository from "../repository/movements.repository.js";
 import materialsRepository from "../repository/materials.repository.js";
 
 class MovementsService {
@@ -32,8 +32,7 @@ class MovementsService {
         pages: result.pages,
       };
     } catch (error) {
-      console.error("Service error - getAll:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -57,8 +56,7 @@ class MovementsService {
         data: movement,
       };
     } catch (error) {
-      console.error("Service error - getById:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -122,9 +120,7 @@ class MovementsService {
         message: `${data.tipo_movimiento} movement registered successfully`,
       };
     } catch (error) {
-      console.error("❌ Error registering movement:", error.message);
-
-      // Specific errors
+// Specific errors
       if (
         error.message.includes("Insufficient stock") ||
         error.message.includes("Stock insuficiente")
@@ -206,8 +202,7 @@ class MovementsService {
         message: "Movimiento actualizado exitosamente",
       };
     } catch (error) {
-      console.error("❌ Error al actualizar movimiento:", error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -252,8 +247,7 @@ class MovementsService {
         message: "Movimiento eliminado exitosamente",
       };
     } catch (error) {
-      console.error("❌ Error al eliminar movimiento:", error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -272,8 +266,7 @@ class MovementsService {
         data: movements,
       };
     } catch (error) {
-      console.error("Service error - getMaterialHistory:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -293,8 +286,7 @@ class MovementsService {
         data: stats,
       };
     } catch (error) {
-      console.error("Service error - getStatistics:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -314,8 +306,7 @@ class MovementsService {
         data: movements,
       };
     } catch (error) {
-      console.error("Service error - getByDateRange:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -331,8 +322,7 @@ class MovementsService {
         data: movements,
       };
     } catch (error) {
-      console.error("Service error - getRecentMovements:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -451,8 +441,7 @@ class MovementsService {
         message: `Se encontraron ${movements.length} movimientos para el reporte.`,
       };
     } catch (error) {
-      console.error("Error en getAllForReport:", error);
-      throw error;
+throw error;
     }
   }
 }

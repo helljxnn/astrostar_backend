@@ -8,6 +8,11 @@ import { checkPermissions } from "../../middlewares/checkPermissions.js";
 const router = express.Router();
 const eventsController = new EventsController();
 const uploadController = new UploadController();
+
+// Endpoint público para landing (sin autenticación)
+router.get("/public", eventsController.getPublicEvents);
+
+// El resto de endpoints sí requieren autenticación
 router.use(authenticateToken);
 
 /**

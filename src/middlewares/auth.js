@@ -45,6 +45,12 @@ export const authenticateToken = async (req, res, next) => {
             status: true,
             guardianId: true
           }
+        },
+        employee: {
+          select: {
+            id: true,
+            status: true
+          }
         }
       }
     });
@@ -121,6 +127,12 @@ export const optionalAuth = async (req, res, next) => {
             id: true,
             status: true,
             guardianId: true
+          }
+        },
+        employee: {
+          select: {
+            id: true,
+            status: true
           }
         }
       }

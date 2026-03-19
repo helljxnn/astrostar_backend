@@ -1,4 +1,4 @@
-﻿import { TeamsService } from "../services/teams.service.js";
+import { TeamsService } from "../services/teams.service.js";
 
 export class TeamsController {
   constructor() {

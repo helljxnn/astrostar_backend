@@ -1,4 +1,4 @@
-﻿import { ProvidersService } from "../services/providers.service.js";
+import { ProvidersService } from "../services/providers.service.js";
 
 export class ProvidersController {
   constructor() {
@@ -30,8 +30,7 @@ export class ProvidersController {
         message: `Se encontraron ${result.pagination?.total || 0} proveedores.`,
       });
     } catch (error) {
-      console.error("Error in getAllProviders controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener proveedores",
         error:
@@ -63,8 +62,7 @@ export class ProvidersController {
         message: "Proveedor encontrado exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getProviderById controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener proveedor",
         error:
@@ -88,9 +86,7 @@ export class ProvidersController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in createProvider controller:", error);
-
-      if (error.message.includes("ya está registrado")) {
+if (error.message.includes("ya está registrado")) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -130,9 +126,7 @@ export class ProvidersController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in updateProvider controller:", error);
-
-      if (error.message.includes("ya está registrado")) {
+if (error.message.includes("ya está registrado")) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -170,9 +164,7 @@ export class ProvidersController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in deleteProvider controller:", error);
-
-      if (error.message.includes("No se puede eliminar")) {
+if (error.message.includes("No se puede eliminar")) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -220,8 +212,7 @@ export class ProvidersController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in changeProviderStatus controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al cambiar estado",
       });
@@ -258,8 +249,7 @@ export class ProvidersController {
           : result.message,
       });
     } catch (error) {
-      console.error("Error checking NIT availability:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad",
         error:
@@ -298,8 +288,7 @@ export class ProvidersController {
           : result.message,
       });
     } catch (error) {
-      console.error("Error checking business name availability:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad",
         error:
@@ -330,8 +319,7 @@ export class ProvidersController {
         message: result.available ? "Email disponible" : result.message,
       });
     } catch (error) {
-      console.error("Error checking email availability:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad del email",
         error:
@@ -364,8 +352,7 @@ export class ProvidersController {
           : result.message,
       });
     } catch (error) {
-      console.error("Error checking contact availability:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad del contacto",
         error:
@@ -384,8 +371,7 @@ export class ProvidersController {
         message: "Estadísticas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getProviderStats controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener estadísticas",
         error:
@@ -404,8 +390,7 @@ export class ProvidersController {
         message: "Tipos de documento obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getDocumentTypes controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener tipos de documento",
         error:
@@ -424,8 +409,7 @@ export class ProvidersController {
         message: "Datos de referencia obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getReferenceData controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener datos de referencia",
         error:
@@ -451,8 +435,7 @@ export class ProvidersController {
           : result.message,
       });
     } catch (error) {
-      console.error("Error checking identification availability:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al verificar identificación.",
         error:
@@ -471,8 +454,7 @@ export class ProvidersController {
         message: "Reglas de validación obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getDocumentValidationRules controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener reglas de validación",
         error:
@@ -499,8 +481,7 @@ export class ProvidersController {
         hasIngresos: result.hasIngresos,
       });
     } catch (error) {
-      console.error("Error in checkHasIngresos controller:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error al verificar ingresos asociados",
         error:
@@ -525,8 +506,7 @@ export class ProvidersController {
 
         return res.json(result);
       } catch (error) {
-        console.error("Controller error - getAllProvidersForReport:", error);
-        return res.status(500).json({
+return res.status(500).json({
           success: false,
           message: "Error interno del servidor al obtener proveedores para reporte",
           error: process.env.NODE_ENV === "development" ? error.message : undefined,

@@ -1,4 +1,4 @@
-﻿import prisma from "../../../../config/database.js";
+import prisma from "../../../../config/database.js";
 
 export class GuardiansRepository {
   
@@ -75,8 +75,7 @@ export class GuardiansRepository {
       
       return result;
     } catch (error) {
-      console.error('❌ Error en create():', error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -123,8 +122,7 @@ export class GuardiansRepository {
 
       return result;
     } catch (error) {
-      console.error('❌ Error en update():', error.message);
-      throw error;
+throw error;
     }
   }
 
@@ -138,8 +136,7 @@ export class GuardiansRepository {
         nombreCompleto: `${deletedGuardian.firstName} ${deletedGuardian.lastName}`,
       };
     } catch (error) {
-      console.error('❌ Error en delete():', error);
-      throw error;
+throw error;
     }
   }
 

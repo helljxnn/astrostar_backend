@@ -1,4 +1,4 @@
-﻿import materialsRepository from "../repository/materials.repository.js";
+import materialsRepository from "../repository/materials.repository.js";
 import categoriesRepository from "../repository/categories.repository.js";
 
 class MaterialsService {
@@ -34,8 +34,7 @@ class MaterialsService {
         },
       };
     } catch (error) {
-      console.error("Service error - getAll:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -59,8 +58,7 @@ class MaterialsService {
         data: material,
       };
     } catch (error) {
-      console.error("Service error - getById:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -113,8 +111,7 @@ class MaterialsService {
         message: `Material "${material.nombre}" creado exitosamente`,
       };
     } catch (error) {
-      console.error("Service error - create:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -186,8 +183,7 @@ class MaterialsService {
           message: error.message,
         };
       }
-      console.error("Service error - update:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -204,8 +200,7 @@ class MaterialsService {
         message: `Estado actualizado a "${material.estado}"`,
       };
     } catch (error) {
-      console.error("Service error - toggleStatus:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -247,9 +242,7 @@ class MaterialsService {
           message: error.message,
         };
       }
-
-      console.error("Service error - delete:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -268,8 +261,7 @@ class MaterialsService {
         data: history,
       };
     } catch (error) {
-      console.error("Service error - getMovementHistory:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -292,8 +284,7 @@ class MaterialsService {
           : "Nombre disponible",
       };
     } catch (error) {
-      console.error("Service error - checkNameAvailability:", error);
-      throw error;
+throw error;
     }
   }
 
@@ -383,17 +374,32 @@ class MaterialsService {
         message: `Baja registrada exitosamente. ${data.cantidad} unidad(es) de "${material.nombre}" dadas de baja.`,
       };
     } catch (error) {
-      console.error("Service error - registerDischarge:", error);
+      const message = error?.message || "Error al registrar la baja";
 
-      // Specific errors
+      if (message.includes("Material not found")) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: "Material no encontrado",
+        };
+      }
+
       if (
-        error.message.includes("Stock insuficiente") ||
-        error.message.includes("insuficiente")
+        message.includes("Stock insuficiente") ||
+        message.includes("insuficiente") ||
+        message.includes("No se puede dar de baja") ||
+        message.includes("obligatoria") ||
+        message.includes("inválido") ||
+        message.includes("invalido") ||
+        message.includes("debe ser") ||
+        message.includes("descripción") ||
+        message.includes("descripcion") ||
+        message.includes("origen del inventario")
       ) {
         return {
           success: false,
           statusCode: 400,
-          message: error.message,
+          message,
         };
       }
 
@@ -420,16 +426,25 @@ class MaterialsService {
       throw new Error("El tipo de baja es obligatorio");
     }
 
+    const normalizeTipoBaja = (value = "") =>
+      String(value)
+        .trim()
+        .toUpperCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
     const validTypes = [
-      "Daño o Deterioro",
-      "Pérdida",
-      "Robo",
-      "Ajuste de Inventario",
-      "Otro",
+      "DANO O DETERIORO",
+      "PERDIDA",
+      "ROBO",
+      "AJUSTE DE INVENTARIO",
+      "OTRO",
     ];
-    if (!validTypes.includes(data.tipo_baja)) {
+    const tipoBajaNormalizado = normalizeTipoBaja(data.tipo_baja);
+
+    if (!validTypes.includes(tipoBajaNormalizado)) {
       throw new Error(
-        `Tipo de baja inválido. Debe ser uno de: ${validTypes.join(", ")}`,
+        `Tipo de baja invalido. Debe ser uno de: ${validTypes.join(", ")}`,
       );
     }
 
@@ -439,9 +454,9 @@ class MaterialsService {
     }
 
     // If "Otro", validate more detailed description
-    if (data.tipo_baja === "Otro" && data.descripcion.trim().length < 10) {
+    if (tipoBajaNormalizado === "OTRO" && data.descripcion.trim().length < 10) {
       throw new Error(
-        'Para el tipo "Otro", la descripción debe tener al menos 10 caracteres',
+        'Para el tipo "Otro", la descripcion debe tener al menos 10 caracteres',
       );
     }
 
@@ -534,8 +549,7 @@ class MaterialsService {
         },
       };
     } catch (error) {
-      console.error("Service error - checkFutureAssignments:", error);
-      throw error;
+throw error;
     } finally {
       await prismaInstance.$disconnect();
     }
@@ -566,8 +580,7 @@ class MaterialsService {
         message: `Se encontraron ${materials.length} materiales para el reporte.`,
       };
     } catch (error) {
-      console.error("Error en getAllForReport:", error);
-      throw error;
+throw error;
     }
   }
 }

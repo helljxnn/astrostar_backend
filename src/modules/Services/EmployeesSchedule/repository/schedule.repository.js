@@ -3,6 +3,17 @@ import { PrismaClient } from '../../../../../generated/prisma/index.js';
 const prisma = new PrismaClient();
 
 export class ScheduleRepository {
+  async findEmployeeByUserId(userId) {
+    if (!userId) return null;
+    return prisma.employee.findUnique({
+      where: { userId: parseInt(userId) },
+      select: {
+        id: true,
+        status: true,
+      },
+    });
+  }
+
   /**
    * Obtener todos los horarios con filtros y paginación
    */

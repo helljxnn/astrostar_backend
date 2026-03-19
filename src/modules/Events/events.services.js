@@ -1,4 +1,4 @@
-﻿import { EventsRepository } from "./events.repository.js";
+import { EventsRepository } from "./events.repository.js";
 import prisma from "../../config/database.js";
 
 export class EventsService {
@@ -19,6 +19,23 @@ export class EventsService {
     } catch (error) {
       console.error("❌ Error en EventsService.getAllEvents:", error.message);
       console.error("Stack:", error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener eventos publicados para landing
+   */
+  async getPublicEvents(filters = {}) {
+    try {
+      await this.updateFinishedEventsStatus();
+
+      const events = await this.eventsRepository.findPublicEvents(filters);
+      return {
+        success: true,
+        data: events,
+      };
+    } catch (error) {
       throw error;
     }
   }
@@ -470,17 +487,33 @@ export class EventsService {
 
     // Validar teléfono
     if (data.phone !== undefined && data.phone !== null && data.phone !== "") {
-      // Remover espacios, guiones y paréntesis para validar
-      const cleanPhone = data.phone.replace(/[\s\-\(\)]/g, "");
+      const rawPhone = String(data.phone).trim();
+      const cleanPhone = rawPhone.replace(/[\s\-\(\)]/g, "");
 
-      // Validar formato: debe empezar con + (opcional) seguido de números
-      if (!/^\+?\d{7,15}$/.test(cleanPhone)) {
-        errors.push(
-          "El teléfono debe contener entre 7 y 15 dígitos, puede incluir + al inicio",
-        );
+      if (cleanPhone.startsWith("+") && !cleanPhone.startsWith("+57")) {
+        errors.push("Solo se permite el indicativo +57");
       }
 
-      if (data.phone.length > 20) {
+      const localPhone = cleanPhone.startsWith("+57")
+        ? cleanPhone.slice(3)
+        : cleanPhone.startsWith("57")
+          ? cleanPhone.slice(2)
+          : cleanPhone;
+
+      if (!/^\d+$/.test(localPhone)) {
+        errors.push("El teléfono solo puede contener números");
+      } else {
+        const isMobile = localPhone.length === 10 && /^3/.test(localPhone);
+        const isLandline = localPhone.length === 7 && /^[2-8]/.test(localPhone);
+
+        if (!isMobile && !isLandline) {
+          errors.push(
+            "Número inválido. Celular: 3XXXXXXXXX, fijo: 2XXXXXXX-8XXXXXXX",
+          );
+        }
+      }
+
+      if (rawPhone.length > 20) {
         errors.push("El teléfono no puede exceder 20 caracteres");
       }
     }
@@ -900,4 +933,3 @@ export class EventsService {
     }
   }
 }
-

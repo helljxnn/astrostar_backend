@@ -15,8 +15,7 @@ class EventMaterialsSummaryController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - getSummary:", error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: "Error retrieving materials summary",
         error: error.message,

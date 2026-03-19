@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Servicio de Email para Deportistas - AstroStar
  * Maneja todos los emails relacionados con deportistas
  */
@@ -249,8 +249,7 @@ Este es un email automático del sistema AstroStar.
       const result = await this.sendMailWithFallback(mailOptions);
       return result;
     } catch (error) {
-      console.error("Error sending appointment calendar email:", error);
-      return { success: false, error: error.message };
+return { success: false, error: error.message };
     }
   }
 

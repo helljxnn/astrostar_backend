@@ -11,8 +11,7 @@ class EventMaterialsReusableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - getByEvent:", error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: "Error retrieving reusable materials",
         error: error.message,
@@ -42,8 +41,7 @@ class EventMaterialsReusableController {
 
       return res.status(201).json(result);
     } catch (error) {
-      console.error("Controller error - assignMaterial:", error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: "Error assigning reusable material",
         error: error.message,
@@ -72,8 +70,7 @@ class EventMaterialsReusableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - removeAssignment:", error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: "Error removing assignment",
         error: error.message,
@@ -106,8 +103,7 @@ class EventMaterialsReusableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - checkAvailability:", error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: "Error checking availability",
         error: error.message,
@@ -150,8 +146,7 @@ class EventMaterialsReusableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - checkBulkAvailability:", error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: "Error checking bulk availability",
         error: error.message,
@@ -178,8 +173,7 @@ class EventMaterialsReusableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error("Controller error - getMaterialAssignments:", error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: "Error retrieving material assignments",
         error: error.message,
@@ -207,11 +201,7 @@ class EventMaterialsReusableController {
 
       return res.status(200).json(result);
     } catch (error) {
-      console.error(
-        "Controller error - getReusableMaterialAssignments:",
-        error,
-      );
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: "Error retrieving reusable material assignments",
         error: error.message,

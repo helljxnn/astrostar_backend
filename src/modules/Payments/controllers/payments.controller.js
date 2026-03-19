@@ -1,4 +1,4 @@
-﻿  import { paymentsService } from "../services/payments.service.js";
+  import { paymentsService } from "../services/payments.service.js";
 import { validationResult } from "express-validator";
 
 const handleValidationErrors = (req, res) => {
@@ -14,8 +14,7 @@ const handleValidationErrors = (req, res) => {
 };
 
 const handleError = (res, error, defaultMessage = "Error interno del servidor") => {
-  console.error('❌ [PAYMENTS CONTROLLER]', error);
-  return res.status(500).json({
+return res.status(500).json({
     success: false,
     message: error.message || defaultMessage
   });
@@ -279,8 +278,7 @@ export const paymentsController = {
         message: 'Gestión mensual obtenida correctamente'
       });
     } catch (error) {
-      console.error('❌ [PAYMENTS] Error en gestión mensual:', error);
-      return res.status(500).json({
+return res.status(500).json({
         success: false,
         message: 'Error al obtener gestión de pagos mensuales'
       });
@@ -381,8 +379,7 @@ export const paymentsController = {
       });
       
     } catch (error) {
-      console.error('❌ [PAYMENTS] Error obteniendo estadísticas dashboard:', error);
-      return handleError(res, error, "Error al obtener estadísticas de pagos para dashboard");
+return handleError(res, error, "Error al obtener estadísticas de pagos para dashboard");
     }
   },
 

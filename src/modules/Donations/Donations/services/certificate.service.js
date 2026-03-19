@@ -1,4 +1,4 @@
-﻿import PDFDocument from "pdfkit";
+import PDFDocument from "pdfkit";
 import https from "https";
 
 export class CertificateService {
@@ -223,8 +223,7 @@ export class CertificateService {
 
               doc.y = signatureY + signatureHeight + 18;
             } catch (error) {
-              console.error("Error loading signature image:", error);
-              doc.y = signatureY + 58;
+doc.y = signatureY + 58;
             }
           } else {
             doc.y = signatureY + 58;
@@ -284,8 +283,7 @@ export class CertificateService {
 
         doc.end();
       } catch (error) {
-        console.error("Error in generateCertificate:", error);
-        reject(error);
+reject(error);
       }
     });
   }

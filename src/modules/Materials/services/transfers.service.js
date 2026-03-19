@@ -1,6 +1,76 @@
-﻿import materialsRepository from "../repository/materials.repository.js";
+import materialsRepository from "../repository/materials.repository.js";
 
 class TransfersService {
+  isNotFoundMessage(message = "") {
+    const normalized = message.toLowerCase();
+    return normalized.includes("material not found") || normalized.includes("material no encontrado");
+  }
+
+  isBusinessValidationMessage(message = "") {
+    const normalized = message.toLowerCase();
+    const validationHints = [
+      "stock insuficiente",
+      "insufficient stock",
+      "no se puede transferir",
+      "cannot transfer stock",
+      "source and destination",
+      "inventarios origen y destino",
+      "must be fundacion or eventos",
+      "debe ser fundacion o eventos",
+      "quantity is required",
+      "la cantidad es obligatoria",
+      "quantity must be a positive number",
+      "la cantidad debe ser un numero positivo",
+      "source inventory is required",
+      "destination inventory is required",
+      "el inventario origen es obligatorio",
+      "el inventario destino es obligatorio",
+      "observations cannot exceed",
+      "las observaciones no pueden exceder",
+    ];
+
+    return validationHints.some((hint) => normalized.includes(hint));
+  }
+
+  normalizeTransferMessage(message = "") {
+    const trimmed = String(message || "").trim();
+    if (!trimmed) {
+      return "Error al transferir stock";
+    }
+
+    const exactMap = {
+      "Material not found": "Material no encontrado",
+      "Cannot transfer stock on inactive materials":
+        "No se puede transferir stock en materiales inactivos",
+      "Source and destination inventories must be different":
+        "Los inventarios origen y destino deben ser diferentes",
+      "Source inventory is required": "El inventario origen es obligatorio",
+      "Source must be FUNDACION or EVENTOS":
+        "El inventario origen debe ser FUNDACION o EVENTOS",
+      "Destination inventory is required": "El inventario destino es obligatorio",
+      "Destination must be FUNDACION or EVENTOS":
+        "El inventario destino debe ser FUNDACION o EVENTOS",
+      "Quantity is required": "La cantidad es obligatoria",
+      "Quantity must be a positive number":
+        "La cantidad debe ser un numero positivo",
+      "Observations cannot exceed 1000 characters":
+        "Las observaciones no pueden exceder 1000 caracteres",
+    };
+
+    if (exactMap[trimmed]) {
+      return exactMap[trimmed];
+    }
+
+    if (trimmed.startsWith("Insufficient stock in")) {
+      return trimmed
+        .replace("Insufficient stock in", "Stock insuficiente en")
+        .replace("Available:", "Disponible:")
+        .replace("Requested:", "Solicitado:");
+    }
+
+    return trimmed;
+  }
+
   /**
    * Transfer stock between inventories (ATOMIC TRANSACTION)
    */
@@ -8,6 +78,7 @@ class TransfersService {
     try {
       // 1. Validate transfer data
       this.validateTransferData(data);
+      const cantidad = parseInt(data.cantidad, 10);
 
       // 2. Get material for validations
       const material = await materialsRepository.findById(materialId);
@@ -15,7 +86,7 @@ class TransfersService {
         return {
           success: false,
           statusCode: 404,
-          message: "Material not found",
+          message: "Material no encontrado",
         };
       }
 
@@ -23,7 +94,7 @@ class TransfersService {
         return {
           success: false,
           statusCode: 400,
-          message: "Cannot transfer stock on inactive materials",
+          message: "No se puede transferir stock en materiales inactivos",
         };
       }
 
@@ -32,7 +103,7 @@ class TransfersService {
         return {
           success: false,
           statusCode: 400,
-          message: "Source and destination inventories must be different",
+          message: "Los inventarios origen y destino deben ser diferentes",
         };
       }
 
@@ -42,11 +113,11 @@ class TransfersService {
           ? material.stockFundacion
           : material.stockEventos;
 
-      if (sourceStock < data.cantidad) {
+      if (sourceStock < cantidad) {
         return {
           success: false,
           statusCode: 400,
-          message: `Insufficient stock in ${data.from}. Available: ${sourceStock}, Requested: ${data.cantidad}`,
+          message: `Stock insuficiente en ${data.from}. Disponible: ${sourceStock}, Solicitado: ${cantidad}`,
         };
       }
 
@@ -54,9 +125,9 @@ class TransfersService {
       const transferData = {
         from: data.from,
         to: data.to,
-        cantidad: parseInt(data.cantidad),
+        cantidad,
         observaciones:
-          data.observaciones || `Transfer from ${data.from} to ${data.to}`,
+          data.observaciones || `Transferencia de ${data.from} hacia ${data.to}`,
       };
 
       // 6. Execute transfer (atomic transaction)
@@ -70,39 +141,24 @@ class TransfersService {
       return {
         success: true,
         data: updatedMaterial,
-        message: `Successfully transferred ${data.cantidad} units from ${data.from} to ${data.to}`,
+        message: `Se transfirieron ${cantidad} unidades desde ${data.from} hacia ${data.to}`,
       };
     } catch (error) {
-      console.error("❌ Error transferring stock:", error.message);
+      const normalizedMessage = this.normalizeTransferMessage(error?.message);
 
-      // Specific errors
-      if (
-        error.message.includes("Insufficient stock") ||
-        error.message.includes("insuficiente")
-      ) {
-        return {
-          success: false,
-          statusCode: 400,
-          message: error.message,
-        };
-      }
-
-      if (
-        error.message.includes("not found") ||
-        error.message.includes("no encontrado")
-      ) {
+      if (this.isNotFoundMessage(normalizedMessage)) {
         return {
           success: false,
           statusCode: 404,
-          message: error.message,
+          message: normalizedMessage,
         };
       }
 
-      if (error.message.includes("must be different")) {
+      if (this.isBusinessValidationMessage(normalizedMessage)) {
         return {
           success: false,
           statusCode: 400,
-          message: error.message,
+          message: normalizedMessage,
         };
       }
 
@@ -116,35 +172,35 @@ class TransfersService {
   validateTransferData(data) {
     // Source inventory
     if (!data.from) {
-      throw new Error("Source inventory is required");
+      throw new Error("El inventario origen es obligatorio");
     }
 
     if (!["FUNDACION", "EVENTOS"].includes(data.from)) {
-      throw new Error("Source must be FUNDACION or EVENTOS");
+      throw new Error("El inventario origen debe ser FUNDACION o EVENTOS");
     }
 
     // Destination inventory
     if (!data.to) {
-      throw new Error("Destination inventory is required");
+      throw new Error("El inventario destino es obligatorio");
     }
 
     if (!["FUNDACION", "EVENTOS"].includes(data.to)) {
-      throw new Error("Destination must be FUNDACION or EVENTOS");
+      throw new Error("El inventario destino debe ser FUNDACION o EVENTOS");
     }
 
     // Quantity
     if (!data.cantidad) {
-      throw new Error("Quantity is required");
+      throw new Error("La cantidad es obligatoria");
     }
 
     const cantidad = parseInt(data.cantidad);
     if (isNaN(cantidad) || cantidad <= 0) {
-      throw new Error("Quantity must be a positive number");
+      throw new Error("La cantidad debe ser un numero positivo");
     }
 
     // Observations
     if (data.observaciones && data.observaciones.length > 1000) {
-      throw new Error("Observations cannot exceed 1000 characters");
+      throw new Error("Las observaciones no pueden exceder 1000 caracteres");
     }
   }
 }

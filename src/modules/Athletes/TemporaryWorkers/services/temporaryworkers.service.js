@@ -11,7 +11,10 @@ export class TemporaryWorkersService {
   async getAllTemporaryWorkers(filters) {
     try {
       const result = await this.temporaryWorkersRepository.findAll(filters);
-      return result;
+      const temporaryPersons = (result.temporaryPersons || []).map((worker) =>
+        this.mapBackendToFrontend(worker),
+      );
+      return { ...result, temporaryPersons };
     } catch (error) {
       console.error("Error in getAllTemporaryWorkers service:", error);
       throw error;
@@ -36,7 +39,7 @@ export class TemporaryWorkersService {
 
       return {
         success: true,
-        data: temporaryWorker,
+        data: this.mapBackendToFrontend(temporaryWorker),
       };
     } catch (error) {
       console.error("Error in getTemporaryWorkerById service:", error);
@@ -74,7 +77,7 @@ export class TemporaryWorkersService {
 
       return {
         success: true,
-        data: temporaryWorker,
+        data: this.mapBackendToFrontend(temporaryWorker),
         message: `Persona temporal '${temporaryWorker.firstName} ${temporaryWorker.lastName}' creada exitosamente.`,
       };
     } catch (error) {
@@ -122,7 +125,7 @@ export class TemporaryWorkersService {
 
       return {
         success: true,
-        data: updatedWorker,
+        data: this.mapBackendToFrontend(updatedWorker),
         message: `Persona temporal '${updatedWorker.firstName} ${updatedWorker.lastName}' actualizada exitosamente.`,
       };
     } catch (error) {
@@ -132,7 +135,7 @@ export class TemporaryWorkersService {
   }
 
   /**
-   * Eliminar persona temporal (solo si no est asociada a ningn equipo)
+   * Eliminar persona temporal (solo si no está asociada a ningún equipo)
    */
   async deleteTemporaryWorker(id) {
     try {
@@ -145,19 +148,19 @@ export class TemporaryWorkersService {
         };
       }
 
-      // Verificar si est asociada a algn equipo
+      // Verificar si está asociada a algún equipo
       const teamAssociation = await this.temporaryWorkersRepository.isAssociatedWithTeam(id);
       if (teamAssociation) {
         return {
           success: false,
           statusCode: 400,
-          message: `No se puede eliminar la persona temporal porque est asociada al equipo '${teamAssociation.team.name}'. Primero debe removerla del equipo.`,
+          message: `No se puede eliminar la persona temporal porque está asociada al equipo '${teamAssociation.team.name}'. Primero debe removerla del equipo.`,
         };
       }
 
       const personName = `${existing.firstName} ${existing.lastName}`;
 
-      // Permitir eliminacin solo si no est asociada a equipos
+      // Permitir eliminación solo si no está asociada a equipos
       await this.temporaryWorkersRepository.hardDelete(id);
 
       return {
@@ -336,7 +339,7 @@ export class TemporaryWorkersService {
       ) {
         errors.push("El nombre debe tener entre 2 y 100 caracteres");
       }
-      if (!/^[a-zA-Z\s]+$/.test(data.firstName)) {
+      if (!/^[\p{L}\p{M}\s]+$/u.test(data.firstName)) {
         errors.push("El nombre solo puede contener letras y espacios");
       }
     }
@@ -350,7 +353,7 @@ export class TemporaryWorkersService {
       ) {
         errors.push("El apellido debe tener entre 2 y 100 caracteres");
       }
-      if (!/^[a-zA-Z\s]+$/.test(data.lastName)) {
+      if (!/^[\p{L}\p{M}\s]+$/u.test(data.lastName)) {
         errors.push("El apellido solo puede contener letras y espacios");
       }
     }
@@ -546,7 +549,7 @@ export class TemporaryWorkersService {
       errors.push("Si se especifica una categoría, no puede estar vacía");
     }
 
-    // Validar que deportistas y entrenadores menores de edad tengan informacin adicional
+    // Validar que deportistas y entrenadores menores de edad tengan información adicional
     if (
       currentPersonType === "Deportista" ||
       currentPersonType === "Entrenador"
@@ -562,21 +565,21 @@ export class TemporaryWorkersService {
 
       // Validar que entrenadores sean mayores de edad
       if (currentPersonType === "Entrenador" && calculatedAge && calculatedAge < 18) {
-        errors.push("Los entrenadores deben ser mayores de 18 aos");
+        errors.push("Los entrenadores deben ser mayores de 18 años");
       }
 
-      // Validar edad segn tipo de documento
+      // Validar edad según tipo de documento
       const documentTypeId = data.documentTypeId !== undefined ? data.documentTypeId : (existingData ? existingData.documentTypeId : null);
       if (documentTypeId && calculatedAge !== null && calculatedAge !== undefined) {
-        // Asumiendo que documentTypeId 1 = CC (Cdula) y 2 = TI (Tarjeta de Identidad)
-        // Esto debera ajustarse segn los IDs reales en la base de datos
-        if (documentTypeId == 1) { // Cdula de Ciudadana
+        // Asumiendo que documentTypeId 1 = CC (Cédula) y 2 = TI (Tarjeta de Identidad)
+        // Esto debería ajustarse según los IDs reales en la base de datos
+        if (documentTypeId == 1) { // Cédula de Ciudadanía
           if (calculatedAge < 18) {
-            errors.push("Para cdula de ciudadana la persona debe ser mayor de edad (18 aos)");
+            errors.push("Para cédula de ciudadanía la persona debe ser mayor de edad (18 años)");
           }
         } else if (documentTypeId == 2) { // Tarjeta de Identidad
           if (calculatedAge >= 18) {
-            errors.push("Para tarjeta de identidad la persona debe ser menor de edad (menor a 18 aos)");
+            errors.push("Para tarjeta de identidad la persona debe ser menor de edad (menor a 18 años)");
           }
         }
       }
@@ -588,7 +591,7 @@ export class TemporaryWorkersService {
       errors.push("Los entrenadores no pueden usar Tarjeta de Identidad ya que deben ser mayores de edad");
     }
 
-    // Validar campos requeridos segn tipo de persona
+    // Validar campos requeridos según tipo de persona
     if (currentPersonType === "Entrenador") {
       const email = data.email !== undefined ? data.email : (existingData ? existingData.email : null);
       const phone = data.phone !== undefined ? data.phone : (existingData ? existingData.phone : null);
@@ -598,10 +601,10 @@ export class TemporaryWorkersService {
         errors.push("El email es requerido para entrenadores");
       }
       if (!phone || !phone.trim()) {
-        errors.push("El telfono es requerido para entrenadores");
+        errors.push("El teléfono es requerido para entrenadores");
       }
       if (!address || !address.trim()) {
-        errors.push("La direccin es requerida para entrenadores");
+        errors.push("La dirección es requerida para entrenadores");
       }
     }
 
@@ -611,35 +614,91 @@ export class TemporaryWorkersService {
   }
 
   /**
+   * Mapear campos del backend al formato esperado por frontend
+   */
+  mapBackendToFrontend(backendData) {
+    if (!backendData) return backendData;
+
+    const normalizeUtf8Text = (value) => {
+      if (typeof value !== "string") return value;
+      try {
+        return value.normalize("NFC");
+      } catch {
+        return value;
+      }
+    };
+
+    const splitName = (value) => {
+      const normalized = normalizeUtf8Text(value || "").trim();
+      if (!normalized) return { primary: "", secondary: null };
+      const parts = normalized.split(/\s+/).filter(Boolean);
+      return {
+        primary: parts[0] || "",
+        secondary: parts.length > 1 ? parts.slice(1).join(" ") : null,
+      };
+    };
+
+    const first = splitName(backendData.firstName);
+    const last = splitName(backendData.lastName);
+
+    return {
+      ...backendData,
+      firstName: first.primary,
+      middleName: first.secondary,
+      lastName: last.primary,
+      secondLastName: last.secondary,
+      team: backendData.organization ?? null,
+    };
+  }
+
+  /**
    * Mapear campos del frontend al backend
    */
   mapFrontendToBackend(frontendData) {
     const backendData = {};
+    const normalizeUtf8Text = (value) => {
+      if (typeof value !== "string") return null;
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      try {
+        return trimmed.normalize("NFC");
+      } catch {
+        return trimmed;
+      }
+    };
 
     // Mapeo de campos
-    if (frontendData.firstName)
-      backendData.firstName = frontendData.firstName.trim();
-    if (frontendData.middleName)
-      backendData.middleName = frontendData.middleName.trim();
-    if (frontendData.lastName)
-      backendData.lastName = frontendData.lastName.trim();
-    if (frontendData.secondLastName)
-      backendData.secondLastName = frontendData.secondLastName.trim();
+    const firstName = normalizeUtf8Text(frontendData.firstName);
+    const middleName = normalizeUtf8Text(frontendData.middleName);
+    const lastName = normalizeUtf8Text(frontendData.lastName);
+    const secondLastName = normalizeUtf8Text(frontendData.secondLastName);
+
+    if (firstName || middleName) {
+      backendData.firstName = [firstName, middleName].filter(Boolean).join(" ");
+    }
+    // El modelo TemporaryPerson no tiene secondLastName separado.
+    if (lastName || secondLastName) {
+      backendData.lastName = [lastName, secondLastName].filter(Boolean).join(" ");
+    }
     if (frontendData.identification)
-      backendData.identification = frontendData.identification.trim();
-    if (frontendData.email)
-      backendData.email = frontendData.email.toLowerCase().trim();
-    if (frontendData.phone) backendData.phone = frontendData.phone.trim();
+      backendData.identification = normalizeUtf8Text(frontendData.identification);
+    if (frontendData.email) {
+      const normalizedEmail = normalizeUtf8Text(frontendData.email);
+      backendData.email = normalizedEmail ? normalizedEmail.toLowerCase() : null;
+    }
+    if (frontendData.phone)
+      backendData.phone = normalizeUtf8Text(frontendData.phone);
     if (frontendData.birthDate)
       backendData.birthDate = new Date(frontendData.birthDate);
     if (frontendData.age !== undefined)
       backendData.age = parseInt(frontendData.age);
-    if (frontendData.address) backendData.address = frontendData.address.trim();
+    if (frontendData.address)
+      backendData.address = normalizeUtf8Text(frontendData.address);
     if (frontendData.personType)
       backendData.personType = frontendData.personType;
     if (frontendData.team !== undefined)
       backendData.organization = frontendData.team
-        ? frontendData.team.trim()
+        ? normalizeUtf8Text(frontendData.team)
         : null;
     if (frontendData.status) backendData.status = frontendData.status;
     if (frontendData.documentTypeId) {
@@ -650,16 +709,17 @@ export class TemporaryWorkersService {
 
     // Mapeo de campos del modal actual (compatibilidad)
     if (frontendData.nombre && !backendData.firstName) {
-      const nombres = frontendData.nombre.split(" ");
+      const nombreNormalizado = normalizeUtf8Text(frontendData.nombre) || "";
+      const nombres = nombreNormalizado.split(" ");
       backendData.firstName = nombres[0];
       if (nombres.length > 1) {
         backendData.lastName = nombres.slice(1).join(" ");
       }
     }
     if (frontendData.apellido && !backendData.lastName)
-      backendData.lastName = frontendData.apellido;
+      backendData.lastName = normalizeUtf8Text(frontendData.apellido);
     if (frontendData.telefono && !backendData.phone)
-      backendData.phone = frontendData.telefono;
+      backendData.phone = normalizeUtf8Text(frontendData.telefono);
     if (frontendData.fechaNacimiento && !backendData.birthDate)
       backendData.birthDate = new Date(frontendData.fechaNacimiento);
     if (frontendData.estado && !backendData.status) {
@@ -667,7 +727,7 @@ export class TemporaryWorkersService {
         frontendData.estado === "Activo" ? "Active" : "Inactive";
     }
     if (frontendData.equipo !== undefined && !backendData.organization)
-      backendData.organization = frontendData.equipo;
+      backendData.organization = normalizeUtf8Text(frontendData.equipo);
 
     return backendData;
   }

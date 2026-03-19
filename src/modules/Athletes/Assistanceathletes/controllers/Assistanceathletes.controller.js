@@ -25,8 +25,7 @@ export class AssistanceathletesController {
 
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en getAttendanceByDate:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno al obtener la asistencia.",
         statusCode: 500,
@@ -40,8 +39,7 @@ export class AssistanceathletesController {
       const result = await this.service.saveAttendanceBulk({ date, items });
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en saveAttendanceBulk:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno al guardar la asistencia.",
         statusCode: 500,
@@ -59,8 +57,7 @@ export class AssistanceathletesController {
       });
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en getAthleteHistory:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno al obtener historial de asistencia.",
         statusCode: 500,
@@ -90,8 +87,7 @@ export class AssistanceathletesController {
 
       res.status(result.statusCode || 200).json(result);
     } catch (error) {
-      console.error("Error en getHistorySummary:", error);
-      res.status(500).json({
+res.status(500).json({
         success: false,
         message: "Error interno al obtener resumen de asistencia.",
         statusCode: 500,

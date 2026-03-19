@@ -49,6 +49,12 @@ export const preRegistrationsController = {
         ...result,
       });
     } catch (error) {
+      if (error.message?.includes("Estado de preinscripcion no valido")) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
       return res.status(500).json({
         success: false,
         message: error.message,
@@ -111,6 +117,15 @@ export const preRegistrationsController = {
       });
     } catch (error) {
       console.error('Error en updateStatus:', error);
+      if (
+        error.message?.includes("Estado de preinscripcion no valido") ||
+        error.message?.includes("El estado es requerido")
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
       return res.status(500).json({
         success: false,
         message: error.message,
@@ -213,6 +228,12 @@ export const preRegistrationsController = {
 
       return res.json(result);
     } catch (error) {
+      if (error.message?.includes("Estado de preinscripcion no valido")) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+        });
+      }
       return res.status(500).json({
         success: false,
         message: error.message,

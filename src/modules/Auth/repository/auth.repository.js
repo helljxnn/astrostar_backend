@@ -1,6 +1,26 @@
 ﻿import prisma from "../../../config/database.js";
 
 export class AuthRepository {
+  normalizeEmail(email) {
+    return String(email || "").toLowerCase().trim();
+  }
+
+  toCanonicalGmailEmail(email) {
+    const normalized = this.normalizeEmail(email);
+    if (!normalized.includes("@")) return null;
+
+    const [localPartRaw, domainRaw] = normalized.split("@");
+    const domain = domainRaw?.trim();
+    if (!localPartRaw || !domain) return null;
+    if (domain !== "gmail.com" && domain !== "googlemail.com") return null;
+
+    const localWithoutPlus = localPartRaw.split("+")[0];
+    const canonicalLocal = localWithoutPlus.replace(/\./g, "");
+    if (!canonicalLocal) return null;
+
+    return `${canonicalLocal}@gmail.com`;
+  }
+
   /**
    * Buscar usuario por email con relaciones completas
    */
@@ -49,6 +69,57 @@ export class AuthRepository {
       });
     } catch (error) {
       console.error("Repository error - findByEmail:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Buscar usuario por alias canónico de Gmail.
+   * Permite autenticación con correos equivalentes (con/sin puntos o +tag).
+   */
+  async findByGmailAlias(email) {
+    try {
+      const canonical = this.toCanonicalGmailEmail(email);
+      if (!canonical) {
+        return null;
+      }
+
+      const rows = await prisma.$queryRaw`
+        SELECT u.id
+        FROM "public"."users" u
+        WHERE
+          (
+            LOWER(SPLIT_PART(u.email, '@', 2)) = 'gmail.com'
+            OR LOWER(SPLIT_PART(u.email, '@', 2)) = 'googlemail.com'
+          )
+          AND LOWER(
+            CONCAT(
+              SPLIT_PART(
+                REPLACE(LOWER(SPLIT_PART(u.email, '@', 1)), '.', ''),
+                '+',
+                1
+              ),
+              '@gmail.com'
+            )
+          ) = ${canonical}
+        LIMIT 2
+      `;
+
+      if (!Array.isArray(rows) || rows.length === 0) {
+        return null;
+      }
+
+      // Si hay colisión canónica, evitamos autenticar un usuario ambiguo.
+      if (rows.length > 1) {
+        console.warn(
+          `[AUTH] Colisión de alias Gmail para ${canonical}. Revisar usuarios duplicados.`,
+        );
+        return null;
+      }
+
+      return await this.findByIdComplete(rows[0].id);
+    } catch (error) {
+      console.error("Repository error - findByGmailAlias:", error);
       throw error;
     }
   }

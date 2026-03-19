@@ -31,19 +31,24 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "Email y contrasea son requeridos",
+          message: "Email y contraseña son requeridos",
         };
       }
 
       // 2. Buscar usuario por email
       const cleanEmail = email.toLowerCase().trim();
-      const user = await this.authRepository.findByEmail(cleanEmail);
+      let user = await this.authRepository.findByEmail(cleanEmail);
+
+      // Fallback para alias de Gmail (puntos y +tag en el usuario)
+      if (!user) {
+        user = await this.authRepository.findByGmailAlias(cleanEmail);
+      }
 
       if (!user) {
         return {
           success: false,
           statusCode: 401,
-          message: "Credenciales invlidas",
+          message: "Credenciales inválidas",
         };
       }
 
@@ -56,23 +61,23 @@ export class AuthService {
         };
       }
 
-      // 3.5.  VALIDACIN CRTICA: Si es deportista, verificar que el atleta est activo
+      // 3.5. VALIDACIÓN CRÍTICA: Si es deportista, verificar que el atleta está activo
       if (user.athlete && user.athlete.status !== "Active") {
         return {
           success: false,
           statusCode: 403,
-          message: "Tu cuenta de deportista est inactiva. Contacta al administrador para ms informacin.",
+          message: "Tu cuenta de deportista está inactiva. Contacta al administrador para más información.",
         };
       }
 
-      // 4. Verificar contrasea
+      // 4. Verificar contraseña
       const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
       if (!isPasswordValid) {
         return {
           success: false,
           statusCode: 401,
-          message: "Credenciales invlidas",
+          message: "Credenciales inválidas",
         };
       }
 
@@ -92,20 +97,21 @@ export class AuthService {
         {
           id: user.id,
           type: "refresh",
+          jti: crypto.randomUUID(),
         },
         this.getJwtRefreshSecret(),
         { expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d" },
       );
 
       // 7. Guardar refresh token en la base de datos
-      const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 das
+      const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 días
       await this.authRepository.createRefreshToken(
         user.id,
         refreshToken,
         refreshExpiresAt,
       );
 
-      // 8. Preparar datos de respuesta (sin contrasea)
+      // 8. Preparar datos de respuesta (sin contraseña)
       const userData = {
         id: user.id,
         firstName: user.firstName,
@@ -141,7 +147,7 @@ export class AuthService {
   }
 
   /**
-   * Cambiar contrasea
+   * Cambiar contraseña
    */
   async changePassword(userId, currentPassword, newPassword) {
     try {
@@ -150,7 +156,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "Contrasea actual y nueva contrasea son requeridas",
+          message: "Contraseña actual y nueva contraseña son requeridas",
         };
       }
 
@@ -158,7 +164,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "La nueva contrasea debe tener al menos 6 caracteres",
+          message: "La nueva contraseña debe tener al menos 6 caracteres",
         };
       }
 
@@ -173,17 +179,17 @@ export class AuthService {
         };
       }
 
-      // 2.1 PROTECCIN: No permitir cambiar contrasea del usuario por defecto del sistema
+      // 2.1 PROTECCIÓN: No permitir cambiar contraseña del usuario por defecto del sistema
       if (user.email === "astrostar.java@gmail.com") {
         return {
           success: false,
           statusCode: 403,
           message:
-            "No se puede cambiar la contrasea del usuario por defecto del sistema",
+            "No se puede cambiar la contraseña del usuario por defecto del sistema",
         };
       }
 
-      // 3. Verificar contrasea actual
+      // 3. Verificar contraseña actual
       const isCurrentPasswordValid = await bcrypt.compare(
         currentPassword,
         user.passwordHash,
@@ -193,14 +199,14 @@ export class AuthService {
         return {
           success: false,
           statusCode: 401,
-          message: "Contrasea actual incorrecta",
+          message: "Contraseña actual incorrecta",
         };
       }
 
-      // 4. Hashear nueva contrasea
+      // 4. Hashear nueva contraseña
       const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-      // 5. Actualizar contrasea
+      // 5. Actualizar contraseña
       await this.authRepository.updatePassword(userId, newPasswordHash);
 
       return {
@@ -213,7 +219,7 @@ export class AuthService {
   }
 
   /**
-   * Solicitar recuperacin de contrasea
+   * Solicitar recuperación de contraseña
    */
   async requestPasswordReset(email, ipAddress, userAgent) {
     try {
@@ -240,7 +246,7 @@ export class AuthService {
       // 2. Buscar usuario por email
       const cleanEmail = email.toLowerCase().trim();
 
-      // 2.1 PROTECCIN: No permitir recuperacin de contrasea del usuario por defecto
+      // 2.1 PROTECCIÓN: No permitir recuperación de contraseña del usuario por defecto
       if (cleanEmail === "astrostar.java@gmail.com") {
         // Registrar intento pero no revelar que es usuario protegido
         await rateLimitService.recordPasswordResetAttempt(
@@ -253,7 +259,7 @@ export class AuthService {
         return {
           success: true,
           message:
-            "Si el correo existe, recibirs instrucciones para restablecer tu contrasea",
+            "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
         };
       }
 
@@ -272,7 +278,7 @@ export class AuthService {
         return {
           success: true,
           message:
-            "Si el correo existe, recibirs instrucciones para restablecer tu contrasea",
+            "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
         };
       }
 
@@ -301,7 +307,7 @@ export class AuthService {
       // 6. Calcular expiracin (15 minutos)
       const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-      // 7. Guardar token en la base de datos con informacin de seguridad
+      // 7. Guardar token en la base de datos con información de seguridad
       await this.authRepository.createPasswordResetToken(
         user.id,
         resetToken,
@@ -324,7 +330,7 @@ export class AuthService {
       return {
         success: true,
         message:
-          "Si el correo existe, recibirs instrucciones para restablecer tu contrasea",
+          "Si el correo existe, recibirás instrucciones para restablecer tu contraseña",
         attemptsRemaining: rateLimitCheck.attemptsRemaining,
       };
     } catch (error) {
@@ -334,7 +340,7 @@ export class AuthService {
   }
 
   /**
-   * Verificar token de recuperacin
+   * Verificar token de recuperación
    */
   async verifyResetToken(token) {
     try {
@@ -344,7 +350,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "Cdigo invlido o expirado",
+          message: "Código inválido o expirado",
         };
       }
 
@@ -381,16 +387,16 @@ export class AuthService {
   }
 
   /**
-   * Restablecer contrasea con token
+   * Restablecer contraseña con token
    */
   async resetPassword(token, newPassword) {
     try {
-      // 1. Validar nueva contrasea
+      // 1. Validar nueva contraseña
       if (!newPassword || newPassword.length < 6) {
         return {
           success: false,
           statusCode: 400,
-          message: "La contrasea debe tener al menos 6 caracteres",
+          message: "La contraseña debe tener al menos 6 caracteres",
         };
       }
 
@@ -415,7 +421,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "Cdigo invlido o expirado",
+          message: "Código inválido o expirado",
         };
       }
 
@@ -438,20 +444,20 @@ export class AuthService {
         };
       }
 
-      // 2.2 PROTECCIN: No permitir resetear contrasea del usuario por defecto
+      // 2.2 PROTECCIÓN: No permitir resetear contraseña del usuario por defecto
       if (resetToken.user.email === "astrostar.java@gmail.com") {
         return {
           success: false,
           statusCode: 403,
           message:
-            "No se puede restablecer la contraseÒ±a del usuario por defecto del sistema",
+            "No se puede restablecer la contraseña del usuario por defecto del sistema",
         };
       }
 
-      // 3. Hashear nueva contrasea
+      // 3. Hashear nueva contraseña
       const newPasswordHash = await bcrypt.hash(newPassword, 10);
 
-      // 4. Actualizar contrasea
+      // 4. Actualizar contraseña
       await this.authRepository.updatePassword(
         resetToken.userId,
         newPasswordHash,
@@ -462,7 +468,7 @@ export class AuthService {
 
       return {
         success: true,
-        message: "Contrasea restablecida exitosamente",
+        message: "Contraseña restablecida exitosamente",
       };
     } catch (error) {
       console.error("Service error - resetPassword:", error);
@@ -517,7 +523,7 @@ export class AuthService {
   }
 
   /**
-   * Solicitar cambio de email (enva cdigo de verificacin)
+   * Solicitar cambio de email (envía código de verificación)
    */
   async requestEmailChange(userId, newEmail) {
     try {
@@ -541,13 +547,13 @@ export class AuthService {
         };
       }
 
-      // 3. Verificar que el nuevo email no est en uso
+      // 3. Verificar que el nuevo email no está en uso
       const existingUser = await this.authRepository.findByEmail(newEmail);
       if (existingUser) {
         return {
           success: false,
           statusCode: 400,
-          message: "El correo electrnico ya est en uso",
+          message: "El correo electrónico ya está en uso",
         };
       }
 
@@ -568,7 +574,7 @@ export class AuthService {
         expiresAt,
       );
 
-      // 8. Enviar email con el cdigo
+      // 8. Enviar email con el código
       await emailService.sendEmailVerificationCode(
         newEmail,
         verificationToken,
@@ -577,7 +583,7 @@ export class AuthService {
 
       return {
         success: true,
-        message: "Cdigo de verificacin enviado al nuevo correo electrnico",
+        message: "Código de verificación enviado al nuevo correo electrónico",
       };
     } catch (error) {
       console.error("Service error - requestEmailChange:", error);
@@ -586,11 +592,11 @@ export class AuthService {
   }
 
   /**
-   * Verificar cdigo y actualizar email
+   * Verificar código y actualizar email
    */
   async verifyAndUpdateEmail(userId, token) {
     try {
-      // 1. Buscar token vÒ¡lido
+      // 1. Buscar token válido
       const verificationToken =
         await this.authRepository.findValidEmailVerificationToken(
           userId,
@@ -601,7 +607,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 400,
-          message: "Cdigo invlido o expirado",
+          message: "Código inválido o expirado",
         };
       }
 
@@ -638,7 +644,7 @@ export class AuthService {
       return {
         success: true,
         data: userData,
-        message: "Correo electrnico actualizado exitosamente",
+        message: "Correo electrónico actualizado exitosamente",
       };
     } catch (error) {
       console.error("Service error - verifyAndUpdateEmail:", error);
@@ -759,7 +765,7 @@ export class AuthService {
         return {
           success: false,
           statusCode: 401,
-          message: "Refresh token invÒ¡lido o expirado",
+          message: "Refresh token inválido o expirado",
         };
       }
 
@@ -775,7 +781,7 @@ export class AuthService {
         };
       }
 
-      // 3. Verificar que el usuario est activo
+      // 3. Verificar que el usuario está activo
       if (storedToken.user.status !== "Active") {
         return {
           success: false,
@@ -808,7 +814,7 @@ export class AuthService {
   }
 
   /**
-   * Cerrar sesin (invalidar refresh token desde cookie)
+   * Cerrar sesión (invalidar refresh token desde cookie)
    */
   async logout(refreshToken) {
     try {
@@ -819,7 +825,7 @@ export class AuthService {
 
       return {
         success: true,
-        message: "Sesin cerrada exitosamente",
+        message: "Sesión cerrada exitosamente",
       };
     } catch (error) {
       console.error("Service error - logout:", error);
@@ -845,4 +851,5 @@ export class AuthService {
     }
   }
 }
+
 
