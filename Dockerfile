@@ -2,16 +2,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies first for better caching
+# Copy package files
 COPY package*.json ./
-RUN npm ci --only=production
 
-# Install dev dependencies needed for Prisma generation
-RUN npm install prisma@^7.5.0 --save-dev
+# Install dependencies
+RUN npm ci
 
-# Copy prisma files and config
+# Copy prisma schema
 COPY prisma ./prisma
-COPY prisma.config.ts ./
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -24,5 +22,5 @@ ENV NODE_ENV=production
 
 EXPOSE 4000
 
-# Ensure Prisma client is generated and run migrations
-CMD ["sh", "-c", "npx prisma generate && npx prisma migrate deploy && npm run start"]
+# Run migrations and start the app
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
