@@ -232,6 +232,34 @@ const getCurrentPeriod = () => {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 };
 
+const getPeriodFromDate = (date) => {
+  if (!date) return getCurrentPeriod();
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return getCurrentPeriod();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+
+const getPeriodBounds = (period) => {
+  const [y, m] = (period || '').split('-').map((p) => parseInt(p, 10));
+  if (!y || !m) {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0);
+    return { start, end };
+  }
+  const start = new Date(y, m - 1, 1, 0, 0, 0, 0);
+  const end = new Date(y, m, 1, 0, 0, 0, 0);
+  return { start, end };
+};
+
+const isEnrollmentPaymentType = (type) => (
+  type === 'ENROLLMENT_INITIAL' || type === 'ENROLLMENT_RENEWAL'
+);
+
+const isMonthlyExemptByEnrollment = (obligation) => (
+  obligation?.metadata?.exemptByEnrollment === true
+);
+
 /**
  * Calcula fechas de vencimiento para mensualidad usando días de gracia fijos
  */
@@ -350,6 +378,7 @@ export const paymentsService = {
     const currentPeriod = getCurrentPeriod();
     const { dueStart, dueEnd } = await calculateMonthlyDueDates(now.getFullYear(), now.getMonth() + 1);
     const settings = await getPaymentSettings();
+    const { start: periodStart, end: periodEnd } = getPeriodBounds(currentPeriod);
 
 
     return await prisma.$transaction(async (tx) => {
@@ -427,6 +456,28 @@ export const paymentsService = {
               athleteName: `${athlete.user.firstName} ${athlete.user.lastName}`,
               status: 'skipped',
               reason: 'Ya existe obligación para este periodo'
+            });
+            continue;
+          }
+
+          // Si existe un pago de matrícula (inicial o renovación) enviado en este periodo,
+          // no se debe generar mensualidad para el mismo mes.
+          const enrollmentPaymentInPeriod = await tx.payment.findFirst({
+            where: {
+              athleteId: athlete.id,
+              status: { in: ['PENDING', 'APPROVED'] },
+              uploadedAt: { gte: periodStart, lt: periodEnd },
+              obligation: { type: { in: ['ENROLLMENT_INITIAL', 'ENROLLMENT_RENEWAL'] } }
+            },
+            select: { id: true }
+          });
+
+          if (enrollmentPaymentInPeriod) {
+            results.push({
+              athleteId: athlete.id,
+              athleteName: `${athlete.user.firstName} ${athlete.user.lastName}`,
+              status: 'skipped',
+              reason: 'Matrícula cubre este periodo'
             });
             continue;
           }
@@ -544,6 +595,9 @@ export const paymentsService = {
     const details = [];
 
     for (const obligation of obligations) {
+      if (isMonthlyExemptByEnrollment(obligation)) {
+        continue;
+      }
       const daysLate = calculateEffectiveLateDays(obligation.dueEnd, obligation.payments);
       const lateFee = calculateLateFee(
         daysLate,
@@ -614,7 +668,9 @@ export const paymentsService = {
     const pendingObligations = await paymentsRepository.getAllPendingObligations(athleteId);
     
     // Separar por tipo
-    const monthlyObligations = pendingObligations.filter(o => o.type === 'MONTHLY');
+    const monthlyObligations = pendingObligations.filter(
+      o => o.type === 'MONTHLY' && !isMonthlyExemptByEnrollment(o)
+    );
     const enrollmentObligation = pendingObligations.find(
       o => o.type === 'ENROLLMENT_RENEWAL' || o.type === 'ENROLLMENT_INITIAL'
     );
@@ -845,6 +901,9 @@ export const paymentsService = {
 
     const obligationsByAthlete = new Map();
     for (const obligation of obligations) {
+      if (isMonthlyExemptByEnrollment(obligation)) {
+        continue;
+      }
       if (!obligationsByAthlete.has(obligation.athleteId)) {
         obligationsByAthlete.set(obligation.athleteId, []);
       }
@@ -893,7 +952,8 @@ export const paymentsService = {
       orderBy: { dueStart: 'desc' }
     });
 
-    const monthlyCalc = this._buildMonthlyDetails(obligations, athlete, enrollment, settings);
+    const filteredObligations = obligations.filter(o => !isMonthlyExemptByEnrollment(o));
+    const monthlyCalc = this._buildMonthlyDetails(filteredObligations, athlete, enrollment, settings);
     const history = monthlyCalc.details.map((item) => ({
       id: item.id,
       period: item.period,
@@ -960,13 +1020,23 @@ export const paymentsService = {
         throw new Error('Ya tienes un comprobante pendiente de revisión. Espera la respuesta del administrador antes de subir otro.');
       }
 
-      return await paymentsRepository.createPayment({
-        obligationId,
-        athleteId,
-        receiptUrl: receiptData.url,
-        receiptName: receiptData.originalName,
-        status: 'PENDING'
+      const payment = await tx.payment.create({
+        data: {
+          obligationId,
+          athleteId,
+          receiptUrl: receiptData.url,
+          receiptName: receiptData.originalName,
+          status: 'PENDING'
+        },
+        include: { obligation: true }
       });
+
+      // Si es matrícula (inicial/renovación), cubrir mensualidad del mes del envío
+      if (isEnrollmentPaymentType(obligation.type)) {
+        await this._applyEnrollmentMonthlyCoverage(tx, payment);
+      }
+
+      return payment;
     });
   },
 
@@ -1016,6 +1086,15 @@ export const paymentsService = {
       } else if (currentPayment.obligation.type === 'ENROLLMENT_RENEWAL') {
         // Renovación: crear nueva matrícula por 1 año
         await this._processEnrollmentRenewal(currentPayment.athleteId);
+      }
+
+      // Cubrir mensualidad del mes del envío del comprobante (si aplica)
+      if (isEnrollmentPaymentType(currentPayment.obligation.type)) {
+        const refreshedPayment = await tx.payment.findUnique({
+          where: { id: paymentId },
+          include: { obligation: true }
+        });
+        await this._applyEnrollmentMonthlyCoverage(tx, refreshedPayment);
       }
 
       // Notificación por email (no bloqueante)
@@ -1073,7 +1152,10 @@ export const paymentsService = {
    * Verificar si un atleta está bloqueado por pagos
    */
   async checkAthleteAccessRestrictions(athleteId) {
-    const overdueObligations = await paymentsRepository.getOverdueObligations(athleteId);
+    const overdueObligationsRaw = await paymentsRepository.getOverdueObligations(athleteId);
+    const overdueObligations = overdueObligationsRaw.filter(
+      (o) => !(o.type === 'MONTHLY' && isMonthlyExemptByEnrollment(o))
+    );
 
     // 1. Matrícula inicial pendiente (bloquea siempre)
     const initialObligation = await prisma.paymentObligation.findFirst({
@@ -1839,8 +1921,10 @@ export const paymentsService = {
         prisma.paymentObligation.count({ where: whereClause })
       ]);
 
+      const filteredObligations = obligations.filter(o => !isMonthlyExemptByEnrollment(o));
+
       // Procesar cada obligación con cálculo de mora
-      const obligationsWithDetails = await Promise.all(obligations.map(async (obligation) => {
+      const obligationsWithDetails = await Promise.all(filteredObligations.map(async (obligation) => {
         const lateDays = calculateEffectiveLateDays(obligation.dueEnd, obligation.payments);
         
         // ✅ OBTENER MATRÍCULA ACTUAL PARA VALIDAR ESTADO
@@ -1969,6 +2053,49 @@ export const paymentsService = {
   // ============================================================================
   // MÉTODOS PRIVADOS
   // ============================================================================
+
+  /**
+   * Marcar mensualidad del periodo como cubierta por matrícula (según fecha de envío del comprobante)
+   */
+  async _applyEnrollmentMonthlyCoverage(tx, payment) {
+    if (!payment || !isEnrollmentPaymentType(payment.obligation?.type)) return;
+
+    const coveragePeriod = getPeriodFromDate(payment.uploadedAt || payment.reviewedAt || new Date());
+    const monthlyObligation = await tx.paymentObligation.findFirst({
+      where: {
+        athleteId: payment.athleteId,
+        type: 'MONTHLY',
+        period: coveragePeriod
+      },
+      include: {
+        payments: {
+          where: { status: 'APPROVED' },
+          take: 1
+        }
+      }
+    });
+
+    // Si no existe mensualidad o ya fue pagada, no tocarla
+    if (!monthlyObligation || (monthlyObligation.payments?.length ?? 0) > 0) {
+      return;
+    }
+
+    const metadata = {
+      ...(monthlyObligation.metadata || {}),
+      exemptByEnrollment: true,
+      exemptReason: 'ENROLLMENT_COVERS_MONTH',
+      coveragePeriod,
+      enrollmentPaymentId: payment.id,
+      enrollmentPaymentUploadedAt: payment.uploadedAt || null,
+      enrollmentPaymentType: payment.obligation?.type || null,
+      exemptedAt: new Date()
+    };
+
+    await tx.paymentObligation.update({
+      where: { id: monthlyObligation.id },
+      data: { metadata }
+    });
+  },
 
   /**
    * Procesar renovación de matrícula después de pago aprobado.
