@@ -1,7 +1,7 @@
 ﻿import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 console.log('🔍 Verificando configuración de email...');
 console.log('EMAIL_USER:', process.env.EMAIL_USER);

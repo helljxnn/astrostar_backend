@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import emailService from "../services/emailService.js";
 
 // Cargar variables de entorno
-dotenv.config();
+dotenv.config({ quiet: true });
 
 async function testPasswordResetEmail() {
   console.log(

@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import rateLimitService from "../services/rateLimitService.js";
 
 // Cargar variables de entorno
-dotenv.config();
+dotenv.config({ quiet: true });
 
 async function testRateLimiting() {
   console.log("🧪 Iniciando prueba del sistema de rate limiting híbrido...\n");

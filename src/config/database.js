@@ -9,7 +9,7 @@ const prisma = new PrismaClient({
 // Graceful shutdown (opcional, solo en procesos que terminan)
 process.on("SIGINT", async () => {
   await prisma.$disconnect();
-  console.log("🔌 Prisma disconnected on app termination");
+  console.log("[INFO] Prisma disconnected on app termination");
   process.exit(0);
 });
 

@@ -1,7 +1,7 @@
 ﻿import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 console.log('🔍 DIAGNÓSTICO DE EMAIL - ASTROSTAR\n');
 console.log('═══════════════════════════════════════\n');

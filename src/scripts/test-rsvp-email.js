@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import emailService from "../services/emailService.js";
 
 // Cargar variables de entorno
-dotenv.config();
+dotenv.config({ quiet: true });
 
 async function testRSVPEmail() {
   console.log("🧪 Iniciando prueba de envío de invitaciones RSVP...\n");

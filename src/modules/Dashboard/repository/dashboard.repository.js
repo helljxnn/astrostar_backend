@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import prisma from "../../../config/database.js";
 
 /**
  * Repositorio para el Dashboard
@@ -64,7 +62,7 @@ class DashboardRepository {
         recentActivity,
       };
     } catch (error) {
-      console.error("Error en DashboardRepository.getOverview:", error);
+      console.error("Error in DashboardRepository.getOverview:", error);
       throw error;
     }
   }
@@ -155,7 +153,7 @@ class DashboardRepository {
         trends: await this.getEventsTrends(),
       };
     } catch (error) {
-      console.error("Error en DashboardRepository.getEventsStats:", error);
+      console.error("Error in DashboardRepository.getEventsStats:", error);
       throw error;
     }
   }
@@ -215,7 +213,7 @@ class DashboardRepository {
         trends: await this.getAthletesTrends(),
       };
     } catch (error) {
-      console.error("Error en DashboardRepository.getAthletesStats:", error);
+      console.error("Error in DashboardRepository.getAthletesStats:", error);
       throw error;
     }
   }
@@ -284,7 +282,7 @@ class DashboardRepository {
         trends: await this.getHealthTrends(),
       };
     } catch (error) {
-      console.error("Error en DashboardRepository.getHealthStats:", error);
+      console.error("Error in DashboardRepository.getHealthStats:", error);
       throw error;
     }
   }
@@ -340,7 +338,7 @@ class DashboardRepository {
         trends: await this.getDonationsTrends(),
       };
     } catch (error) {
-      console.error("Error en DashboardRepository.getDonationsStats:", error);
+      console.error("Error in DashboardRepository.getDonationsStats:", error);
       throw error;
     }
   }
