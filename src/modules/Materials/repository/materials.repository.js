@@ -1,6 +1,4 @@
-﻿import { PrismaClient } from "../../../../generated/prisma/index.js";
-
-const prisma = new PrismaClient();
+﻿import prisma from "../../../../config/database.js";
 const MATERIAL_WITH_CATEGORY_SELECT = {
   id: true,
   nombre: true,
@@ -263,7 +261,7 @@ class MaterialsRepository {
         unidadMedida: data.unidad_medida?.trim().toLowerCase() || "unidad",
         stockFundacion: 0,
         stockEventos: 0,
-                estado: "Activo",
+        estado: "Activo",
         createdBy: userId,
       },
       select: MATERIAL_WITH_CATEGORY_SELECT,
@@ -768,11 +766,7 @@ class MaterialsRepository {
   /**
    * Obtener todos los materiales para reporte (SIN PAGINACIÓN)
    */
-  async findAllForReport({
-    search = "",
-    status,
-    categoriaId,
-  }) {
+  async findAllForReport({ search = "", status, categoriaId }) {
     const where = {};
 
     if (search && search.trim()) {

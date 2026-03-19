@@ -1,19 +1,17 @@
-﻿import { PrismaClient } from '../../../../generated/prisma/index.js';
-
-const prisma = new PrismaClient();
+﻿import prisma from "../../../../config/database.js";
 
 class CategoriesRepository {
   /**
    * Obtener todas las categorías con filtros
    */
-  async findAll({ page = 1, limit = 10, search = '', estado = null }) {
+  async findAll({ page = 1, limit = 10, search = "", estado = null }) {
     const skip = (page - 1) * limit;
     const where = {};
 
     if (search) {
       where.OR = [
-        { nombre: { contains: search, mode: 'insensitive' } },
-        { descripcion: { contains: search, mode: 'insensitive' } },
+        { nombre: { contains: search, mode: "insensitive" } },
+        { descripcion: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -32,7 +30,7 @@ class CategoriesRepository {
           },
         },
         orderBy: {
-          nombre: 'asc',
+          nombre: "asc",
         },
       }),
       prisma.materialCategory.count({ where }),
@@ -68,7 +66,7 @@ class CategoriesRepository {
     const where = {
       nombre: {
         equals: nombre.trim(),
-        mode: 'insensitive',
+        mode: "insensitive",
       },
     };
 
@@ -88,7 +86,7 @@ class CategoriesRepository {
       data: {
         nombre: data.nombre.trim(),
         descripcion: data.descripcion?.trim() || null,
-        estado: 'Activo',
+        estado: "Activo",
         createdBy: userId,
       },
     });
@@ -115,10 +113,10 @@ class CategoriesRepository {
   async toggleStatus(id, userId) {
     const category = await this.findById(id);
     if (!category) {
-      throw new Error('Categoría no encontrada');
+      throw new Error("Categoría no encontrada");
     }
 
-    const newStatus = category.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    const newStatus = category.estado === "Activo" ? "Inactivo" : "Activo";
 
     return await prisma.materialCategory.update({
       where: { id: parseInt(id) },
@@ -140,7 +138,7 @@ class CategoriesRepository {
 
     if (materialsCount > 0) {
       throw new Error(
-        `No se puede eliminar la categoría porque tiene ${materialsCount} material(es) asociado(s)`
+        `No se puede eliminar la categoría porque tiene ${materialsCount} material(es) asociado(s)`,
       );
     }
 
@@ -154,8 +152,8 @@ class CategoriesRepository {
    */
   async findAllActive() {
     return await prisma.materialCategory.findMany({
-      where: { estado: 'Activo' },
-      orderBy: { nombre: 'asc' },
+      where: { estado: "Activo" },
+      orderBy: { nombre: "asc" },
       select: {
         id: true,
         nombre: true,
@@ -166,13 +164,13 @@ class CategoriesRepository {
   /**
    * Obtener todas las categorías para reporte (SIN PAGINACIÓN)
    */
-  async findAllForReport({ search = '', estado = null }) {
+  async findAllForReport({ search = "", estado = null }) {
     const where = {};
 
     if (search) {
       where.OR = [
-        { nombre: { contains: search, mode: 'insensitive' } },
-        { descripcion: { contains: search, mode: 'insensitive' } },
+        { nombre: { contains: search, mode: "insensitive" } },
+        { descripcion: { contains: search, mode: "insensitive" } },
       ];
     }
 
@@ -182,7 +180,7 @@ class CategoriesRepository {
 
     const result = await prisma.materialCategory.findMany({
       where,
-      orderBy: { nombre: 'asc' },
+      orderBy: { nombre: "asc" },
     });
 
     return { categories: result };
@@ -190,4 +188,3 @@ class CategoriesRepository {
 }
 
 export default new CategoriesRepository();
-

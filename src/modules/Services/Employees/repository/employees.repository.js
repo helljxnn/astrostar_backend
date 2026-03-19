@@ -1,9 +1,14 @@
 ﻿import { PrismaClient } from "../../../../../generated/prisma/index.js";
+import { PrismaPg } from "@prisma/adapter-pg";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({
+  connectionString: process.env.DATABASE_URL,
+});
+
+const prisma = new PrismaClient({ adapter });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const generatedSchemaPath = path.resolve(
@@ -467,4 +472,3 @@ export class EmployeeRepository {
     };
   }
 }
-
