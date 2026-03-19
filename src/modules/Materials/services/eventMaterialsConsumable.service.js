@@ -1,4 +1,4 @@
-﻿import prisma from "../../../../config/database.js";
+﻿import prisma from "../../../config/database.js";
 
 const MATERIAL_SELECT = {
   id: true,
