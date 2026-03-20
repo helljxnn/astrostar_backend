@@ -860,7 +860,7 @@ export class AppointmentService {
             cancelReason,
           )
           .catch((err) =>
-            console.warn("Error enviando emails de cancelaciÃ³n:", err?.message),
+            console.warn("Error sending cancellation emails:", err?.message),
           );
       }
 

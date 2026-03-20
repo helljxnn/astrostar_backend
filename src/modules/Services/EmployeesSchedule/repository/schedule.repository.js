@@ -1,5 +1,5 @@
 ﻿// 📁 Services/Employees/EmployeesSchedule/repository/schedule.repository.js
-import prisma from "../../../../../config/database.js";
+import prisma from "../../../../config/database.js";
 
 export class ScheduleRepository {
   async findEmployeeByUserId(userId) {
