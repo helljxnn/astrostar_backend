@@ -11,11 +11,11 @@ COPY prisma ./prisma
 # Install dependencies
 RUN npm ci
 
-# Generate Prisma client
-RUN npx prisma generate
-
 # Copy the rest of the application
 COPY . .
+
+# Regenerate Prisma client after full source copy to avoid stale generated client files
+RUN npx prisma generate
 
 # Set environment
 ENV NODE_ENV=production
