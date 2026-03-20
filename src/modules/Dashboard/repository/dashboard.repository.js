@@ -2,7 +2,7 @@ import prisma from "../../../config/database.js";
 
 /**
  * Repositorio para el Dashboard
- * Consultas a la base de datos para estadísticas del dashboard
+ * Consultas a la base de datos para estadisticas del dashboard
  */
 class DashboardRepository {
   /**
@@ -46,7 +46,7 @@ class DashboardRepository {
           where: { status: "APPROVED" },
         }),
 
-        // Actividad reciente (últimos 7 días)
+        // Actividad reciente (ultimos 7 dias)
         this.getRecentActivity(),
       ]);
 
@@ -68,7 +68,7 @@ class DashboardRepository {
   }
 
   /**
-   * Obtener estadísticas de eventos
+   * Obtener estadisticas de eventos
    */
   async getEventsStats() {
     try {
@@ -159,7 +159,7 @@ class DashboardRepository {
   }
 
   /**
-   * Obtener estadísticas de deportistas
+   * Obtener estadisticas de deportistas
    */
   async getAthletesStats() {
     try {
@@ -185,20 +185,20 @@ class DashboardRepository {
           where: { status: "SUSPENDED" },
         }),
 
-        // Deportistas con inscripción vencida
+        // Deportistas con inscripcion vencida
         prisma.enrollment.count({
           where: {
             status: "EXPIRED",
           },
         }),
 
-        // Por categoría deportiva
+        // Por categoria deportiva
         this.getAthletesByCategory(),
 
         // Por rango de edad
         this.getAthletesByAge(),
 
-        // Estadísticas de inscripciones
+        // Estadisticas de inscripciones
         this.getEnrollmentStats(),
       ]);
 
@@ -219,7 +219,7 @@ class DashboardRepository {
   }
 
   /**
-   * Obtener estadísticas de servicios de salud
+   * Obtener estadisticas de servicios de salud
    */
   async getHealthStats() {
     try {
@@ -288,7 +288,7 @@ class DashboardRepository {
   }
 
   /**
-   * Obtener estadísticas de donaciones
+   * Obtener estadisticas de donaciones
    */
   async getDonationsStats() {
     try {
@@ -310,14 +310,14 @@ class DashboardRepository {
         }),
 
         // Total de donantes
-        prisma.donorSponsor.count(),
+        prisma.sponsor.count(),
 
         // Donantes activos
-        prisma.donorSponsor.count({
-          where: { status: "ACTIVE" },
+        prisma.sponsor.count({
+          where: { status: "Active" },
         }),
 
-        // Por tipo de donación
+        // Por tipo de donacion
         this.getDonationsByType(),
 
         // Donaciones por mes
@@ -344,7 +344,7 @@ class DashboardRepository {
   }
 
   // ============================================================================
-  // MÉTODOS AUXILIARES
+  // METODOS AUXILIARES
   // ============================================================================
 
   /**
@@ -407,7 +407,7 @@ class DashboardRepository {
       groupedData[year][quarter] = (groupedData[year][quarter] || 0) + 1;
     });
 
-    // Obtener los últimos 3 años
+    // Obtener los ultimos 3 anios
     const years = Object.keys(groupedData)
       .sort((a, b) => b - a)
       .slice(0, 3);
@@ -419,7 +419,7 @@ class DashboardRepository {
       };
 
       years.forEach((year) => {
-        quarterData[`año${year}`] = groupedData[year]?.[quarter] || 0;
+        quarterData[`anio${year}`] = groupedData[year]?.[quarter] || 0;
       });
 
       result.push(quarterData);
@@ -455,7 +455,7 @@ class DashboardRepository {
   }
 
   /**
-   * Obtener deportistas por categoría
+   * Obtener deportistas por categoria
    */
   async getAthletesByCategory() {
     const byCategory = await prisma.athlete.groupBy({
@@ -474,7 +474,7 @@ class DashboardRepository {
     return byCategory.map((bc) => {
       const category = categories.find((c) => c.id === bc.sportsCategoryId);
       return {
-        name: category?.name || "Sin categoría",
+        name: category?.name || "Sin categoria",
         count: bc._count.id,
       };
     });
@@ -516,7 +516,7 @@ class DashboardRepository {
   }
 
   /**
-   * Obtener estadísticas de inscripciones
+   * Obtener estadisticas de inscripciones
    */
   async getEnrollmentStats() {
     const [active, expired, suspended] = await Promise.all([
@@ -583,13 +583,13 @@ class DashboardRepository {
    */
   async getDonationsByType() {
     const byType = await prisma.donationDetail.groupBy({
-      by: ["type"],
+      by: ["kind"],
       _count: { id: true },
       _sum: { amount: true },
     });
 
     return byType.map((bt) => ({
-      type: bt.type,
+      type: bt.kind,
       count: bt._count.id,
       amount: bt._sum.amount || 0,
     }));
@@ -602,7 +602,7 @@ class DashboardRepository {
     const donations = await prisma.donation.findMany({
       select: { createdAt: true },
       include: {
-        donationDetails: {
+        details: {
           select: { amount: true },
         },
       },
@@ -619,7 +619,7 @@ class DashboardRepository {
       }
 
       monthlyData[monthKey].count++;
-      monthlyData[monthKey].amount += donation.donationDetails.reduce(
+      monthlyData[monthKey].amount += donation.details.reduce(
         (sum, detail) => sum + (detail.amount || 0),
         0,
       );
@@ -634,11 +634,11 @@ class DashboardRepository {
    * Obtener top donantes
    */
   async getTopDonors() {
-    const topDonors = await prisma.donorSponsor.findMany({
+    const topDonors = await prisma.sponsor.findMany({
       include: {
         donations: {
           include: {
-            donationDetails: {
+            details: {
               select: { amount: true },
             },
           },
@@ -650,7 +650,7 @@ class DashboardRepository {
       const totalAmount = donor.donations.reduce((sum, donation) => {
         return (
           sum +
-          donation.donationDetails.reduce(
+          donation.details.reduce(
             (detailSum, detail) => detailSum + (detail.amount || 0),
             0,
           )
@@ -671,7 +671,7 @@ class DashboardRepository {
   }
 
   // ============================================================================
-  // MÉTODOS DE TENDENCIAS
+  // METODOS DE TENDENCIAS
   // ============================================================================
 
   async getEventsTrends() {
