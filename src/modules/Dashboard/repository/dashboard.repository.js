@@ -5,6 +5,32 @@ import prisma from "../../../config/database.js";
  * Consultas a la base de datos para estadisticas del dashboard
  */
 class DashboardRepository {
+  getSponsorDelegate() {
+    return prisma?.sponsor ?? prisma?.donorSponsor ?? null;
+  }
+
+  toNumberAmount(value) {
+    const numberValue = Number(value ?? 0);
+    return Number.isFinite(numberValue) ? numberValue : 0;
+  }
+
+  async getActiveDonorsCount(sponsorDelegate) {
+    if (!sponsorDelegate?.count) {
+      return 0;
+    }
+
+    try {
+      return await sponsorDelegate.count({
+        where: { status: "Active" },
+      });
+    } catch (error) {
+      console.warn(
+        "[WARN] Unable to count active sponsors with status filter; falling back to total count.",
+      );
+      return sponsorDelegate.count();
+    }
+  }
+
   /**
    * Obtener resumen general del dashboard
    */
@@ -292,6 +318,13 @@ class DashboardRepository {
    */
   async getDonationsStats() {
     try {
+      const sponsorDelegate = this.getSponsorDelegate();
+      if (!sponsorDelegate?.count) {
+        console.warn(
+          "[WARN] Sponsor delegate is not available in Prisma client. Donor counters will use 0.",
+        );
+      }
+
       const [
         totalDonations,
         totalAmount,
@@ -305,17 +338,17 @@ class DashboardRepository {
         prisma.donation.count(),
 
         // Monto total donado
-        prisma.donationDetail.aggregate({
-          _sum: { amount: true },
-        }),
+        prisma?.donationDetail?.aggregate
+          ? prisma.donationDetail.aggregate({
+              _sum: { amount: true },
+            })
+          : Promise.resolve({ _sum: { amount: 0 } }),
 
         // Total de donantes
-        prisma.sponsor.count(),
+        sponsorDelegate?.count ? sponsorDelegate.count() : Promise.resolve(0),
 
         // Donantes activos
-        prisma.sponsor.count({
-          where: { status: "Active" },
-        }),
+        this.getActiveDonorsCount(sponsorDelegate),
 
         // Por tipo de donacion
         this.getDonationsByType(),
@@ -329,7 +362,7 @@ class DashboardRepository {
 
       return {
         total: totalDonations,
-        totalAmount: totalAmount._sum.amount || 0,
+        totalAmount: this.toNumberAmount(totalAmount?._sum?.amount),
         totalDonors,
         activeDonors,
         byType,
@@ -582,6 +615,10 @@ class DashboardRepository {
    * Obtener donaciones por tipo
    */
   async getDonationsByType() {
+    if (!prisma?.donationDetail?.groupBy) {
+      return [];
+    }
+
     const byType = await prisma.donationDetail.groupBy({
       by: ["kind"],
       _count: { id: true },
@@ -591,7 +628,7 @@ class DashboardRepository {
     return byType.map((bt) => ({
       type: bt.kind,
       count: bt._count.id,
-      amount: bt._sum.amount || 0,
+      amount: this.toNumberAmount(bt?._sum?.amount),
     }));
   }
 
@@ -599,16 +636,27 @@ class DashboardRepository {
    * Obtener donaciones por mes
    */
   async getMonthlyDonations() {
-    const donations = await prisma.donation.findMany({
-      select: { createdAt: true },
-      include: {
-        details: {
-          select: { amount: true },
-        },
-      },
-    });
+    const [donations, donationDetails] = await Promise.all([
+      prisma.donation.findMany({
+        select: { id: true, createdAt: true },
+      }),
+      prisma?.donationDetail?.findMany
+        ? prisma.donationDetail.findMany({
+            select: { donationId: true, amount: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
     const monthlyData = {};
+    const amountByDonationId = new Map();
+
+    for (const detail of donationDetails) {
+      const current = amountByDonationId.get(detail.donationId) || 0;
+      amountByDonationId.set(
+        detail.donationId,
+        current + this.toNumberAmount(detail.amount),
+      );
+    }
 
     donations.forEach((donation) => {
       const date = new Date(donation.createdAt);
@@ -619,10 +667,7 @@ class DashboardRepository {
       }
 
       monthlyData[monthKey].count++;
-      monthlyData[monthKey].amount += donation.details.reduce(
-        (sum, detail) => sum + (detail.amount || 0),
-        0,
-      );
+      monthlyData[monthKey].amount += amountByDonationId.get(donation.id) || 0;
     });
 
     return Object.entries(monthlyData)
@@ -634,38 +679,61 @@ class DashboardRepository {
    * Obtener top donantes
    */
   async getTopDonors() {
-    const topDonors = await prisma.sponsor.findMany({
-      include: {
-        donations: {
-          include: {
-            details: {
-              select: { amount: true },
-            },
-          },
-        },
-      },
-    });
+    const sponsorDelegate = this.getSponsorDelegate();
+    if (!sponsorDelegate?.findMany) {
+      return [];
+    }
 
-    const donorsWithTotals = topDonors.map((donor) => {
-      const totalAmount = donor.donations.reduce((sum, donation) => {
-        return (
-          sum +
-          donation.details.reduce(
-            (detailSum, detail) => detailSum + (detail.amount || 0),
-            0,
-          )
-        );
-      }, 0);
+    const [donors, donations, donationDetails] = await Promise.all([
+      sponsorDelegate.findMany({
+        select: { id: true, name: true },
+      }),
+      prisma.donation.findMany({
+        where: { donorSponsorId: { not: null } },
+        select: { id: true, donorSponsorId: true },
+      }),
+      prisma?.donationDetail?.findMany
+        ? prisma.donationDetail.findMany({
+            select: { donationId: true, amount: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
-      return {
+    const amountByDonationId = new Map();
+    for (const detail of donationDetails) {
+      const current = amountByDonationId.get(detail.donationId) || 0;
+      amountByDonationId.set(
+        detail.donationId,
+        current + this.toNumberAmount(detail.amount),
+      );
+    }
+
+    const donorTotals = new Map();
+    const donorDonationCount = new Map();
+
+    for (const donation of donations) {
+      const sponsorId = donation.donorSponsorId;
+      if (!sponsorId) continue;
+
+      donorTotals.set(
+        sponsorId,
+        (donorTotals.get(sponsorId) || 0) +
+          (amountByDonationId.get(donation.id) || 0),
+      );
+      donorDonationCount.set(
+        sponsorId,
+        (donorDonationCount.get(sponsorId) || 0) + 1,
+      );
+    }
+
+    return donors
+      .map((donor) => ({
         id: donor.id,
         name: donor.name,
-        totalAmount,
-        donationsCount: donor.donations.length,
-      };
-    });
-
-    return donorsWithTotals
+        totalAmount: donorTotals.get(donor.id) || 0,
+        donationsCount: donorDonationCount.get(donor.id) || 0,
+      }))
+      .filter((donor) => donor.totalAmount > 0 || donor.donationsCount > 0)
       .sort((a, b) => b.totalAmount - a.totalAmount)
       .slice(0, 10);
   }
