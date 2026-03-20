@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
@@ -9,6 +9,8 @@ import { apiLimiter } from "./middlewares/rateLimiter.js";
 import logger from "./config/logger.js";
 
 const app = express();
+// Azure App Service sits behind a reverse proxy and sets X-Forwarded-For.
+app.set("trust proxy", 1);
 
 // Helmet - Headers de seguridad
 app.use(
