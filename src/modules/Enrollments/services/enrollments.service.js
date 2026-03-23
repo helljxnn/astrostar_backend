@@ -603,12 +603,14 @@ export const enrollmentsService = {
           inactivityReason: null,
           guardianId: validatedGuardianId,
           relationship: normalizedAthlete.relationship,
-          currentInscriptionStatus: ATHLETE_STATUS.ACTIVE
+          currentInscriptionStatus: ATHLETE_STATUS.ACTIVE,
+          isScholarship: normalizedAthlete.isScholarship === true
         },
         select: {
           id: true,
           userId: true,
-          status: true
+          status: true,
+          isScholarship: true
         }
       });
 
@@ -617,8 +619,14 @@ export const enrollmentsService = {
       const newEnrollment = await tx.enrollment.create({
         data: {
           athleteId: newAthlete.id,
-          estado: ENROLLMENT_STATUS.PENDING_PAYMENT,
-          observaciones: enrollment?.observaciones || null,
+          estado: normalizedAthlete.isScholarship === true
+            ? ENROLLMENT_STATUS.ACTIVE
+            : ENROLLMENT_STATUS.PENDING_PAYMENT,
+          observaciones: normalizedAthlete.isScholarship === true
+            ? (enrollment?.observaciones
+                ? `${enrollment.observaciones} | Matrícula activada por beca`
+                : 'Matrícula activada automáticamente por beca')
+            : (enrollment?.observaciones || null),
           fechaInicio,
           fechaVencimiento,
         },
@@ -712,22 +720,24 @@ export const enrollmentsService = {
     }
 
     // 4. Generar obligación de pago inicial
-    setImmediate(async () => {
-      try {
-        await prisma.paymentObligation.create({
-          data: {
-            athleteId: result.athlete.id,
-            type: 'ENROLLMENT_INITIAL',
-            period: null,
-            baseAmount: 40000,
-            dueStart: new Date(),
-            dueEnd: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)),
-            metadata: { enrollmentId: result.enrollment.id }
-          }
-        });
-      } catch (paymentError) {
+    if (normalizedAthlete.isScholarship !== true) {
+      setImmediate(async () => {
+        try {
+          await prisma.paymentObligation.create({
+            data: {
+              athleteId: result.athlete.id,
+              type: 'ENROLLMENT_INITIAL',
+              period: null,
+              baseAmount: 40000,
+              dueStart: new Date(),
+              dueEnd: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)),
+              metadata: { enrollmentId: result.enrollment.id }
+            }
+          });
+        } catch (paymentError) {
 }
-    });
+      });
+    }
 
     const totalTime = Date.now() - startTime;
 
@@ -1100,6 +1110,13 @@ results.push({
       // Procesar estados correctamente para el historial
       const processedEnrollments = enrollments.map((enrollment, index) => {
         const isLatest = index === enrollments.length - 1; // La última (más reciente)
+        const enrollmentNotes = String(enrollment.observaciones || "");
+        const normalizedEnrollmentNotes = enrollmentNotes.toLowerCase();
+        const scholarshipCoveredEnrollment =
+          normalizedEnrollmentNotes.includes("activada automáticamente por beca") ||
+          normalizedEnrollmentNotes.includes("matrícula activada automáticamente por beca") ||
+          normalizedEnrollmentNotes.includes("activada por beca") ||
+          normalizedEnrollmentNotes.includes("renovación automática por beca");
 
         // Lógica de estados para historial cronológico:
         let correctedStatus = enrollment.estado;
@@ -1125,6 +1142,10 @@ results.push({
           enrollmentNumber,
           isRenewal,
           isLatest,
+          isExemptByScholarship: scholarshipCoveredEnrollment,
+          enrollmentPaymentStatusLabel: scholarshipCoveredEnrollment
+            ? "Exenta por beca"
+            : null,
           // Agregar fecha de matrícula para compatibilidad
           fechaMatricula: enrollment.createdAt,
           // Agregar nombre completo del deportista

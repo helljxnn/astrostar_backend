@@ -127,6 +127,7 @@ export class AthletesRepository {
         tipoDocumento: athlete.guardian.documentType?.name || '',
       } : null,
       parentesco: mapRelationshipToSpanish(athlete.relationship),
+      isScholarship: athlete.isScholarship === true,
       estadoInscripcion: currentInscription
         ? mapInscriptionStatus(currentInscription.status)
         : "Sin inscripción",
@@ -240,6 +241,9 @@ export class AthletesRepository {
     const athleteSpecificData = {
       ...(normalizedStatus ? { status: normalizedStatus } : {}),
       relationship: mapRelationship(athleteData.parentesco),
+      ...(athleteData.isScholarship !== undefined
+        ? { isScholarship: athleteData.isScholarship === true }
+        : {}),
     };
 
     // Manejar guardianId por separado
@@ -421,10 +425,31 @@ throw error;
         // Sin restricciones de edad
 
         // ✅ NO actualizar passwordHash a menos que haya nueva contraseña
-        const { passwordHash, ...userDataWithoutPassword } = userData;
-        const userUpdateData = passwordHash
-          ? { ...userDataWithoutPassword, passwordHash }
-          : userDataWithoutPassword;
+        const { passwordHash, documentTypeId, ...userDataWithoutPassword } = userData;
+        const allowedUserFields = [
+          "firstName",
+          "middleName",
+          "lastName",
+          "secondLastName",
+          "email",
+          "phoneNumber",
+          "identification",
+          "birthDate",
+          "age",
+          "address",
+        ];
+        const sanitizedUserUpdateData = Object.fromEntries(
+          allowedUserFields
+            .filter((field) => field in athleteData)
+            .map((field) => [field, userDataWithoutPassword[field]]),
+        );
+        const userUpdateData = {
+          ...sanitizedUserUpdateData,
+          ...(documentTypeId
+            ? { documentType: { connect: { id: documentTypeId } } }
+            : {}),
+          ...(passwordHash ? { passwordHash } : {}),
+        };
 
         // Actualizar usuario (solo incluye passwordHash si se envía)
         await tx.user.update({
@@ -441,6 +466,9 @@ throw error;
         const updateData = {
           ...(athleteSpecificData.status ? { status: athleteSpecificData.status } : {}),
           relationship: athleteSpecificData.relationship,
+          ...(athleteSpecificData.isScholarship !== undefined
+            ? { isScholarship: athleteSpecificData.isScholarship }
+            : {}),
           ...(athleteData.estado
             ? {
                 currentInscriptionStatus:

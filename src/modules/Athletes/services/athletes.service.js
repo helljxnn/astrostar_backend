@@ -107,6 +107,7 @@ export class AthletesService {
       const dataWithDefaults = {
         ...athleteData,
         estado: athleteData.estado || "Activo",
+        isScholarship: athleteData.isScholarship === true,
       };
 
       // Validar documento único en TODOS los usuarios
@@ -269,6 +270,26 @@ export class AthletesService {
         id,
         updateData,
       );
+
+      if (
+        updateData.isScholarship === true &&
+        existingAthlete.isScholarship !== true
+      ) {
+        const { paymentsService } = await import(
+          "../../Payments/services/payments.service.js"
+        );
+        await paymentsService.applyScholarshipEnrollmentBenefits(parseInt(id));
+      }
+
+      if (
+        updateData.isScholarship === false &&
+        existingAthlete.isScholarship === true
+      ) {
+        const { paymentsService } = await import(
+          "../../Payments/services/payments.service.js"
+        );
+        await paymentsService.handleScholarshipRemoval(parseInt(id));
+      }
 
       // Si el email cambió, enviar correo de verificación al nuevo email
       let emailSent = false;

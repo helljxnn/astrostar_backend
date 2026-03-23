@@ -259,6 +259,13 @@ const isMonthlyExemptByEnrollment = (obligation) => (
   obligation?.metadata?.exemptByEnrollment === true
 );
 
+const buildScholarshipEnrollmentDates = () => {
+  const fechaInicio = new Date();
+  const fechaVencimiento = new Date(fechaInicio);
+  fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + 1);
+  return { fechaInicio, fechaVencimiento };
+};
+
 /**
  * Calcula fechas de vencimiento para mensualidad usando días de gracia fijos
  */
@@ -365,6 +372,186 @@ const sendPaymentStatusEmail = async (payment, status, rejectionReason = null) =
 // ============================================================================
 
 export const paymentsService = {
+  async applyScholarshipEnrollmentBenefits(athleteId) {
+    return await prisma.$transaction(async (tx) => {
+      const athlete = await tx.athlete.findUnique({
+        where: { id: athleteId },
+        include: {
+          enrollments: {
+            orderBy: { createdAt: 'desc' }
+          }
+        }
+      });
+
+      if (!athlete) {
+        throw new Error(`Atleta no encontrado: ${athleteId}`);
+      }
+
+      const { fechaInicio, fechaVencimiento } = buildScholarshipEnrollmentDates();
+
+      await tx.paymentObligation.deleteMany({
+        where: {
+          athleteId,
+          type: { in: ['ENROLLMENT_INITIAL', 'ENROLLMENT_RENEWAL', 'MONTHLY'] },
+          payments: {
+            none: { status: 'APPROVED' }
+          }
+        }
+      });
+
+      const pendingEnrollment = athlete.enrollments.find(
+        (enrollment) => enrollment.estado === 'Pending_Payment'
+      );
+
+      let resolvedEnrollment = null;
+
+      if (pendingEnrollment) {
+        resolvedEnrollment = await tx.enrollment.update({
+          where: { id: pendingEnrollment.id },
+          data: {
+            estado: 'Vigente',
+            fechaInicio,
+            fechaVencimiento,
+            observaciones: pendingEnrollment.observaciones
+              ? `${pendingEnrollment.observaciones} | Activada por beca`
+              : 'Activada automáticamente por beca'
+          }
+        });
+      } else {
+        const activeEnrollment = athlete.enrollments.find(
+          (enrollment) => enrollment.estado === 'Vigente'
+        );
+
+        if (activeEnrollment) {
+          resolvedEnrollment = activeEnrollment;
+        } else {
+          resolvedEnrollment = await tx.enrollment.create({
+            data: {
+              athleteId,
+              estado: 'Vigente',
+              fechaInicio,
+              fechaVencimiento,
+              observaciones: 'Renovación automática por beca'
+            }
+          });
+        }
+      }
+
+      await tx.athlete.update({
+        where: { id: athleteId },
+        data: {
+          status: 'Active',
+          currentInscriptionStatus: 'Active'
+        }
+      });
+
+      return {
+        athleteId,
+        enrollmentId: resolvedEnrollment?.id || null,
+        waivedByScholarship: true
+      };
+    });
+  },
+
+  async handleScholarshipRemoval(athleteId) {
+    const athlete = await prisma.athlete.findUnique({
+      where: { id: athleteId },
+      include: {
+        enrollments: {
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!athlete) {
+      throw new Error(`Atleta no encontrado: ${athleteId}`);
+    }
+
+    const now = new Date();
+    const currentPeriod = getCurrentPeriod();
+    const latestEnrollment = athlete.enrollments[0] || null;
+    const activeEnrollment = athlete.enrollments.find(
+      (enrollment) =>
+        enrollment.estado === 'Vigente' &&
+        enrollment.fechaInicio <= now &&
+        enrollment.fechaVencimiento > now
+    );
+
+    if (latestEnrollment?.estado === 'Pending_Payment') {
+      const existingInitial = await paymentsRepository.findExistingObligation(
+        athleteId,
+        'ENROLLMENT_INITIAL'
+      );
+
+      if (!existingInitial) {
+        return await this.generateInitialEnrollmentObligation(
+          athleteId,
+          latestEnrollment.id
+        );
+      }
+
+      return {
+        athleteId,
+        action: 'initial_enrollment_pending',
+        obligationId: existingInitial.id
+      };
+    }
+
+    if (!activeEnrollment) {
+      try {
+        const renewal = await this.generateEnrollmentRenewalObligation(athleteId);
+        return {
+          athleteId,
+          action: 'renewal_generated',
+          renewal
+        };
+      } catch (error) {
+        if (String(error?.message || '').includes('Ya existe una obligación')) {
+          return {
+            athleteId,
+            action: 'renewal_already_pending'
+          };
+        }
+        throw error;
+      }
+    }
+
+    const existingMonthly = await paymentsRepository.findExistingObligation(
+      athleteId,
+      'MONTHLY',
+      currentPeriod
+    );
+
+    if (existingMonthly) {
+      return {
+        athleteId,
+        action: 'monthly_already_exists',
+        obligationId: existingMonthly.id
+      };
+    }
+
+    const { dueStart, dueEnd } = await calculateMonthlyDueDates(
+      now.getFullYear(),
+      now.getMonth() + 1
+    );
+    const settings = await getPaymentSettings();
+
+    const obligation = await paymentsRepository.createObligation({
+      athleteId,
+      type: 'MONTHLY',
+      period: currentPeriod,
+      baseAmount: settings.monthlyAmount,
+      dueStart,
+      dueEnd
+    });
+
+    return {
+      athleteId,
+      action: 'monthly_generated',
+      obligationId: obligation.id
+    };
+  },
+
   // ============================================================================
   // GENERACIÓN AUTOMÁTICA DE OBLIGACIONES
   // ============================================================================
@@ -529,6 +716,15 @@ export const paymentsService = {
    * Generar obligación de renovación de matrícula
    */
   async generateEnrollmentRenewalObligation(athleteId) {
+    const athlete = await prisma.athlete.findUnique({
+      where: { id: athleteId },
+      select: { id: true, isScholarship: true }
+    });
+
+    if (athlete?.isScholarship === true) {
+      return await this.applyScholarshipEnrollmentBenefits(athleteId);
+    }
+
     const settings = await getPaymentSettings();
     const now = new Date();
     const dueEnd = new Date(now.getTime() + (BUSINESS_CONSTANTS.GRACE_DAYS * 24 * 60 * 60 * 1000));

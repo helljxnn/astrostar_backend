@@ -106,10 +106,12 @@ const resolveInitialCreateStatus = async () => {
 
 export const preRegistrationsService = {
   async create(data) {
+    const { acceptDataPolicy: _acceptDataPolicy, ...preRegistrationData } = data;
+
     // 1. Verificar si ya existe una pre-inscripción con el mismo correo o documento
     // Nota: Las inscripciones rechazadas se eliminan automáticamente, así que solo buscamos activas
     const existingByEmail = await prisma.preRegistration.findUnique({
-      where: { email: data.email },
+      where: { email: preRegistrationData.email },
       select: { id: true, status: true }
     });
 
@@ -118,7 +120,7 @@ export const preRegistrationsService = {
     }
 
     const existingByDocument = await prisma.preRegistration.findUnique({
-      where: { identification: data.identification },
+      where: { identification: preRegistrationData.identification },
       select: { id: true, status: true }
     });
 
@@ -130,9 +132,9 @@ export const preRegistrationsService = {
 
     // 2. Convertir birthDate a Date si viene como string
     const dataToCreate = {
-      ...data,
-      birthDate: data.birthDate ? (() => {
-        const date = new Date(data.birthDate);
+      ...preRegistrationData,
+      birthDate: preRegistrationData.birthDate ? (() => {
+        const date = new Date(preRegistrationData.birthDate);
         return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
       })() : new Date(),
       // Forzar un estado inicial valido segun el enum real en BD
