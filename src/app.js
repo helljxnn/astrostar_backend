@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
@@ -9,6 +9,8 @@ import { apiLimiter } from "./middlewares/rateLimiter.js";
 import logger from "./config/logger.js";
 
 const app = express();
+// Azure App Service sits behind a reverse proxy and sets X-Forwarded-For.
+app.set("trust proxy", 1);
 
 // Helmet - Headers de seguridad
 app.use(
@@ -58,13 +60,18 @@ const allowedOrigins =
 app.use(
   cors({
     origin: (origin, callback) => {
+      // En desarrollo, permitir todas las conexiones (incluyendo móvil)
+      if (process.env.NODE_ENV !== "production") {
+        return callback(null, true);
+      }
+
       // Permitir requests sin origin (mobile apps, Postman, curl, etc.)
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        console.warn(`⚠️  CORS blocked request from origin: ${origin}`);
+        console.warn(`[WARN] CORS blocked request from origin: ${origin}`);
         callback(new Error("Not allowed by CORS"));
       }
     },
@@ -90,10 +97,10 @@ app.use(
   }),
 );
 
-// 💾 Servir imágenes subidas de categorías
+// Servir imagenes subidas de categorias
 app.use("/uploads/categories", express.static("src/uploads/categories"));
 
-// 💾 Servir assets públicos (imágenes para RSVP, etc.)
+// Servir assets publicos (imagenes para RSVP, etc.)
 app.use("/public", express.static("src/public"));
 
 // Swagger documentation - DEBE IR ANTES de las rutas API
@@ -161,4 +168,3 @@ app.use((error, req, res, next) => {
 });
 
 export default app;
-

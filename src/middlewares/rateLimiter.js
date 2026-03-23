@@ -8,18 +8,33 @@ const isDevelopment = process.env.NODE_ENV === "development";
  */
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: isDevelopment ? 10000 : 100, // En desarrollo: 10000, en producción: 100
+  max: isDevelopment ? 10000 : 1000, // En desarrollo: 10000, en producción: 1000
   message: {
     success: false,
     message:
       "Demasiadas peticiones desde esta IP, por favor intenta más tarde.",
     retryAfter: "15 minutos",
   },
+  skip: (req) => {
+    const path = req.path || "";
+    const hasAuthHeader = Boolean(req.headers.authorization);
+    const hasSessionCookie = Boolean(req.cookies?.refreshToken);
+
+    return (
+      req.method === "OPTIONS" ||
+      hasAuthHeader ||
+      hasSessionCookie ||
+      path === "/events/public" ||
+      path === "/events/check-name" ||
+      path.startsWith("/events/upload/") ||
+      path === "/health"
+    );
+  },
   standardHeaders: true, // Retorna info de rate limit en headers `RateLimit-*`
   legacyHeaders: false, // Deshabilita headers `X-RateLimit-*`
   // Handler cuando se excede el límite
   handler: (req, res) => {
-    console.warn(`⚠️  Rate limit excedido para IP: ${req.ip}`);
+    console.warn(`[WARN] Rate limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       success: false,
       message:
@@ -51,7 +66,7 @@ export const authLimiter = rateLimit({
   skipSuccessfulRequests: true, // No contar requests exitosos
   handler: (req, res) => {
     console.warn(
-      `⚠️  Intentos de login excedidos para IP: ${req.ip}, Email: ${req.body?.email}`,
+      `[WARN] Login attempts exceeded for IP: ${req.ip}, Email: ${req.body?.email}`,
     );
     res.status(429).json({
       success: false,
@@ -77,7 +92,7 @@ export const createLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    console.warn(`⚠️  Límite de creación excedido para IP: ${req.ip}`);
+    console.warn(`[WARN] Create limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       success: false,
       message: "Límite de creación alcanzado. Por favor intenta más tarde.",
@@ -92,7 +107,7 @@ export const createLimiter = rateLimit({
  */
 export const publicLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: isDevelopment ? 10000 : 200, // En desarrollo: 10000, en producción: 200
+  max: isDevelopment ? 10000 : 500, // En desarrollo: 10000, en producción: 500
   message: {
     success: false,
     message: "Demasiadas peticiones. Por favor intenta más tarde.",
@@ -108,7 +123,7 @@ export const publicLimiter = rateLimit({
  */
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: isDevelopment ? 1000 : 10, // En desarrollo: 1000, en producción: 10
+  max: isDevelopment ? 1000 : 30, // En desarrollo: 1000, en producción: 30
   message: {
     success: false,
     message:
@@ -118,7 +133,7 @@ export const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
-    console.warn(`⚠️  Límite de uploads excedido para IP: ${req.ip}`);
+    console.warn(`[WARN] Upload limit exceeded for IP: ${req.ip}`);
     res.status(429).json({
       success: false,
       message:

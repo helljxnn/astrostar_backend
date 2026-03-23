@@ -1,7 +1,4 @@
-﻿
-import { PrismaClient } from '../../../../../generated/prisma/index.js';
-
-const prisma = new PrismaClient();
+import prisma from "../../../../config/database.js";
 
 export class AppointmentRepository {
   async findEmployeeByUserId(userId) {
@@ -21,13 +18,13 @@ export class AppointmentRepository {
   async findAll({
     page = 1,
     limit = 10,
-    search = '',
-    status = '',
+    search = "",
+    status = "",
     athleteId = null,
     specialistId = null,
-    specialty = '',
-    startDate = '',
-    endDate = ''
+    specialty = "",
+    startDate = "",
+    endDate = "",
   }) {
     const skip = (page - 1) * limit;
 
@@ -35,7 +32,7 @@ export class AppointmentRepository {
       ...(status && { status }),
       ...(specialty && { specialty }),
       ...(athleteId && { athleteId: parseInt(athleteId) }),
-      ...(specialistId && { specialistId: parseInt(specialistId) })
+      ...(specialistId && { specialistId: parseInt(specialistId) }),
     };
 
     if (startDate || endDate) {
@@ -48,32 +45,32 @@ export class AppointmentRepository {
     if (search && search.trim()) {
       const term = search.trim();
       where.OR = [
-        { description: { contains: term, mode: 'insensitive' } },
-        { specialty: { contains: term, mode: 'insensitive' } },
+        { description: { contains: term, mode: "insensitive" } },
+        { specialty: { contains: term, mode: "insensitive" } },
         {
           athlete: {
             user: {
               OR: [
-                { firstName: { contains: term, mode: 'insensitive' } },
-                { lastName: { contains: term, mode: 'insensitive' } },
-                { identification: { contains: term, mode: 'insensitive' } },
-                { email: { contains: term, mode: 'insensitive' } }
-              ]
-            }
-          }
+                { firstName: { contains: term, mode: "insensitive" } },
+                { lastName: { contains: term, mode: "insensitive" } },
+                { identification: { contains: term, mode: "insensitive" } },
+                { email: { contains: term, mode: "insensitive" } },
+              ],
+            },
+          },
         },
         {
           specialist: {
             user: {
               OR: [
-                { firstName: { contains: term, mode: 'insensitive' } },
-                { lastName: { contains: term, mode: 'insensitive' } },
-                { identification: { contains: term, mode: 'insensitive' } },
-                { email: { contains: term, mode: 'insensitive' } }
-              ]
-            }
-          }
-        }
+                { firstName: { contains: term, mode: "insensitive" } },
+                { lastName: { contains: term, mode: "insensitive" } },
+                { identification: { contains: term, mode: "insensitive" } },
+                { email: { contains: term, mode: "insensitive" } },
+              ],
+            },
+          },
+        },
       ];
     }
 
@@ -94,10 +91,10 @@ export class AppointmentRepository {
                   secondLastName: true,
                   email: true,
                   identification: true,
-                  phoneNumber: true
-                }
-              }
-            }
+                  phoneNumber: true,
+                },
+              },
+            },
           },
           specialist: {
             include: {
@@ -113,20 +110,17 @@ export class AppointmentRepository {
                   phoneNumber: true,
                   role: {
                     select: {
-                      name: true
-                    }
-                  }
-                }
-              }
-            }
-          }
+                      name: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
         },
-        orderBy: [
-          { appointmentDate: 'desc' },
-          { startTime: 'asc' }
-        ]
+        orderBy: [{ appointmentDate: "desc" }, { startTime: "asc" }],
       }),
-      prisma.appointment.count({ where })
+      prisma.appointment.count({ where }),
     ]);
 
     return {
@@ -136,8 +130,8 @@ export class AppointmentRepository {
         page,
         limit,
         total,
-        pages: Math.ceil(total / limit)
-      }
+        pages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -159,10 +153,10 @@ export class AppointmentRepository {
                 secondLastName: true,
                 email: true,
                 identification: true,
-                phoneNumber: true
-              }
-            }
-          }
+                phoneNumber: true,
+              },
+            },
+          },
         },
         specialist: {
           include: {
@@ -178,14 +172,14 @@ export class AppointmentRepository {
                 phoneNumber: true,
                 role: {
                   select: {
-                    name: true
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -198,19 +192,19 @@ export class AppointmentRepository {
       include: {
         athlete: {
           include: {
-            user: true
-          }
+            user: true,
+          },
         },
         specialist: {
           include: {
             user: {
               include: {
-                role: true
-              }
-            }
-          }
-        }
-      }
+                role: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -224,19 +218,19 @@ export class AppointmentRepository {
       include: {
         athlete: {
           include: {
-            user: true
-          }
+            user: true,
+          },
         },
         specialist: {
           include: {
             user: {
               include: {
-                role: true
-              }
-            }
-          }
-        }
-      }
+                role: true,
+              },
+            },
+          },
+        },
+      },
     });
   }
 
@@ -246,11 +240,11 @@ export class AppointmentRepository {
   async delete(id) {
     try {
       await prisma.appointment.delete({
-        where: { id: parseInt(id) }
+        where: { id: parseInt(id) },
       });
       return true;
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (error.code === "P2025") {
         return false;
       }
       throw error;
@@ -264,16 +258,16 @@ export class AppointmentRepository {
     return await prisma.athlete.findFirst({
       where: {
         id: parseInt(id),
-        status: 'Active',
-        user: { status: 'Active' }
+        status: "Active",
+        user: { status: "Active" },
       },
       include: {
         user: {
           include: {
-            role: true
-          }
-        }
-      }
+            role: true,
+          },
+        },
+      },
     });
   }
 
@@ -284,16 +278,16 @@ export class AppointmentRepository {
     return await prisma.employee.findFirst({
       where: {
         id: parseInt(id),
-        status: 'Activo',
-        user: { status: 'Active' }
+        status: "Activo",
+        user: { status: "Active" },
       },
       include: {
         user: {
           include: {
-            role: true
-          }
-        }
-      }
+            role: true,
+          },
+        },
+      },
     });
   }
 
@@ -303,8 +297,8 @@ export class AppointmentRepository {
   async getActiveAthletes() {
     return await prisma.athlete.findMany({
       where: {
-        status: 'Active',
-        user: { status: 'Active' }
+        status: "Active",
+        user: { status: "Active" },
       },
       include: {
         user: {
@@ -315,33 +309,30 @@ export class AppointmentRepository {
             lastName: true,
             secondLastName: true,
             email: true,
-            identification: true
-          }
+            identification: true,
+          },
         },
         inscriptions: {
           where: {
-            status: 'Active'
+            status: "Active",
           },
-          orderBy: [
-            { inscriptionDate: 'desc' },
-            { createdAt: 'desc' }
-          ],
+          orderBy: [{ inscriptionDate: "desc" }, { createdAt: "desc" }],
           take: 1,
           include: {
             sportsCategory: {
               select: {
                 id: true,
-                nombre: true
-              }
-            }
-          }
-        }
+                nombre: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         user: {
-          firstName: 'asc'
-        }
-      }
+          firstName: "asc",
+        },
+      },
     });
   }
 
@@ -351,8 +342,8 @@ export class AppointmentRepository {
   async getActiveSpecialists() {
     return await prisma.employee.findMany({
       where: {
-        status: 'Activo',
-        user: { status: 'Active' }
+        status: "Activo",
+        user: { status: "Active" },
       },
       include: {
         user: {
@@ -366,17 +357,17 @@ export class AppointmentRepository {
             identification: true,
             role: {
               select: {
-                name: true
-              }
-            }
-          }
-        }
+                name: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         user: {
-          firstName: 'asc'
-        }
-      }
+          firstName: "asc",
+        },
+      },
     });
   }
 
@@ -387,7 +378,7 @@ export class AppointmentRepository {
     return await prisma.employeeSchedule.findMany({
       where: {
         employeeId: parseInt(specialistId),
-        status: { not: 'Cancelado' }
+        status: { not: "Cancelado" },
       },
       select: {
         id: true,
@@ -404,10 +395,10 @@ export class AppointmentRepository {
             type: true,
             startTime: true,
             endTime: true,
-            reason: true
-          }
-        }
-      }
+            reason: true,
+          },
+        },
+      },
     });
   }
 
@@ -420,32 +411,31 @@ export class AppointmentRepository {
     endTime,
     athleteId,
     specialistId,
-    excludeAppointmentId = null
+    excludeAppointmentId = null,
   }) {
     const baseWhere = {
       appointmentDate: new Date(appointmentDate),
-      status: { not: 'Cancelado' },
+      status: { not: "Cancelado" },
       OR: [
         {
           AND: [
             { startTime: { lte: startTime } },
-            { endTime: { gt: startTime } }
-          ]
+            { endTime: { gt: startTime } },
+          ],
         },
         {
-          AND: [
-            { startTime: { lt: endTime } },
-            { endTime: { gte: endTime } }
-          ]
+          AND: [{ startTime: { lt: endTime } }, { endTime: { gte: endTime } }],
         },
         {
           AND: [
             { startTime: { gte: startTime } },
-            { endTime: { lte: endTime } }
-          ]
-        }
+            { endTime: { lte: endTime } },
+          ],
+        },
       ],
-      ...(excludeAppointmentId && { id: { not: parseInt(excludeAppointmentId) } })
+      ...(excludeAppointmentId && {
+        id: { not: parseInt(excludeAppointmentId) },
+      }),
     };
 
     const [athleteConflict, specialistConflict] = await Promise.all([
@@ -453,25 +443,23 @@ export class AppointmentRepository {
         ? prisma.appointment.findFirst({
             where: {
               ...baseWhere,
-              athleteId: parseInt(athleteId)
-            }
+              athleteId: parseInt(athleteId),
+            },
           })
         : null,
       specialistId
         ? prisma.appointment.findFirst({
             where: {
               ...baseWhere,
-              specialistId: parseInt(specialistId)
-            }
+              specialistId: parseInt(specialistId),
+            },
           })
-        : null
+        : null,
     ]);
 
     return {
       athleteConflict,
-      specialistConflict
+      specialistConflict,
     };
   }
 }
-
-

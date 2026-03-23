@@ -1,6 +1,4 @@
-import { PrismaClient } from "../../../../generated/prisma/index.js";
-
-const prisma = new PrismaClient();
+import prisma from "../../../config/database.js";
 
 class EventMaterialsSummaryService {
   /**
@@ -48,7 +46,7 @@ class EventMaterialsSummaryService {
         },
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -156,4 +154,3 @@ throw error;
 }
 
 export default new EventMaterialsSummaryService();
-

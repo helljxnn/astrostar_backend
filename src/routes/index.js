@@ -1,4 +1,4 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import authRoutes from "../modules/Auth/routes/auth.routes.js";
 import roleRoutes from "../modules/Roles/routes/roles.routes.js";
 import employeeRoutes from "../modules/Services/Employees/routes/employees.routes.js";
@@ -31,6 +31,7 @@ import scheduleRoutes from "../modules/Services/EmployeesSchedule/routes/schedul
 import groupsRoutes from "../modules/Services/Groups/routes/groups.routes.js";
 import membershipsRoutes from "../modules/Services/Groups/routes/memberships.routes.js";
 import appointmentRoutes from "../modules/Services/AppointmentManagement/routes/AppointmentManagement.routes.js";
+import dashboardRoutes from "../modules/Dashboard/routes/dashboard.routes.js";
 
 const router = Router();
 
@@ -65,6 +66,7 @@ router.use("/schedules", scheduleRoutes);
 router.use("/groups", groupsRoutes);
 router.use("/", membershipsRoutes);
 router.use("/appointments", appointmentRoutes);
+router.use("/dashboard", dashboardRoutes);
 
 router.use("/upload", uploadRoutes);
 if (process.env.NODE_ENV === "development") {

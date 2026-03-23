@@ -1,7 +1,7 @@
 // Load environment variables FIRST before any other imports
 import dotenv from "dotenv";
 import os from "os";
-dotenv.config();
+dotenv.config({ quiet: true });
 
 import app from "./app.js";
 import emailService from "./services/emailService.js";

@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { v2 as cloudinary } from "cloudinary";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Configuración de Cloudinary (asegúrate de tener las variables en tu .env)
 cloudinary.config({

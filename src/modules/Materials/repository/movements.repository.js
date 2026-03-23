@@ -1,6 +1,4 @@
-﻿import { PrismaClient } from "../../../../generated/prisma/index.js";
-
-const prisma = new PrismaClient();
+﻿import prisma from "../../../config/database.js";
 const MATERIAL_STOCK_SELECT = {
   id: true,
   nombre: true,
@@ -537,71 +535,67 @@ class MovementsRepository {
         },
       },
       orderBy: {
-        fecha: 'desc',
+        fecha: "desc",
       },
     });
   }
 
-    /**
-     * Obtener todos los movimientos para reporte (SIN PAGINACIÓN)
-     */
-    async findAllForReport({
-      search = "",
-      materialId,
-      tipoMovimiento,
-      startDate,
-      endDate,
-    }) {
-      const where = {};
+  /**
+   * Obtener todos los movimientos para reporte (SIN PAGINACIÓN)
+   */
+  async findAllForReport({
+    search = "",
+    materialId,
+    tipoMovimiento,
+    startDate,
+    endDate,
+  }) {
+    const where = {};
 
-      if (search && search.trim()) {
-        where.OR = [
-          { observaciones: { contains: search, mode: "insensitive" } },
-        ];
+    if (search && search.trim()) {
+      where.OR = [{ observaciones: { contains: search, mode: "insensitive" } }];
+    }
+
+    if (materialId) {
+      where.materialId = parseInt(materialId);
+    }
+
+    if (tipoMovimiento) {
+      where.tipoMovimiento = tipoMovimiento;
+    }
+
+    if (startDate || endDate) {
+      where.fecha = {};
+      if (startDate) {
+        where.fecha.gte = new Date(startDate);
       }
-
-      if (materialId) {
-        where.materialId = parseInt(materialId);
+      if (endDate) {
+        where.fecha.lte = new Date(endDate);
       }
+    }
 
-      if (tipoMovimiento) {
-        where.tipoMovimiento = tipoMovimiento;
-      }
-
-      if (startDate || endDate) {
-        where.fecha = {};
-        if (startDate) {
-          where.fecha.gte = new Date(startDate);
-        }
-        if (endDate) {
-          where.fecha.lte = new Date(endDate);
-        }
-      }
-
-      const movements = await prisma.materialMovement.findMany({
-        where,
-        include: {
-          material: {
-            select: {
-              id: true,
-              nombre: true,
-              codigo: true,
-            },
-          },
-          proveedor: {
-            select: {
-              id: true,
-              businessName: true,
-            },
+    const movements = await prisma.materialMovement.findMany({
+      where,
+      include: {
+        material: {
+          select: {
+            id: true,
+            nombre: true,
+            codigo: true,
           },
         },
-        orderBy: { fecha: "desc" },
-      });
+        proveedor: {
+          select: {
+            id: true,
+            businessName: true,
+          },
+        },
+      },
+      orderBy: { fecha: "desc" },
+    });
 
-      return movements;
-    }
+    return movements;
+  }
 }
 
 export default new MovementsRepository();
-
-
