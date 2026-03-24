@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Job para limpiar intentos antiguos de rate limiting
  * Se ejecuta diariamente a las 3:00 AM
  */
@@ -11,13 +11,11 @@ import rateLimitService from "../services/rateLimitService.js";
  */
 async function cleanupOldAttempts() {
   try {
-    console.log(
-      "🧹 [RATE LIMIT CLEANUP] Iniciando limpieza de intentos antiguos...",
-    );
+    console.log("[RATE LIMIT CLEANUP] Starting cleanup of old attempts...");
 
     const result = await rateLimitService.cleanupOldAttempts();
 
-    console.log("✅ [RATE LIMIT CLEANUP] Limpieza completada exitosamente");
+    console.log("[RATE LIMIT CLEANUP] Cleanup completed successfully");
     console.log(
       `   - Password resets: ${result.passwordResets} registros eliminados`,
     );
@@ -25,7 +23,7 @@ async function cleanupOldAttempts() {
       `   - Email verifications: ${result.emailVerifications} registros eliminados`,
     );
   } catch (error) {
-    console.error("❌ [RATE LIMIT CLEANUP] Error en limpieza:", error);
+    console.error("[RATE LIMIT CLEANUP] Cleanup error:", error);
   }
 }
 
@@ -40,7 +38,7 @@ export function startRateLimitCleanupJob() {
   });
 
   console.log(
-    "✅ [RATE LIMIT CLEANUP] Job de limpieza programado (diario a las 3:00 AM)",
+    "[RATE LIMIT CLEANUP] Job scheduled (daily at 03:00 AM).",
   );
 }
 
