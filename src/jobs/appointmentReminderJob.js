@@ -1,4 +1,4 @@
-﻿import cron from "node-cron";
+import cron from "node-cron";
 import prisma from "../config/database.js";
 import appointmentEmailService from "../modules/Services/AppointmentManagement/services/AppointmentEmail.service.js";
 
@@ -9,7 +9,7 @@ import appointmentEmailService from "../modules/Services/AppointmentManagement/s
 export function startAppointmentReminderJob() {
   // Ejecutar todos los días a las 9:00 AM
   cron.schedule("0 9 * * *", async () => {
-    console.log("🔔 [Appointment Reminder Job] Ejecutando job de recordatorios de citas...");
+    console.log("[Appointment Reminder Job] Running appointment reminders job...");
 
     try {
       const now = new Date();
@@ -43,7 +43,7 @@ export function startAppointmentReminderJob() {
         }
       });
 
-      console.log(`📬 [Appointment Reminder Job] Encontradas ${appointments.length} citas para mañana`);
+      console.log(`[Appointment Reminder Job] Found ${appointments.length} appointments for tomorrow`);
 
       let successCount = 0;
       let errorCount = 0;
@@ -51,7 +51,7 @@ export function startAppointmentReminderJob() {
       for (const appointment of appointments) {
         try {
           if (!appointment.athlete?.user?.email || !appointment.specialist?.user?.email) {
-            console.warn(`⚠️ [Appointment Reminder Job] Cita ${appointment.id} sin emails válidos`);
+            console.warn(`[Appointment Reminder Job] Appointment ${appointment.id} has missing valid emails`);
             errorCount++;
             continue;
           }
@@ -67,20 +67,20 @@ export function startAppointmentReminderJob() {
             specialistName
           );
 
-          console.log(`✅ [Appointment Reminder Job] Recordatorio enviado para cita ${appointment.id}`);
+          console.log(`[Appointment Reminder Job] Reminder sent for appointment ${appointment.id}`);
           successCount++;
         } catch (error) {
-          console.error(`❌ [Appointment Reminder Job] Error en cita ${appointment.id}:`, error.message);
+          console.error(`[Appointment Reminder Job] Error for appointment ${appointment.id}:`, error.message);
           errorCount++;
         }
       }
 
-      console.log(`✅ [Appointment Reminder Job] Completado: ${successCount} exitosos, ${errorCount} errores`);
+      console.log(`[Appointment Reminder Job] Completed: ${successCount} success, ${errorCount} errors`);
     } catch (error) {
-      console.error("❌ [Appointment Reminder Job] Error general:", error);
+      console.error("[Appointment Reminder Job] General error:", error);
     }
   });
 
-  console.log("✅ Job de recordatorios de citas iniciado (se ejecuta diariamente a las 9:00 AM)");
+  console.log("[Appointment Reminder Job] Started (daily at 09:00).");
 }
 

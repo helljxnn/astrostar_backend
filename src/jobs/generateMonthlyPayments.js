@@ -1,4 +1,4 @@
-﻿import cron from 'node-cron';
+import cron from 'node-cron';
 import { paymentsService } from '../modules/Payments/services/payments.service.js';
 
 /**
@@ -6,12 +6,12 @@ import { paymentsService } from '../modules/Payments/services/payments.service.j
  * Se ejecuta el día 1 de cada mes a las 00:01
  */
 const generateMonthlyPaymentsJob = cron.schedule('1 0 1 * *', async () => {
-  console.log('🔄 [CRON] Iniciando generación de mensualidades...');
+  console.log('[CRON] Starting monthly obligations generation...');
   
   try {
     const result = await paymentsService.generateMonthlyObligations();
     
-    console.log('✅ [CRON] Mensualidades generadas exitosamente:', {
+    console.log('[CRON] Monthly obligations generated:', {
       periodo: result.period,
       creadas: result.created,
       omitidas: result.skipped,
@@ -21,11 +21,11 @@ const generateMonthlyPaymentsJob = cron.schedule('1 0 1 * *', async () => {
     // Si hay errores, registrarlos
     if (result.errors > 0) {
       const errorDetails = result.details.filter(d => d.status === 'error');
-      console.error('❌ [CRON] Errores en generación de mensualidades:', errorDetails);
+      console.error('[CRON] Errors during monthly obligations generation:', errorDetails);
     }
 
   } catch (error) {
-    console.error('❌ [CRON] Error crítico en generación de mensualidades:', error);
+    console.error('[CRON] Critical error during monthly obligations generation:', error);
   }
 }, {
   scheduled: false, // No iniciar automáticamente
@@ -43,7 +43,7 @@ const generateMonthlyPaymentsJob = cron.schedule('1 0 1 * *', async () => {
  * 4. Al aprobar pago, sistema crea nueva matrícula automáticamente
  */
 const processExpiredEnrollmentsJob = cron.schedule('0 2 * * *', async () => {
-  console.log('🔄 [CRON] Iniciando procesamiento de matrículas vencidas...');
+  console.log('[CRON] Starting expired enrollments processing...');
   
   try {
     const now = new Date();
@@ -53,7 +53,7 @@ const processExpiredEnrollmentsJob = cron.schedule('0 2 * * *', async () => {
     
     const result = await enrollmentsService.processExpiredEnrollments();
     
-    console.log('✅ [CRON] Matrículas vencidas procesadas:', {
+    console.log('[CRON] Expired enrollments processed:', {
       procesadas: result.processed,
       errores: result.errors
     });
@@ -62,29 +62,29 @@ const processExpiredEnrollmentsJob = cron.schedule('0 2 * * *', async () => {
     if (result.processed > 0) {
       const processedEnrollments = result.details.filter(d => d.status === 'processed');
       
-      console.log(`🔄 [CRON] Generando ${processedEnrollments.length} obligaciones de renovación...`);
+      console.log(`[CRON] Generating ${processedEnrollments.length} renewal obligations...`);
       
       for (const enrollment of processedEnrollments) {
         try {
           await paymentsService.generateEnrollmentRenewalObligation(enrollment.athleteId);
-          console.log(`✅ [CRON] Obligación de renovación creada para atleta ${enrollment.athleteId} (${enrollment.athleteName})`);
+          console.log(`[CRON] Renewal obligation created for athlete ${enrollment.athleteId} (${enrollment.athleteName})`);
         } catch (error) {
           // Si ya existe obligación, no es error crítico
           if (error.message.includes('Ya existe una obligación')) {
-            console.log(`ℹ️ [CRON] Atleta ${enrollment.athleteId} ya tiene obligación de renovación pendiente`);
+            console.log(`[CRON] Athlete ${enrollment.athleteId} already has a pending renewal obligation`);
           } else {
-            console.error(`❌ [CRON] Error creando obligación de renovación para atleta ${enrollment.athleteId}:`, error.message);
+            console.error(`[CRON] Error creating renewal obligation for athlete ${enrollment.athleteId}:`, error.message);
           }
         }
       }
       
-      console.log('✅ [CRON] Procesamiento de obligaciones de renovación completado');
+      console.log('[CRON] Renewal obligations processing completed');
     } else {
-      console.log('ℹ️ [CRON] No hay matrículas vencidas para procesar hoy');
+      console.log('[CRON] No expired enrollments to process today');
     }
 
   } catch (error) {
-    console.error('❌ [CRON] Error crítico procesando matrículas vencidas:', error);
+    console.error('[CRON] Critical error processing expired enrollments:', error);
   }
 }, {
   scheduled: false,
@@ -95,15 +95,15 @@ const processExpiredEnrollmentsJob = cron.schedule('0 2 * * *', async () => {
  * Inicializar jobs de pagos
  */
 export const initializePaymentJobs = () => {
-  console.log('🚀 [JOBS] Inicializando jobs de gestión de pagos...');
+  console.log('[JOBS] Initializing payment jobs...');
   
   // Iniciar jobs
   generateMonthlyPaymentsJob.start();
   processExpiredEnrollmentsJob.start();
   
-  console.log('✅ [JOBS] Jobs de pagos inicializados:');
-  console.log('   - Generación mensualidades: 1ro de cada mes a las 00:01');
-  console.log('   - Procesamiento matrículas vencidas: Diario a las 02:00');
+  console.log('[JOBS] Payment jobs initialized:');
+  console.log('   - Monthly obligations generation: 1st day of each month at 00:01');
+  console.log('   - Expired enrollments processing: daily at 02:00');
 };
 
 /**
@@ -112,7 +112,7 @@ export const initializePaymentJobs = () => {
 export const stopPaymentJobs = () => {
   generateMonthlyPaymentsJob.stop();
   processExpiredEnrollmentsJob.stop();
-  console.log('🛑 [JOBS] Jobs de pagos detenidos');
+  console.log('[JOBS] Payment jobs stopped');
 };
 
 // Exportar jobs individuales para testing
