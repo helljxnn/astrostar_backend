@@ -1,4 +1,8 @@
-﻿import rateLimit from "express-rate-limit";
+import rateLimit from "express-rate-limit";
+import {
+  getClientIpForLogs,
+  rateLimitKeyGenerator,
+} from "./rateLimitKeyGenerator.js";
 
 const isDevelopment = process.env.NODE_ENV === "development";
 
@@ -15,6 +19,7 @@ export const apiLimiter = rateLimit({
       "Demasiadas peticiones desde esta IP, por favor intenta más tarde.",
     retryAfter: "15 minutos",
   },
+  keyGenerator: rateLimitKeyGenerator,
   skip: (req) => {
     const path = req.path || "";
     const hasAuthHeader = Boolean(req.headers.authorization);
@@ -34,7 +39,9 @@ export const apiLimiter = rateLimit({
   legacyHeaders: false, // Deshabilita headers `X-RateLimit-*`
   // Handler cuando se excede el límite
   handler: (req, res) => {
-    console.warn(`[WARN] Rate limit exceeded for IP: ${req.ip}`);
+    console.warn(
+      `[WARN] Rate limit exceeded for IP: ${getClientIpForLogs(req)}`,
+    );
     res.status(429).json({
       success: false,
       message:
@@ -63,10 +70,11 @@ export const authLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: rateLimitKeyGenerator,
   skipSuccessfulRequests: true, // No contar requests exitosos
   handler: (req, res) => {
     console.warn(
-      `[WARN] Login attempts exceeded for IP: ${req.ip}, Email: ${req.body?.email}`,
+      `[WARN] Login attempts exceeded for IP: ${getClientIpForLogs(req)}, Email: ${req.body?.email}`,
     );
     res.status(429).json({
       success: false,
@@ -91,8 +99,11 @@ export const createLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: rateLimitKeyGenerator,
   handler: (req, res) => {
-    console.warn(`[WARN] Create limit exceeded for IP: ${req.ip}`);
+    console.warn(
+      `[WARN] Create limit exceeded for IP: ${getClientIpForLogs(req)}`,
+    );
     res.status(429).json({
       success: false,
       message: "Límite de creación alcanzado. Por favor intenta más tarde.",
@@ -115,6 +126,7 @@ export const publicLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: rateLimitKeyGenerator,
 });
 
 /**
@@ -132,8 +144,11 @@ export const uploadLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: rateLimitKeyGenerator,
   handler: (req, res) => {
-    console.warn(`[WARN] Upload limit exceeded for IP: ${req.ip}`);
+    console.warn(
+      `[WARN] Upload limit exceeded for IP: ${getClientIpForLogs(req)}`,
+    );
     res.status(429).json({
       success: false,
       message:
