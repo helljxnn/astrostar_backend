@@ -683,20 +683,32 @@ export class EventsRepository {
   async delete(id) {
     try {
       const eventId = parseInt(id);
+      const deleted = await prisma.$transaction(async (tx) => {
+        // ServiceSponsor no tiene cascada en el esquema actual,
+        // por eso se limpia manualmente antes de eliminar el evento.
+        await tx.serviceSponsor.deleteMany({
+          where: { serviceId: eventId },
+        });
 
-      // Prisma eliminarÃƒÂ¡ automÃƒÂ¡ticamente en cascada:
-      // - ServiceSponsor (onDelete: Cascade)
-      // - Participant (onDelete: Cascade)
-      const deleted = await prisma.service.delete({
-        where: { id: eventId },
+        // Donation.serviceId es opcional; se desacopla para preservar historial.
+        await tx.donation.updateMany({
+          where: { serviceId: eventId },
+          data: { serviceId: null },
+        });
+
+        // Participant, ServiceSportsCategory, EventMaterial y EventMaterialReusable
+        // sí se eliminan por cascada desde Service.
+        return tx.service.delete({
+          where: { id: eventId },
+        });
       });
 
       return deleted;
     } catch (error) {
-      // Proporcionar mensajes de error mÃƒÂ¡s especÃƒÂ­ficos
+      // Proporcionar mensajes de error más específicos
       if (error.code === "P2003") {
         throw new Error(
-          "No se puede eliminar el evento debido a restricciones de clave forÃƒÂ¡nea. Verifica que no tenga relaciones activas.",
+          "No se puede eliminar el evento debido a restricciones de clave foránea. Verifica que no tenga relaciones activas.",
         );
       }
 
