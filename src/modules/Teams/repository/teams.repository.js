@@ -170,6 +170,115 @@ export class TeamsRepository {
     // Campo legacy eliminado del modelo TemporaryPerson.
     return;
   }
+
+  getTeamRelationsInclude() {
+    return {
+      members: {
+        include: {
+          athlete: {
+            include: {
+              user: true,
+              inscriptions: {
+                where: { status: "Active" },
+                include: { sportsCategory: true },
+              },
+            },
+          },
+          employee: {
+            include: {
+              user: true,
+            },
+          },
+          temporaryPerson: true,
+        },
+      },
+    };
+  }
+
+  buildTeamWhereClause({ status = "", teamType = "" } = {}) {
+    const where = {};
+
+    if (status) {
+      const normalizedStatus =
+        status === "Activo"
+          ? "Active"
+          : status === "Inactivo"
+            ? "Inactive"
+            : status;
+      where.status = normalizedStatus;
+    }
+
+    if (teamType === "Temporal") {
+      where.category = { not: null };
+    }
+
+    return where;
+  }
+
+  normalizeSearchText(value) {
+    return String(value ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  getDateSearchVariants(dateValue) {
+    if (!dateValue) return [];
+
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return [];
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear());
+
+    return [
+      `${day}/${month}/${year}`,
+      `${year}-${month}-${day}`,
+      date.toISOString(),
+    ];
+  }
+
+  buildTeamSearchableValues(team) {
+    const athleteValues = Array.isArray(team.deportistas)
+      ? team.deportistas.flatMap((deportista) => [
+          deportista.name,
+          deportista.identification,
+          deportista.phoneNumber,
+          deportista.categoria,
+        ])
+      : [];
+
+    return [
+      team.nombre,
+      team.name,
+      team.descripcion,
+      team.entrenador,
+      team.coach,
+      team.categoria,
+      team.category,
+      team.estado,
+      team.teamType,
+      team.teamType === "Temporal" ? "Temporales" : "Fundacion",
+      team.teamType === "Temporal" ? "Temporal" : "Fundación",
+      team.cantidadDeportistas,
+      ...athleteValues,
+      ...this.getDateSearchVariants(team.createdAt),
+      ...this.getDateSearchVariants(team.updatedAt),
+    ];
+  }
+
+  matchesTeamSearch(team, searchTerm) {
+    if (!searchTerm?.trim()) return true;
+
+    const normalizedSearch = this.normalizeSearchText(searchTerm);
+
+    return this.buildTeamSearchableValues(team).some((value) =>
+      this.normalizeSearchText(value).includes(normalizedSearch),
+    );
+  }
+
   transformToFrontend(team) {
     if (!team) return null;
 
@@ -695,172 +804,24 @@ export class TeamsRepository {
     status = "",
     teamType = "",
   }) {
-    // Asegurar que page y limit sean números
     const pageNum = parseInt(page) || 1;
     const limitNum = parseInt(limit) || 10;
     const skip = (pageNum - 1) * limitNum;
+    const teams = await prisma.team.findMany({
+      where: this.buildTeamWhereClause({ status, teamType }),
+      include: this.getTeamRelationsInclude(),
+      orderBy: { createdAt: "desc" },
+    });
 
-    // Si hay búsqueda, usar SQL raw para ignorar tildes
-    if (search && search.trim()) {
-      const searchTerm = `%${search.trim()}%`;
+    const filteredTeams = teams
+      .map((team) => this.transformToFrontend(team))
+      .filter((team) => this.matchesTeamSearch(team, search));
 
-      // Construir condiciones adicionales
-      let statusCondition = "";
-      if (status) {
-        const normalizedStatus =
-          status === "Activo"
-            ? "Active"
-            : status === "Inactivo"
-              ? "Inactive"
-              : status;
-        statusCondition = `AND status = '${normalizedStatus}'`;
-      }
-
-      let teamTypeCondition = "";
-      if (teamType === "Temporal") {
-        teamTypeCondition = `AND category IS NOT NULL`;
-      }
-
-      // Usar translate() de PostgreSQL para normalizar caracteres acentuados
-      // á->a, é->e, í->i, ó->o, ú->u, ñ->n
-      const query = `
-        SELECT * FROM teams 
-        WHERE (
-          translate(lower(name), 'áéíóúñ', 'aeioun') LIKE translate(lower($1), 'áéíóúñ', 'aeioun')
-          OR translate(lower(COALESCE(coach, '')), 'áéíóúñ', 'aeioun') LIKE translate(lower($1), 'áéíóúñ', 'aeioun')
-          OR translate(lower(COALESCE(category, '')), 'áéíóúñ', 'aeioun') LIKE translate(lower($1), 'áéíóúñ', 'aeioun')
-        )
-        ${statusCondition}
-        ${teamTypeCondition}
-        ORDER BY "createdAt" DESC
-        LIMIT $2 OFFSET $3
-      `;
-
-      const countQuery = `
-        SELECT COUNT(*) as total FROM teams 
-        WHERE (
-          translate(lower(name), 'áéíóúñ', 'aeioun') LIKE translate(lower($1), 'áéíóúñ', 'aeioun')
-          OR translate(lower(COALESCE(coach, '')), 'áéíóúñ', 'aeioun') LIKE translate(lower($1), 'áéíóúñ', 'aeioun')
-          OR translate(lower(COALESCE(category, '')), 'áéíóúñ', 'aeioun') LIKE translate(lower($1), 'áéíóúñ', 'aeioun')
-        )
-        ${statusCondition}
-        ${teamTypeCondition}
-      `;
-
-      const [teams, countResult] = await Promise.all([
-        prisma.$queryRawUnsafe(query, searchTerm, limitNum, skip),
-        prisma.$queryRawUnsafe(countQuery, searchTerm),
-      ]);
-
-      const total = parseInt(countResult[0]?.total || 0);
-
-      // Cargar relaciones para cada equipo
-      const teamsWithRelations = await Promise.all(
-        teams.map((team) =>
-          prisma.team.findUnique({
-            where: { id: team.id },
-            include: {
-              members: {
-                include: {
-                  athlete: {
-                    include: {
-                      user: true,
-                      inscriptions: {
-                        where: { status: "Active" },
-                        include: { sportsCategory: true },
-                      },
-                    },
-                  },
-                  employee: {
-                    include: {
-                      user: true,
-                    },
-                  },
-                  temporaryPerson: true,
-                },
-              },
-            },
-          }),
-        ),
-      );
-
-      const transformedTeams = teamsWithRelations.map((team) =>
-        this.transformToFrontend(team),
-      );
-
-      return {
-        teams: transformedTeams,
-        pagination: {
-          page: pageNum,
-          limit: limitNum,
-          total,
-          totalPages: Math.ceil(total / limitNum),
-          hasNext: pageNum < Math.ceil(total / limitNum),
-          hasPrev: pageNum > 1,
-        },
-      };
-    }
-
-    // Búsqueda normal sin término de búsqueda
-    const where = {};
-    if (status) {
-      const normalizedStatus =
-        status === "Activo"
-          ? "Active"
-          : status === "Inactivo"
-            ? "Inactive"
-            : status;
-      where.status = normalizedStatus;
-    }
-    // teamType se filtra por categoría en lugar de un campo separado
-    // Los equipos temporales tienen categoría, los de fundación pueden no tenerla
-    if (teamType) {
-      if (teamType === "Temporal") {
-        // Equipos temporales tienen categoría definida
-        where.category = { not: null };
-      } else if (teamType === "Fundacion") {
-        // Equipos de fundación pueden tener o no categoría, pero se distinguen por sus miembros
-        // Por ahora no filtramos, ya que no hay campo teamType en la BD
-      }
-    }
-
-    const [teams, total] = await Promise.all([
-      prisma.team.findMany({
-        where,
-        skip,
-        take: limitNum,
-        include: {
-          members: {
-            include: {
-              athlete: {
-                include: {
-                  user: true,
-                  inscriptions: {
-                    where: { status: "Active" },
-                    include: { sportsCategory: true },
-                  },
-                },
-              },
-              employee: {
-                include: {
-                  user: true,
-                },
-              },
-              temporaryPerson: true,
-            },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-      prisma.team.count({ where }),
-    ]);
-
-    const transformedTeams = teams.map((team) =>
-      this.transformToFrontend(team),
-    );
+    const total = filteredTeams.length;
+    const paginatedTeams = filteredTeams.slice(skip, skip + limitNum);
 
     return {
-      teams: transformedTeams,
+      teams: paginatedTeams,
       pagination: {
         page: pageNum,
         limit: limitNum,
@@ -1184,125 +1145,15 @@ export class TeamsRepository {
     status = "",
     teamType = "",
   }) {
-    // Si hay búsqueda, usar SQL raw para ignorar tildes
-    if (search && search.trim()) {
-      const searchTerm = `%${search.trim()}%`;
-
-      let statusCondition = "";
-      if (status) {
-        const normalizedStatus =
-          status === "Activo"
-            ? "Active"
-            : status === "Inactivo"
-              ? "Inactive"
-              : status;
-        statusCondition = `AND status = '${normalizedStatus}'`;
-      }
-
-      let teamTypeCondition = "";
-      if (teamType === "Temporal") {
-        teamTypeCondition = `AND category IS NOT NULL`;
-      }
-
-      const query = `
-        SELECT * FROM teams 
-        WHERE (
-          translate(lower(name), 'áéíóúñ', 'aeioun') LIKE translate(lower($1), 'áéíóúñ', 'aeioun')
-          OR translate(lower(COALESCE(coach, '')), 'áéíóúñ', 'aeioun') LIKE translate(lower($1), 'áéíóúñ', 'aeioun')
-          OR translate(lower(COALESCE(category, '')), 'áéíóúñ', 'aeioun') LIKE translate(lower($1), 'áéíóúñ', 'aeioun')
-        )
-        ${statusCondition}
-        ${teamTypeCondition}
-        ORDER BY "createdAt" DESC
-      `;
-
-      const teams = await prisma.$queryRawUnsafe(query, searchTerm);
-
-      // Cargar relaciones para cada equipo
-      const teamsWithRelations = await Promise.all(
-        teams.map((team) =>
-          prisma.team.findUnique({
-            where: { id: team.id },
-            include: {
-              members: {
-                include: {
-                  athlete: {
-                    include: {
-                      user: true,
-                      inscriptions: {
-                        where: { status: "Active" },
-                        include: { sportsCategory: true },
-                      },
-                    },
-                  },
-                  employee: {
-                    include: {
-                      user: true,
-                    },
-                  },
-                  temporaryPerson: true,
-                },
-              },
-            },
-          }),
-        ),
-      );
-
-      const transformedTeams = teamsWithRelations.map((team) =>
-        this.transformToFrontend(team),
-      );
-
-      return {
-        teams: transformedTeams,
-      };
-    }
-
-    // Búsqueda normal sin término de búsqueda
-    const where = {};
-    if (status) {
-      const normalizedStatus =
-        status === "Activo"
-          ? "Active"
-          : status === "Inactivo"
-            ? "Inactive"
-            : status;
-      where.status = normalizedStatus;
-    }
-    if (teamType) {
-      if (teamType === "Temporal") {
-        where.category = { not: null };
-      }
-    }
-
     const teams = await prisma.team.findMany({
-      where,
-      include: {
-        members: {
-          include: {
-            athlete: {
-              include: {
-                user: true,
-                inscriptions: {
-                  where: { status: "Active" },
-                  include: { sportsCategory: true },
-                },
-              },
-            },
-            employee: {
-              include: {
-                user: true,
-              },
-            },
-            temporaryPerson: true,
-          },
-        },
-      },
+      where: this.buildTeamWhereClause({ status, teamType }),
+      include: this.getTeamRelationsInclude(),
       orderBy: { createdAt: "desc" },
     });
 
-    const transformedTeams = teams.map((team) =>
-      this.transformToFrontend(team),
-    );
+    const transformedTeams = teams
+      .map((team) => this.transformToFrontend(team))
+      .filter((team) => this.matchesTeamSearch(team, search));
 
     return {
       teams: transformedTeams,

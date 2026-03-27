@@ -12,6 +12,10 @@ class MovementsService {
     tipo = null,
     origen = null,
     search = "",
+    dateFrom = null,
+    dateTo = null,
+    inventarioDestino = null,
+    tipoSalida = null,
   }) {
     try {
       const result = await movementsRepository.findAll({
@@ -21,6 +25,10 @@ class MovementsService {
         tipo,
         origen,
         search: search.toString().trim(),
+        dateFrom,
+        dateTo,
+        inventarioDestino,
+        tipoSalida,
       });
 
       return {
@@ -425,6 +433,8 @@ throw error;
     tipoMovimiento,
     startDate,
     endDate,
+    inventarioDestino,
+    tipoSalida,
   }) {
     try {
       const movements = await movementsRepository.findAllForReport({
@@ -433,6 +443,8 @@ throw error;
         tipoMovimiento,
         startDate,
         endDate,
+        inventarioDestino,
+        tipoSalida,
       });
 
       return {

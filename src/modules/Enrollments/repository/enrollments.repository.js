@@ -1,6 +1,26 @@
 import prisma from "../../../config/database.js";
 
+const normalizeSearchValue = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
 export const enrollmentsRepository = {
+  buildDateRangeClause(field, fromParam, toParam) {
+    if (fromParam && toParam) {
+      return `(${field} >= ${fromParam} AND ${field} <= ${toParam})`;
+    }
+    if (fromParam) {
+      return `${field} >= ${fromParam}`;
+    }
+    if (toParam) {
+      return `${field} <= ${toParam}`;
+    }
+    return null;
+  },
+
   async normalizeStatuses() {
     const now = new Date();
 
@@ -64,6 +84,32 @@ export const enrollmentsRepository = {
           orConditions.push(`u."lastName" ILIKE $${paramIndex}`);
           orConditions.push(`u."middleName" ILIKE $${paramIndex}`);
           orConditions.push(`u."secondLastName" ILIKE $${paramIndex}`);
+          orConditions.push(`CONCAT_WS(' ', u."firstName", u."middleName", u."lastName", u."secondLastName") ILIKE $${paramIndex}`);
+          orConditions.push(`TO_CHAR(e."createdAt", 'DD/MM/YYYY') ILIKE $${paramIndex}`);
+          orConditions.push(`TO_CHAR(e."fechaInicio", 'DD/MM/YYYY') ILIKE $${paramIndex}`);
+          orConditions.push(`TO_CHAR(e."fechaVencimiento", 'DD/MM/YYYY') ILIKE $${paramIndex}`);
+          orConditions.push(`(
+            CASE
+              WHEN e.estado::text = 'Pending_Payment' THEN 'Pendiente de Pago'
+              WHEN e.estado::text = 'Vigente' THEN 'Vigente'
+              WHEN e.estado::text = 'Vencida' THEN 'Vencida'
+              ELSE e.estado::text
+            END
+          ) ILIKE $${paramIndex}`);
+          orConditions.push(`(
+            CASE
+              WHEN e.estado::text = 'Pending_Payment' THEN 'Pendiente de activación'
+              WHEN e."fechaInicio" IS NULL THEN 'No activada'
+              ELSE TO_CHAR(e."fechaInicio", 'DD/MM/YYYY')
+            END
+          ) ILIKE $${paramIndex}`);
+          orConditions.push(`(
+            CASE
+              WHEN e.estado::text = 'Pending_Payment' THEN 'Pendiente de activación'
+              WHEN e."fechaVencimiento" IS NULL THEN 'Sin fecha'
+              ELSE TO_CHAR(e."fechaVencimiento", 'DD/MM/YYYY')
+            END
+          ) ILIKE $${paramIndex}`);
           params.push(searchTerm);
           paramIndex++;
         }
@@ -91,19 +137,28 @@ export const enrollmentsRepository = {
         }
       }
 
-      if (dateFrom) {
-        whereConditions.push(`e."createdAt" >= $${paramIndex}`);
-        params.push(dateFrom);
-        paramIndex++;
-      }
+      if (dateFrom || dateTo) {
+        const dateFromParam = dateFrom ? `$${paramIndex}` : null;
+        if (dateFrom) {
+          params.push(dateFrom);
+          paramIndex++;
+        }
 
-      if (dateTo) {
-        whereConditions.push(`e."createdAt" <= $${paramIndex}`);
-        params.push(dateTo);
-        paramIndex++;
+        const dateToParam = dateTo ? `$${paramIndex}` : null;
+        if (dateTo) {
+          params.push(dateTo);
+          paramIndex++;
+        }
+
+        const createdAtClause = this.buildDateRangeClause(`e."createdAt"`, dateFromParam, dateToParam);
+        const fechaInicioClause = this.buildDateRangeClause(`e."fechaInicio"`, dateFromParam, dateToParam);
+        const fechaVencimientoClause = this.buildDateRangeClause(`e."fechaVencimiento"`, dateFromParam, dateToParam);
+
+        whereConditions.push(`(${[createdAtClause, fechaInicioClause, fechaVencimientoClause].filter(Boolean).join(' OR ')})`);
       }
 
       if (vencimientoRange?.from && vencimientoRange?.to) {
+        whereConditions.push(`e.estado::text <> 'Pending_Payment'`);
         whereConditions.push(`e."fechaVencimiento" IS NOT NULL`);
         whereConditions.push(`e."fechaVencimiento" >= $${paramIndex}`);
         params.push(vencimientoRange.from);
@@ -306,8 +361,24 @@ export const enrollmentsRepository = {
                   secondLastName: { contains: searchTerm, mode: 'insensitive' }
                 }
               }
+            },
+            {
+              athlete: {
+                user: {
+                  email: { contains: searchTerm, mode: 'insensitive' }
+                }
+              }
             }
           );
+
+          const normalizedSearch = normalizeSearchValue(searchTerm);
+          if (normalizedSearch.includes('pendiente de activacion')) {
+            or.push({ estado: 'Pending_Payment' });
+          }
+          if (normalizedSearch.includes('no activada') || normalizedSearch.includes('no activado')) {
+            or.push({ fechaInicio: null });
+            or.push({ estado: 'Pending_Payment' });
+          }
         }
 
         if (searchEstado) {
@@ -333,16 +404,29 @@ export const enrollmentsRepository = {
       }
 
       if (dateFrom || dateTo) {
-        where.createdAt = {};
+        const range = {};
         if (dateFrom) {
-          where.createdAt.gte = dateFrom;
+          range.gte = dateFrom;
         }
         if (dateTo) {
-          where.createdAt.lte = dateTo;
+          range.lte = dateTo;
         }
+
+        where.AND = where.AND || [];
+        where.AND.push({
+          OR: [
+            { createdAt: range },
+            { fechaInicio: range },
+            { fechaVencimiento: range },
+          ],
+        });
       }
 
       if (vencimientoRange?.from && vencimientoRange?.to) {
+        where.AND = where.AND || [];
+        where.AND.push({
+          estado: { not: 'Pending_Payment' },
+        });
         where.fechaVencimiento = {
           gte: vencimientoRange.from,
           lte: vencimientoRange.to

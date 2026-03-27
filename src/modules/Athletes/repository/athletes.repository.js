@@ -729,9 +729,74 @@ throw error;
                     mode: "insensitive"
                   }
                 }
+              },
+              {
+                guardian: {
+                  firstName: {
+                    contains: searchLower,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              {
+                guardian: {
+                  lastName: {
+                    contains: searchLower,
+                    mode: "insensitive"
+                  }
+                }
               }
             ]
           };
+
+          if (searchWords.length > 1) {
+            searchConditions.OR.push({
+              AND: searchWords.map((word) => ({
+                OR: [
+                  {
+                    user: {
+                      firstName: {
+                        contains: word,
+                        mode: "insensitive"
+                      }
+                    }
+                  },
+                  {
+                    user: {
+                      middleName: {
+                        contains: word,
+                        mode: "insensitive"
+                      }
+                    }
+                  },
+                  {
+                    user: {
+                      lastName: {
+                        contains: word,
+                        mode: "insensitive"
+                      }
+                    }
+                  },
+                  {
+                    user: {
+                      secondLastName: {
+                        contains: word,
+                        mode: "insensitive"
+                      }
+                    }
+                  }
+                ]
+              }))
+            });
+          }
+
+          if (["si", "beca", "becada"].includes(searchLower)) {
+            searchConditions.OR.push({ isScholarship: true });
+          }
+
+          if (["no", "n/a", "na"].includes(searchLower)) {
+            searchConditions.OR.push({ isScholarship: false });
+          }
 
           // ✅ OPTIMIZACIÓN: Búsqueda por nombres usando múltiples palabras
           searchWords.forEach(word => {

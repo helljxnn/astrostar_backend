@@ -1,6 +1,4 @@
 node_modules
-/generated/prisma
-/prisma/migrations
 
 # Variables de entorno 
 .env
@@ -60,3 +58,6 @@ tests
 jest.config.cjs
 coverage
 *.code-workspace
+generated/
+generated/prisma/
+generated/prisma/*.tmp*

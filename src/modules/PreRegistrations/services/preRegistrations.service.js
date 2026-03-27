@@ -104,6 +104,58 @@ const resolveInitialCreateStatus = async () => {
   throw new Error("No se pudieron resolver valores del enum PreRegistrationStatus en la base de datos");
 };
 
+const buildExistenceResponse = ({
+  existingPreRegistration,
+  existingUser,
+  entityLabel,
+}) => {
+  if (existingUser) {
+    return {
+      exists: true,
+      message:
+        entityLabel === "document"
+          ? "Este documento ya está registrado en el sistema"
+          : "Este email ya está registrado en el sistema",
+      location: "user",
+      data: existingUser,
+    };
+  }
+
+  if (existingPreRegistration) {
+    const statusCanonical = resolveStatusCanonical(existingPreRegistration.status);
+
+    if (statusCanonical === "processed") {
+      return {
+        exists: true,
+        message:
+          entityLabel === "document"
+            ? "Este documento ya tiene una inscripción procesada"
+            : "Este email ya tiene una inscripción procesada",
+        location: "preRegistrationProcessed",
+        data: existingPreRegistration,
+      };
+    }
+
+    return {
+      exists: true,
+      message:
+        entityLabel === "document"
+          ? "Este documento ya está inscrito"
+          : "Este email ya está inscrito",
+      location: "preRegistration",
+      data: existingPreRegistration,
+    };
+  }
+
+  return {
+    exists: false,
+    message:
+      entityLabel === "document" ? "Documento disponible" : "Email disponible",
+    location: null,
+    data: null,
+  };
+};
+
 export const preRegistrationsService = {
   async create(data) {
     const { acceptDataPolicy: _acceptDataPolicy, ...preRegistrationData } = data;
@@ -252,9 +304,16 @@ export const preRegistrationsService = {
   },
 
   async checkDocumentExists(identification) {
-    // 1. Buscar en pre-registros (las rechazadas se eliminan automáticamente)
-    const existingPreRegistration = await prisma.preRegistration.findUnique({
-      where: { identification },
+    const resolvedRejectedStatus = await resolveStatusForDb("rejected").catch(() => null);
+
+    // 1. Buscar en pre-registros activos
+    const existingPreRegistration = await prisma.preRegistration.findFirst({
+      where: {
+        identification,
+        ...(resolvedRejectedStatus?.dbValue
+          ? { status: { not: resolvedRejectedStatus.dbValue } }
+          : {}),
+      },
       select: {
         id: true,
         identification: true,
@@ -273,32 +332,24 @@ export const preRegistrationsService = {
       }
     });
 
-    // Si existe en cualquiera de las dos tablas
-    const exists = !!(existingPreRegistration || existingUser);
-    
-    let message = 'Documento disponible';
-    let location = null;
-    
-    if (existingPreRegistration) {
-      message = 'Este documento ya está inscrito';
-      location = 'preRegistration';
-    } else if (existingUser) {
-      message = 'Este documento ya está registrado en el sistema';
-      location = 'user';
-    }
-
-    return {
-      exists,
-      message,
-      location,
-      data: existingPreRegistration || existingUser || null,
-    };
+    return buildExistenceResponse({
+      existingPreRegistration,
+      existingUser,
+      entityLabel: "document",
+    });
   },
 
   async checkEmailExists(email) {
-    // 1. Buscar en pre-registros (las rechazadas se eliminan automáticamente)
-    const existingPreRegistration = await prisma.preRegistration.findUnique({
-      where: { email },
+    const resolvedRejectedStatus = await resolveStatusForDb("rejected").catch(() => null);
+
+    // 1. Buscar en pre-registros activos
+    const existingPreRegistration = await prisma.preRegistration.findFirst({
+      where: {
+        email,
+        ...(resolvedRejectedStatus?.dbValue
+          ? { status: { not: resolvedRejectedStatus.dbValue } }
+          : {}),
+      },
       select: {
         id: true,
         email: true,
@@ -317,26 +368,11 @@ export const preRegistrationsService = {
       }
     });
 
-    // Si existe en cualquiera de las dos tablas
-    const exists = !!(existingPreRegistration || existingUser);
-    
-    let message = 'Email disponible';
-    let location = null;
-    
-    if (existingPreRegistration) {
-      message = 'Este email ya está inscrito';
-      location = 'preRegistration';
-    } else if (existingUser) {
-      message = 'Este email ya está registrado en el sistema';
-      location = 'user';
-    }
-
-    return {
-      exists,
-      message,
-      location,
-      data: existingPreRegistration || existingUser || null,
-    };
+    return buildExistenceResponse({
+      existingPreRegistration,
+      existingUser,
+      entityLabel: "email",
+    });
   },
 
   /**

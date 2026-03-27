@@ -1,6 +1,38 @@
 ﻿import prisma from "../../../config/database.js";
 
 export class UsersRepository {
+  buildSearchFilter(search = "") {
+    const normalizedSearch = search.trim();
+
+    if (!normalizedSearch) {
+      return {};
+    }
+
+    const buildFieldConditions = (term) => [
+      { firstName: { contains: term, mode: "insensitive" } },
+      { lastName: { contains: term, mode: "insensitive" } },
+      { email: { contains: term, mode: "insensitive" } },
+      { identification: { contains: term, mode: "insensitive" } },
+    ];
+
+    const searchTerms = normalizedSearch.split(/\s+/).filter(Boolean);
+    const searchStrategies = [
+      { OR: buildFieldConditions(normalizedSearch) },
+    ];
+
+    if (searchTerms.length > 1) {
+      searchStrategies.push({
+        AND: searchTerms.map((term) => ({
+          OR: buildFieldConditions(term),
+        })),
+      });
+    }
+
+    return searchStrategies.length === 1
+      ? searchStrategies[0]
+      : { OR: searchStrategies };
+  }
+
   /**
    * Obtener todos los usuarios con paginación y filtros (SOLO LECTURA)
    */
@@ -16,16 +48,7 @@ export class UsersRepository {
 
     const where = {
       AND: [
-        search
-          ? {
-              OR: [
-                { firstName: { contains: search, mode: "insensitive" } },
-                { lastName: { contains: search, mode: "insensitive" } },
-                { email: { contains: search, mode: "insensitive" } },
-                { identification: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {},
+        this.buildSearchFilter(search),
         status ? { status } : {},
         roleId ? { roleId } : {},
         userType ? this.getUserTypeFilter(userType) : {},
@@ -331,16 +354,7 @@ export class UsersRepository {
   }) {
     const where = {
       AND: [
-        search
-          ? {
-              OR: [
-                { firstName: { contains: search, mode: "insensitive" } },
-                { lastName: { contains: search, mode: "insensitive" } },
-                { email: { contains: search, mode: "insensitive" } },
-                { identification: { contains: search, mode: "insensitive" } },
-              ],
-            }
-          : {},
+        this.buildSearchFilter(search),
         status ? { status } : {},
         roleId ? { roleId } : {},
         userType ? this.getUserTypeFilter(userType) : {},

@@ -1,7 +1,7 @@
 import prisma from "../../../config/database.js";
 import { enrollmentsRepository } from "../repository/enrollments.repository.js";
 import emailService from "../../../services/emailService.js";
-import { paymentsService } from "../../Payments/services/payments.service.js";
+import { paymentSettingsRepository } from "../../Payments/repository/paymentSettings.repository.js";
 
 // ============================================================================
 // CONSTANTES Y CONFIGURACIÓN
@@ -13,6 +13,7 @@ const ENROLLMENT_CONSTANTS = {
   DEFAULT_ROLE_NAME: 'Deportista',
   DEFAULT_ADDRESS: 'N/A',
   BCRYPT_SALT_ROUNDS: 10,
+  INITIAL_PAYMENT_GRACE_DAYS: 5,
 };
 
 const ENROLLMENT_STATUS = {
@@ -563,10 +564,12 @@ export const enrollmentsService = {
     const tempPassword = cleanIdentification;
     const passwordHash = await bcrypt.default.hash(tempPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
     const processedPreRegistrationStatus = await resolvePreRegistrationStatus(PRE_REGISTRATION_STATUS.PROCESSED);
+    const paymentSettings = normalizedAthlete.isScholarship === true
+      ? null
+      : (await paymentSettingsRepository.getSettings()) || await paymentSettingsRepository.createInitialSettings();
 
 
     // PASO 4: Transacción ULTRA-OPTIMIZADA (solo operaciones críticas)
-    const transactionStart = Date.now();
     const result = await prisma.$transaction(async (tx) => {
       // Crear usuario (operación atómica)
       const newUser = await tx.user.create({
@@ -614,8 +617,8 @@ export const enrollmentsService = {
         }
       });
 
-      // Crear matrícula (operación atómica)
-      const { fechaInicio, fechaVencimiento } = resolveEnrollmentDates();
+      // Crear matr?cula (operaci?n at?mica)
+      const scholarshipEnrollmentDates = resolveEnrollmentDates();
       const newEnrollment = await tx.enrollment.create({
         data: {
           athleteId: newAthlete.id,
@@ -624,11 +627,11 @@ export const enrollmentsService = {
             : ENROLLMENT_STATUS.PENDING_PAYMENT,
           observaciones: normalizedAthlete.isScholarship === true
             ? (enrollment?.observaciones
-                ? `${enrollment.observaciones} | Matrícula activada por beca`
-                : 'Matrícula activada automáticamente por beca')
+                ? `${enrollment.observaciones} | Matr?cula activada por beca`
+                : 'Matr?cula activada autom?ticamente por beca')
             : (enrollment?.observaciones || null),
-          fechaInicio,
-          fechaVencimiento,
+          fechaInicio: normalizedAthlete.isScholarship === true ? scholarshipEnrollmentDates.fechaInicio : null,
+          fechaVencimiento: normalizedAthlete.isScholarship === true ? scholarshipEnrollmentDates.fechaVencimiento : null,
         },
         select: {
           id: true,
@@ -638,7 +641,24 @@ export const enrollmentsService = {
         }
       });
 
-      // Marcar pre-inscripción como procesada (solo si existe ID)
+      if (normalizedAthlete.isScholarship !== true) {
+        const now = new Date();
+        const dueEnd = new Date(now.getTime() + (ENROLLMENT_CONSTANTS.INITIAL_PAYMENT_GRACE_DAYS * 24 * 60 * 60 * 1000));
+
+        await tx.paymentObligation.create({
+          data: {
+            athleteId: newAthlete.id,
+            type: 'ENROLLMENT_INITIAL',
+            period: null,
+            baseAmount: paymentSettings.enrollmentAmount,
+            dueStart: now,
+            dueEnd,
+            metadata: { enrollmentId: newEnrollment.id }
+          }
+        });
+      }
+
+      // Marcar pre-inscripci?n como procesada (solo si existe ID)
       if (preRegistrationId) {
         await tx.preRegistration.update({
           where: { id: preRegistrationId },
@@ -719,26 +739,6 @@ export const enrollmentsService = {
       });
     }
 
-    // 4. Generar obligación de pago inicial
-    if (normalizedAthlete.isScholarship !== true) {
-      setImmediate(async () => {
-        try {
-          await prisma.paymentObligation.create({
-            data: {
-              athleteId: result.athlete.id,
-              type: 'ENROLLMENT_INITIAL',
-              period: null,
-              baseAmount: 40000,
-              dueStart: new Date(),
-              dueEnd: new Date(Date.now() + (5 * 24 * 60 * 60 * 1000)),
-              metadata: { enrollmentId: result.enrollment.id }
-            }
-          });
-        } catch (paymentError) {
-}
-      });
-    }
-
     const totalTime = Date.now() - startTime;
 
     // Retornar resultado inmediatamente
@@ -790,7 +790,7 @@ export const enrollmentsService = {
   async findAll(filters) {
     await enrollmentsRepository.normalizeStatuses();
     const rawSearch = String(filters?.search ?? "").trim();
-    const searchLower = rawSearch.toLowerCase();
+    const normalizedSearch = normalizeText(rawSearch);
 
     const parseSearchDate = (value) => {
       const isoMatch = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
@@ -807,18 +807,18 @@ export const enrollmentsService = {
     };
 
     let searchEstado = null;
-    if (searchLower.includes('pendiente') && searchLower.includes('pago')) {
+    if (normalizedSearch.includes('pendiente') && normalizedSearch.includes('pago')) {
       searchEstado = 'Pending_Payment';
-    } else if (searchLower.includes('vigente')) {
+    } else if (normalizedSearch.includes('vigente')) {
       searchEstado = 'Vigente';
-    } else if (searchLower.includes('vencida') || searchLower.includes('vencido')) {
+    } else if (normalizedSearch.includes('vencida') || normalizedSearch.includes('vencido')) {
       searchEstado = 'Vencida';
     }
 
     const searchNoActivation =
-      searchLower.includes('no activada') ||
-      searchLower.includes('no activado') ||
-      searchLower.includes('pendiente de activacion');
+      normalizedSearch.includes('no activada') ||
+      normalizedSearch.includes('no activado') ||
+      normalizedSearch.includes('pendiente de activacion');
 
     const searchDate = parseSearchDate(rawSearch);
     let searchDateRange = null;
@@ -834,6 +834,9 @@ export const enrollmentsService = {
       let date;
       if (value instanceof Date) {
         date = new Date(value);
+      } else if (typeof value === 'string' && value.match(/^\d{4}-\d{1,2}-\d{1,2}$/)) {
+        const [y, m, d] = value.split('-').map((part) => parseInt(part, 10));
+        date = new Date(y, (m || 1) - 1, d || 1);
       } else if (typeof value === 'string' && value.includes('/')) {
         const parts = value.split('/');
         if (parts.length === 3) {
@@ -1044,7 +1047,14 @@ results.push({
    * Obtener todas las matrículas para reporte (SIN PAGINACIÓN)
    */
   async findAllForReport(filters) {
-    const data = await enrollmentsRepository.findAllForReport(filters);
+    const result = await this.findAll({
+      ...filters,
+      page: 1,
+      limit: 10000,
+      sortBy: filters?.sortBy || 'createdAt',
+      sortOrder: filters?.sortOrder || 'desc',
+    });
+    const data = result.data || [];
     return {
       success: true,
       data,

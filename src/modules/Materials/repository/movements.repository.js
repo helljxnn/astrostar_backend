@@ -9,6 +9,48 @@ const MATERIAL_STOCK_SELECT = {
 };
 
 class MovementsRepository {
+  parseDateInput(value, isEnd = false) {
+    if (!value) return null;
+
+    let date;
+    if (value instanceof Date) {
+      date = new Date(value);
+    } else if (typeof value === "string") {
+      const raw = value.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        const [year, month, day] = raw.split("-").map((part) => parseInt(part, 10));
+        date = new Date(year, (month || 1) - 1, day || 1);
+      } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(raw)) {
+        const [day, month, year] = raw.split("/").map((part) => parseInt(part, 10));
+        date = new Date(year, (month || 1) - 1, day || 1);
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+
+    if (Number.isNaN(date.getTime())) return null;
+    if (isEnd) {
+      date.setHours(23, 59, 59, 999);
+    } else {
+      date.setHours(0, 0, 0, 0);
+    }
+
+    return date;
+  }
+
+  buildDateRange(dateFrom, dateTo) {
+    const from = this.parseDateInput(dateFrom, false);
+    const to = this.parseDateInput(dateTo, true);
+    if (!from && !to) return null;
+
+    const range = {};
+    if (from) range.gte = from;
+    if (to) range.lte = to;
+    return Object.keys(range).length > 0 ? range : null;
+  }
+
   /**
    * Obtener todos los movimientos con paginación y filtros
    */
@@ -19,6 +61,10 @@ class MovementsRepository {
     tipo = null,
     origen = null,
     search = "",
+    dateFrom = null,
+    dateTo = null,
+    inventarioDestino = null,
+    tipoSalida = null,
   }) {
     const skip = (page - 1) * limit;
     const where = {};
@@ -49,12 +95,39 @@ class MovementsRepository {
       where.origen = origen;
     }
 
+    if (inventarioDestino) {
+      where.inventarioDestino = inventarioDestino;
+    }
+
+    if (tipoSalida) {
+      if (tipoSalida === "Baja") {
+        where.tipoMovimiento = { in: ["Baja", "BAJA"] };
+      } else if (tipoSalida === "TRANSFERENCIA") {
+        where.tipoMovimiento = "TRANSFERENCIA";
+      } else if (tipoSalida === "SALIDA_EVENTO") {
+        where.tipoMovimiento = { in: ["SALIDA_EVENTO", "ASIGNACION_EVENTO"] };
+      }
+    }
+
     if (search) {
-      where.OR = [
+      const searchConditions = [
         { materialNombre: { contains: search, mode: "insensitive" } },
         { categoria: { contains: search, mode: "insensitive" } },
         { observaciones: { contains: search, mode: "insensitive" } },
+        { createdByName: { contains: search, mode: "insensitive" } },
+        { destino: { contains: search, mode: "insensitive" } },
+        { inventarioOrigen: { contains: search, mode: "insensitive" } },
+        { inventarioDestino: { contains: search, mode: "insensitive" } },
+        { tipoMovimiento: { contains: search, mode: "insensitive" } },
+        { proveedor: { is: { businessName: { contains: search, mode: "insensitive" } } } },
+        { proveedor: { is: { nit: { contains: search, mode: "insensitive" } } } },
       ];
+      where.AND = [...(where.AND || []), { OR: searchConditions }];
+    }
+
+    const dateRange = this.buildDateRange(dateFrom, dateTo);
+    if (dateRange) {
+      where.fecha = dateRange;
     }
 
     const [movements, total] = await Promise.all([
@@ -549,11 +622,38 @@ class MovementsRepository {
     tipoMovimiento,
     startDate,
     endDate,
+    inventarioDestino,
+    tipoSalida,
   }) {
     const where = {};
 
+    if (inventarioDestino) {
+      where.inventarioDestino = inventarioDestino;
+    }
+
+    if (tipoSalida) {
+      if (tipoSalida === "Baja") {
+        where.tipoMovimiento = { in: ["Baja", "BAJA"] };
+      } else if (tipoSalida === "TRANSFERENCIA") {
+        where.tipoMovimiento = "TRANSFERENCIA";
+      } else if (tipoSalida === "SALIDA_EVENTO") {
+        where.tipoMovimiento = { in: ["SALIDA_EVENTO", "ASIGNACION_EVENTO"] };
+      }
+    }
+
     if (search && search.trim()) {
-      where.OR = [{ observaciones: { contains: search, mode: "insensitive" } }];
+      where.AND = [...(where.AND || []), { OR: [
+        { materialNombre: { contains: search, mode: "insensitive" } },
+        { categoria: { contains: search, mode: "insensitive" } },
+        { observaciones: { contains: search, mode: "insensitive" } },
+        { createdByName: { contains: search, mode: "insensitive" } },
+        { destino: { contains: search, mode: "insensitive" } },
+        { inventarioOrigen: { contains: search, mode: "insensitive" } },
+        { inventarioDestino: { contains: search, mode: "insensitive" } },
+        { tipoMovimiento: { contains: search, mode: "insensitive" } },
+        { proveedor: { is: { businessName: { contains: search, mode: "insensitive" } } } },
+        { proveedor: { is: { nit: { contains: search, mode: "insensitive" } } } },
+      ] }];
     }
 
     if (materialId) {
@@ -561,17 +661,19 @@ class MovementsRepository {
     }
 
     if (tipoMovimiento) {
-      where.tipoMovimiento = tipoMovimiento;
+      const tipoLower = String(tipoMovimiento).toLowerCase();
+      if (["entrada", "ingreso", "ingresos"].includes(tipoLower)) {
+        where.tipoMovimiento = { in: ["Entrada", "REVERSION_ASIGNACION"] };
+      } else if (["salida", "salidas"].includes(tipoLower)) {
+        where.tipoMovimiento = { notIn: ["Entrada", "REVERSION_ASIGNACION"] };
+      } else {
+        where.tipoMovimiento = tipoMovimiento;
+      }
     }
 
-    if (startDate || endDate) {
-      where.fecha = {};
-      if (startDate) {
-        where.fecha.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.fecha.lte = new Date(endDate);
-      }
+    const dateRange = this.buildDateRange(startDate, endDate);
+    if (dateRange) {
+      where.fecha = dateRange;
     }
 
     const movements = await prisma.materialMovement.findMany({

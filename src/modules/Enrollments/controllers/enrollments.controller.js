@@ -162,11 +162,14 @@ return res.status(500).json({
    */
   async findAllForReport(req, res) {
     try {
-      const { estado, athleteId, search } = req.query;
+      const { estado, athleteId, search, dateFrom, dateTo, vencimiento } = req.query;
       const result = await enrollmentsService.findAllForReport({
         estado,
         athleteId,
         search: search?.trim() || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        vencimiento: vencimiento || undefined,
       });
 
       return res.json(result);

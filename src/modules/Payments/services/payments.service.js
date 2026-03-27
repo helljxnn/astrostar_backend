@@ -238,6 +238,40 @@ const getPeriodFromDate = (date) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 };
 
+const getNextPeriod = (period) => {
+  const [year, month] = String(period || "").split("-").map((part) => parseInt(part, 10));
+  if (!year || !month) return getCurrentPeriod();
+
+  const nextDate = new Date(year, month, 1);
+  return `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}`;
+};
+
+const isWithinLastWeekOfMonth = (dateValue) => {
+  if (!dateValue) return false;
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return false;
+
+  const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  return date.getDate() > (lastDayOfMonth - 7);
+};
+
+const getEnrollmentCoveragePeriods = (referenceDate) => {
+  const effectiveDate = referenceDate ? new Date(referenceDate) : new Date();
+  if (Number.isNaN(effectiveDate.getTime())) {
+    return [getCurrentPeriod()];
+  }
+
+  const currentPeriod = getPeriodFromDate(effectiveDate);
+  const periods = [currentPeriod];
+
+  if (isWithinLastWeekOfMonth(effectiveDate)) {
+    periods.push(getNextPeriod(currentPeriod));
+  }
+
+  return [...new Set(periods)];
+};
+
 const getPeriodBounds = (period) => {
   const [y, m] = (period || '').split('-').map((p) => parseInt(p, 10));
   if (!y || !m) {
@@ -261,6 +295,20 @@ const isMonthlyExemptByEnrollment = (obligation) => (
 
 const buildScholarshipEnrollmentDates = () => {
   const fechaInicio = new Date();
+  const fechaVencimiento = new Date(fechaInicio);
+  fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + 1);
+  return { fechaInicio, fechaVencimiento };
+};
+
+const buildEnrollmentDatesFromReference = (referenceDate) => {
+  const fechaInicio = referenceDate ? new Date(referenceDate) : new Date();
+  if (Number.isNaN(fechaInicio.getTime())) {
+    const now = new Date();
+    const fechaVencimiento = new Date(now);
+    fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + 1);
+    return { fechaInicio: now, fechaVencimiento };
+  }
+
   const fechaVencimiento = new Date(fechaInicio);
   fechaVencimiento.setFullYear(fechaVencimiento.getFullYear() + 1);
   return { fechaInicio, fechaVencimiento };
@@ -306,6 +354,168 @@ const parseDateInput = (value, isEnd = false) => {
   return date;
 };
 
+const normalizeSearchText = (value = '') =>
+  String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const parseSearchNumericValue = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw || !/\d/.test(raw)) return null;
+
+  const cleaned = raw.replace(/[^\d,.-]/g, '');
+  if (!cleaned) return null;
+
+  const hasComma = cleaned.includes(',');
+  const hasDot = cleaned.includes('.');
+
+  let normalized = cleaned;
+
+  if (hasComma && hasDot) {
+    if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
+      normalized = cleaned.replace(/\./g, '').replace(',', '.');
+    } else {
+      normalized = cleaned.replace(/,/g, '');
+    }
+  } else if (hasDot) {
+    const dotParts = cleaned.split('.');
+    if (dotParts.length > 1 && dotParts.every((part, index) => index === 0 || part.length === 3)) {
+      normalized = cleaned.replace(/\./g, '');
+    }
+  } else if (hasComma) {
+    const commaParts = cleaned.split(',');
+    if (commaParts.length > 1 && commaParts.every((part, index) => index === 0 || part.length === 3)) {
+      normalized = cleaned.replace(/,/g, '');
+    } else {
+      normalized = cleaned.replace(',', '.');
+    }
+  }
+
+  const numeric = Number(normalized);
+  return Number.isFinite(numeric) ? numeric : null;
+};
+
+const buildDateRange = (dateFrom, dateTo) => {
+  const from = parseDateInput(dateFrom, false);
+  const to = parseDateInput(dateTo, true);
+
+  if (!from && !to) return null;
+
+  const range = {};
+  if (from) range.gte = from;
+  if (to) range.lte = to;
+  return Object.keys(range).length > 0 ? range : null;
+};
+
+const buildPaymentSearchConditions = (search, dateFields = ['uploadedAt']) => {
+  const raw = String(search || '').trim();
+  if (!raw) return [];
+
+  const normalized = normalizeSearchText(raw);
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const searchOr = [];
+
+  const typeVariants = [];
+  if (normalized.includes('mensual')) typeVariants.push('MONTHLY');
+  if (normalized.includes('matricula') && normalized.includes('inicial')) {
+    typeVariants.push('ENROLLMENT_INITIAL');
+  }
+  if (normalized.includes('renov')) typeVariants.push('ENROLLMENT_RENEWAL');
+
+  const statusVariants = [];
+  if (normalized.includes('aprob')) statusVariants.push('APPROVED');
+  if (normalized.includes('rechaz')) statusVariants.push('REJECTED');
+  if (normalized.includes('pend')) statusVariants.push('PENDING');
+
+  typeVariants.forEach((type) => {
+    searchOr.push({ obligation: { type } });
+  });
+
+  statusVariants.forEach((status) => {
+    searchOr.push({ status });
+  });
+
+  const monthNames = {
+    enero: 1,
+    febrero: 2,
+    marzo: 3,
+    abril: 4,
+    mayo: 5,
+    junio: 6,
+    julio: 7,
+    agosto: 8,
+    septiembre: 9,
+    setiembre: 9,
+    octubre: 10,
+    noviembre: 11,
+    diciembre: 12
+  };
+
+  const monthEntry = Object.entries(monthNames).find(([name]) => normalized.includes(name));
+  const yearMatch = normalized.match(/\b(20\d{2})\b/);
+  if (monthEntry) {
+    const month = monthEntry[1];
+    const year = yearMatch ? parseInt(yearMatch[1], 10) : new Date().getFullYear();
+    const monthStart = new Date(year, month - 1, 1, 0, 0, 0, 0);
+    const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+
+    searchOr.push({
+      obligation: {
+        dueStart: { gte: monthStart, lte: monthEnd }
+      }
+    });
+    searchOr.push({
+      obligation: {
+        dueEnd: { gte: monthStart, lte: monthEnd }
+      }
+    });
+    searchOr.push({
+      obligation: {
+        period: { contains: `${year}-${String(month).padStart(2, '0')}`, mode: 'insensitive' }
+      }
+    });
+  }
+
+  const searchDate = parseDateInput(raw, false);
+  if (searchDate) {
+    const from = new Date(searchDate);
+    from.setHours(0, 0, 0, 0);
+    const to = new Date(searchDate);
+    to.setHours(23, 59, 59, 999);
+
+    dateFields.forEach((field) => {
+      searchOr.push({
+        [field]: { gte: from, lte: to }
+      });
+    });
+  }
+
+  searchOr.push({ obligation: { period: { contains: raw, mode: 'insensitive' } } });
+
+  if (tokens.length > 0) {
+    const tokenFilters = tokens.map((term) => ({
+      OR: [
+        { firstName: { contains: term, mode: 'insensitive' } },
+        { middleName: { contains: term, mode: 'insensitive' } },
+        { lastName: { contains: term, mode: 'insensitive' } },
+        { secondLastName: { contains: term, mode: 'insensitive' } },
+        { identification: { contains: term, mode: 'insensitive' } },
+        { email: { contains: term, mode: 'insensitive' } }
+      ]
+    }));
+
+    searchOr.push({
+      athlete: {
+        user: tokenFilters.length === 1 ? tokenFilters[0] : { AND: tokenFilters }
+      }
+    });
+  }
+
+  return searchOr;
+};
+
 const getObligationPeriodLabel = (obligation) => {
   if (!obligation) return "Pago";
 
@@ -329,6 +539,116 @@ const getObligationPeriodLabel = (obligation) => {
     default:
       return obligation.type || "Pago";
   }
+};
+
+const buildPaymentWhereClause = ({
+  status,
+  excludeStatus,
+  type,
+  search,
+  dateFrom,
+  dateTo,
+  dateFields = ['uploadedAt']
+}) => {
+  const whereClause = {};
+
+  if (status) {
+    whereClause.status = status;
+  } else if (excludeStatus) {
+    whereClause.status = { not: excludeStatus };
+  }
+
+  if (type) {
+    whereClause.obligation = { type };
+  }
+
+  const searchConditions = buildPaymentSearchConditions(search, dateFields);
+  if (searchConditions.length > 0) {
+    whereClause.AND = [
+      ...(whereClause.AND || []),
+      { OR: searchConditions }
+    ];
+  }
+
+  const dateRange = buildDateRange(dateFrom, dateTo);
+  if (dateRange) {
+    if (dateFields.length === 1) {
+      whereClause[dateFields[0]] = dateRange;
+    } else {
+      whereClause.AND = [
+        ...(whereClause.AND || []),
+        {
+          OR: dateFields.map((field) => ({
+            [field]: dateRange
+          }))
+        }
+      ];
+    }
+  }
+
+  return whereClause;
+};
+
+const enrichPaymentsForAdminList = async (payments, settings) => {
+  return await Promise.all(payments.map(async (payment) => {
+    const athlete = await prisma.athlete.findUnique({
+      where: { id: payment.athlete.id },
+      select: { status: true, statusAssignedAt: true }
+    });
+
+    const enrollment = await prisma.enrollment.findFirst({
+      where: { athleteId: payment.athlete.id },
+      orderBy: { createdAt: 'desc' },
+      select: { estado: true, fechaInicio: true, fechaVencimiento: true }
+    });
+
+    const relatedPayments = payment.obligation?.payments?.length
+      ? payment.obligation.payments
+      : [payment];
+
+    const lateDays = calculateEffectiveLateDays(payment.obligation?.dueEnd, relatedPayments);
+    const lateFee = calculateLateFee(
+      lateDays,
+      settings.lateFeeDailyAmount,
+      athlete,
+      enrollment,
+      payment.obligation?.dueEnd
+    );
+    const calculatedAmount = (payment.obligation?.baseAmount || 0) + lateFee;
+
+    return {
+      ...payment,
+      lateDays,
+      lateFee,
+      calculatedAmount,
+      displayAmount: calculatedAmount,
+      obligation: {
+        ...payment.obligation,
+        daysLate: payment.obligation?.daysLate ?? lateDays,
+        lateFeeAmount: payment.obligation?.lateFeeAmount ?? lateFee,
+        totalAmount: payment.obligation?.totalAmount ?? calculatedAmount,
+        lateDays: payment.obligation?.lateDays ?? lateDays,
+        lateFee: payment.obligation?.lateFee ?? lateFee
+      }
+    };
+  }));
+};
+
+const matchesPaymentAmountSearch = (payment, numericSearch) => {
+  if (numericSearch === null || numericSearch === undefined) return true;
+
+  const baseAmount = Number(payment?.obligation?.baseAmount || 0);
+  const lateFeeAmount = Number(payment?.obligation?.lateFeeAmount ?? payment?.lateFee ?? 0);
+  const totalAmount = Number(
+    payment?.obligation?.totalAmount ??
+    payment?.calculatedAmount ??
+    payment?.displayAmount ??
+    (baseAmount + lateFeeAmount)
+  );
+
+  return [baseAmount, lateFeeAmount, totalAmount].some(
+    (value) => Math.round(value) === Math.round(numericSearch)
+  );
 };
 
 const sendPaymentStatusEmail = async (payment, status, rejectionReason = null) => {
@@ -365,6 +685,13 @@ const sendPaymentStatusEmail = async (payment, status, rejectionReason = null) =
     html,
     text,
   });
+};
+
+export const paymentBusinessRules = {
+  getNextPeriod,
+  isWithinLastWeekOfMonth,
+  getEnrollmentCoveragePeriods,
+  buildEnrollmentDatesFromReference,
 };
 
 // ============================================================================
@@ -1225,21 +1552,10 @@ throw new Error('Error al obtener historial de pagos del atleta');
         include: { obligation: true }
       });
 
-      // Si es matrícula (inicial/renovación), cubrir mensualidad del mes del envío
-      if (isEnrollmentPaymentType(obligation.type)) {
-        await this._applyEnrollmentMonthlyCoverage(tx, payment);
-      }
-
       return payment;
     });
   },
 
-  /**
-   * Obtener pago por ID
-   */
-  async getPaymentById(paymentId) {
-    return await paymentsRepository.getPaymentById(paymentId);
-  },
   /**
    * Obtener pago por ID
    */
@@ -1266,29 +1582,44 @@ throw new Error('Error al obtener historial de pagos del atleta');
         throw new Error(`El pago ya fue ${currentPayment.status.toLowerCase()}. No se puede aprobar.`);
       }
 
-      // Actualizar estado del pago
-      const payment = await paymentsRepository.updatePaymentStatus(
-        paymentId,
-        'APPROVED',
-        reviewedBy
-      );
+      const reviewedByValue = reviewedBy != null ? parseInt(reviewedBy, 10) : null;
+      const payment = await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'APPROVED',
+          reviewedAt: new Date(),
+          reviewedBy: Number.isNaN(reviewedByValue) ? null : reviewedByValue,
+          rejectionReason: null
+        },
+        include: {
+          obligation: true,
+          athlete: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  identification: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      });
 
       // Manejar lógica post-aprobación según tipo de obligación
-      if (currentPayment.obligation.type === 'ENROLLMENT_INITIAL') {
+      if (payment.obligation.type === 'ENROLLMENT_INITIAL') {
         // Pago inicial: activar la matrícula que estaba en Pending_Payment
-        await this._processInitialEnrollmentPayment(currentPayment.athleteId);
-      } else if (currentPayment.obligation.type === 'ENROLLMENT_RENEWAL') {
+        await this._processInitialEnrollmentPayment(tx, payment);
+      } else if (payment.obligation.type === 'ENROLLMENT_RENEWAL') {
         // Renovación: crear nueva matrícula por 1 año
-        await this._processEnrollmentRenewal(currentPayment.athleteId);
+        await this._processEnrollmentRenewal(tx, payment);
       }
 
       // Cubrir mensualidad del mes del envío del comprobante (si aplica)
-      if (isEnrollmentPaymentType(currentPayment.obligation.type)) {
-        const refreshedPayment = await tx.payment.findUnique({
-          where: { id: paymentId },
-          include: { obligation: true }
-        });
-        await this._applyEnrollmentMonthlyCoverage(tx, refreshedPayment);
+      if (isEnrollmentPaymentType(payment.obligation.type)) {
+        await this._applyEnrollmentMonthlyCoverage(tx, payment);
       }
 
       // Notificación por email (no bloqueante)
@@ -1320,12 +1651,31 @@ throw new Error('Error al obtener historial de pagos del atleta');
         throw new Error(`El pago ya fue ${currentPayment.status.toLowerCase()}. No se puede rechazar.`);
       }
 
-      const payment = await paymentsRepository.updatePaymentStatus(
-        paymentId,
-        'REJECTED',
-        reviewedBy,
-        rejectionReason
-      );
+      const reviewedByValue = reviewedBy != null ? parseInt(reviewedBy, 10) : null;
+      const payment = await tx.payment.update({
+        where: { id: paymentId },
+        data: {
+          status: 'REJECTED',
+          rejectionReason: rejectionReason ?? null,
+          reviewedAt: new Date(),
+          reviewedBy: Number.isNaN(reviewedByValue) ? null : reviewedByValue
+        },
+        include: {
+          obligation: true,
+          athlete: {
+            include: {
+              user: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  identification: true,
+                  email: true
+                }
+              }
+            }
+          }
+        }
+      });
 
       // Notificación por email (no bloqueante)
       try {
@@ -1437,207 +1787,84 @@ throw new Error('Error al obtener historial de pagos del atleta');
     try {
       const { page = 1, limit = 20, type, search, dateFrom, dateTo } = filters;
       const offset = (page - 1) * limit;
-      const now = new Date();
       const settings = await getPaymentSettings();
+      const numericSearch = parseSearchNumericValue(search);
+      const whereClause = buildPaymentWhereClause({
+        status: 'PENDING',
+        type,
+        search,
+        dateFrom,
+        dateTo,
+        dateFields: ['uploadedAt', 'createdAt', 'updatedAt', 'reviewedAt']
+      });
 
-
-      const whereClause = {
-        status: 'PENDING'
-      };
-
-      // Filtro por tipo de obligación
-      if (type) {
-        whereClause.obligation = {
-          type: type
-        };
-      }
-
-      // Filtro por búsqueda (nombre o identificación del atleta)
-      if (search) {
-        const raw = String(search).trim();
-        const lower = raw.toLowerCase();
-        const tokens = raw.split(/\s+/).filter(Boolean);
-        const searchOr = [];
-
-        let typeTerm = null;
-        if (lower.includes('mensual')) typeTerm = 'MONTHLY';
-        if (lower.includes('matricula') && lower.includes('inicial')) typeTerm = 'ENROLLMENT_INITIAL';
-        if (lower.includes('renov')) typeTerm = 'ENROLLMENT_RENEWAL';
-
-        let statusTerm = null;
-        if (lower.includes('aprob')) statusTerm = 'APPROVED';
-        if (lower.includes('rechaz')) statusTerm = 'REJECTED';
-        if (lower.includes('pend')) statusTerm = 'PENDING';
-
-        if (statusTerm) {
-          searchOr.push({ status: statusTerm });
-        }
-
-        if (typeTerm) {
-          searchOr.push({ obligation: { type: typeTerm } });
-        }
-
-        const searchDate = parseDateInput(raw, false);
-        if (searchDate) {
-          const from = new Date(searchDate);
-          from.setHours(0, 0, 0, 0);
-          const to = new Date(searchDate);
-          to.setHours(23, 59, 59, 999);
-          searchOr.push({ uploadedAt: { gte: from, lte: to } });
-        }
-
-        const numeric = Number(raw.replace(/[^\d.-]/g, ""));
-        if (!Number.isNaN(numeric) && raw.match(/\d/)) {
-          // Solo campos reales en BD
-          searchOr.push({ obligation: { baseAmount: numeric } });
-        }
-
-        if (raw) {
-          searchOr.push({ obligation: { period: { contains: raw, mode: 'insensitive' } } });
-        }
-
-        if (tokens.length > 0) {
-          const nameFilter = tokens.length === 1 ? {
-            OR: [
-              { firstName: { contains: tokens[0], mode: 'insensitive' } },
-              { middleName: { contains: tokens[0], mode: 'insensitive' } },
-              { lastName: { contains: tokens[0], mode: 'insensitive' } },
-              { secondLastName: { contains: tokens[0], mode: 'insensitive' } },
-              { identification: { contains: tokens[0], mode: 'insensitive' } }
-            ]
-          } : {
-            AND: tokens.map((term) => ({
-              OR: [
-                { firstName: { contains: term, mode: 'insensitive' } },
-                { middleName: { contains: term, mode: 'insensitive' } },
-                { lastName: { contains: term, mode: 'insensitive' } },
-                { secondLastName: { contains: term, mode: 'insensitive' } },
-                { identification: { contains: term, mode: 'insensitive' } }
-              ]
-            }))
-          };
-          searchOr.push({ athlete: { user: nameFilter } });
-        }
-
-        if (searchOr.length > 0) {
-          whereClause.AND = [
-            ...(whereClause.AND || []),
-            { OR: searchOr }
-          ];
-        }
-      }
-
-      // Filtro por fecha de subida del comprobante
-      if (dateFrom || dateTo) {
-        const uploadedAt = {};
-        const from = parseDateInput(dateFrom, false);
-        const to = parseDateInput(dateTo, true);
-        if (from) uploadedAt.gte = from;
-        if (to) uploadedAt.lte = to;
-        if (Object.keys(uploadedAt).length > 0) {
-          whereClause.uploadedAt = uploadedAt;
-        }
-      }
-
-      const [payments, total] = await Promise.all([
-        prisma.payment.findMany({
-          where: whereClause,
-          include: {
-            athlete: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    identification: true,
-                    email: true
-                  }
-                }
-              }
-            },
-            obligation: {
-              select: {
-                id: true,
-                type: true,
-                period: true,
-                baseAmount: true,
-                dueStart: true,
-                dueEnd: true,
-                athleteId: true,
-                payments: {
-                  select: {
-                    status: true,
-                    uploadedAt: true,
-                    reviewedAt: true
-                  }
+      const paymentQuery = {
+        where: whereClause,
+        include: {
+          athlete: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  identification: true,
+                  email: true
                 }
               }
             }
           },
-          orderBy: {
-            uploadedAt: 'desc'
-          },
-          skip: offset,
-          take: limit
-        }),
-        prisma.payment.count({
-          where: whereClause
-        })
-      ]);
-
-      // ✅ CALCULAR MORA CON VALIDACIONES (igual que getMonthlyPaymentsManagement)
-      const paymentsWithDetails = await Promise.all(payments.map(async (payment) => {
-        const lateDays = calculateEffectiveLateDays(
-          payment.obligation.dueEnd,
-          payment.obligation.payments
-        );
-        
-        // Obtener matrícula actual para validar estado
-        const enrollment = await prisma.enrollment.findFirst({
-          where: { athleteId: payment.obligation.athleteId },
-          orderBy: { createdAt: 'desc' },
-          select: { estado: true, fechaInicio: true, fechaVencimiento: true }
-        });
-        
-        // ✅ Obtener datos del atleta para mora congelada
-        const athlete = await prisma.athlete.findUnique({
-          where: { id: payment.obligation.athleteId },
-          select: { status: true, statusAssignedAt: true }
-        });
-        
-        // Calcular mora con validaciones y mora congelada para inactivos
-        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount, athlete, enrollment, payment.obligation.dueEnd);
-        const totalAmount = payment.obligation.baseAmount + lateFee;
-
-        return {
-          ...payment,
-          // Agregar campos calculados
-          lateDays,
-          lateFee,
-          totalAmount,
-          // Información de la obligación expandida
           obligation: {
-            ...payment.obligation,
-            // ✅ CAMPOS CON NOMBRES CORRECTOS PARA EL FRONTEND
-            daysLate: lateDays,        // Frontend espera daysLate
-            lateFeeAmount: lateFee,    // Frontend espera lateFeeAmount
-            totalAmount: totalAmount,  // Este ya está correcto
-            // Mantener también los nombres originales por compatibilidad
-            lateDays,
-            lateFee
+            select: {
+              id: true,
+              type: true,
+              period: true,
+              baseAmount: true,
+              dueStart: true,
+              dueEnd: true,
+              athleteId: true,
+              metadata: true,
+              payments: {
+                select: {
+                  status: true,
+                  uploadedAt: true,
+                  reviewedAt: true
+                }
+              }
+            }
           }
-        };
-      }));
+        },
+        orderBy: {
+          uploadedAt: 'desc'
+        }
+      };
 
+      const payments = await prisma.payment.findMany(
+        numericSearch !== null
+          ? paymentQuery
+          : { ...paymentQuery, skip: offset, take: limit }
+      );
+
+      const total = numericSearch !== null
+        ? payments.length
+        : await prisma.payment.count({ where: whereClause });
+
+      const paymentsWithDetails = await enrichPaymentsForAdminList(payments, settings);
+      const amountFilteredPayments = numericSearch !== null
+        ? paymentsWithDetails.filter((payment) => matchesPaymentAmountSearch(payment, numericSearch))
+        : paymentsWithDetails;
+      const paginatedPayments = numericSearch !== null
+        ? amountFilteredPayments.slice(offset, offset + limit)
+        : amountFilteredPayments;
+      const resolvedTotal = numericSearch !== null ? amountFilteredPayments.length : total;
 
       return {
-        payments: paymentsWithDetails,
+        payments: paginatedPayments,
         pagination: {
           page,
           limit,
-          total,
-          totalPages: Math.ceil(total / limit)
+          total: resolvedTotal,
+          totalPages: Math.ceil(resolvedTotal / limit)
         }
       };
     } catch (error) {
@@ -1652,186 +1879,84 @@ throw new Error('Error al obtener pagos pendientes');
     try {
       const { page = 1, limit = 20, status, type, dateFrom, dateTo, excludeStatus, search } = filters;
       const offset = (page - 1) * limit;
+      const settings = await getPaymentSettings();
+      const numericSearch = parseSearchNumericValue(search);
+      const whereClause = buildPaymentWhereClause({
+        status,
+        excludeStatus,
+        type,
+        search,
+        dateFrom,
+        dateTo,
+        dateFields: ['reviewedAt', 'updatedAt', 'uploadedAt', 'createdAt']
+      });
 
-      const whereClause = {};
-
-      // Filtro por estado (incluir o excluir)
-      if (status) {
-        whereClause.status = status;
-      } else if (excludeStatus) {
-        // Para el historial: excluir PENDING
-        whereClause.status = {
-          not: excludeStatus
-        };
-      }
-
-      // Filtro por tipo de obligación
-      if (type) {
-        whereClause.obligation = {
-          type: type
-        };
-      }
-
-      // Filtro por búsqueda (nombre o identificación del atleta)
-      if (search) {
-        const raw = String(search).trim();
-        const lower = raw.toLowerCase();
-        const tokens = raw.split(/\s+/).filter(Boolean);
-        const searchOr = [];
-
-        let typeTerm = null;
-        if (lower.includes('mensual')) typeTerm = 'MONTHLY';
-        if (lower.includes('matricula') && lower.includes('inicial')) typeTerm = 'ENROLLMENT_INITIAL';
-        if (lower.includes('renov')) typeTerm = 'ENROLLMENT_RENEWAL';
-
-        let statusTerm = null;
-        if (lower.includes('aprob')) statusTerm = 'APPROVED';
-        if (lower.includes('rechaz')) statusTerm = 'REJECTED';
-        if (lower.includes('pend')) statusTerm = 'PENDING';
-
-        if (statusTerm) {
-          searchOr.push({ status: statusTerm });
-        }
-
-        if (typeTerm) {
-          searchOr.push({ obligation: { type: typeTerm } });
-        }
-
-        const searchDate = parseDateInput(raw, false);
-        if (searchDate) {
-          const from = new Date(searchDate);
-          from.setHours(0, 0, 0, 0);
-          const to = new Date(searchDate);
-          to.setHours(23, 59, 59, 999);
-          searchOr.push({ uploadedAt: { gte: from, lte: to } });
-        }
-
-        const numeric = Number(raw.replace(/[^\d.-]/g, ""));
-        if (!Number.isNaN(numeric) && raw.match(/\d/)) {
-          // Solo campos reales en BD
-          searchOr.push({ obligation: { baseAmount: numeric } });
-        }
-
-        if (raw) {
-          searchOr.push({ obligation: { period: { contains: raw, mode: 'insensitive' } } });
-        }
-
-        if (tokens.length > 0) {
-          const nameFilter = tokens.length === 1 ? {
-            OR: [
-              { firstName: { contains: tokens[0], mode: 'insensitive' } },
-              { middleName: { contains: tokens[0], mode: 'insensitive' } },
-              { lastName: { contains: tokens[0], mode: 'insensitive' } },
-              { secondLastName: { contains: tokens[0], mode: 'insensitive' } },
-              { identification: { contains: tokens[0], mode: 'insensitive' } }
-            ]
-          } : {
-            AND: tokens.map((term) => ({
-              OR: [
-                { firstName: { contains: term, mode: 'insensitive' } },
-                { middleName: { contains: term, mode: 'insensitive' } },
-                { lastName: { contains: term, mode: 'insensitive' } },
-                { secondLastName: { contains: term, mode: 'insensitive' } },
-                { identification: { contains: term, mode: 'insensitive' } }
-              ]
-            }))
-          };
-          searchOr.push({ athlete: { user: nameFilter } });
-        }
-
-        if (searchOr.length > 0) {
-          whereClause.AND = [
-            ...(whereClause.AND || []),
-            { OR: searchOr }
-          ];
-        }
-      }
-
-      // Filtro por fecha
-      if (dateFrom || dateTo) {
-        whereClause.uploadedAt = {};
-        const from = parseDateInput(dateFrom, false);
-        const to = parseDateInput(dateTo, true);
-        if (from) whereClause.uploadedAt.gte = from;
-        if (to) whereClause.uploadedAt.lte = to;
-      }
-
-      const [payments, total] = await Promise.all([
-        prisma.payment.findMany({
-          where: whereClause,
-          include: {
-            athlete: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    firstName: true,
-                    lastName: true,
-                    identification: true,
-                    email: true
-                  }
+      const paymentQuery = {
+        where: whereClause,
+        include: {
+          athlete: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  identification: true,
+                  email: true
                 }
-              }
-            },
-            obligation: {
-              select: {
-                id: true,
-                type: true,
-                period: true,
-                baseAmount: true,
-                dueStart: true,
-                dueEnd: true
               }
             }
           },
-          orderBy: {
-            uploadedAt: 'desc'
-          },
-          skip: offset,
-          take: limit
-        }),
-        prisma.payment.count({
-          where: whereClause
-        })
-      ]);
+          obligation: {
+            select: {
+              id: true,
+              type: true,
+              period: true,
+              baseAmount: true,
+              dueStart: true,
+              dueEnd: true,
+              metadata: true,
+              payments: {
+                select: {
+                  status: true,
+                  uploadedAt: true,
+                  reviewedAt: true
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          uploadedAt: 'desc'
+        }
+      };
 
-      // 🏢 CALCULAR MORA CON SISTEMA DE MORA CONGELADA PARA INACTIVOS
-      const paymentsWithCalculatedAmounts = await Promise.all(payments.map(async (payment) => {
-        // ✅ Obtener datos del atleta para validar estado (mora congelada)
-        const athlete = await prisma.athlete.findUnique({
-          where: { id: payment.athlete.id },
-          select: { status: true, statusAssignedAt: true }
-        });
+      const payments = await prisma.payment.findMany(
+        numericSearch !== null
+          ? paymentQuery
+          : { ...paymentQuery, skip: offset, take: limit }
+      );
 
-        const enrollment = await prisma.enrollment.findFirst({
-          where: { athleteId: payment.athlete.id },
-          orderBy: { createdAt: 'desc' },
-          select: { estado: true, fechaInicio: true, fechaVencimiento: true }
-        });
+      const total = numericSearch !== null
+        ? payments.length
+        : await prisma.payment.count({ where: whereClause });
 
-        // Usar mora efectiva (pausa durante revisión)
-        const lateDays = calculateEffectiveLateDays(payment.obligation.dueEnd, [payment]);
-        // ✅ Pasar atleta, enrollment y dueEnd para mora congelada
-        const lateFee = calculateLateFee(lateDays, BUSINESS_CONSTANTS.LATE_FEE_DAILY, athlete, enrollment, payment.obligation.dueEnd);
-        const calculatedAmount = payment.obligation.baseAmount + lateFee;
-        
-        return {
-          ...payment,
-          // Agregar campos calculados
-          lateDays,
-          lateFee,
-          calculatedAmount, // 🎯 MONTO TOTAL CON MORA CONTINUA O CONGELADA
-          displayAmount: calculatedAmount // Para frontend
-        };
-      }));
+      const paymentsWithCalculatedAmounts = await enrichPaymentsForAdminList(payments, settings);
+      const amountFilteredPayments = numericSearch !== null
+        ? paymentsWithCalculatedAmounts.filter((payment) => matchesPaymentAmountSearch(payment, numericSearch))
+        : paymentsWithCalculatedAmounts;
+      const paginatedPayments = numericSearch !== null
+        ? amountFilteredPayments.slice(offset, offset + limit)
+        : amountFilteredPayments;
+      const resolvedTotal = numericSearch !== null ? amountFilteredPayments.length : total;
 
       return {
-        payments: paymentsWithCalculatedAmounts,
+        payments: paginatedPayments,
         pagination: {
           page,
           limit,
-          total,
-          totalPages: Math.ceil(total / limit)
+          total: resolvedTotal,
+          totalPages: Math.ceil(resolvedTotal / limit)
         }
       };
     } catch (error) {
@@ -1842,7 +1967,7 @@ throw new Error('Error al obtener pagos');
   /**
    * Aprobar un pago
    */
-  async approvePayment(paymentId, reviewedBy) {
+  async _deprecatedApprovePayment(paymentId, reviewedBy) {
     try {
       const payment = await prisma.payment.findUnique({
         where: { id: parseInt(paymentId) },
@@ -1884,7 +2009,7 @@ throw error;
   /**
    * Rechazar un pago
    */
-  async rejectPayment(paymentId, reviewedBy, rejectionReason) {
+  async _deprecatedRejectPayment(paymentId, reviewedBy, rejectionReason) {
     try {
       const payment = await prisma.payment.findUnique({
         where: { id: parseInt(paymentId) }
@@ -1917,7 +2042,7 @@ throw error;
   /**
    * Activar matrícula después de aprobar pago
    */
-  async _activateEnrollmentAfterPayment(athleteId, paymentType) {
+  async _deprecatedActivateEnrollmentAfterPayment(athleteId, paymentType) {
     try {
       if (paymentType === 'ENROLLMENT_INITIAL') {
         // Activar matrícula inicial
@@ -2249,68 +2374,112 @@ throw new Error(`Error al obtener gestión mensual: ${error.message}`);
   async _applyEnrollmentMonthlyCoverage(tx, payment) {
     if (!payment || !isEnrollmentPaymentType(payment.obligation?.type)) return;
 
-    const coveragePeriod = getPeriodFromDate(payment.uploadedAt || payment.reviewedAt || new Date());
-    const monthlyObligation = await tx.paymentObligation.findFirst({
-      where: {
-        athleteId: payment.athleteId,
-        type: 'MONTHLY',
-        period: coveragePeriod
-      },
-      include: {
-        payments: {
-          where: { status: 'APPROVED' },
-          take: 1
+    const referenceDate = payment.uploadedAt || payment.reviewedAt || new Date();
+    const coveragePeriods = getEnrollmentCoveragePeriods(referenceDate);
+    const settings = await getPaymentSettings();
+
+    for (const coveragePeriod of coveragePeriods) {
+      let monthlyObligation = await tx.paymentObligation.findFirst({
+        where: {
+          athleteId: payment.athleteId,
+          type: 'MONTHLY',
+          period: coveragePeriod
+        },
+        include: {
+          payments: {
+            where: { status: 'APPROVED' },
+            take: 1
+          }
         }
+      });
+
+      if (!monthlyObligation) {
+        const [year, month] = coveragePeriod.split('-').map((value) => parseInt(value, 10));
+        const { dueStart, dueEnd } = await calculateMonthlyDueDates(year, month);
+
+        monthlyObligation = await tx.paymentObligation.create({
+          data: {
+            athleteId: payment.athleteId,
+            type: 'MONTHLY',
+            period: coveragePeriod,
+            baseAmount: settings.monthlyAmount,
+            dueStart,
+            dueEnd,
+            metadata: {}
+          },
+          include: {
+            payments: {
+              where: { status: 'APPROVED' },
+              take: 1
+            }
+          }
+        });
       }
-    });
 
-    // Si no existe mensualidad o ya fue pagada, no tocarla
-    if (!monthlyObligation || (monthlyObligation.payments?.length ?? 0) > 0) {
-      return;
+      if (!monthlyObligation || (monthlyObligation.payments?.length ?? 0) > 0) {
+        continue;
+      }
+
+      const coveredPeriods = Array.isArray(monthlyObligation.metadata?.coveredPeriods)
+        ? monthlyObligation.metadata.coveredPeriods.filter(Boolean)
+        : [];
+
+      const metadata = {
+        ...(monthlyObligation.metadata || {}),
+        exemptByEnrollment: true,
+        exemptReason: 'ENROLLMENT_COVERS_MONTH',
+        coveragePeriod,
+        coveredPeriods: [...new Set([...coveredPeriods, coveragePeriod])],
+        enrollmentPaymentId: payment.id,
+        enrollmentPaymentUploadedAt: payment.uploadedAt || null,
+        enrollmentPaymentType: payment.obligation?.type || null,
+        exemptedAt: new Date(),
+        exemptionRule: isWithinLastWeekOfMonth(referenceDate)
+          ? 'CURRENT_AND_NEXT_MONTH'
+          : 'CURRENT_MONTH_ONLY'
+      };
+
+      await tx.paymentObligation.update({
+        where: { id: monthlyObligation.id },
+        data: { metadata }
+      });
     }
-
-    const metadata = {
-      ...(monthlyObligation.metadata || {}),
-      exemptByEnrollment: true,
-      exemptReason: 'ENROLLMENT_COVERS_MONTH',
-      coveragePeriod,
-      enrollmentPaymentId: payment.id,
-      enrollmentPaymentUploadedAt: payment.uploadedAt || null,
-      enrollmentPaymentType: payment.obligation?.type || null,
-      exemptedAt: new Date()
-    };
-
-    await tx.paymentObligation.update({
-      where: { id: monthlyObligation.id },
-      data: { metadata }
-    });
   },
 
   /**
    * Procesar renovación de matrícula después de pago aprobado.
    * Crea una nueva matrícula vigente por 1 año.
    */
-  async _processEnrollmentRenewal(athleteId) {
-    return await prisma.$transaction(async (tx) => {
-      const now = new Date();
-      const expirationDate = new Date(now);
-      expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+  async _processEnrollmentRenewal(tx, payment) {
+    const athleteId = payment.athleteId;
+    const athlete = await tx.athlete.findUnique({
+      where: { id: athleteId },
+      select: { id: true, isScholarship: true }
+    });
 
-      await tx.enrollment.create({
-        data: {
-          athleteId,
-          fechaInicio: now,
-          fechaVencimiento: expirationDate,
-          estado: 'Vigente',
-          observaciones: 'Renovación automática por pago aprobado'
-        }
-      });
+    if (!athlete) {
+      throw new Error(`Atleta no encontrado: ${athleteId}`);
+    }
 
-      await tx.athlete.update({
-        where: { id: athleteId },
-        data: { status: 'Active', inactivityReason: null }
-      });
+    const { fechaInicio, fechaVencimiento } = buildEnrollmentDatesFromReference(
+      payment.uploadedAt || payment.reviewedAt || new Date()
+    );
 
+    await tx.enrollment.create({
+      data: {
+        athleteId,
+        fechaInicio,
+        fechaVencimiento,
+        estado: 'Vigente',
+        observaciones: athlete.isScholarship === true
+          ? 'Renovacion automatica por beca'
+          : 'Renovacion automatica por pago aprobado'
+      }
+    });
+
+    await tx.athlete.update({
+      where: { id: athleteId },
+      data: { status: 'Active', inactivityReason: null }
     });
   },
 
@@ -2318,38 +2487,36 @@ throw new Error(`Error al obtener gestión mensual: ${error.message}`);
    * Procesar pago inicial de matrícula después de que fue aprobado.
    * Activa la matrícula que estaba en estado Pending_Payment → Vigente.
    */
-  async _processInitialEnrollmentPayment(athleteId) {
-    return await prisma.$transaction(async (tx) => {
-      const now = new Date();
-      const expirationDate = new Date(now);
-      expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+  async _processInitialEnrollmentPayment(tx, payment) {
+    const athleteId = payment.athleteId;
+    const { fechaInicio, fechaVencimiento } = buildEnrollmentDatesFromReference(
+      payment.uploadedAt || payment.reviewedAt || new Date()
+    );
 
-      const pendingEnrollment = await tx.enrollment.findFirst({
-        where: { athleteId, estado: 'Pending_Payment' },
-        orderBy: { createdAt: 'desc' }
-      });
+    const pendingEnrollment = await tx.enrollment.findFirst({
+      where: { athleteId, estado: 'Pending_Payment' },
+      orderBy: { createdAt: 'desc' }
+    });
 
-      if (!pendingEnrollment) {
-        throw new Error(`No se encontró matrícula en Pending_Payment para el atleta ${athleteId}`);
+    if (!pendingEnrollment) {
+      throw new Error(`No se encontro matricula en Pending_Payment para el atleta ${athleteId}`);
+    }
+
+    await tx.enrollment.update({
+      where: { id: pendingEnrollment.id },
+      data: {
+        estado: 'Vigente',
+        fechaInicio,
+        fechaVencimiento,
+        observaciones: pendingEnrollment.observaciones
+          ? `${pendingEnrollment.observaciones} | Activada automaticamente al aprobarse el pago inicial de matricula`
+          : 'Activada automaticamente al aprobarse el pago inicial de matricula'
       }
+    });
 
-      // 1. Activar la matrícula
-      await tx.enrollment.update({
-        where: { id: pendingEnrollment.id },
-        data: {
-          estado: 'Vigente',
-          fechaInicio: now,
-          fechaVencimiento: expirationDate,
-          observaciones: 'Activada automáticamente al aprobarse el pago inicial de matrícula'
-        }
-      });
-
-      // 2. Activar el atleta
-      await tx.athlete.update({
-        where: { id: athleteId },
-        data: { status: 'Active' }
-      });
-
+    await tx.athlete.update({
+      where: { id: athleteId },
+      data: { status: 'Active', inactivityReason: null }
     });
   },
 
@@ -2363,53 +2530,16 @@ throw new Error(`Error al obtener gestión mensual: ${error.message}`);
    */
   async getPendingPaymentsForReport(filters = {}) {
     try {
-      const now = new Date();
-      const settings = await getPaymentSettings();
-
-
-      // Obtener pagos del repositorio
-      const payments = await paymentsRepository.getPendingPaymentsForReport(filters);
-
-      // ✅ CALCULAR MORA CON VALIDACIONES para cada pago
-      const paymentsWithDetails = await Promise.all(payments.map(async (payment) => {
-        const lateDays = calculateEffectiveLateDays(payment.obligation.dueEnd, [payment]);
-        
-        // Obtener matrícula actual para validar estado
-        const enrollment = await prisma.enrollment.findFirst({
-          where: { athleteId: payment.athleteId },
-          orderBy: { createdAt: 'desc' },
-          select: { estado: true, fechaInicio: true, fechaVencimiento: true }
-        });
-        
-        // Calcular mora con validaciones
-        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount, payment.athlete, enrollment);
-        const totalAmount = payment.obligation.baseAmount + lateFee;
-
-        return {
-          ...payment,
-          // Agregar campos calculados
-          lateDays,
-          lateFee,
-          totalAmount,
-          // Información de la obligación expandida
-          obligation: {
-            ...payment.obligation,
-            // ✅ CAMPOS CON NOMBRES CORRECTOS PARA EL FRONTEND
-            daysLate: lateDays,        // Frontend espera daysLate
-            lateFeeAmount: lateFee,    // Frontend espera lateFeeAmount
-            totalAmount: totalAmount,  // Este ya está correcto
-            // Mantener también los nombres originales por compatibilidad
-            lateDays,
-            lateFee
-          }
-        };
-      }));
-
+      const result = await this.getPendingPayments({
+        ...filters,
+        page: 1,
+        limit: 10000
+      });
 
       return {
         success: true,
-        data: paymentsWithDetails,
-        message: `Se encontraron ${paymentsWithDetails.length} pagos pendientes para el reporte.`,
+        data: result.payments,
+        message: `Se encontraron ${result.payments.length} pagos pendientes para el reporte.`,
       };
     } catch (error) {
 throw new Error('Error al obtener reporte de pagos pendientes');
@@ -2420,42 +2550,19 @@ throw new Error('Error al obtener reporte de pagos pendientes');
    * Obtener historial completo de pagos para reporte (SIN PAGINACIÓN) - MEJORADO
    */
   async getPaymentHistoryForReport(filters = {}) {
-    const payments = await paymentsRepository.getPaymentHistoryForReport(filters);
-    
-    // 🏢 CALCULAR MORA CON SISTEMA DE MORA CONGELADA PARA INACTIVOS
-    const paymentsWithCalculatedAmounts = await Promise.all(payments.map(async (payment) => {
-      // ✅ Obtener datos del atleta para validar estado (mora congelada)
-      const athlete = await prisma.athlete.findUnique({
-        where: { id: payment.athlete.id },
-        select: { status: true, statusAssignedAt: true }
-      });
+    const result = await this.getAllPayments({
+      ...filters,
+      dateFrom: filters.dateFrom || filters.startDate,
+      dateTo: filters.dateTo || filters.endDate,
+      excludeStatus: filters.excludeStatus || 'PENDING',
+      page: 1,
+      limit: 10000
+    });
 
-      const enrollment = await prisma.enrollment.findFirst({
-        where: { athleteId: payment.athlete.id },
-        orderBy: { createdAt: 'desc' },
-        select: { estado: true, fechaInicio: true, fechaVencimiento: true }
-      });
-
-      // Usar fecha actual para cálculo empresarial estándar
-      const lateDays = calculateEffectiveLateDays(payment.obligation.dueEnd, [payment]);
-      // ✅ Pasar atleta, enrollment y dueEnd para mora congelada
-      const lateFee = calculateLateFee(lateDays, BUSINESS_CONSTANTS.LATE_FEE_DAILY, athlete, enrollment, payment.obligation.dueEnd);
-      const calculatedAmount = payment.obligation.baseAmount + lateFee;
-      
-      return {
-        ...payment,
-        // Agregar campos calculados
-        lateDays,
-        lateFee,
-        calculatedAmount, // 🎯 MONTO TOTAL CON MORA CONTINUA O CONGELADA
-        displayAmount: calculatedAmount // Para frontend
-      };
-    }));
-    
     return {
       success: true,
-      data: paymentsWithCalculatedAmounts,
-      message: `Se encontraron ${payments.length} pagos en el historial para el reporte.`,
+      data: result.payments,
+      message: `Se encontraron ${result.payments.length} pagos en el historial para el reporte.`,
     };
   },
 };

@@ -7,7 +7,20 @@ class MovementsController {
    */
   async getAll(req, res) {
     try {
-      const { page = 1, limit = 10, materialId, tipo, origen, search = '' } = req.query;
+      const {
+        page = 1,
+        limit = 10,
+        materialId,
+        tipo,
+        origen,
+        search = '',
+        dateFrom,
+        dateTo,
+        date_from,
+        date_to,
+        inventarioDestino,
+        tipoSalida,
+      } = req.query;
 
       const result = await movementsService.getAll({
         page: parseInt(page),
@@ -16,6 +29,10 @@ class MovementsController {
         tipo,
         origen,
         search,
+        dateFrom: dateFrom || date_from || null,
+        dateTo: dateTo || date_to || null,
+        inventarioDestino: inventarioDestino || null,
+        tipoSalida: tipoSalida || null,
       });
 
       return res.json(result);
@@ -283,14 +300,27 @@ return res.status(500).json({
    */
   async getAllForReport(req, res) {
     try {
-      const { search = "", materialId, tipoMovimiento, startDate, endDate } = req.query;
+      const {
+        search = "",
+        materialId,
+        tipoMovimiento,
+        tipo,
+        startDate,
+        endDate,
+        dateFrom,
+        dateTo,
+        inventarioDestino,
+        tipoSalida,
+      } = req.query;
 
       const result = await movementsService.getAllForReport({
         search,
         materialId: materialId ? parseInt(materialId) : undefined,
-        tipoMovimiento,
-        startDate,
-        endDate,
+        tipoMovimiento: tipoMovimiento || tipo,
+        startDate: startDate || dateFrom,
+        endDate: endDate || dateTo,
+        inventarioDestino,
+        tipoSalida,
       });
 
       return res.json(result);
