@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import os from "os";
 dotenv.config({ quiet: true });
 
+import "./utils/asciiConsolePatch.js";
 import app from "./app.js";
 import emailService from "./services/emailService.js";
 import { startEnrollmentExpirationJob } from "./jobs/enrollmentExpirationJob.js";
