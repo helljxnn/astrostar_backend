@@ -280,13 +280,45 @@ export class EventsService {
     } catch (error) {
       // Manejar errores específicos de Prisma
       if (error.code === "P2003") {
-        throw new Error(
-          "No se puede eliminar el evento porque tiene relaciones activas.",
-        );
+        return {
+          success: false,
+          statusCode: 400,
+          message: "No se puede eliminar el evento porque tiene relaciones activas.",
+        };
       }
 
       if (error.code === "P2025") {
-        throw new Error("El evento no fue encontrado.");
+        return {
+          success: false,
+          statusCode: 404,
+          message: "El evento no fue encontrado.",
+        };
+      }
+
+      const errorMessage = (error?.message || "").toLowerCase();
+
+      if (
+        errorMessage.includes("clave foránea") ||
+        errorMessage.includes("clave foranea") ||
+        errorMessage.includes("relaciones activas")
+      ) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: error.message,
+        };
+      }
+
+      if (
+        errorMessage.includes("no fue encontrado") ||
+        errorMessage.includes("no existe") ||
+        errorMessage.includes("ya fue eliminado")
+      ) {
+        return {
+          success: false,
+          statusCode: 404,
+          message: error.message,
+        };
       }
 
       throw error;

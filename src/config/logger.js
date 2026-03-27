@@ -1,25 +1,27 @@
-﻿import winston from "winston";
+import winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
 import path from "path";
 import { fileURLToPath } from "url";
+import { sanitizeLogValue } from "../utils/asciiSanitizer.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const logDir = path.join(__dirname, "../../logs");
+const asciiFormat = winston.format((info) => sanitizeLogValue(info))();
 
-// Formato personalizado para logs
 const logFormat = winston.format.combine(
   winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
   winston.format.errors({ stack: true }),
   winston.format.splat(),
+  asciiFormat,
   winston.format.json(),
 );
 
-// Formato para consola (desarrollo)
 const consoleFormat = winston.format.combine(
-  winston.format.colorize(),
   winston.format.timestamp({ format: "HH:mm:ss" }),
+  asciiFormat,
+  winston.format.colorize(),
   winston.format.printf(({ timestamp, level, message, ...meta }) => {
     let msg = `${timestamp} [${level}]: ${message}`;
     if (Object.keys(meta).length > 0) {
@@ -29,7 +31,6 @@ const consoleFormat = winston.format.combine(
   }),
 );
 
-// Transport para errores
 const errorTransport = new DailyRotateFile({
   filename: path.join(logDir, "error-%DATE%.log"),
   datePattern: "YYYY-MM-DD",
@@ -40,7 +41,6 @@ const errorTransport = new DailyRotateFile({
   zippedArchive: true,
 });
 
-// Transport para todos los logs
 const combinedTransport = new DailyRotateFile({
   filename: path.join(logDir, "combined-%DATE%.log"),
   datePattern: "YYYY-MM-DD",
@@ -50,18 +50,16 @@ const combinedTransport = new DailyRotateFile({
   zippedArchive: true,
 });
 
-// Transport para logs de seguridad
 const securityTransport = new DailyRotateFile({
   filename: path.join(logDir, "security-%DATE%.log"),
   datePattern: "YYYY-MM-DD",
   level: "warn",
   maxSize: "20m",
-  maxFiles: "90d", // Mantener logs de seguridad por 90 días
+  maxFiles: "90d",
   format: logFormat,
   zippedArchive: true,
 });
 
-// Transport para logs de acceso
 const accessTransport = new DailyRotateFile({
   filename: path.join(logDir, "access-%DATE%.log"),
   datePattern: "YYYY-MM-DD",
@@ -71,7 +69,6 @@ const accessTransport = new DailyRotateFile({
   zippedArchive: true,
 });
 
-// Crear logger
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
   format: logFormat,
@@ -85,7 +82,6 @@ const logger = winston.createLogger({
     securityTransport,
     accessTransport,
   ],
-  // Manejar excepciones no capturadas
   exceptionHandlers: [
     new DailyRotateFile({
       filename: path.join(logDir, "exceptions-%DATE%.log"),
@@ -95,7 +91,6 @@ const logger = winston.createLogger({
       format: logFormat,
     }),
   ],
-  // Manejar rechazos de promesas no capturados
   rejectionHandlers: [
     new DailyRotateFile({
       filename: path.join(logDir, "rejections-%DATE%.log"),
@@ -107,7 +102,6 @@ const logger = winston.createLogger({
   ],
 });
 
-// En desarrollo, también mostrar en consola
 if (process.env.NODE_ENV !== "production") {
   logger.add(
     new winston.transports.Console({
@@ -116,7 +110,6 @@ if (process.env.NODE_ENV !== "production") {
   );
 }
 
-// Métodos de utilidad
 logger.logRequest = (req, statusCode, responseTime) => {
   logger.info("HTTP Request", {
     method: req.method,
@@ -155,4 +148,3 @@ logger.logError = (error, context = {}) => {
 };
 
 export default logger;
-
