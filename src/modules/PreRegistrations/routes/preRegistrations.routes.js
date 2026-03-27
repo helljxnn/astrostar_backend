@@ -3,6 +3,7 @@ import rateLimit from "express-rate-limit";
 import { preRegistrationsController } from "../controllers/preRegistrations.controller.js";
 import { authenticateToken } from "../../../middlewares/auth.js";
 import { checkPermissions } from "../../../middlewares/checkPermissions.js";
+import { rateLimitKeyGenerator } from "../../../middlewares/rateLimitKeyGenerator.js";
 
 const router = Router();
 
@@ -18,6 +19,7 @@ const createLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: rateLimitKeyGenerator,
   skipSuccessfulRequests: true, // Solo contar requests exitosas (permite reintentos si hay error)
 });
 
@@ -31,6 +33,7 @@ const resendLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: rateLimitKeyGenerator,
 });
 
 // Público - Sin autenticación (con rate limiting)

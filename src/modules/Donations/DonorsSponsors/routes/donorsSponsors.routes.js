@@ -7,6 +7,7 @@ import {
 } from "../validators/donorsSponsors.validators.js";
 import { authenticateToken } from "../../../../middlewares/auth.js";
 import { checkPermissions } from "../../../../middlewares/checkPermissions.js";
+import { rateLimitKeyGenerator } from "../../../../middlewares/rateLimitKeyGenerator.js";
 
 const router = express.Router();
 const controller = DonorsSponsorsController;
@@ -20,6 +21,7 @@ const landingLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: rateLimitKeyGenerator,
 });
 
 router.post(

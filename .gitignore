@@ -1,4 +1,6 @@
 node_modules
+/generated/prisma
+# /prisma/migrations  ← NO ignorar, las migraciones deben estar en Git
 
 # Variables de entorno 
 .env
@@ -8,7 +10,6 @@ node_modules
 .env.production
 .env.development
 .env.test
-.env.example
 .env.backup
 # Archivos temporales y logs
 *.log
@@ -58,6 +59,3 @@ tests
 jest.config.cjs
 coverage
 *.code-workspace
-generated/
-generated/prisma/
-generated/prisma/*.tmp*
