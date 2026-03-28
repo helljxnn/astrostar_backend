@@ -71,7 +71,7 @@ export class AthletesRepository {
     };
 
     // Mapear relationship de inglés a español
-    const mapRelationshipToSpanish = (relationship) => {
+    const mapRelationshipToSpanish = (relationship, otherRelationship = null) => {
       const relationshipMap = {
         Mother: "Madre",
         Father: "Padre",
@@ -84,6 +84,10 @@ export class AthletesRepository {
         Family_Friend: "Amigo/a de la familia",
         Other: "Otro",
       };
+      if (relationship === "Other" && otherRelationship) {
+        return otherRelationship;
+      }
+
       return relationshipMap[relationship] || null;
     };
 
@@ -126,7 +130,11 @@ export class AthletesRepository {
         documentTypeId: athlete.guardian.documentTypeId,
         tipoDocumento: athlete.guardian.documentType?.name || '',
       } : null,
-      parentesco: mapRelationshipToSpanish(athlete.relationship),
+      parentesco: mapRelationshipToSpanish(
+        athlete.relationship,
+        athlete.otherRelationship
+      ),
+      otherRelationship: athlete.otherRelationship || null,
       isScholarship: athlete.isScholarship === true,
       estadoInscripcion: currentInscription
         ? mapInscriptionStatus(currentInscription.status)
@@ -241,6 +249,15 @@ export class AthletesRepository {
     const athleteSpecificData = {
       ...(normalizedStatus ? { status: normalizedStatus } : {}),
       relationship: mapRelationship(athleteData.parentesco),
+      ...(athleteData.otherRelationship !== undefined
+        ? {
+            otherRelationship:
+              athleteData.otherRelationship &&
+              String(athleteData.otherRelationship).trim() !== ""
+                ? String(athleteData.otherRelationship).trim()
+                : null,
+          }
+        : {}),
       ...(athleteData.isScholarship !== undefined
         ? { isScholarship: athleteData.isScholarship === true }
         : {}),
@@ -256,6 +273,10 @@ export class AthletesRepository {
       if (athleteSpecificData.guardianId && !athleteSpecificData.relationship) {
         athleteSpecificData.relationship = "Other";
       }
+    }
+
+    if (athleteSpecificData.relationship !== "Other") {
+      athleteSpecificData.otherRelationship = null;
     }
 
     return { userData, athleteSpecificData };
@@ -466,6 +487,9 @@ throw error;
         const updateData = {
           ...(athleteSpecificData.status ? { status: athleteSpecificData.status } : {}),
           relationship: athleteSpecificData.relationship,
+          ...(athleteSpecificData.otherRelationship !== undefined
+            ? { otherRelationship: athleteSpecificData.otherRelationship }
+            : {}),
           ...(athleteSpecificData.isScholarship !== undefined
             ? { isScholarship: athleteSpecificData.isScholarship }
             : {}),
@@ -1193,6 +1217,7 @@ throw error;
         data: {
           guardianId: null,
           relationship: null,
+          otherRelationship: null,
         },
       });
 

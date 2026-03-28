@@ -1,4 +1,5 @@
 import { enrollmentsService } from "../services/enrollments.service.js";
+import { legacyEnrollmentImportService } from "../services/legacyEnrollmentImport.service.js";
 import { enrollmentSchemas } from "../validators/enrollments.validator.js";
 
 export const enrollmentsController = {
@@ -25,6 +26,132 @@ export const enrollmentsController = {
       });
     } catch (error) {
       return res.status(500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async previewLegacyImport(req, res) {
+    try {
+      const { error, value } = enrollmentSchemas.legacyImport.validate(req.body);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.details[0].message,
+        });
+      }
+
+      const result = await legacyEnrollmentImportService.preview(value, {
+        performedBy: req.user?.id ?? null,
+      });
+
+      return res.json({
+        success: true,
+        message: "Preview de importacion legacy generado correctamente.",
+        data: result.plan,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async createLegacyImport(req, res) {
+    try {
+      const { error, value } = enrollmentSchemas.legacyImport.validate(req.body);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.details[0].message,
+        });
+      }
+
+      const result = await legacyEnrollmentImportService.create(value, {
+        performedBy: req.user?.id ?? null,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message:
+          "Deportista importada correctamente como saldo inicial sin cobro automatico de matricula.",
+        data: result,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async previewLegacyImportBatch(req, res) {
+    try {
+      const { error, value } = enrollmentSchemas.legacyImportBatch.validate(req.body);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.details[0].message,
+        });
+      }
+
+      const result = await legacyEnrollmentImportService.previewBatch(value, {
+        performedBy: req.user?.id ?? null,
+      });
+
+      return res.json({
+        success: true,
+        message:
+          result.summary.invalidRows > 0
+            ? "Preview generado. Corrige las filas marcadas antes de importar."
+            : "Preview de importacion masiva generado correctamente.",
+        data: result,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async createLegacyImportBatch(req, res) {
+    try {
+      const { error, value } = enrollmentSchemas.legacyImportBatch.validate(req.body);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.details[0].message,
+        });
+      }
+
+      const result = await legacyEnrollmentImportService.createBatch(value, {
+        performedBy: req.user?.id ?? null,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Importacion masiva completada correctamente.",
+        data: result,
+      });
+    } catch (error) {
+      if (error?.preview) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          data: error.preview,
+          errors: error.preview.rows
+            .filter((row) => row.status === "error")
+            .map((row) => ({
+              rowNumber: row.rowNumber,
+              errors: row.errors,
+            })),
+        });
+      }
+
+      return res.status(400).json({
         success: false,
         message: error.message,
       });

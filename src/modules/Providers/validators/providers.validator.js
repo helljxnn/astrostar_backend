@@ -1,5 +1,18 @@
 ﻿import { body, param, query, validationResult } from "express-validator";
 
+const LETTERS_AND_SPACES_REGEX = /^[\p{L}\p{M}\s]+$/u;
+const BUSINESS_NAME_REGEX = /^[\p{L}\p{M}0-9\s\.,\-&()]+$/u;
+
+const validateJuridicalNit = (value) => {
+  if (!/^\d+$/.test(value)) {
+    throw new Error("El NIT solo puede contener números, sin guiones.");
+  }
+
+  if (value.length < 9 || value.length > 10) {
+    throw new Error("El NIT debe tener entre 9 y 10 dígitos.");
+  }
+};
+
 /**
  * Middleware para manejar errores de validación
  */
@@ -102,7 +115,7 @@ export const providersValidators = {
         );
       }
 
-      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\.,\-&()]+$/.test(value)) {
+      if (!BUSINESS_NAME_REGEX.test(value)) {
         throw new Error(
           "Solo se permiten letras, números, espacios y caracteres especiales básicos."
         );
@@ -121,13 +134,7 @@ export const providersValidators = {
       )
       .custom(async (value, { req }) => {
         if (req.body.tipoEntidad === "juridica") {
-          // PERSONA JURÍDICA: Solo números, exactamente 10 dígitos
-          if (!/^\d+$/.test(value)) {
-            throw new Error("El NIT solo puede contener números, sin guiones.");
-          }
-          if (value.length !== 10) {
-            throw new Error("El NIT debe tener exactamente 10 dígitos.");
-          }
+          validateJuridicalNit(value);
         } else {
           // PERSONA NATURAL: Validar según tipo de documento
           const { validateDocumentNumber } = await import(
@@ -219,7 +226,7 @@ export const providersValidators = {
         );
       }
 
-      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
+      if (!LETTERS_AND_SPACES_REGEX.test(value)) {
         throw new Error(
           "El contacto principal solo puede contener letras y espacios."
         );
@@ -372,7 +379,7 @@ export const providersValidators = {
         throw new Error("La ciudad debe tener entre 2 y 100 caracteres.");
       }
 
-      if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value)) {
+      if (!LETTERS_AND_SPACES_REGEX.test(value)) {
         throw new Error("La ciudad solo puede contener letras y espacios.");
       }
 
@@ -439,7 +446,7 @@ export const providersValidators = {
           ? "La razón social debe tener entre 3 y 200 caracteres."
           : "El nombre debe tener entre 3 y 200 caracteres."
       )
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\.,\-&()]+$/)
+      .matches(BUSINESS_NAME_REGEX)
       .withMessage(
         "Solo se permiten letras, números, espacios y caracteres especiales básicos."
       )
@@ -450,15 +457,7 @@ export const providersValidators = {
       .custom(async (value, { req }) => {
         if (value) {
           if (req.body.tipoEntidad === "juridica") {
-            // PERSONA JURÍDICA: Solo números, exactamente 10 dígitos
-            if (!/^\d+$/.test(value)) {
-              throw new Error(
-                "El NIT solo puede contener números, sin guiones."
-              );
-            }
-            if (value.length !== 10) {
-              throw new Error("El NIT debe tener exactamente 10 dígitos.");
-            }
+            validateJuridicalNit(value);
           } else {
             // PERSONA NATURAL: Validar según tipo de documento
             const { validateDocumentNumber } = await import(
@@ -530,7 +529,7 @@ export const providersValidators = {
       .optional()
       .isLength({ min: 2, max: 150 })
       .withMessage("El contacto principal debe tener entre 2 y 150 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+      .matches(LETTERS_AND_SPACES_REGEX)
       .withMessage(
         "El contacto principal solo puede contener letras y espacios."
       )
@@ -562,7 +561,7 @@ export const providersValidators = {
       .optional()
       .isLength({ min: 2, max: 100 })
       .withMessage("La ciudad debe tener entre 2 y 100 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+      .matches(LETTERS_AND_SPACES_REGEX)
       .withMessage("La ciudad solo puede contener letras y espacios.")
       .trim(),
 
@@ -617,13 +616,7 @@ export const providersValidators = {
       )
       .custom(async (value, { req }) => {
         if (req.query.tipoEntidad === "juridica") {
-          // PERSONA JURÍDICA: Solo números, exactamente 10 dígitos
-          if (!/^\d+$/.test(value)) {
-            throw new Error("El NIT solo puede contener números, sin guiones.");
-          }
-          if (value.length !== 10) {
-            throw new Error("El NIT debe tener exactamente 10 dígitos.");
-          }
+          validateJuridicalNit(value);
         } else {
           // PERSONA NATURAL: Validación básica (no tenemos tipo de documento en query)
           if (!/^[0-9A-Za-z\-]+$/.test(value)) {
@@ -665,7 +658,7 @@ export const providersValidators = {
       )
       .isLength({ min: 3, max: 200 })
       .withMessage("Debe tener entre 3 y 200 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ0-9\s\.,\-&()]+$/)
+      .matches(BUSINESS_NAME_REGEX)
       .withMessage(
         "Solo se permiten letras, números, espacios y caracteres especiales básicos."
       )
@@ -713,7 +706,7 @@ export const providersValidators = {
       .withMessage("El nombre de contacto es obligatorio.")
       .isLength({ min: 2, max: 150 })
       .withMessage("El contacto debe tener entre 2 y 150 caracteres.")
-      .matches(/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/)
+      .matches(LETTERS_AND_SPACES_REGEX)
       .withMessage("El contacto solo puede contener letras y espacios.")
       .trim(),
 

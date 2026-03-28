@@ -13,6 +13,8 @@ export class UsersRepository {
       { lastName: { contains: term, mode: "insensitive" } },
       { email: { contains: term, mode: "insensitive" } },
       { identification: { contains: term, mode: "insensitive" } },
+      { phoneNumber: { contains: term, mode: "insensitive" } },
+      { role: { name: { contains: term, mode: "insensitive" } } },
     ];
 
     const searchTerms = normalizedSearch.split(/\s+/).filter(Boolean);

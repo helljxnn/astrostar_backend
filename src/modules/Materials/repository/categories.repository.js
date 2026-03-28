@@ -180,6 +180,11 @@ class CategoriesRepository {
 
     const result = await prisma.materialCategory.findMany({
       where,
+      include: {
+        _count: {
+          select: { materials: true },
+        },
+      },
       orderBy: { nombre: "asc" },
     });
 

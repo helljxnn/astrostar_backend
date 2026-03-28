@@ -56,9 +56,32 @@ const invalidateSettingsCache = () => {
  * Calcula los días de mora basado en fecha actual (ESTÁNDAR EMPRESARIAL)
  * REGLA DE NEGOCIO: Mora continua hasta que se pague correctamente
  */
-const calculateLateDays = (dueEnd) => {
-  const now = new Date();
+const resolveLateFeeReferenceDate = (dueEnd, metadata = null) => {
+  if (!dueEnd) return null;
+
   const due = new Date(dueEnd);
+  if (Number.isNaN(due.getTime())) return null;
+
+  const configuredStart = metadata?.lateFeeStartsAt
+    ? new Date(metadata.lateFeeStartsAt)
+    : null;
+
+  if (
+    configuredStart &&
+    !Number.isNaN(configuredStart.getTime()) &&
+    configuredStart > due
+  ) {
+    return configuredStart;
+  }
+
+  return due;
+};
+
+const calculateLateDays = (dueEnd, metadata = null) => {
+  const now = new Date();
+  const due = resolveLateFeeReferenceDate(dueEnd, metadata);
+
+  if (!due) return 0;
   
   if (now <= due) return 0;
   
@@ -74,10 +97,15 @@ const calculateLateDays = (dueEnd) => {
  * - Si RECHAZADO: se congela entre upload y reviewedAt, y luego continúa.
  * - Si APROBADO: se congela desde upload y termina el conteo.
  */
-const calculateEffectiveLateDays = (dueEnd, payments = [], now = new Date()) => {
-  if (!dueEnd) return 0;
+const calculateEffectiveLateDays = (
+  dueEnd,
+  payments = [],
+  now = new Date(),
+  metadata = null
+) => {
+  const due = resolveLateFeeReferenceDate(dueEnd, metadata);
+  if (!due) return 0;
 
-  const due = new Date(dueEnd);
   if (now <= due) return 0;
 
   const sortedPayments = (payments || [])
@@ -131,12 +159,12 @@ const calculateEffectiveLateDays = (dueEnd, payments = [], now = new Date()) => 
  * Calcula días de mora para un pago específico basado en fecha de subida
  * Esta función es JUSTA - no cobra mora por demora administrativa
  */
-const calculateLateDaysForPayment = (dueEnd, uploadedAt) => {
-  if (!dueEnd) return 0;
+const calculateLateDaysForPayment = (dueEnd, uploadedAt, metadata = null) => {
+  const due = resolveLateFeeReferenceDate(dueEnd, metadata);
+  if (!due) return 0;
   
   // Si no hay fecha de subida, usar fecha actual (para obligaciones sin pago)
   const referenceDate = uploadedAt ? new Date(uploadedAt) : new Date();
-  const due = new Date(dueEnd);
   
   if (referenceDate <= due) return 0;
   
@@ -165,15 +193,19 @@ const calculateLateDaysForObligation = async (obligationId) => {
     
     // Si no hay pagos subidos, usar fecha actual
     if (obligation.payments.length === 0) {
-      return calculateLateDays(obligation.dueEnd);
+      return calculateLateDays(obligation.dueEnd, obligation.metadata);
     }
     
     // Usar la PRIMERA subida (más temprana)
     const firstUpload = obligation.payments[0];
-    return calculateLateDaysForPayment(obligation.dueEnd, firstUpload.uploadedAt);
+    return calculateLateDaysForPayment(
+      obligation.dueEnd,
+      firstUpload.uploadedAt,
+      obligation.metadata
+    );
     
   } catch (error) {
-return calculateLateDays(obligation.dueEnd); // Fallback
+return 0;
   }
 };
 
@@ -186,7 +218,14 @@ return calculateLateDays(obligation.dueEnd); // Fallback
  * @param {Object} [enrollment] - Datos de matrícula (opcional, para validar estado)
  * @param {Date} [dueEnd] - Fecha de vencimiento (requerida para mora congelada)
  */
-const calculateLateFee = (lateDays, lateFeeDailyAmount = BUSINESS_CONSTANTS.LATE_FEE_DAILY, athlete = null, enrollment = null, dueEnd = null) => {
+const calculateLateFee = (
+  lateDays,
+  lateFeeDailyAmount = BUSINESS_CONSTANTS.LATE_FEE_DAILY,
+  athlete = null,
+  enrollment = null,
+  dueEnd = null,
+  metadata = null
+) => {
   if (lateDays <= 0) return 0;
   
   // ✅ REGLA CRÍTICA: No calcular mora si matrícula vencida
@@ -199,7 +238,8 @@ const calculateLateFee = (lateDays, lateFeeDailyAmount = BUSINESS_CONSTANTS.LATE
     // Si el atleta está inactivo, calcular mora solo hasta la fecha de inactivación
     if (athlete.statusAssignedAt && dueEnd) {
       const inactiveDate = new Date(athlete.statusAssignedAt);
-      const due = new Date(dueEnd);
+      const due = resolveLateFeeReferenceDate(dueEnd, metadata);
+      if (!due) return 0;
       
       // Si se inactivó antes del vencimiento, no hay mora
       if (inactiveDate <= due) {
@@ -606,13 +646,19 @@ const enrichPaymentsForAdminList = async (payments, settings) => {
       ? payment.obligation.payments
       : [payment];
 
-    const lateDays = calculateEffectiveLateDays(payment.obligation?.dueEnd, relatedPayments);
+    const lateDays = calculateEffectiveLateDays(
+      payment.obligation?.dueEnd,
+      relatedPayments,
+      new Date(),
+      payment.obligation?.metadata
+    );
     const lateFee = calculateLateFee(
       lateDays,
       settings.lateFeeDailyAmount,
       athlete,
       enrollment,
-      payment.obligation?.dueEnd
+      payment.obligation?.dueEnd,
+      payment.obligation?.metadata
     );
     const calculatedAmount = (payment.obligation?.baseAmount || 0) + lateFee;
 
@@ -692,6 +738,7 @@ export const paymentBusinessRules = {
   isWithinLastWeekOfMonth,
   getEnrollmentCoveragePeriods,
   buildEnrollmentDatesFromReference,
+  resolveLateFeeReferenceDate,
 };
 
 // ============================================================================
@@ -1120,13 +1167,19 @@ export const paymentsService = {
       if (isMonthlyExemptByEnrollment(obligation)) {
         continue;
       }
-      const daysLate = calculateEffectiveLateDays(obligation.dueEnd, obligation.payments);
+      const daysLate = calculateEffectiveLateDays(
+        obligation.dueEnd,
+        obligation.payments,
+        new Date(),
+        obligation.metadata
+      );
       const lateFee = calculateLateFee(
         daysLate,
         settings.lateFeeDailyAmount,
         athlete,
         enrollment,
-        obligation.dueEnd
+        obligation.dueEnd,
+        obligation.metadata
       );
       const latestPayment = obligation.payments
         ?.filter(p => p?.uploadedAt)
@@ -1348,9 +1401,21 @@ export const paymentsService = {
 
       // Enriquecer cada pago con información calculada
       const enrichedPayments = result.payments.map(payment => {
-        const lateDays = calculateEffectiveLateDays(payment.obligation.dueEnd, [payment]);
+        const lateDays = calculateEffectiveLateDays(
+          payment.obligation.dueEnd,
+          [payment],
+          new Date(),
+          payment.obligation.metadata
+        );
         // ✅ Pasar atleta, enrollment y dueEnd para mora congelada
-        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount, athlete, enrollment, payment.obligation.dueEnd);
+        const lateFee = calculateLateFee(
+          lateDays,
+          settings.lateFeeDailyAmount,
+          athlete,
+          enrollment,
+          payment.obligation.dueEnd,
+          payment.obligation.metadata
+        );
         const totalAmount = payment.obligation.baseAmount + lateFee;
 
         return {
@@ -1756,7 +1821,12 @@ throw new Error('Error al obtener historial de pagos del atleta');
     if (monthlyOverdueList.length > 0) {
       let maxLateDays = 0;
       for (const obligation of monthlyOverdueList) {
-        const lateDays = calculateEffectiveLateDays(obligation.dueEnd, obligation.payments);
+        const lateDays = calculateEffectiveLateDays(
+          obligation.dueEnd,
+          obligation.payments,
+          new Date(),
+          obligation.metadata
+        );
         if (lateDays > maxLateDays) {
           maxLateDays = lateDays;
         }
@@ -2240,7 +2310,12 @@ throw error;
 
       // Procesar cada obligación con cálculo de mora
       const obligationsWithDetails = await Promise.all(filteredObligations.map(async (obligation) => {
-        const lateDays = calculateEffectiveLateDays(obligation.dueEnd, obligation.payments);
+        const lateDays = calculateEffectiveLateDays(
+          obligation.dueEnd,
+          obligation.payments,
+          new Date(),
+          obligation.metadata
+        );
         
         // ✅ OBTENER MATRÍCULA ACTUAL PARA VALIDAR ESTADO
         const enrollment = await prisma.enrollment.findFirst({
@@ -2250,7 +2325,14 @@ throw error;
         });
         
         // ✅ CALCULAR MORA CON VALIDACIONES Y MORA CONGELADA PARA INACTIVOS
-        const lateFee = calculateLateFee(lateDays, settings.lateFeeDailyAmount, obligation.athlete, enrollment, obligation.dueEnd);
+        const lateFee = calculateLateFee(
+          lateDays,
+          settings.lateFeeDailyAmount,
+          obligation.athlete,
+          enrollment,
+          obligation.dueEnd,
+          obligation.metadata
+        );
         const totalAmount = obligation.baseAmount + lateFee;
         
         // Determinar estado de mora

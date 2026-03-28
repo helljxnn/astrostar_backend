@@ -362,7 +362,10 @@ throw error;
       tipoEntidad: provider.entityType === "legal" ? "juridica" : "natural",
       razonSocial: provider.businessName,
       nit: provider.nit,
-      tipoDocumento: getDocumentTypeCode(provider.documentType),
+      tipoDocumento:
+        provider.entityType === "legal"
+          ? "NIT"
+          : getDocumentTypeCode(provider.documentType),
       tipoDocumentoNombre:
         provider.entityType === "legal"
           ? "NIT"

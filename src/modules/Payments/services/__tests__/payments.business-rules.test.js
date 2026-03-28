@@ -36,4 +36,37 @@ describe("paymentBusinessRules", () => {
       expect(fechaVencimiento.toISOString()).toBe("2027-01-30T15:45:00.000Z");
     });
   });
+
+  describe("resolveLateFeeReferenceDate", () => {
+    test("usa lateFeeStartsAt cuando la deuda legacy no debe cobrar mora historica previa", () => {
+      const dueEnd = new Date("2026-01-05T23:59:59.999Z");
+      const lateFeeStartsAt = new Date("2026-04-01T00:00:00.000Z");
+
+      const result = paymentBusinessRules.resolveLateFeeReferenceDate(dueEnd, {
+        lateFeeStartsAt,
+      });
+
+      expect(result.toISOString()).toBe(lateFeeStartsAt.toISOString());
+    });
+
+    test("mantiene dueEnd si lateFeeStartsAt es anterior o invalido", () => {
+      const dueEnd = new Date("2026-01-05T23:59:59.999Z");
+
+      expect(
+        paymentBusinessRules
+          .resolveLateFeeReferenceDate(dueEnd, {
+            lateFeeStartsAt: new Date("2025-12-31T00:00:00.000Z"),
+          })
+          .toISOString()
+      ).toBe(dueEnd.toISOString());
+
+      expect(
+        paymentBusinessRules
+          .resolveLateFeeReferenceDate(dueEnd, {
+            lateFeeStartsAt: "fecha-invalida",
+          })
+          .toISOString()
+      ).toBe(dueEnd.toISOString());
+    });
+  });
 });
