@@ -19,6 +19,8 @@ const LEGACY_IMPORT_DEFAULTS = {
   MIN_ATHLETE_AGE: 5,
   MAX_PERSON_AGE: 100,
   ORIGIN: "LEGACY_IMPORT",
+  TRANSACTION_MAX_WAIT_MS: 10000,
+  TRANSACTION_TIMEOUT_MS: 60000,
 };
 
 const ENROLLMENT_STATUS = {
@@ -117,15 +119,31 @@ const calculateExpirationDate = (
   return expirationDate;
 };
 
+const excelSerialToDate = (serialValue) => {
+  const serial = Number(serialValue);
+  if (!Number.isFinite(serial) || serial <= 0) return null;
+
+  const excelEpoch = Date.UTC(1899, 11, 30);
+  const parsed = new Date(excelEpoch + serial * 24 * 60 * 60 * 1000);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 const parseDateInput = (value, fieldName) => {
   if (!value) return null;
   let parsed = null;
 
   if (value instanceof Date) {
     parsed = new Date(value);
+  } else if (typeof value === "number") {
+    parsed = excelSerialToDate(value);
   } else if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
     const [year, month, day] = value.trim().split("-").map((part) => parseInt(part, 10));
     parsed = new Date(year, month - 1, day, 0, 0, 0, 0);
+  } else if (typeof value === "string" && /^\d{1,2}\/\d{1,2}\/\d{4}$/.test(value.trim())) {
+    const [day, month, year] = value.trim().split("/").map((part) => parseInt(part, 10));
+    parsed = new Date(year, month - 1, day, 0, 0, 0, 0);
+  } else if (typeof value === "string" && /^\d{5,6}(?:\.\d+)?$/.test(value.trim())) {
+    parsed = excelSerialToDate(Number(value.trim()));
   } else {
     parsed = new Date(value);
   }
@@ -839,39 +857,64 @@ const markBatchRowError = (row, message) => {
   return row;
 };
 
+const buildBatchRowAthletePreview = (row) => {
+  const athlete =
+    row?.plan?.athlete ||
+    row?.normalized?.athlete ||
+    row?.payload?.athlete ||
+    null;
+
+  if (!athlete) return null;
+
+  const fullName = [
+    athlete.firstName,
+    athlete.middleName,
+    athlete.lastName,
+    athlete.secondLastName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  return {
+    fullName: fullName || null,
+    identification: athlete.identification || null,
+  };
+};
+
 const applyBatchConsistencyChecks = (rows) => {
   const athleteDocumentRows = new Map();
   const athleteEmailRows = new Map();
   const guardianRows = new Map();
 
   rows.forEach((row) => {
-    if (row.status !== "ready" || !row.normalized) return;
+    const athleteSource = row.normalized?.athlete || row.payload?.athlete;
+    if (!athleteSource) return;
 
-    const athleteDocument = row.normalized.athlete.identification;
-    if (athleteDocumentRows.has(athleteDocument)) {
+    const athleteDocument = athleteSource.identification;
+    const athleteEmail = athleteSource.email;
+    const guardianSnapshot = getGuardianSnapshot({
+      guardian: row.normalized?.guardian || null,
+      guardianDraft: row.normalized?.guardianDraft || row.payload?.guardian || null,
+    });
+
+    if (athleteDocument && athleteDocumentRows.has(athleteDocument)) {
       const previousRow = athleteDocumentRows.get(athleteDocument);
       const message = `Documento duplicado en el archivo: "${athleteDocument}".`;
       markBatchRowError(row, message);
       markBatchRowError(previousRow, message);
-      return;
-    } else {
+    } else if (athleteDocument) {
       athleteDocumentRows.set(athleteDocument, row);
     }
 
-    const athleteEmail = row.normalized.athlete.email;
-    if (athleteEmailRows.has(athleteEmail)) {
+    if (athleteEmail && athleteEmailRows.has(athleteEmail)) {
       const previousRow = athleteEmailRows.get(athleteEmail);
       const message = `Email duplicado en el archivo: "${athleteEmail}".`;
       markBatchRowError(row, message);
       markBatchRowError(previousRow, message);
-    } else {
+    } else if (athleteEmail) {
       athleteEmailRows.set(athleteEmail, row);
     }
-
-    const guardianSnapshot = getGuardianSnapshot({
-      guardian: row.normalized.guardian,
-      guardianDraft: row.normalized.guardianDraft,
-    });
 
     if (!guardianSnapshot) return;
 
@@ -905,7 +948,7 @@ const buildBatchPreviewResponse = (preparedBatch) => {
     index: row.index,
     rowNumber: row.rowNumber,
     status: row.status,
-    athlete: row.plan?.athlete ?? null,
+    athlete: row.plan?.athlete ?? buildBatchRowAthletePreview(row),
     guardian: row.plan?.guardian ?? null,
     plan: row.plan ?? null,
     errors: row.errors ?? [],
@@ -969,6 +1012,7 @@ const prepareLegacyImportBatch = async (payload, audit = {}) => {
         rowNumber: index + 2,
         status: "error",
         plan: null,
+        payload: record,
         errors: [error.message],
       });
     }
@@ -1283,10 +1327,9 @@ const persistLegacyImportRecord = async ({
   guardianCache,
 }) => {
   const temporaryPassword = normalized.athlete.identification;
-  const passwordHash = await bcrypt.hash(
-    temporaryPassword,
-    LEGACY_IMPORT_DEFAULTS.BCRYPT_SALT_ROUNDS
-  );
+  const passwordHash =
+    normalized.passwordHash ||
+    (await bcrypt.hash(temporaryPassword, LEGACY_IMPORT_DEFAULTS.BCRYPT_SALT_ROUNDS));
 
   const resolvedGuardianId = await resolveGuardianInTransaction({
     tx,
@@ -1627,18 +1670,32 @@ export const legacyEnrollmentImportService = {
       : null;
     const importedAt = new Date();
 
-    const result = await prisma.$transaction(async (tx) => {
-      const athleteRole = await getOrCreateAthleteRole(tx);
+    const passwordHash = await bcrypt.hash(
+      normalized.athlete.identification,
+      LEGACY_IMPORT_DEFAULTS.BCRYPT_SALT_ROUNDS
+    );
 
-      return await persistLegacyImportRecord({
-        tx,
-        normalized,
-        settings,
-        athleteRole,
-        importedAt,
-        guardianCache: new Map(),
-      });
-    });
+    const result = await prisma.$transaction(
+      async (tx) => {
+        const athleteRole = await getOrCreateAthleteRole(tx);
+
+        return await persistLegacyImportRecord({
+          tx,
+          normalized: {
+            ...normalized,
+            passwordHash,
+          },
+          settings,
+          athleteRole,
+          importedAt,
+          guardianCache: new Map(),
+        });
+      },
+      {
+        maxWait: LEGACY_IMPORT_DEFAULTS.TRANSACTION_MAX_WAIT_MS,
+        timeout: LEGACY_IMPORT_DEFAULTS.TRANSACTION_TIMEOUT_MS,
+      }
+    );
 
     return {
       success: true,
@@ -1669,35 +1726,57 @@ export const legacyEnrollmentImportService = {
       : null;
 
     const importedAt = new Date();
+    const rowsWithHashes = await Promise.all(
+      preparedBatch.rows.map(async (row) => {
+        if (row.status !== "ready") return row;
 
-    const createdRows = await prisma.$transaction(async (tx) => {
-      const athleteRole = await getOrCreateAthleteRole(tx);
-      const guardianCache = new Map();
-      const rows = [];
+        return {
+          ...row,
+          normalized: {
+            ...row.normalized,
+            passwordHash: await bcrypt.hash(
+              row.normalized.athlete.identification,
+              LEGACY_IMPORT_DEFAULTS.BCRYPT_SALT_ROUNDS
+            ),
+          },
+        };
+      })
+    );
 
-      for (const row of preparedBatch.rows) {
-        if (row.status !== "ready") continue;
+    const createdRows = await prisma.$transaction(
+      async (tx) => {
+        const athleteRole = await getOrCreateAthleteRole(tx);
+        const guardianCache = new Map();
+        const rows = [];
 
-        const createdRecord = await persistLegacyImportRecord({
-          tx,
-          normalized: row.normalized,
-          settings,
-          athleteRole,
-          importedAt,
-          guardianCache,
-        });
+        for (const row of rowsWithHashes) {
+          if (row.status !== "ready") continue;
 
-        rows.push({
-          rowNumber: row.rowNumber,
-          athlete: createdRecord.athlete,
-          enrollment: createdRecord.enrollment,
-          createdObligations: createdRecord.createdObligations,
-          temporaryPassword: createdRecord.temporaryPassword,
-        });
+          const createdRecord = await persistLegacyImportRecord({
+            tx,
+            normalized: row.normalized,
+            settings,
+            athleteRole,
+            importedAt,
+            guardianCache,
+          });
+
+          rows.push({
+            rowNumber: row.rowNumber,
+            athlete: createdRecord.athlete,
+            enrollment: createdRecord.enrollment,
+            createdObligations: createdRecord.createdObligations,
+            temporaryPassword: createdRecord.temporaryPassword,
+          });
+        }
+
+        return rows;
+      },
+      {
+        maxWait: LEGACY_IMPORT_DEFAULTS.TRANSACTION_MAX_WAIT_MS,
+        timeout: LEGACY_IMPORT_DEFAULTS.TRANSACTION_TIMEOUT_MS,
       }
-
-      return rows;
-    });
+    );
 
     return {
       success: true,

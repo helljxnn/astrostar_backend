@@ -244,10 +244,19 @@ export class AthletesService {
         }
       }
 
-      // Validar acudiente si es menor de edad
-      if (updateData.birthDate) {
-        const age = this.calculateAge(updateData.birthDate);
-        if (age < 18 && !updateData.acudiente && !existingAthlete.acudiente) {
+      // Validar acudiente con el estado efectivo final, no solo cuando cambia birthDate
+      const effectiveBirthDate = updateData.birthDate || existingAthlete.birthDate;
+      const guardianProvided = Object.prototype.hasOwnProperty.call(
+        updateData,
+        "acudiente",
+      );
+      const effectiveGuardian = guardianProvided
+        ? updateData.acudiente
+        : existingAthlete.acudiente;
+
+      if (effectiveBirthDate) {
+        const age = this.calculateAge(effectiveBirthDate);
+        if (age < 18 && !effectiveGuardian) {
           throw new Error(
             "Los menores de edad deben tener un acudiente asignado.",
           );
@@ -255,7 +264,7 @@ export class AthletesService {
       }
 
       // Validar que el acudiente existe si se proporciona
-      if (updateData.acudiente) {
+      if (guardianProvided && updateData.acudiente) {
         const guardianExists = await this.athletesRepository.validateGuardian(
           updateData.acudiente,
         );
@@ -294,13 +303,15 @@ export class AthletesService {
       // Si el email cambió, enviar correo de verificación al nuevo email
       let emailSent = false;
       if (emailChanged) {
+        const temporaryPassword =
+          updateData.identification?.trim() || existingAthlete.identification;
         const emailResult = await this.sendWelcomeEmail(
           {
             email: updateData.email,
             firstName: updatedAthlete.firstName,
             lastName: updatedAthlete.lastName,
           },
-          existingAthlete.identification, // Usar el documento como contraseña
+          temporaryPassword,
         );
         emailSent = emailResult.success;
       }
