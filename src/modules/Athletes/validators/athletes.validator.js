@@ -104,6 +104,11 @@ export const athletesValidators = {
       .isLength({ max: 50 })
       .withMessage("El parentesco no puede exceder 50 caracteres.")
       .trim(),
+
+    body("isScholarship")
+      .optional()
+      .isBoolean()
+      .withMessage("El campo de beca debe ser verdadero o falso."),
   ],
 
   // Validaciones para actualizar deportista
@@ -204,6 +209,11 @@ export const athletesValidators = {
       .isLength({ max: 50 })
       .withMessage("El parentesco no puede exceder 50 caracteres.")
       .trim(),
+
+    body("isScholarship")
+      .optional()
+      .isBoolean()
+      .withMessage("El campo de beca debe ser verdadero o falso."),
   ],
 
   // Validaciones para obtener deportista por ID

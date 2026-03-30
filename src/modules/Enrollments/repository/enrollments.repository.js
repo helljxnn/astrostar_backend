@@ -1,6 +1,56 @@
 import prisma from "../../../config/database.js";
 
+const normalizeSearchValue = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const splitSearchTokens = (value) =>
+  String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+const buildLatestEnrollmentBaseQuery = () => `
+  WITH latest_enrollments AS (
+    SELECT DISTINCT ON (e."athleteId")
+      e.id,
+      e."athleteId",
+      e."fechaInicio",
+      e."fechaVencimiento",
+      e."createdAt",
+      e.estado,
+      e.observaciones,
+      e."updatedAt",
+      u.identification,
+      u.email,
+      u."firstName",
+      u."middleName",
+      u."lastName",
+      u."secondLastName"
+    FROM enrollments e
+    INNER JOIN athletes a ON e."athleteId" = a.id
+    INNER JOIN users u ON a."userId" = u.id
+    ORDER BY e."athleteId", e."createdAt" DESC, e.id DESC
+  )
+`;
+
 export const enrollmentsRepository = {
+  buildDateRangeClause(field, fromParam, toParam) {
+    if (fromParam && toParam) {
+      return `(${field} >= ${fromParam} AND ${field} <= ${toParam})`;
+    }
+    if (fromParam) {
+      return `${field} >= ${fromParam}`;
+    }
+    if (toParam) {
+      return `${field} <= ${toParam}`;
+    }
+    return null;
+  },
+
   async normalizeStatuses() {
     const now = new Date();
 
@@ -42,14 +92,16 @@ export const enrollmentsRepository = {
     const shouldShowOnlyLatest = !athleteId && !showAll;
 
     if (shouldShowOnlyLatest) {
-      // CASO 1: Mostrar solo la matrícula más reciente por deportista
-      // Usar query raw para DISTINCT ON (no soportado nativamente por Prisma)
+      // CASO 1: Mostrar solo la matrícula más reciente por deportista.
+      // Los filtros se aplican sobre ese snapshot actual, no sobre histórico.
       let whereConditions = [];
       let params = [];
       let paramIndex = 1;
+      const trimmedSearchText = String(searchText || "").trim();
+      const searchTokens = splitSearchTokens(trimmedSearchText);
 
       if (estado) {
-        whereConditions.push(`e.estado::text = $${paramIndex}`);
+        whereConditions.push(`le.estado::text = $${paramIndex}`);
         params.push(estado);
         paramIndex++;
       }
@@ -57,31 +109,79 @@ export const enrollmentsRepository = {
       if (searchText || searchEstado || searchNoActivation || searchDateRange) {
         const orConditions = [];
 
-        if (searchText) {
-          const searchTerm = `%${searchText.trim()}%`;
-          orConditions.push(`u.identification ILIKE $${paramIndex}`);
-          orConditions.push(`u."firstName" ILIKE $${paramIndex}`);
-          orConditions.push(`u."lastName" ILIKE $${paramIndex}`);
-          orConditions.push(`u."middleName" ILIKE $${paramIndex}`);
-          orConditions.push(`u."secondLastName" ILIKE $${paramIndex}`);
+        if (searchTokens.length > 0) {
+          const tokenConditions = searchTokens.map((token) => {
+            const tokenParam = `$${paramIndex}`;
+            params.push(`%${token}%`);
+            paramIndex++;
+
+            return `(
+              le.identification ILIKE ${tokenParam}
+              OR le.email ILIKE ${tokenParam}
+              OR le."firstName" ILIKE ${tokenParam}
+              OR le."middleName" ILIKE ${tokenParam}
+              OR le."lastName" ILIKE ${tokenParam}
+              OR le."secondLastName" ILIKE ${tokenParam}
+              OR CONCAT_WS(' ', le."firstName", le."middleName", le."lastName", le."secondLastName") ILIKE ${tokenParam}
+              OR CONCAT_WS(' ', le."firstName", le."lastName") ILIKE ${tokenParam}
+              OR CONCAT_WS(' ', le."firstName", le."secondLastName") ILIKE ${tokenParam}
+            )`;
+          });
+
+          orConditions.push(`(${tokenConditions.join(" AND ")})`);
+        }
+
+        if (trimmedSearchText) {
+          const searchTerm = `%${trimmedSearchText}%`;
+          orConditions.push(`le.identification ILIKE $${paramIndex}`);
+          orConditions.push(`le."firstName" ILIKE $${paramIndex}`);
+          orConditions.push(`le."lastName" ILIKE $${paramIndex}`);
+          orConditions.push(`le."middleName" ILIKE $${paramIndex}`);
+          orConditions.push(`le."secondLastName" ILIKE $${paramIndex}`);
+          orConditions.push(`CONCAT_WS(' ', le."firstName", le."middleName", le."lastName", le."secondLastName") ILIKE $${paramIndex}`);
+          orConditions.push(`TO_CHAR(le."createdAt", 'DD/MM/YYYY') ILIKE $${paramIndex}`);
+          orConditions.push(`TO_CHAR(le."fechaInicio", 'DD/MM/YYYY') ILIKE $${paramIndex}`);
+          orConditions.push(`TO_CHAR(le."fechaVencimiento", 'DD/MM/YYYY') ILIKE $${paramIndex}`);
+          orConditions.push(`(
+            CASE
+              WHEN le.estado::text = 'Pending_Payment' THEN 'Pendiente de Pago'
+              WHEN le.estado::text = 'Vigente' THEN 'Vigente'
+              WHEN le.estado::text = 'Vencida' THEN 'Vencida'
+              ELSE le.estado::text
+            END
+          ) ILIKE $${paramIndex}`);
+          orConditions.push(`(
+            CASE
+              WHEN le.estado::text = 'Pending_Payment' THEN 'Pendiente de activacion'
+              WHEN le."fechaInicio" IS NULL THEN 'No activada'
+              ELSE TO_CHAR(le."fechaInicio", 'DD/MM/YYYY')
+            END
+          ) ILIKE $${paramIndex}`);
+          orConditions.push(`(
+            CASE
+              WHEN le.estado::text = 'Pending_Payment' THEN 'Pendiente de activacion'
+              WHEN le."fechaVencimiento" IS NULL THEN 'Sin fecha'
+              ELSE TO_CHAR(le."fechaVencimiento", 'DD/MM/YYYY')
+            END
+          ) ILIKE $${paramIndex}`);
           params.push(searchTerm);
           paramIndex++;
         }
 
         if (searchEstado) {
-          orConditions.push(`e.estado::text = $${paramIndex}`);
+          orConditions.push(`le.estado::text = $${paramIndex}`);
           params.push(searchEstado);
           paramIndex++;
         }
 
         if (searchNoActivation) {
-          orConditions.push(`(e.estado::text = 'Pending_Payment' OR e."fechaInicio" IS NULL)`);
+          orConditions.push(`(le.estado::text = 'Pending_Payment' OR le."fechaInicio" IS NULL)`);
         }
 
         if (searchDateRange?.from && searchDateRange?.to) {
-          orConditions.push(`(e."createdAt" >= $${paramIndex} AND e."createdAt" <= $${paramIndex + 1})`);
-          orConditions.push(`(e."fechaInicio" >= $${paramIndex} AND e."fechaInicio" <= $${paramIndex + 1})`);
-          orConditions.push(`(e."fechaVencimiento" >= $${paramIndex} AND e."fechaVencimiento" <= $${paramIndex + 1})`);
+          orConditions.push(`(le."createdAt" >= $${paramIndex} AND le."createdAt" <= $${paramIndex + 1})`);
+          orConditions.push(`(le."fechaInicio" >= $${paramIndex} AND le."fechaInicio" <= $${paramIndex + 1})`);
+          orConditions.push(`(le."fechaVencimiento" >= $${paramIndex} AND le."fechaVencimiento" <= $${paramIndex + 1})`);
           params.push(searchDateRange.from, searchDateRange.to);
           paramIndex += 2;
         }
@@ -91,24 +191,33 @@ export const enrollmentsRepository = {
         }
       }
 
-      if (dateFrom) {
-        whereConditions.push(`e."createdAt" >= $${paramIndex}`);
-        params.push(dateFrom);
-        paramIndex++;
-      }
+      if (dateFrom || dateTo) {
+        const dateFromParam = dateFrom ? `$${paramIndex}` : null;
+        if (dateFrom) {
+          params.push(dateFrom);
+          paramIndex++;
+        }
 
-      if (dateTo) {
-        whereConditions.push(`e."createdAt" <= $${paramIndex}`);
-        params.push(dateTo);
-        paramIndex++;
+        const dateToParam = dateTo ? `$${paramIndex}` : null;
+        if (dateTo) {
+          params.push(dateTo);
+          paramIndex++;
+        }
+
+        const createdAtClause = this.buildDateRangeClause(`le."createdAt"`, dateFromParam, dateToParam);
+        const fechaInicioClause = this.buildDateRangeClause(`le."fechaInicio"`, dateFromParam, dateToParam);
+        const fechaVencimientoClause = this.buildDateRangeClause(`le."fechaVencimiento"`, dateFromParam, dateToParam);
+
+        whereConditions.push(`(${[createdAtClause, fechaInicioClause, fechaVencimientoClause].filter(Boolean).join(' OR ')})`);
       }
 
       if (vencimientoRange?.from && vencimientoRange?.to) {
-        whereConditions.push(`e."fechaVencimiento" IS NOT NULL`);
-        whereConditions.push(`e."fechaVencimiento" >= $${paramIndex}`);
+        whereConditions.push(`le.estado::text <> 'Pending_Payment'`);
+        whereConditions.push(`le."fechaVencimiento" IS NOT NULL`);
+        whereConditions.push(`le."fechaVencimiento" >= $${paramIndex}`);
         params.push(vencimientoRange.from);
         paramIndex++;
-        whereConditions.push(`e."fechaVencimiento" <= $${paramIndex}`);
+        whereConditions.push(`le."fechaVencimiento" <= $${paramIndex}`);
         params.push(vencimientoRange.to);
         paramIndex++;
       }
@@ -125,35 +234,41 @@ export const enrollmentsRepository = {
         ? `WHERE ${whereConditions.join(' AND ')}`
         : '';
 
-      // 🎯 QUERY CORREGIDA: DISTINCT ON + ORDER BY dinámico
+      // Query base del snapshot actual por deportista
+      const baseQuery = buildLatestEnrollmentBaseQuery();
+      const countQuery = `
+        ${baseQuery}
+        SELECT COUNT(*) as count
+        FROM latest_enrollments le
+        ${whereClause}
+      `;
+      const countParams = [...params];
+
       const query = `
-        WITH latest_enrollments AS (
-          SELECT DISTINCT ON (e."athleteId")
-            e.id, e."athleteId", e."fechaInicio", e."fechaVencimiento",
-            e."createdAt", e.estado, e.observaciones, e."updatedAt"
-          FROM enrollments e
-          INNER JOIN athletes a ON e."athleteId" = a.id
-          INNER JOIN users u ON a."userId" = u.id
-          ${whereClause}
-          ORDER BY e."athleteId", e."createdAt" DESC
-        )
-        SELECT * FROM latest_enrollments
-        ORDER BY "${safeSortBy}" ${safeSortOrder}
+        ${baseQuery}
+        SELECT le.id
+        FROM latest_enrollments le
+        ${whereClause}
+        ORDER BY le."${safeSortBy}" ${safeSortOrder}, le.id DESC
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
 
-      params.push(parseInt(limit), skip);
+      params.push(parseInt(limit, 10), skip);
 
-      const enrollmentIds = await prisma.$queryRawUnsafe(query, ...params);
+      const [enrollmentIds, countResult] = await Promise.all([
+        prisma.$queryRawUnsafe(query, ...params),
+        prisma.$queryRawUnsafe(countQuery, ...countParams),
+      ]);
+      const total = parseInt(countResult?.[0]?.count ?? 0, 10);
 
       if (enrollmentIds.length === 0) {
         return {
           data: [],
           pagination: {
-            total: 0,
-            page: parseInt(page),
-            limit: parseInt(limit),
-            totalPages: 0,
+            total,
+            page: parseInt(page, 10),
+            limit: parseInt(limit, 10),
+            totalPages: Math.ceil(total / limit),
           },
         };
       }
@@ -210,28 +325,15 @@ export const enrollmentsRepository = {
             },
           },
         },
-        orderBy: { createdAt: "desc" },
       });
 
-      // Contar total de deportistas únicos (no matrículas)
-      const countQuery = `
-        WITH latest_enrollments AS (
-          SELECT DISTINCT ON (e."athleteId")
-            e.id, e."athleteId"
-          FROM enrollments e
-          INNER JOIN athletes a ON e."athleteId" = a.id
-          INNER JOIN users u ON a."userId" = u.id
-          ${whereClause}
-          ORDER BY e."athleteId", e."createdAt" DESC
-        )
-        SELECT COUNT(*) as count FROM latest_enrollments
-      `;
+      // Reordenar por los ids devueltos por la consulta paginada
+      const enrollmentsById = new Map(data.map((enrollment) => [enrollment.id, enrollment]));
+      const orderedData = enrollmentIds
+        .map((enrollment) => enrollmentsById.get(enrollment.id))
+        .filter(Boolean);
 
-      const countParams = params.slice(0, -2); // Remover limit y offset
-      const countResult = await prisma.$queryRawUnsafe(countQuery, ...countParams);
-      const total = parseInt(countResult[0].count);
-
-      const transformedData = data.map(enrollment => ({
+      const transformedData = orderedData.map(enrollment => ({
         ...enrollment,
         fechaMatricula: enrollment.createdAt,
         athlete: {
@@ -249,8 +351,8 @@ export const enrollmentsRepository = {
         data: transformedData,
         pagination: {
           total,
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
           totalPages: Math.ceil(total / limit),
         },
       };
@@ -306,8 +408,24 @@ export const enrollmentsRepository = {
                   secondLastName: { contains: searchTerm, mode: 'insensitive' }
                 }
               }
+            },
+            {
+              athlete: {
+                user: {
+                  email: { contains: searchTerm, mode: 'insensitive' }
+                }
+              }
             }
           );
+
+          const normalizedSearch = normalizeSearchValue(searchTerm);
+          if (normalizedSearch.includes('pendiente de activacion')) {
+            or.push({ estado: 'Pending_Payment' });
+          }
+          if (normalizedSearch.includes('no activada') || normalizedSearch.includes('no activado')) {
+            or.push({ fechaInicio: null });
+            or.push({ estado: 'Pending_Payment' });
+          }
         }
 
         if (searchEstado) {
@@ -333,16 +451,29 @@ export const enrollmentsRepository = {
       }
 
       if (dateFrom || dateTo) {
-        where.createdAt = {};
+        const range = {};
         if (dateFrom) {
-          where.createdAt.gte = dateFrom;
+          range.gte = dateFrom;
         }
         if (dateTo) {
-          where.createdAt.lte = dateTo;
+          range.lte = dateTo;
         }
+
+        where.AND = where.AND || [];
+        where.AND.push({
+          OR: [
+            { createdAt: range },
+            { fechaInicio: range },
+            { fechaVencimiento: range },
+          ],
+        });
       }
 
       if (vencimientoRange?.from && vencimientoRange?.to) {
+        where.AND = where.AND || [];
+        where.AND.push({
+          estado: { not: 'Pending_Payment' },
+        });
         where.fechaVencimiento = {
           gte: vencimientoRange.from,
           lte: vencimientoRange.to

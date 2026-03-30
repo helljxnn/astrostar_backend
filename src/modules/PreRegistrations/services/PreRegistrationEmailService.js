@@ -175,23 +175,18 @@ export class PreRegistrationEmailService extends BaseEmailService {
             </div>
             
             <div class="warning">
-                <strong>⚠️ Importante:</strong>
-                <ul>
-                    <li>Revisa tu correo electrónico regularmente para cualquier actualización (incluyendo spam)</li>
-                    <li>Si tienes preguntas, puedes contactarnos respondiendo a este correo</li>
-                    <li>Mantén tu teléfono disponible por si necesitamos contactarte</li>
-                </ul>
+                <strong>Información importante:</strong>
+                <p style="margin: 10px 0 0;">
+                    Te compartiremos las siguientes indicaciones por este mismo medio. En el proceso de vinculación
+                    puede solicitarse completar el paso inicial de matrícula para continuar con la activación.
+                </p>
             </div>
             
             <p>Estamos emocionados de que quieras ser parte de nuestra familia deportiva. ¡Pronto tendrás noticias nuestras!</p>
-            
-            <p>Saludos cordiales,<br>
-            <strong>Equipo Fundación Manuela Vanegas</strong></p>
         </div>
         
         <div class="footer">
-            <p>Este es un correo automático. Por favor no respondas directamente a este mensaje.</p>
-            <p>© ${new Date().getFullYear()} Fundación Manuela Vanegas - Todos los derechos reservados</p>
+            <p>Fundación Manuela Vanegas</p>
         </div>
     </div>
 </body>
@@ -231,19 +226,12 @@ Ven a descubrir todo lo que puedes lograr con la Fundación Manuela Vanegas.
 Si tienes alguna duda o quieres más información, ¡conéctate con nosotros a través de nuestras redes sociales!
 ¡ESTAMOS AQUÍ PARA AYUDARTE!
 
-IMPORTANTE:
-- Revisa tu correo electrónico regularmente para cualquier actualización (incluyendo spam)
-- Si tienes preguntas, puedes contactarnos respondiendo a este correo
-- Mantén tu teléfono disponible por si necesitamos contactarte
+INFORMACIÓN IMPORTANTE:
+- Te compartiremos las siguientes indicaciones por este mismo medio.
+- En el proceso de vinculación puede solicitarse completar el paso inicial de matrícula para continuar con la activación.
 
 Estamos emocionados de que quieras ser parte de nuestra familia deportiva.
-
-Saludos cordiales,
-Equipo Fundación Manuela Vanegas
-
----
-Este es un correo automático.
-© ${new Date().getFullYear()} Fundación Manuela Vanegas`;
+`;
   }
 }
 

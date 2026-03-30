@@ -291,8 +291,13 @@ return res.status(500).json({
    */
   async getPendingPaymentsForReport(req, res) {
     try {
-      const { type } = req.query;
-      const result = await paymentsService.getPendingPaymentsForReport({ type });
+      const { type, search, dateFrom, dateTo } = req.query;
+      const result = await paymentsService.getPendingPaymentsForReport({
+        type,
+        search,
+        dateFrom,
+        dateTo
+      });
       return res.status(200).json(result);
     } catch (error) {
       return handleError(res, error, "Error al obtener pagos pendientes para reporte");
@@ -389,13 +394,14 @@ return handleError(res, error, "Error al obtener estadísticas de pagos para das
    */
   async getPaymentHistoryForReport(req, res) {
     try {
-      const { athleteId, status, type, startDate, endDate } = req.query;
+      const { athleteId, status, type, search, startDate, endDate, dateFrom, dateTo } = req.query;
       const result = await paymentsService.getPaymentHistoryForReport({
         athleteId: athleteId ? parseInt(athleteId) : undefined,
         status,
         type,
-        startDate,
-        endDate,
+        search,
+        startDate: startDate || dateFrom,
+        endDate: endDate || dateTo,
       });
       return res.status(200).json(result);
     } catch (error) {

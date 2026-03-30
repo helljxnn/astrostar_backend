@@ -443,7 +443,7 @@ throw error;
    */
   async getAllProvidersForReport({ search = "", status, entityType }) {
     try {
-      const providers = await providersRepository.findAllForReport({
+      const providers = await this.providersRepository.findAllForReport({
         search,
         status,
         entityType,

@@ -1,5 +1,4 @@
 import { AthletesService } from "../services/athletes.service.js";
-import { athletesService } from "../services/athletes.service.new.js";
 
 export class AthletesController {
   constructor() {
@@ -408,17 +407,30 @@ export class AthletesController {
    */
   getAllAthletesForReport = async (req, res) => {
     try {
-      const { search = "", status, minAge, maxAge, category } = req.query;
-
-      const result = await athletesService.findAllForReport({
-        search,
+      const {
+        search = "",
         status,
-        minAge: minAge ? parseInt(minAge) : undefined,
-        maxAge: maxAge ? parseInt(maxAge) : undefined,
-        category,
-      });
+        categoria,
+        estadoInscripcion,
+      } = req.query;
 
-      return res.json(result);
+      const result = await this.athletesService.getAllAthletes(
+        {
+          page: 1,
+          limit: 10000,
+          search,
+          status,
+          categoria,
+          estadoInscripcion,
+        },
+        req.user,
+      );
+
+      return res.json({
+        success: true,
+        data: result.data,
+        message: `Se encontraron ${result.data?.length || 0} deportistas para reporte.`,
+      });
     } catch (error) {
       return res.status(500).json({
         success: false,

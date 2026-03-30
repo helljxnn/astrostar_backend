@@ -9,6 +9,156 @@ const MATERIAL_STOCK_SELECT = {
 };
 
 class MovementsRepository {
+  // Escapar caracteres especiales para Prisma
+  escapeSearchTerm(term) {
+    if (!term) return "";
+    // Solo retornar el término sin escapar - Prisma maneja esto internamente
+    return term.trim();
+  }
+
+  parseDateInput(value, isEnd = false) {
+    if (!value) return null;
+
+    let date;
+    if (value instanceof Date) {
+      date = new Date(value);
+    } else if (typeof value === "string") {
+      const raw = value.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+        const [year, month, day] = raw.split("-").map((part) => parseInt(part, 10));
+        date = new Date(year, (month || 1) - 1, day || 1);
+      } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(raw)) {
+        const [day, month, year] = raw.split("/").map((part) => parseInt(part, 10));
+        date = new Date(year, (month || 1) - 1, day || 1);
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
+
+    if (Number.isNaN(date.getTime())) return null;
+    if (isEnd) {
+      date.setHours(23, 59, 59, 999);
+    } else {
+      date.setHours(0, 0, 0, 0);
+    }
+
+    return date;
+  }
+
+  buildDateRange(dateFrom, dateTo) {
+    const from = this.parseDateInput(dateFrom, false);
+    const to = this.parseDateInput(dateTo, true);
+    if (!from && !to) return null;
+
+    const range = {};
+    if (from) range.gte = from;
+    if (to) range.lte = to;
+    return Object.keys(range).length > 0 ? range : null;
+  }
+
+  buildSearchConditions(search) {
+    if (!search || !search.trim()) return [];
+
+    const escapedSearch = this.escapeSearchTerm(search);
+    const normalizedSearch = escapedSearch.toLowerCase();
+    const conditions = [
+      { materialNombre: { contains: escapedSearch, mode: "insensitive" } },
+      { categoria: { contains: escapedSearch, mode: "insensitive" } },
+      { observaciones: { contains: escapedSearch, mode: "insensitive" } },
+      { inventarioOrigen: { contains: escapedSearch, mode: "insensitive" } },
+      { inventarioDestino: { contains: escapedSearch, mode: "insensitive" } },
+      {
+        proveedor: {
+          is: {
+            OR: [
+              {
+                businessName: {
+                  contains: escapedSearch,
+                  mode: "insensitive",
+                },
+              },
+              {
+                mainContact: {
+                  contains: escapedSearch,
+                  mode: "insensitive",
+                },
+              },
+              {
+                email: {
+                  contains: escapedSearch,
+                  mode: "insensitive",
+                },
+              },
+              { nit: { contains: escapedSearch, mode: "insensitive" } },
+            ],
+          },
+        },
+      },
+    ];
+
+    if (/^\d+$/.test(escapedSearch)) {
+      conditions.push({ cantidad: parseInt(escapedSearch, 10) });
+    }
+
+    if (normalizedSearch.includes("baja")) {
+      conditions.push({ tipoMovimiento: "Baja" });
+    }
+
+    if (normalizedSearch.includes("transfer")) {
+      conditions.push({ tipoMovimiento: "TRANSFERENCIA" });
+    }
+
+    if (
+      normalizedSearch.includes("salida por") ||
+      normalizedSearch.includes("salida evento") ||
+      normalizedSearch.includes("evento") ||
+      normalizedSearch.includes("salida por evento")
+    ) {
+      conditions.push({
+        tipoMovimiento: {
+          in: ["SALIDA_EVENTO", "REVERSO_SALIDA_EVENTO", "ASIGNACION_EVENTO"],
+        },
+      });
+    }
+
+    if (normalizedSearch === "salida" || normalizedSearch.includes("salida ")) {
+      conditions.push({
+        tipoMovimiento: {
+          in: [
+            "Salida",
+            "Baja",
+            "TRANSFERENCIA",
+            "SALIDA_EVENTO",
+            "REVERSO_SALIDA_EVENTO",
+            "ASIGNACION_EVENTO",
+          ],
+        },
+      });
+    }
+
+    const searchDateRange = this.buildDateRange(escapedSearch, escapedSearch);
+    if (searchDateRange) {
+      conditions.push({ fecha: searchDateRange });
+      conditions.push({ fechaIngreso: searchDateRange });
+    }
+
+    return conditions;
+  }
+
+  resolveFilterDateField(tipoMovimiento) {
+    const normalizedType = String(tipoMovimiento || "")
+      .trim()
+      .toLowerCase();
+
+    if (["entrada", "ingreso", "ingresos"].includes(normalizedType)) {
+      return "fechaIngreso";
+    }
+
+    return "fecha";
+  }
+
   /**
    * Obtener todos los movimientos con paginación y filtros
    */
@@ -19,6 +169,10 @@ class MovementsRepository {
     tipo = null,
     origen = null,
     search = "",
+    dateFrom = null,
+    dateTo = null,
+    inventarioDestino = null,
+    tipoSalida = null,
   }) {
     const skip = (page - 1) * limit;
     const where = {};
@@ -32,15 +186,12 @@ class MovementsRepository {
       const tipoLower = tipo.toLowerCase();
 
       if (tipoLower === "entrada") {
-        // Incluir tanto Entrada como REVERSION_ASIGNACION (son ingresos)
         where.tipoMovimiento = { in: ["Entrada", "REVERSION_ASIGNACION"] };
       } else if (tipoLower === "salida") {
-        // Para salida, excluir Entrada y REVERSION_ASIGNACION
         where.tipoMovimiento = {
           notIn: ["Entrada", "REVERSION_ASIGNACION"],
         };
       } else {
-        // Si se envía el tipo exacto (Entrada, Salida, Baja)
         where.tipoMovimiento = tipo;
       }
     }
@@ -49,12 +200,28 @@ class MovementsRepository {
       where.origen = origen;
     }
 
-    if (search) {
-      where.OR = [
-        { materialNombre: { contains: search, mode: "insensitive" } },
-        { categoria: { contains: search, mode: "insensitive" } },
-        { observaciones: { contains: search, mode: "insensitive" } },
-      ];
+    if (inventarioDestino) {
+      where.inventarioDestino = inventarioDestino;
+    }
+
+    if (tipoSalida) {
+      if (tipoSalida === "Baja") {
+        where.tipoMovimiento = { in: ["Baja", "BAJA"] };
+      } else if (tipoSalida === "TRANSFERENCIA") {
+        where.tipoMovimiento = "TRANSFERENCIA";
+      } else if (tipoSalida === "SALIDA_EVENTO") {
+        where.tipoMovimiento = { in: ["SALIDA_EVENTO", "ASIGNACION_EVENTO"] };
+      }
+    }
+
+    // Búsqueda - usar OR simple sin AND
+    if (search && search.trim()) {
+      where.OR = this.buildSearchConditions(search);
+    }
+
+    const dateRange = this.buildDateRange(dateFrom, dateTo);
+    if (dateRange) {
+      where[this.resolveFilterDateField(tipo)] = dateRange;
     }
 
     const [movements, total] = await Promise.all([
@@ -549,11 +716,30 @@ class MovementsRepository {
     tipoMovimiento,
     startDate,
     endDate,
+    inventarioDestino,
+    tipoSalida,
   }) {
     const where = {};
 
+    if (inventarioDestino) {
+      where.inventarioDestino = inventarioDestino;
+    }
+
+    if (tipoSalida) {
+      if (tipoSalida === "Baja") {
+        where.tipoMovimiento = { in: ["Baja", "BAJA"] };
+      } else if (tipoSalida === "TRANSFERENCIA") {
+        where.tipoMovimiento = "TRANSFERENCIA";
+      } else if (tipoSalida === "SALIDA_EVENTO") {
+        where.tipoMovimiento = { in: ["SALIDA_EVENTO", "ASIGNACION_EVENTO"] };
+      }
+    }
+
     if (search && search.trim()) {
-      where.OR = [{ observaciones: { contains: search, mode: "insensitive" } }];
+      where.AND = [
+        ...(where.AND || []),
+        { OR: this.buildSearchConditions(search) },
+      ];
     }
 
     if (materialId) {
@@ -561,17 +747,19 @@ class MovementsRepository {
     }
 
     if (tipoMovimiento) {
-      where.tipoMovimiento = tipoMovimiento;
+      const tipoLower = String(tipoMovimiento).toLowerCase();
+      if (["entrada", "ingreso", "ingresos"].includes(tipoLower)) {
+        where.tipoMovimiento = { in: ["Entrada", "REVERSION_ASIGNACION"] };
+      } else if (["salida", "salidas"].includes(tipoLower)) {
+        where.tipoMovimiento = { notIn: ["Entrada", "REVERSION_ASIGNACION"] };
+      } else {
+        where.tipoMovimiento = tipoMovimiento;
+      }
     }
 
-    if (startDate || endDate) {
-      where.fecha = {};
-      if (startDate) {
-        where.fecha.gte = new Date(startDate);
-      }
-      if (endDate) {
-        where.fecha.lte = new Date(endDate);
-      }
+    const dateRange = this.buildDateRange(startDate, endDate);
+    if (dateRange) {
+      where[this.resolveFilterDateField(tipoMovimiento)] = dateRange;
     }
 
     const movements = await prisma.materialMovement.findMany({
@@ -581,7 +769,7 @@ class MovementsRepository {
           select: {
             id: true,
             nombre: true,
-            codigo: true,
+            categoria: true,
           },
         },
         proveedor: {

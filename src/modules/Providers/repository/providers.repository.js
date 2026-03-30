@@ -1,5 +1,25 @@
 import prisma from "../../../config/database.js";
 
+const DOCUMENT_TYPE_NAME_TO_CODE = {
+  "Cédula de Ciudadanía": "CC",
+  "Cedula de Ciudadania": "CC",
+  "CÃ©dula de CiudadanÃ­a": "CC",
+  "Tarjeta de Identidad": "TI",
+  "Cédula de Extranjería": "CE",
+  "Cedula de Extranjeria": "CE",
+  "CÃ©dula de ExtranjerÃ­a": "CE",
+  Pasaporte: "PAS",
+  NIT: "NIT",
+};
+
+const DOCUMENT_TYPE_CODE_TO_ID = {
+  CC: 1,
+  TI: 2,
+  CE: 3,
+  PAS: 4,
+  NIT: 5,
+};
+
 export class ProvidersRepository {
   async getDocumentTypes() {
     try {
@@ -334,7 +354,7 @@ throw error;
     // Obtener el código del tipo de documento
     const getDocumentTypeCode = (documentType) => {
       if (!documentType) return "";
-      return documentTypeNameToCode[documentType.name] || "";
+      return DOCUMENT_TYPE_NAME_TO_CODE[documentType.name] || "";
     };
 
     return {
@@ -342,7 +362,14 @@ throw error;
       tipoEntidad: provider.entityType === "legal" ? "juridica" : "natural",
       razonSocial: provider.businessName,
       nit: provider.nit,
-      tipoDocumento: getDocumentTypeCode(provider.documentType),
+      tipoDocumento:
+        provider.entityType === "legal"
+          ? "NIT"
+          : getDocumentTypeCode(provider.documentType),
+      tipoDocumentoNombre:
+        provider.entityType === "legal"
+          ? "NIT"
+          : provider.documentType?.name || "",
       contactoPrincipal: provider.mainContact,
       correo: provider.email,
       telefono: provider.phone,
@@ -359,7 +386,8 @@ throw error;
       servicios: null,
       observaciones: null,
       // Para compatibilidad
-      documentTypeId: provider.documentType?.id || null,
+      documentTypeId: provider.documentType?.id || provider.documentTypeId || null,
+      documentType: provider.documentType || null,
     };
   }
 
@@ -391,12 +419,27 @@ throw error;
       status: providerData.estado === "Activo" ? "Active" : "Inactive",
     };
 
-    if (providerData.tipoEntidad === "natural" && providerData.tipoDocumento) {
-      const documentTypeName =
-        documentTypeCodeToName[providerData.tipoDocumento];
-      if (documentTypeName) {
-        transformed.documentTypeId =
-          this.getDocumentTypeIdByName(documentTypeName);
+    if (providerData.tipoEntidad === "natural") {
+      const rawDocumentTypeId =
+        providerData.documentTypeId ?? providerData.tipoDocumento ?? null;
+      const parsedDocumentTypeId = parseInt(rawDocumentTypeId, 10);
+
+      if (!Number.isNaN(parsedDocumentTypeId)) {
+        transformed.documentTypeId = parsedDocumentTypeId;
+      } else if (providerData.tipoDocumento) {
+        const documentTypeName =
+          ({
+            CC: "Cédula de Ciudadanía",
+            TI: "Tarjeta de Identidad",
+            CE: "Cédula de Extranjería",
+            PAS: "Pasaporte",
+            NIT: "NIT",
+          })[providerData.tipoDocumento] ||
+          providerData.tipoDocumento;
+        if (documentTypeName) {
+          transformed.documentTypeId =
+            this.getDocumentTypeIdByName(documentTypeName);
+        }
       }
     }
 
@@ -443,10 +486,14 @@ throw error;
   getDocumentTypeIdByName(documentTypeName) {
     const documentTypeMap = {
       "Cédula de Ciudadanía": 1,
-      "Tarjeta de Identidad": 2,
+      "Cédula de Ciudadanía": 1,
+      "Cedula de Ciudadania": 41,
+      "Tarjeta de Identidad": 42,
       "Cédula de Extranjería": 3,
-      Pasaporte: 4,
-      NIT: 5,
+      "Cédula de Extranjería": 3,
+      "Cedula de Extranjeria": 45,
+      Pasaporte: 47,
+      NIT: 46,
     };
     return documentTypeMap[documentTypeName] || null;
   }
@@ -463,7 +510,7 @@ throw error;
         { businessName: { contains: search, mode: "insensitive" } },
         { nit: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
-        { contactName: { contains: search, mode: "insensitive" } },
+        { mainContact: { contains: search, mode: "insensitive" } },
       ];
     }
 

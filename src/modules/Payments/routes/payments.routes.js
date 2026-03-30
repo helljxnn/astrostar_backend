@@ -11,10 +11,12 @@ import { uploadPaymentReceipt } from "../../../services/shared/middleware/upload
 
 const router = Router();
 
-// Ruta simple para probar
-router.get('/test', (req, res) => {
-  res.json({ message: 'Payments routes working - updated' });
-});
+if (process.env.NODE_ENV === 'development') {
+  // Ruta mínima de diagnóstico solo disponible en desarrollo
+  router.get('/test', (req, res) => {
+    res.json({ message: 'Payments routes working - updated' });
+  });
+}
 
 // ============================================================================
 // RUTAS PARA DEPORTISTAS (RESTAURADAS)
