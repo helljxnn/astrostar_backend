@@ -336,9 +336,10 @@ return res.status(500).json({
         thisMonth: 0
       };
       
-      // Calcular pagos de este mes (marzo 2026)
-      const currentMonth = 3; // Marzo
-      const currentYear = 2026;
+      // Calcular pagos del mes actual de forma dinamica
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
       
       stats.thisMonth = payments.filter(payment => {
         const dateField = payment.uploadedAt || payment.createdAt || payment.reviewedAt;

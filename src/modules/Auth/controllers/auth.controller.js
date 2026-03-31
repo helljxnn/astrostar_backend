@@ -642,8 +642,13 @@ export class AuthController {
    */
   refresh = async (req, res) => {
     try {
-      // Web: cookie HttpOnly | Móvil: body.refreshToken
-      const refreshToken = req.cookies.refreshToken || req.body?.refreshToken;
+      // Web: cookie HttpOnly | Móvil: body.refreshToken (cuando identifica cliente móvil)
+      const clientType = (req.headers["x-client-type"] || "")
+        .toString()
+        .toLowerCase();
+      const refreshTokenFromBody =
+        clientType === "mobile" ? req.body?.refreshToken : null;
+      const refreshToken = req.cookies.refreshToken || refreshTokenFromBody;
 
       if (!refreshToken) {
         return res.status(401).json({
@@ -707,8 +712,13 @@ export class AuthController {
    */
   logout = async (req, res) => {
     try {
-      // Obtener refresh token desde la cookie
-      const refreshToken = req.cookies.refreshToken;
+      // Web: cookie HttpOnly | Móvil: body.refreshToken (cuando identifica cliente móvil)
+      const clientType = (req.headers["x-client-type"] || "")
+        .toString()
+        .toLowerCase();
+      const refreshTokenFromBody =
+        clientType === "mobile" ? req.body?.refreshToken : null;
+      const refreshToken = req.cookies.refreshToken || refreshTokenFromBody;
 
       const result = await this.authService.logout(refreshToken);
 

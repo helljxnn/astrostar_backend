@@ -77,7 +77,12 @@ app.use(
     },
     credentials: true, // Permitir envío de cookies
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-Requested-With",
+      "X-Client-Type",
+    ],
     exposedHeaders: ["Content-Range", "X-Content-Range"],
     maxAge: 600, // Cache preflight requests por 10 minutos
   }),

@@ -304,33 +304,25 @@ export class UsersRepository {
    * Buscar usuario por email (con normalización para Gmail)
    */
   async findByEmail(email, excludeUserId = null) {
-    console.log('🔍 [UsersRepository] Buscando email:', email);
-    console.log('🔍 [UsersRepository] excludeUserId:', excludeUserId);
-    
     const normalizedEmail = this.normalizeEmail(email);
-    console.log('🔍 [UsersRepository] Email normalizado:', normalizedEmail);
-    
+
     // Buscar por email normalizado
     const where = { email: normalizedEmail };
     if (excludeUserId) {
       where.id = { not: parseInt(excludeUserId) };
     }
-    
-    console.log('🔍 [UsersRepository] Where clause:', where);
+
     let user = await prisma.user.findFirst({ where });
-    console.log('🔍 [UsersRepository] Usuario encontrado (normalizado):', user ? `ID: ${user.id}, Email: ${user.email}` : 'null');
-    
+
     // Si no se encuentra con email normalizado, buscar con email original
     if (!user && normalizedEmail !== email.toLowerCase()) {
       const whereOriginal = { email: email.toLowerCase() };
       if (excludeUserId) {
         whereOriginal.id = { not: parseInt(excludeUserId) };
       }
-      console.log('🔍 [UsersRepository] Buscando con email original:', whereOriginal);
       user = await prisma.user.findFirst({ where: whereOriginal });
-      console.log('🔍 [UsersRepository] Usuario encontrado (original):', user ? `ID: ${user.id}, Email: ${user.email}` : 'null');
     }
-    
+
     return user;
   }
 
@@ -424,4 +416,3 @@ export class UsersRepository {
 }
 
 export default new UsersRepository();
-

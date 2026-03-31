@@ -21,7 +21,7 @@ export class AuthEmailService extends BaseEmailService {
 
       return await this.sendMailWithFallback(mailOptions);
     } catch (error) {
-      console.error("❌ Error enviando email de recuperación:", error);
+      console.error("Error enviando email de recuperacion:", error);
       return { success: false, error: error.message };
     }
   }
@@ -41,7 +41,7 @@ export class AuthEmailService extends BaseEmailService {
 
       return await this.sendMailWithFallback(mailOptions);
     } catch (error) {
-      console.error("❌ Error enviando código de verificación:", error);
+      console.error("Error enviando codigo de verificacion:", error);
       return { success: false, error: error.message };
     }
   }

@@ -943,7 +943,7 @@ export class EventsRepository {
   }
 
   /**
-   * Obtener eventos agrupados por trimestre y aÃƒÂ±o
+   * Obtener eventos agrupados por trimestre y anio
    */
   async getEventsByQuarter() {
     try {
@@ -958,7 +958,7 @@ export class EventsRepository {
         },
       });
 
-      // Agrupar eventos por aÃƒÂ±o y trimestre
+      // Agrupar eventos por anio y trimestre
       const groupedData = {};
 
       events.forEach((event) => {
@@ -969,7 +969,7 @@ export class EventsRepository {
         // Determinar el trimestre (1-4)
         const quarter = Math.ceil(month / 3);
 
-        // Inicializar el aÃƒÂ±o si no existe
+        // Inicializar el anio si no existe
         if (!groupedData[year]) {
           groupedData[year] = { 1: 0, 2: 0, 3: 0, 4: 0 };
         }
@@ -981,7 +981,7 @@ export class EventsRepository {
       // Convertir a formato de array para el frontend
       const result = [];
 
-      // Obtener los ÃƒÂºltimos 3 aÃƒÂ±os con datos
+      // Obtener los ultimos 3 anios con datos
       const years = Object.keys(groupedData)
         .map(Number)
         .sort((a, b) => b - a)
@@ -994,7 +994,7 @@ export class EventsRepository {
         };
 
         years.forEach((year) => {
-          quarterData[`aÃƒÂ±o${year}`] = groupedData[year]?.[quarter] || 0;
+          quarterData[`anio${year}`] = groupedData[year]?.[quarter] || 0;
         });
 
         result.push(quarterData);
