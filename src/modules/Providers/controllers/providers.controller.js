@@ -86,7 +86,7 @@ res.status(500).json({
         message: result.message,
       });
     } catch (error) {
-if (error.message.includes("ya está registrado")) {
+      if (/ya est.* registrado/i.test(error.message || "")) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -126,7 +126,7 @@ if (error.message.includes("ya está registrado")) {
         message: result.message,
       });
     } catch (error) {
-if (error.message.includes("ya está registrado")) {
+      if (/ya est.* registrado/i.test(error.message || "")) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -164,7 +164,7 @@ if (error.message.includes("ya está registrado")) {
         message: result.message,
       });
     } catch (error) {
-if (error.message.includes("No se puede eliminar")) {
+      if (error.message.includes("No se puede eliminar")) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -516,4 +516,5 @@ return res.status(500).json({
 }
 
 export default new ProvidersController();
+
 

@@ -17,7 +17,7 @@ export class EventsService {
       const result = await this.eventsRepository.findAll(filters);
       return result;
     } catch (error) {
-      console.error("❌ Error en EventsService.getAllEvents:", error.message);
+      console.error("Error in EventsService.getAllEvents:", error.message);
       console.error("Stack:", error.stack);
       throw error;
     }

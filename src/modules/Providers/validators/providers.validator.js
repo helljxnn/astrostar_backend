@@ -243,17 +243,18 @@ export const providersValidators = {
         value = req.body.email;
       }
 
-      // El correo es opcional
-      if (value) {
-        // Validar formato de email
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(value)) {
-          throw new Error("Debe proporcionar un email válido.");
-        }
+      if (!value) {
+        throw new Error("El correo electrónico es obligatorio.");
+      }
 
-        if (value.length > 150) {
-          throw new Error("El email no puede exceder 150 caracteres.");
-        }
+      // Validar formato de email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(value)) {
+        throw new Error("Debe proporcionar un email válido.");
+      }
+
+      if (value.length > 150) {
+        throw new Error("El email no puede exceder 150 caracteres.");
       }
 
       return true;

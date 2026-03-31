@@ -129,14 +129,22 @@ export class GuardiansService {
         await this.validateGuardianDocumentType(updateData.documentTypeId);
       }
 
-      if (updateData.identificacion && updateData.identificacion !== existingGuardian.identificacion) {
+      const nextIdentification =
+        updateData.identification || updateData.identificacion;
+      const currentIdentification =
+        existingGuardian.identification || existingGuardian.identificacion;
+
+      if (
+        nextIdentification &&
+        nextIdentification !== currentIdentification
+      ) {
         const existingByDocument = await this.guardiansRepository.findByDocument(
-          updateData.identificacion,
+          nextIdentification,
           id
         );
         if (existingByDocument) {
           throw new Error(
-            `El documento "${updateData.identificacion}" ya está registrado por otro acudiente.`
+            `El documento "${nextIdentification}" ya esta registrado por otro acudiente.`
           );
         }
       }

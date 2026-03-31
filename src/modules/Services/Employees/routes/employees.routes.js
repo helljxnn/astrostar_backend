@@ -30,6 +30,26 @@ const upload = multer({
   limits: { fileSize: 2 * 1024 * 1024 }, // 2MB
 });
 
+const uploadSignatureFile = (req, res, next) => {
+  upload.single("signature")(req, res, (error) => {
+    if (!error) {
+      return next();
+    }
+
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        success: false,
+        message: "Archivo inválido. Solo PNG o JPG de máximo 2MB.",
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message: error.message || "Archivo inválido.",
+    });
+  });
+};
+
 /**
  * @swagger
  * tags:
@@ -475,7 +495,7 @@ router.post(
   "/",
   authenticateToken,
   checkPermissions("employees", "Crear"),
-  upload.single("signature"), // Optional signature file
+  uploadSignatureFile, // Optional signature file
   parseEmployeeData, // Parse employeeData from FormData if present
   employeeValidators.create,
   handleValidationErrors,
@@ -566,7 +586,7 @@ router.post(
   "/:id/signature",
   authenticateToken,
   checkPermissions("employees", "Editar"),
-  upload.single("signature"),
+  uploadSignatureFile,
   signatureController.uploadSignature,
 );
 

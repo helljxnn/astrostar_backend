@@ -91,6 +91,79 @@ export class AppointmentService {
     return this.normalizeKey(value);
   }
 
+  buildUserScope(user = null) {
+    const roleKey = this.normalizeRoleKey(user?.role?.name || user?.rol || "");
+    const isAdmin = roleKey === "admin" || roleKey === "administrador";
+    const isAthlete = roleKey === "athlete" || roleKey === "deportista";
+    const athleteId = user?.athlete?.id ? parseInt(user.athlete.id) : null;
+    const employeeId = user?.employee?.id ? parseInt(user.employee.id) : null;
+
+    return {
+      roleKey,
+      isAdmin,
+      isAthlete,
+      athleteId,
+      employeeId,
+    };
+  }
+
+  async resolveEmployeeScopeId(user = null, scope = null) {
+    const currentScope = scope || this.buildUserScope(user);
+    if (currentScope.employeeId) return currentScope.employeeId;
+    if (!user?.id) return null;
+
+    const employee = await this.appointmentRepository.findEmployeeByUserId(
+      user.id,
+    );
+    return employee?.id ? parseInt(employee.id) : null;
+  }
+
+  createAuthorizationError(message = "No autorizado para esta cita.") {
+    const error = new Error(message);
+    error.statusCode = 403;
+    return error;
+  }
+
+  async ensureAppointmentAccess(appointment, user = null) {
+    const scope = this.buildUserScope(user);
+
+    if (scope.isAdmin) {
+      return { success: true, scope };
+    }
+
+    if (scope.isAthlete) {
+      if (
+        !scope.athleteId ||
+        parseInt(appointment.athleteId) !== scope.athleteId
+      ) {
+        return {
+          success: false,
+          statusCode: 403,
+          message: "No autorizado para acceder a esta cita.",
+        };
+      }
+
+      return { success: true, scope };
+    }
+
+    const employeeId = await this.resolveEmployeeScopeId(user, scope);
+    if (!employeeId || parseInt(appointment.specialistId) !== employeeId) {
+      return {
+        success: false,
+        statusCode: 403,
+        message: "No autorizado para acceder a esta cita.",
+      };
+    }
+
+    return {
+      success: true,
+      scope: {
+        ...scope,
+        employeeId,
+      },
+    };
+  }
+
   async resolveScopeFilters(filters = {}, user = null) {
     const scoped = { ...filters };
     const roleKey = this.normalizeRoleKey(user?.role?.name || user?.rol || "");
@@ -296,12 +369,13 @@ export class AppointmentService {
     if (dias.length > 0) {
       const daysDiff = this.differenceInDays(targetDate, baseDate);
       const weeksDiff = this.differenceInWeeks(targetDate, baseDate);
+      const monthsDiff = this.differenceInMonths(targetDate, baseDate);
+      const yearsDiff = this.differenceInYears(targetDate, baseDate);
 
       if (frequency === "dia" && daysDiff % interval !== 0) return false;
       if (frequency === "semana" && weeksDiff % interval !== 0) return false;
-      if ((frequency === "mes" || frequency === "anio") && daysDiff % 7 !== 0) {
-        return false;
-      }
+      if (frequency === "mes" && monthsDiff % interval !== 0) return false;
+      if (frequency === "anio" && yearsDiff % interval !== 0) return false;
 
       return dias.includes(targetDate.getDay());
     }
@@ -455,7 +529,7 @@ export class AppointmentService {
   /**
    * Obtener cita por ID
    */
-  async getAppointmentById(id) {
+  async getAppointmentById(id, user = null) {
     try {
       const appointment = await this.appointmentRepository.findById(id);
       if (!appointment) {
@@ -465,6 +539,12 @@ export class AppointmentService {
           message: `No se encontrÃ³ la cita con ID ${id}.`,
         };
       }
+
+      const accessCheck = await this.ensureAppointmentAccess(appointment, user);
+      if (!accessCheck.success) {
+        return accessCheck;
+      }
+
       return {
         success: true,
         data: appointment,
@@ -478,7 +558,7 @@ export class AppointmentService {
   /**
    * Crear cita con validaciones
    */
-  async createAppointment(appointmentData) {
+  async createAppointment(appointmentData, user = null) {
     try {
       const athleteId = parseInt(
         appointmentData.athleteId || appointmentData.athlete,
@@ -489,6 +569,24 @@ export class AppointmentService {
 
       if (!athleteId || !specialistId) {
         throw new Error("El deportista y el especialista son obligatorios.");
+      }
+
+      const scope = this.buildUserScope(user);
+      if (!scope.isAdmin) {
+        if (scope.isAthlete) {
+          if (!scope.athleteId || athleteId !== scope.athleteId) {
+            throw this.createAuthorizationError(
+              "No autorizado para crear citas de otros deportistas.",
+            );
+          }
+        } else {
+          const employeeId = await this.resolveEmployeeScopeId(user, scope);
+          if (!employeeId || specialistId !== employeeId) {
+            throw this.createAuthorizationError(
+              "No autorizado para crear citas de otros especialistas.",
+            );
+          }
+        }
       }
 
       const athlete =
@@ -621,7 +719,7 @@ export class AppointmentService {
   /**
    * Actualizar cita
    */
-  async updateAppointment(id, updateData) {
+  async updateAppointment(id, updateData, user = null) {
     try {
       const existingAppointment = await this.appointmentRepository.findById(id);
       if (!existingAppointment) {
@@ -643,10 +741,52 @@ export class AppointmentService {
         };
       }
 
+      const accessCheck = await this.ensureAppointmentAccess(
+        existingAppointment,
+        user,
+      );
+      if (!accessCheck.success) {
+        return accessCheck;
+      }
+
+      const scope = accessCheck.scope || this.buildUserScope(user);
+
       const payload = {};
 
       const athleteId = updateData.athleteId || updateData.athlete;
       const specialistId = updateData.specialistId || updateData.specialist;
+
+      if (!scope.isAdmin) {
+        if (scope.isAthlete) {
+          const targetAthleteId = athleteId
+            ? parseInt(athleteId)
+            : parseInt(existingAppointment.athleteId);
+
+          if (!scope.athleteId || targetAthleteId !== scope.athleteId) {
+            return {
+              success: false,
+              statusCode: 403,
+              message: "No autorizado para editar citas de otros deportistas.",
+            };
+          }
+        } else {
+          const employeeId =
+            scope.employeeId ||
+            (await this.resolveEmployeeScopeId(user, scope));
+          const targetSpecialistId = specialistId
+            ? parseInt(specialistId)
+            : parseInt(existingAppointment.specialistId);
+
+          if (!employeeId || targetSpecialistId !== employeeId) {
+            return {
+              success: false,
+              statusCode: 403,
+              message:
+                "No autorizado para editar citas de otros especialistas.",
+            };
+          }
+        }
+      }
 
       if (athleteId) {
         const athlete =
@@ -800,7 +940,7 @@ export class AppointmentService {
   /**
    * Cancelar cita
    */
-  async cancelAppointment(id, cancelReason) {
+  async cancelAppointment(id, cancelReason, user = null) {
     try {
       const appointment = await this.appointmentRepository.findById(id);
       if (!appointment) {
@@ -825,6 +965,11 @@ export class AppointmentService {
           statusCode: 400,
           message: "No se puede cancelar una cita completada.",
         };
+      }
+
+      const accessCheck = await this.ensureAppointmentAccess(appointment, user);
+      if (!accessCheck.success) {
+        return accessCheck;
       }
 
       const updatedAppointment = await this.appointmentRepository.update(id, {
@@ -878,7 +1023,7 @@ export class AppointmentService {
   /**
    * Completar cita
    */
-  async completeAppointment(id, conclusion) {
+  async completeAppointment(id, conclusion, user = null) {
     try {
       const appointment = await this.appointmentRepository.findById(id);
       if (!appointment) {
@@ -903,6 +1048,11 @@ export class AppointmentService {
           statusCode: 400,
           message: "No se puede completar una cita cancelada.",
         };
+      }
+
+      const accessCheck = await this.ensureAppointmentAccess(appointment, user);
+      if (!accessCheck.success) {
+        return accessCheck;
       }
 
       const today = new Date();
@@ -1032,11 +1182,19 @@ export class AppointmentService {
   /**
    * Obtener especialistas activos
    */
-  async getActiveSpecialists({ specialty = "" } = {}) {
+  async getActiveSpecialists({ specialty = "" } = {}, user = null) {
     try {
       const specialists =
         await this.appointmentRepository.getActiveSpecialists();
-      const formatted = specialists
+      const scope = this.buildUserScope(user);
+      const visibleSpecialists =
+        scope.isAdmin || scope.isAthlete
+          ? specialists
+          : specialists.filter((spec) => {
+              if (scope.employeeId) return spec.id === scope.employeeId;
+              return spec.user?.id === user?.id;
+            });
+      const formatted = visibleSpecialists
         .map((emp) => {
           const fullName =
             `${emp.user.firstName} ${emp.user.middleName || ""} ${emp.user.lastName} ${emp.user.secondLastName || ""}`
@@ -1082,7 +1240,7 @@ export class AppointmentService {
    */
   async getSpecialties() {
     try {
-      const specialists = await this.getActiveSpecialists();
+      const specialists = await this.getActiveSpecialists({}, null);
       const map = new Map();
       (specialists.data || []).forEach((spec) => {
         if (!spec.specialty) return;
@@ -1107,4 +1265,3 @@ export class AppointmentService {
     }
   }
 }
-

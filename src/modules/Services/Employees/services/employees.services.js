@@ -23,7 +23,8 @@ export class EmployeeService {
     const key = this.normalizeText(value);
     if (!key) return "";
     if (key.includes("psicolog")) return "psicologia";
-    if (key.includes("fisioterap") || key.includes("fisio")) return "fisioterapia";
+    if (key.includes("fisioterap") || key.includes("fisio"))
+      return "fisioterapia";
     if (key.includes("nutric")) return "nutricion";
     return "";
   }
@@ -126,11 +127,15 @@ export class EmployeeService {
    */
   async createEmployee(employeeData, signatureFile = null) {
     try {
-      const role = await this.employeeRepository.findRoleById(employeeData.roleId);
+      const role = await this.employeeRepository.findRoleById(
+        employeeData.roleId,
+      );
       if (!role) {
         throw new Error("Debe seleccionar un rol válido.");
       }
-      const normalizedSpecialty = this.normalizeSpecialty(employeeData.specialty);
+      const normalizedSpecialty = this.normalizeSpecialty(
+        employeeData.specialty,
+      );
       if (this.isHealthProfessionalRole(role.name) && !normalizedSpecialty) {
         throw new Error(
           "La especialidad es obligatoria para el rol Profesional de Salud.",
@@ -409,7 +414,10 @@ export class EmployeeService {
             : existingEmployee.specialty;
         const normalizedSpecialty = this.normalizeSpecialty(sourceSpecialty);
 
-        if (this.isHealthProfessionalRole(nextRole.name) && !normalizedSpecialty) {
+        if (
+          this.isHealthProfessionalRole(nextRole.name) &&
+          !normalizedSpecialty
+        ) {
           throw new Error(
             "La especialidad es obligatoria para el rol Profesional de Salud.",
           );
@@ -513,7 +521,19 @@ export class EmployeeService {
         };
       }
 
-      // 5. Proceder con la eliminación (hard delete)
+      // 5. REGLA DE NEGOCIO: Verificar si tiene citas asociadas
+      if (
+        employeeToDelete.appointments &&
+        employeeToDelete.appointments.length > 0
+      ) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: `No se puede eliminar el empleado "${employeeToDelete.user.firstName} ${employeeToDelete.user.lastName}" porque tiene ${employeeToDelete.appointments.length} cita(s) asociada(s).`,
+        };
+      }
+
+      // 7. REGLA DE NEGOCIO: Verificar si es entrenador con equipos activos
       if (this.isCoachRole(employeeToDelete.user?.role?.name)) {
         const activeCoachTeams =
           await this.employeeRepository.getActiveCoachTeamsByEmployeeId(
@@ -698,11 +718,4 @@ export class EmployeeService {
       return { success: false, error: error.message };
     }
   }
-
 }
-
-
-
-
-
-

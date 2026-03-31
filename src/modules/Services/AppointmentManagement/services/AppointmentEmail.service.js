@@ -1,27 +1,40 @@
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 class AppointmentEmailService {
   constructor() {
     this.transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-      port: process.env.EMAIL_PORT || 587,
+      host: process.env.EMAIL_HOST || process.env.SMTP_HOST || "smtp.gmail.com",
+      port: Number(process.env.EMAIL_PORT || process.env.SMTP_PORT) || 587,
       secure: false,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD,
       },
+      defaults: {
+        encoding: "utf8",
+      },
     });
   }
 
-  async sendAppointmentCreated(appointmentData, athleteEmail, athleteName, specialistEmail, specialistName) {
-    const { appointmentDate, startTime, endTime, specialty, description } = appointmentData;
+  async sendAppointmentCreated(
+    appointmentData,
+    athleteEmail,
+    athleteName,
+    specialistEmail,
+    specialistName,
+  ) {
+    const { appointmentDate, startTime, endTime, specialty, description } =
+      appointmentData;
 
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    const formattedDate = new Date(appointmentDate).toLocaleDateString(
+      "es-ES",
+      {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      },
+    );
 
     const emailTemplate = (recipientName, isAthlete) => `
       <!DOCTYPE html>
@@ -81,12 +94,16 @@ class AppointmentEmailService {
                 <span class="info-label">🕐 Horario:</span>
                 <span class="info-value">${startTime} - ${endTime}</span>
               </div>
-              ${description ? `
+              ${
+                description
+                  ? `
               <div class="info-row">
                 <span class="info-label">📝 Descripción:</span>
                 <span class="info-value">${description}</span>
               </div>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
 
             <p style="color: #666; background: #FFF3CD; padding: 15px; border-radius: 8px; border-left: 4px solid #FFC107;">
@@ -117,6 +134,7 @@ class AppointmentEmailService {
         to: athleteEmail,
         subject: `✅ Cita Programada con ${specialistName}`,
         html: emailTemplate(athleteName, true),
+        encoding: "utf8",
       });
 
       // Enviar a especialista
@@ -125,24 +143,35 @@ class AppointmentEmailService {
         to: specialistEmail,
         subject: `✅ Nueva Cita Asignada con ${athleteName}`,
         html: emailTemplate(specialistName, false),
+        encoding: "utf8",
       });
 
       return { success: true };
     } catch (error) {
-      console.error('Error enviando emails de creación:', error);
+      console.error("Error enviando emails de creación:", error);
       throw error;
     }
   }
 
-  async sendAppointmentCancelled(appointmentData, athleteEmail, athleteName, specialistEmail, specialistName, cancelReason) {
+  async sendAppointmentCancelled(
+    appointmentData,
+    athleteEmail,
+    athleteName,
+    specialistEmail,
+    specialistName,
+    cancelReason,
+  ) {
     const { appointmentDate, startTime, endTime, specialty } = appointmentData;
 
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    const formattedDate = new Date(appointmentDate).toLocaleDateString(
+      "es-ES",
+      {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      },
+    );
 
     const emailTemplate = (recipientName) => `
       <!DOCTYPE html>
@@ -177,7 +206,7 @@ class AppointmentEmailService {
           
           <div class="content">
             <div class="alert-box">
-              <p style="margin: 0; font-weight: bold; font-size: 16px;">Hola ${recipientName || 'Usuario'},</p>
+              <p style="margin: 0; font-weight: bold; font-size: 16px;">Hola ${recipientName || "Usuario"},</p>
               <p style="margin: 10px 0 0 0;">Te informamos que la siguiente cita ha sido cancelada.</p>
             </div>
             
@@ -193,15 +222,15 @@ class AppointmentEmailService {
               </div>
               <div class="info-row">
                 <span class="info-label">🏃 Deportista:</span>
-                <span class="info-value">${athleteName || 'No especificado'}</span>
+                <span class="info-value">${athleteName || "No especificado"}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">👨‍⚕️ Especialista:</span>
-                <span class="info-value">${specialistName || 'No especificado'}</span>
+                <span class="info-value">${specialistName || "No especificado"}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">🏥 Especialidad:</span>
-                <span class="info-value">${specialty || 'No especificada'}</span>
+                <span class="info-value">${specialty || "No especificada"}</span>
               </div>
               <div class="info-row">
                 <span class="info-label">📍 Ubicación:</span>
@@ -211,7 +240,7 @@ class AppointmentEmailService {
 
             <div class="reason-box">
               <h3 style="color: #92400E; margin-top: 0;">📝 Motivo de Cancelación</h3>
-              <p style="margin: 0; color: #92400E; font-size: 15px;">${cancelReason || 'No se especificó un motivo'}</p>
+              <p style="margin: 0; color: #92400E; font-size: 15px;">${cancelReason || "No se especificó un motivo"}</p>
             </div>
 
             <p style="color: #666; text-align: center; margin-top: 30px;">
@@ -242,6 +271,7 @@ class AppointmentEmailService {
         to: athleteEmail,
         subject: `❌ Cita Cancelada - ${formattedDate}`,
         html: emailTemplate(athleteName),
+        encoding: "utf8",
       });
 
       // Enviar a especialista
@@ -250,24 +280,35 @@ class AppointmentEmailService {
         to: specialistEmail,
         subject: `❌ Cita Cancelada - ${formattedDate}`,
         html: emailTemplate(specialistName),
+        encoding: "utf8",
       });
 
       return { success: true };
     } catch (error) {
-      console.error('Error enviando emails de cancelación:', error);
+      console.error("Error enviando emails de cancelación:", error);
       throw error;
     }
   }
 
-  async sendAppointmentReminder(appointmentData, athleteEmail, athleteName, specialistEmail, specialistName) {
-    const { appointmentDate, startTime, endTime, specialty, description } = appointmentData;
+  async sendAppointmentReminder(
+    appointmentData,
+    athleteEmail,
+    athleteName,
+    specialistEmail,
+    specialistName,
+  ) {
+    const { appointmentDate, startTime, endTime, specialty, description } =
+      appointmentData;
 
-    const formattedDate = new Date(appointmentDate).toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    const formattedDate = new Date(appointmentDate).toLocaleDateString(
+      "es-ES",
+      {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      },
+    );
 
     const emailTemplate = (recipientName) => `
       <!DOCTYPE html>
@@ -330,12 +371,16 @@ class AppointmentEmailService {
                 <span class="info-label">🕐 Horario:</span>
                 <span class="info-value">${startTime} - ${endTime}</span>
               </div>
-              ${description ? `
+              ${
+                description
+                  ? `
               <div class="info-row">
                 <span class="info-label">📝 Descripción:</span>
                 <span class="info-value">${description}</span>
               </div>
-              ` : ''}
+              `
+                  : ""
+              }
             </div>
 
             <div style="background: #E3F2FD; padding: 20px; border-radius: 8px; border-left: 4px solid #2196F3; margin: 20px 0;">
@@ -376,6 +421,7 @@ class AppointmentEmailService {
         to: athleteEmail,
         subject: `🔔 Recordatorio: Cita Mañana con ${specialistName}`,
         html: emailTemplate(athleteName),
+        encoding: "utf8",
       });
 
       // Enviar a especialista
@@ -384,16 +430,15 @@ class AppointmentEmailService {
         to: specialistEmail,
         subject: `🔔 Recordatorio: Cita Mañana con ${athleteName}`,
         html: emailTemplate(specialistName),
+        encoding: "utf8",
       });
 
       return { success: true };
     } catch (error) {
-      console.error('Error enviando recordatorios:', error);
+      console.error("Error enviando recordatorios:", error);
       throw error;
     }
   }
 }
 
 export default new AppointmentEmailService();
-
-

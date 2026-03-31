@@ -159,6 +159,19 @@ class MovementsRepository {
     return "fecha";
   }
 
+  buildLegacyOrigenFilter(origen) {
+    if (!origen) return null;
+
+    const normalized = String(origen).trim().toUpperCase();
+    if (!["FUNDACION", "EVENTOS"].includes(normalized)) {
+      return null;
+    }
+
+    return {
+      OR: [{ inventarioOrigen: normalized }, { inventarioDestino: normalized }],
+    };
+  }
+
   /**
    * Obtener todos los movimientos con paginación y filtros
    */
@@ -196,8 +209,9 @@ class MovementsRepository {
       }
     }
 
-    if (origen) {
-      where.origen = origen;
+    const legacyOriginFilter = this.buildLegacyOrigenFilter(origen);
+    if (legacyOriginFilter) {
+      where.AND = [...(where.AND || []), legacyOriginFilter];
     }
 
     if (inventarioDestino) {
@@ -319,7 +333,6 @@ class MovementsRepository {
         categoria: data.categoria,
         tipoMovimiento: data.tipo_movimiento,
         cantidad: parseInt(data.cantidad),
-        origen: data.origen,
         destino: data.destino || null,
         eventoId: data.evento_id ? parseInt(data.evento_id) : null,
         observaciones: data.observaciones || null,
@@ -526,7 +539,7 @@ class MovementsRepository {
       totalEntradas,
       totalSalidas,
       totalMovimientos,
-      movimientosPorOrigen,
+      movementsForOriginStats,
     ] = await Promise.all([
       prisma.materialMovement.aggregate({
         where: { ...where, tipoMovimiento: "Entrada" },
@@ -539,13 +552,37 @@ class MovementsRepository {
         _count: true,
       }),
       prisma.materialMovement.count({ where }),
-      prisma.materialMovement.groupBy({
-        by: ["origen"],
+      prisma.materialMovement.findMany({
         where,
-        _sum: { cantidad: true },
-        _count: true,
+        select: {
+          cantidad: true,
+          inventarioOrigen: true,
+          inventarioDestino: true,
+          destino: true,
+          tipoMovimiento: true,
+        },
       }),
     ]);
+
+    const originStatsMap = new Map();
+    movementsForOriginStats.forEach((movement) => {
+      const originKey =
+        movement.inventarioDestino ||
+        movement.inventarioOrigen ||
+        movement.destino ||
+        movement.tipoMovimiento ||
+        "SIN_ORIGEN";
+
+      const current = originStatsMap.get(originKey) || {
+        origen: originKey,
+        cantidad: 0,
+        movimientos: 0,
+      };
+
+      current.cantidad += movement.cantidad || 0;
+      current.movimientos += 1;
+      originStatsMap.set(originKey, current);
+    });
 
     return {
       totalEntradas: totalEntradas._sum.cantidad || 0,
@@ -555,11 +592,7 @@ class MovementsRepository {
       totalMovimientos,
       stockNeto:
         (totalEntradas._sum.cantidad || 0) - (totalSalidas._sum.cantidad || 0),
-      movimientosPorOrigen: movimientosPorOrigen.map((item) => ({
-        origen: item.origen,
-        cantidad: item._sum.cantidad,
-        movimientos: item._count,
-      })),
+      movimientosPorOrigen: Array.from(originStatsMap.values()),
     };
   }
 
@@ -567,13 +600,23 @@ class MovementsRepository {
    * Obtener movimientos por rango de fechas
    */
   async findByDateRange(startDate, endDate, filters = {}) {
+    const normalizedFilters = { ...filters };
+    const legacyOriginFilter = this.buildLegacyOrigenFilter(
+      normalizedFilters.origen,
+    );
+    delete normalizedFilters.origen;
+
     const where = {
       fecha: {
         gte: new Date(startDate),
         lte: new Date(endDate),
       },
-      ...filters,
+      ...normalizedFilters,
     };
+
+    if (legacyOriginFilter) {
+      where.AND = [...(where.AND || []), legacyOriginFilter];
+    }
 
     return await prisma.materialMovement.findMany({
       where,

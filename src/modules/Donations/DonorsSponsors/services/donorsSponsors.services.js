@@ -192,7 +192,7 @@ export class DonorsSponsorsService {
         message: `${deleted.tipo} "${deleted.nombre}" eliminado exitosamente.`,
       };
     } catch (error) {
-      if (error.message?.includes("asociado a eventos")) {
+      if (error.message?.includes("asociado a")) {
         return {
           success: false,
           statusCode: 400,

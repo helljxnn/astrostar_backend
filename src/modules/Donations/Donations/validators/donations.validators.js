@@ -26,9 +26,17 @@ const allowedFileTypes = ["comprobante", "soporte", "factura", "evidencia"];
 
 const detailValidators = (typeField = "type") =>
   body("details").custom((details, { req }) => {
-    const type = req.body[typeField];
+    const inferredType =
+      req.body[typeField] ||
+      details?.find((d) => d?.kind)?.kind ||
+      details?.[0]?.kind;
+    const type = String(inferredType || "").toUpperCase();
     if (!Array.isArray(details) || details.length === 0) {
       throw new Error("Debe enviar al menos un detalle");
+    }
+
+    if (!allowedTypes.includes(type)) {
+      throw new Error("Tipo de donacion invalido para validar detalles");
     }
 
     const findDetail = (kind, recordType) =>
@@ -126,7 +134,19 @@ export const donationValidators = {
       .toDate(),
     body("status").optional().isIn(allowedStatus),
     body("anonymous").optional().isBoolean(),
-    body("donorSponsorId").optional().isInt({ min: 1 }).toInt(),
+    body("donorSponsorId")
+      .if((_, { req }) => req.body.anonymous !== true && req.body.anonymous !== "true")
+      .notEmpty()
+      .withMessage("El donante/patrocinador es obligatorio")
+      .isInt({ min: 1 })
+      .withMessage("El donante/patrocinador es invalido")
+      .toInt(),
+    body("responsibleId")
+      .notEmpty()
+      .withMessage("El responsable de la donacion es obligatorio")
+      .isInt({ min: 1 })
+      .withMessage("El responsable de la donacion es invalido")
+      .toInt(),
     body("serviceId").optional().isInt({ min: 1 }).toInt(),
     body("eventId").optional().isInt({ min: 1 }).toInt(),
     body("program").optional().isString().trim().isLength({ max: 200 }),
@@ -148,11 +168,21 @@ export const donationValidators = {
   update: [
     param("id").isInt({ min: 1 }).withMessage("ID invalido").toInt(),
     body("status").optional().isIn(allowedStatus),
+    body("responsibleId").optional().isInt({ min: 1 }).toInt(),
+    body("donorSponsorId").optional().isInt({ min: 1 }).toInt(),
     body("serviceId").optional().isInt({ min: 1 }).toInt(),
     body("eventId").optional().isInt({ min: 1 }).toInt(),
     body("program").optional().isString().trim().isLength({ max: 200 }),
     body("notes").optional().isString().trim().isLength({ max: 500 }),
     body("details").optional().isArray({ min: 1 }),
+    body("details.*.kind").optional().isIn(allowedTypes),
+    body("details.*.recordType").optional().isString().trim(),
+    body("details.*.description").optional().isString().trim(),
+    body("details.*.quantity").optional().isNumeric(),
+    body("details.*.amount").optional().isNumeric(),
+    body("details.*.channel").optional().isString().trim(),
+    body("details.*.classification").optional().isString().trim(),
+    body("details.*.expiresAt").optional().isISO8601().toDate(),
     detailValidators("type").optional(),
   ],
 

@@ -1,5 +1,8 @@
 ﻿import cloudinaryService from '../../services/cloudinary.service.js';
 
+const EVENTS_IMAGE_PREFIX = "astrostar/events/images/";
+const EVENTS_SCHEDULE_PREFIX = "astrostar/events/schedules/";
+
 /**
  * @swagger
  * tags:
@@ -74,6 +77,13 @@ export class UploadController {
         return res.status(400).json({
           success: false,
           message: 'No se proporcionó ningún archivo'
+        });
+      }
+
+      if (!req.file.mimetype?.startsWith("image/")) {
+        return res.status(400).json({
+          success: false,
+          message: "Formato inválido. Solo se permiten imágenes"
         });
       }
 
@@ -169,6 +179,13 @@ export class UploadController {
         });
       }
 
+      if (req.file.mimetype !== "application/pdf") {
+        return res.status(400).json({
+          success: false,
+          message: "Formato inválido. Solo se permiten archivos PDF"
+        });
+      }
+
       const result = await cloudinaryService.uploadFile(
         req.file.buffer,
         'astrostar/events/schedules',
@@ -261,7 +278,34 @@ export class UploadController {
         });
       }
 
-      await cloudinaryService.deleteFile(publicId, resourceType);
+      const isEventImage = publicId.startsWith(EVENTS_IMAGE_PREFIX);
+      const isEventSchedule = publicId.startsWith(EVENTS_SCHEDULE_PREFIX);
+
+      if (!isEventImage && !isEventSchedule) {
+        return res.status(400).json({
+          success: false,
+          message: "publicId invalido. Solo se permite eliminar archivos del modulo de eventos"
+        });
+      }
+
+      if (resourceType && resourceType !== "image" && resourceType !== "raw") {
+        return res.status(400).json({
+          success: false,
+          message: "resourceType invalido. Valores permitidos: image, raw"
+        });
+      }
+
+      const expectedResourceType = isEventSchedule ? "raw" : "image";
+      const normalizedResourceType = resourceType || expectedResourceType;
+
+      if (normalizedResourceType !== expectedResourceType) {
+        return res.status(400).json({
+          success: false,
+          message: "resourceType no corresponde con el archivo indicado"
+        });
+      }
+
+      await cloudinaryService.deleteFile(publicId, normalizedResourceType);
 
       res.json({
         success: true,

@@ -84,15 +84,16 @@ export class RSVPController {
   resendInvitation = async (req, res) => {
     try {
       const { invitationId } = req.body;
+      const parsedInvitationId = Number.parseInt(invitationId, 10);
 
-      if (!invitationId) {
+      if (!Number.isInteger(parsedInvitationId) || parsedInvitationId <= 0) {
         return res.status(400).json({
           success: false,
-          message: "Se requiere invitationId",
+          message: "invitationId debe ser un entero valido",
         });
       }
 
-      const result = await this.rsvpService.resendInvitation(invitationId);
+      const result = await this.rsvpService.resendInvitation(parsedInvitationId);
 
       if (!result.success) {
         return res.status(result.statusCode || 400).json(result);

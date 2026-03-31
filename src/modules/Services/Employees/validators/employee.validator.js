@@ -164,8 +164,8 @@ export const employeeValidators = {
         const today = new Date();
         const age = today.getFullYear() - birthDate.getFullYear();
 
-        if (age < 16) throw new Error("El empleado debe ser mayor de 16 años.");
-        if (age > 80) throw new Error("La edad no puede ser mayor a 80 años.");
+        if (age < 18) throw new Error("El empleado debe ser mayor de 18 años.");
+        if (age > 100) throw new Error("La edad no puede ser mayor a 100 años.");
         return true;
       }),
     body("roleId")
@@ -276,8 +276,8 @@ export const employeeValidators = {
         const today = new Date();
         const age = today.getFullYear() - birthDate.getFullYear();
 
-        if (age < 16) throw new Error("El empleado debe ser mayor de 16 años.");
-        if (age > 80) throw new Error("La edad no puede ser mayor a 80 años.");
+        if (age < 18) throw new Error("El empleado debe ser mayor de 18 años.");
+        if (age > 100) throw new Error("La edad no puede ser mayor a 100 años.");
         return true;
       }),
     body("roleId")

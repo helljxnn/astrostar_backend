@@ -13,8 +13,54 @@ const handleValidationErrors = (req, res) => {
   return null;
 };
 
+const parsePositiveInt = (value, fallback) => {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const parseLimitInt = (value, fallback, max = 100) => {
+  const parsed = parsePositiveInt(value, fallback);
+  return Math.min(parsed, max);
+};
+
+const resolveErrorStatusCode = (error) => {
+  const message = String(error?.message || "").toLowerCase();
+
+  if (
+    message.includes("no encontrado") ||
+    message.includes("no encontrada")
+  ) {
+    return 404;
+  }
+
+  if (
+    message.includes("no tienes permisos") ||
+    message.includes("solo los atletas")
+  ) {
+    return 403;
+  }
+
+  if (
+    message.includes("ya tiene un pago aprobado") ||
+    message.includes("pendiente de revision")
+  ) {
+    return 409;
+  }
+
+  if (
+    message.includes("obligatoria") ||
+    message.includes("invalido") ||
+    message.includes("invalid") ||
+    message.includes("validacion")
+  ) {
+    return 400;
+  }
+
+  return 500;
+};
+
 const handleError = (res, error, defaultMessage = "Error interno del servidor") => {
-return res.status(500).json({
+  return res.status(resolveErrorStatusCode(error)).json({
     success: false,
     message: error.message || defaultMessage
   });
@@ -131,8 +177,8 @@ export const paymentsController = {
       const { page = 1, limit = 20 } = req.query;
       
       const result = await paymentsService.getAthletePaymentHistory(parseInt(athleteId), {
-        page: parseInt(page),
-        limit: parseInt(limit)
+        page: parsePositiveInt(page, 1),
+        limit: parseLimitInt(limit, 20)
       });
 
       return res.status(200).json({
@@ -154,8 +200,8 @@ export const paymentsController = {
     try {
       const { page = 1, limit = 20, type, search, dateFrom, dateTo } = req.query;
       const filters = { 
-        page: parseInt(page), 
-        limit: parseInt(limit), 
+        page: parsePositiveInt(page, 1),
+        limit: parseLimitInt(limit, 20),
         ...(type && { type }),
         ...(search && { search }),
         ...(dateFrom && { dateFrom }),
@@ -208,8 +254,8 @@ export const paymentsController = {
     try {
       const { page = 1, limit = 20, status, type, dateFrom, dateTo, excludeStatus, search } = req.query;
       const filters = { 
-        page: parseInt(page), 
-        limit: parseInt(limit), 
+        page: parsePositiveInt(page, 1),
+        limit: parseLimitInt(limit, 20),
         status, 
         type, 
         dateFrom, 
@@ -231,9 +277,12 @@ export const paymentsController = {
 
   async approvePayment(req, res) {
     try {
+      const validationError = handleValidationErrors(req, res);
+      if (validationError) return validationError;
+
       const { paymentId } = req.params;
       const reviewedBy = req.user.id;
-      const payment = await paymentsService.approvePayment(parseInt(paymentId), reviewedBy);
+      const payment = await paymentsService.approvePayment(parsePositiveInt(paymentId, 0), reviewedBy);
       return res.status(200).json({
         success: true,
         message: "Pago aprobado exitosamente",
@@ -246,16 +295,23 @@ export const paymentsController = {
 
   async rejectPayment(req, res) {
     try {
+      const validationError = handleValidationErrors(req, res);
+      if (validationError) return validationError;
+
       const { paymentId } = req.params;
       const { rejectionReason } = req.body;
       const reviewedBy = req.user.id;
-      if (!rejectionReason) {
+      if (!String(rejectionReason || "").trim()) {
         return res.status(400).json({
           success: false,
           message: "La razón de rechazo es obligatoria"
         });
       }
-      const payment = await paymentsService.rejectPayment(parseInt(paymentId), reviewedBy, rejectionReason);
+      const payment = await paymentsService.rejectPayment(
+        parsePositiveInt(paymentId, 0),
+        reviewedBy,
+        String(rejectionReason).trim()
+      );
       return res.status(200).json({
         success: true,
         message: "Pago rechazado exitosamente",
@@ -270,7 +326,12 @@ export const paymentsController = {
     try {
       const { page = 1, limit = 20, status, search, dateFrom, dateTo } = req.query;
       const result = await paymentsService.getMonthlyPaymentsManagement({
-        page: parseInt(page), limit: parseInt(limit), status, search, dateFrom, dateTo
+        page: parsePositiveInt(page, 1),
+        limit: parseLimitInt(limit, 20),
+        status,
+        search,
+        dateFrom,
+        dateTo
       });
       return res.status(200).json({
         success: true,

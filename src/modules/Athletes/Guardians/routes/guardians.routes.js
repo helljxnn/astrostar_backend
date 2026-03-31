@@ -17,6 +17,9 @@ const guardiansController = new GuardiansController();
  *   description: Gestión de acudientes de deportistas
  */
 
+router.use(authenticateToken);
+router.use(checkPermissions("athletesSection", "Acudiente"));
+
 router.get("/check-email", guardiansController.checkEmailAvailability);
 router.get("/check-identification", guardiansController.checkIdentificationAvailability);
 router.get("/with-athletes", guardiansController.getGuardiansWithAthletes);
@@ -28,4 +31,3 @@ router.put("/:id", guardiansValidators.update, handleValidationErrors, guardians
 router.delete("/:id", guardiansValidators.delete, handleValidationErrors, guardiansController.deleteGuardian);
 
 export default router;
-

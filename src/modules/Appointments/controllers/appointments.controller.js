@@ -1,13 +1,5 @@
 ﻿import prisma from "../../../config/database.js";
 
-// Horario laboral simulado (en un caso real, esto vendría de la base de datos)
-const specialistSchedules = {
-  // 'specialistId': { start: 'HH:mm', end: 'HH:mm' }
-  1: { start: '08:00', end: '17:00' }, // Dr. Juan Gómez
-  2: { start: '09:00', end: '18:00' }, // Lic. Carlos Ruiz
-  // ...otros especialistas
-};
-
 export class AppointmentController {
   /**
    * Obtiene todas las citas con paginación.
@@ -41,7 +33,7 @@ export class AppointmentController {
             // Incluye aquí las relaciones cuando las tengas (athlete, specialist)
           },
           orderBy: {
-            start: 'asc',
+            start: "asc",
           },
         }),
         prisma.appointment.count({ where }),
@@ -59,7 +51,9 @@ export class AppointmentController {
       });
     } catch (error) {
       console.error("Error fetching appointments:", error);
-      res.status(500).json({ success: false, message: "Internal server error." });
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error." });
     }
   };
 
@@ -68,60 +62,76 @@ export class AppointmentController {
    */
   Create = async (req, res) => {
     try {
-      const { title, description, start, end, athleteId, specialistId, specialtyId } = req.body;
+      const { description, start, end, athleteId, specialistId, specialty } =
+        req.body;
 
-      if (!title || !start || !end || !athleteId || !specialistId || !specialtyId) {
-        return res.status(400).json({ success: false, message: "All fields are required." });
+      if (!start || !end || !athleteId || !specialistId || !specialty) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Los campos start, end, athleteId, specialistId y specialty son requeridos.",
+        });
       }
 
-      const startTime = new Date(start);
-      const endTime = new Date(end);
+      const startDate = new Date(start);
+      const endDate = new Date(end);
 
-      // Validación de Horario del Especialista
-      const schedule = specialistSchedules[specialistId];
-      if (schedule) {
-        const appointmentTime = startTime.toTimeString().slice(0, 5);
-        if (appointmentTime < schedule.start || appointmentTime >= schedule.end) {
-          return res.status(400).json({
-            success: false,
-            message: `The selected time is outside the specialist's working hours (${schedule.start} - ${schedule.end}).`,
-          });
-        }
+      if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: "Las fechas start y end no son válidas.",
+        });
       }
+
+      // Extraer fecha y horas
+      const appointmentDate = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+      );
+      const startTime = `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`;
+      const endTime = `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`;
 
       // Validación de Cita Existente
       const existingAppointment = await prisma.appointment.findFirst({
         where: {
           specialistId: parseInt(specialistId),
-          status: { not: 'CANCELLED' },
-          OR: [
-            { start: { lt: endTime, gte: startTime } }, // Cita existente empieza durante la nueva
-            { end: { gt: startTime, lte: endTime } },   // Cita existente termina durante la nueva
-          ],
+          appointmentDate,
+          status: { not: "Cancelado" },
+          startTime,
         },
       });
 
       if (existingAppointment) {
-        return res.status(409).json({ success: false, message: "The specialist already has an appointment at this time." });
+        return res.status(409).json({
+          success: false,
+          message: "El especialista ya tiene una cita en ese horario.",
+        });
       }
 
       const newAppointment = await prisma.appointment.create({
         data: {
-          title,
-          description,
-          start: startTime,
-          end: endTime,
+          description: description?.trim() || null,
+          appointmentDate,
+          startTime,
+          endTime,
+          specialty,
           athleteId: parseInt(athleteId),
           specialistId: parseInt(specialistId),
-          specialtyId: parseInt(specialtyId),
-          status: 'PENDING',
+          status: "Programado",
         },
       });
 
-      res.status(201).json({ success: true, message: "Appointment created successfully.", data: newAppointment });
+      res.status(201).json({
+        success: true,
+        message: "Cita creada exitosamente.",
+        data: newAppointment,
+      });
     } catch (error) {
       console.error("Error creating appointment:", error);
-      res.status(500).json({ success: false, message: "Internal server error." });
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error." });
     }
   };
 
@@ -134,31 +144,47 @@ export class AppointmentController {
       const { reason } = req.body;
 
       if (!reason) {
-        return res.status(400).json({ success: false, message: "A reason for cancellation is required." });
+        return res.status(400).json({
+          success: false,
+          message: "A reason for cancellation is required.",
+        });
       }
 
-      const appointment = await prisma.appointment.findUnique({ where: { id: parseInt(id) } });
+      const appointment = await prisma.appointment.findUnique({
+        where: { id: parseInt(id) },
+      });
 
       if (!appointment) {
-        return res.status(404).json({ success: false, message: "Appointment not found." });
+        return res
+          .status(404)
+          .json({ success: false, message: "Appointment not found." });
       }
 
-      if (appointment.status === 'CANCELLED') {
-        return res.status(400).json({ success: false, message: "This appointment has already been cancelled." });
+      if (appointment.status === "CANCELLED") {
+        return res.status(400).json({
+          success: false,
+          message: "This appointment has already been cancelled.",
+        });
       }
 
       const updatedAppointment = await prisma.appointment.update({
         where: { id: parseInt(id) },
         data: {
-          status: 'CANCELLED',
+          status: "CANCELLED",
           reasonForCancellation: reason,
         },
       });
 
-      res.status(200).json({ success: true, message: "Appointment cancelled successfully.", data: updatedAppointment });
+      res.status(200).json({
+        success: true,
+        message: "Appointment cancelled successfully.",
+        data: updatedAppointment,
+      });
     } catch (error) {
       console.error("Error cancelling appointment:", error);
-      res.status(500).json({ success: false, message: "Internal server error." });
+      res
+        .status(500)
+        .json({ success: false, message: "Internal server error." });
     }
   };
 }

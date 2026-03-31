@@ -72,10 +72,10 @@ export const paymentsValidator = {
       .isInt({ min: 1000, max: 10000000 })
       .withMessage('El valor de la matrícula debe estar entre $1,000 y $10,000,000'),
     
-    body('graceDays')
+    body('lateFeeDailyAmount')
       .optional()
-      .isInt({ min: 1, max: 15 })
-      .withMessage('Los días de gracia deben estar entre 1 y 15')
+      .isInt({ min: 0, max: 100000 })
+      .withMessage('El valor de mora diaria debe estar entre $0 y $100,000')
   ],
 
   // ============================================================================
@@ -118,4 +118,3 @@ export const paymentsValidator = {
     next();
   }
 };
-

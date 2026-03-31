@@ -2,12 +2,12 @@
 import cloudinary from "../../../../services/shared/cloudinary.js";
 import movementsRepository from "../../../Materials/repository/movements.repository.js";
 import materialsRepository from "../../../Materials/repository/materials.repository.js";
-import { PrismaClient } from "../../../../../generated/prisma/index.js";
+import prisma from "../../../../config/database.js";
 import { CertificateService } from "./certificate.service.js";
 
 const ALLOWED_MIME = ["application/pdf", "image/jpeg", "image/png"];
 const ALLOWED_FILE_TYPES = ["comprobante", "soporte", "factura", "evidencia"];
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 const MATERIAL_SELECT = {
   id: true,
@@ -147,110 +147,100 @@ export class DonationsService {
    * This is called internally when creating ESPECIE donations with events
    */
   async autoConvertAndAssignToEvent(donationId, eventoId, userId, userName) {
-    try {
-      const prisma = new PrismaClient();
+    // Get donation with details
+    const donation = await DonationsRepository.findById(donationId);
+    if (!donation || !donation.details || donation.details.length === 0) {
+      return;
+    }
 
-      // Get donation with details
-      const donation = await DonationsRepository.findById(donationId);
-      if (!donation || !donation.details || donation.details.length === 0) {
-        await prisma.$disconnect();
-        return;
+    // Get event
+    const event = await prisma.service.findUnique({
+      where: { id: parseInt(eventoId) },
+      select: { id: true, name: true },
+    });
+
+    if (!event) {
+      return;
+    }
+
+    // Process each detail item
+    for (const detail of donation.details) {
+      const detailRecordType = String(detail.recordType || "").toLowerCase();
+      if (detailRecordType && detailRecordType !== "item") {
+        continue;
       }
 
-      // Get event
-      const event = await prisma.service.findUnique({
-        where: { id: parseInt(eventoId) },
-        select: { id: true, name: true },
-      });
+      try {
+        // Resolve material by materialId first, fallback to description matching.
+        const material =
+          (detail.materialId
+            ? await prisma.material.findFirst({
+                where: {
+                  id: parseInt(detail.materialId),
+                  estado: "Activo",
+                },
+                select: MATERIAL_SELECT,
+              })
+            : null) ||
+          (detail.description
+            ? await prisma.material.findFirst({
+                where: {
+                  nombre: {
+                    contains: detail.description,
+                    mode: "insensitive",
+                  },
+                  estado: "Activo",
+                },
+                select: MATERIAL_SELECT,
+              })
+            : null);
 
-      if (!event) {
-        await prisma.$disconnect();
-        return;
-      }
-
-      // Process each detail item
-      for (const detail of donation.details) {
-        const detailRecordType = String(detail.recordType || "").toLowerCase();
-        if (detailRecordType && detailRecordType !== "item") {
+        if (!material || material.estado !== "Activo") {
           continue;
         }
 
-        try {
-          // Resolve material by materialId first, fallback to description matching.
-          const material =
-            (detail.materialId
-              ? await prisma.material.findFirst({
-                  where: {
-                    id: parseInt(detail.materialId),
-                    estado: "Activo",
-                  },
-                  select: MATERIAL_SELECT,
-                })
-              : null) ||
-            (detail.description
-              ? await prisma.material.findFirst({
-                  where: {
-                    nombre: {
-                      contains: detail.description,
-                      mode: "insensitive",
-                    },
-                    estado: "Activo",
-                  },
-                  select: MATERIAL_SELECT,
-                })
-              : null);
+        const cantidad = parseInt(detail.quantity || 1);
 
-          if (!material || material.estado !== "Activo") {
-            continue;
-          }
-
-          const cantidad = parseInt(detail.quantity || 1);
-
-          // Execute in transaction: Assign DIRECTLY to event (NO stock increment)
-          await prisma.$transaction(async (tx) => {
-            // 1. Create movement record (for traceability, but NO stock change)
-            await tx.materialMovement.create({
-              data: {
-                materialId: material.id,
-                materialNombre: material.nombre,
-                categoria: material.categoria,
-                tipoMovimiento: "ASIGNACION_EVENTO",
-                cantidad: cantidad,
-                inventarioDestino: "EVENTO_DIRECTO",
-                donacionId: parseInt(donationId),
-                eventoId: parseInt(eventoId),
-                observaciones: `Donación ${donation.code} asignada directamente al evento ${event.name}`,
-                fechaIngreso: donation.donationAt,
-                stockAnterior: material.stockEventos,
-                stockNuevo: material.stockEventos, // NO CHANGE
-                createdBy: userId,
-                createdByName: userName || null,
-              },
-            });
-
-            // 2. Assign to event (locked, cannot be removed easily)
-            await tx.eventMaterial.create({
-              data: {
-                materialId: material.id,
-                eventoId: parseInt(eventoId),
-                cantidad: cantidad,
-                tipo: "CONSUMIBLE",
-                donacionId: parseInt(donationId),
-                bloqueado: true, // Locked - from donation
-                observaciones: `Donación ${donation.code} - Asignación directa`,
-                createdBy: userId,
-                createdByName: userName || null,
-              },
-            });
+        // Execute in transaction: Assign DIRECTLY to event (NO stock increment)
+        await prisma.$transaction(async (tx) => {
+          // 1. Create movement record (for traceability, but NO stock change)
+          await tx.materialMovement.create({
+            data: {
+              materialId: material.id,
+              materialNombre: material.nombre,
+              categoria: material.categoria,
+              tipoMovimiento: "ASIGNACION_EVENTO",
+              cantidad: cantidad,
+              inventarioDestino: "EVENTO_DIRECTO",
+              donacionId: parseInt(donationId),
+              eventoId: parseInt(eventoId),
+              observaciones: `Donación ${donation.code} asignada directamente al evento ${event.name}`,
+              fechaIngreso: donation.donationAt,
+              stockAnterior: material.stockEventos,
+              stockNuevo: material.stockEventos, // NO CHANGE
+              createdBy: userId,
+              createdByName: userName || null,
+            },
           });
-        } catch (error) {
-// Continue with next item
-        }
-      }
 
-      await prisma.$disconnect();
-    } catch (error) {
-throw error;
+          // 2. Assign to event (locked, cannot be removed easily)
+          await tx.eventMaterial.create({
+            data: {
+              materialId: material.id,
+              eventoId: parseInt(eventoId),
+              cantidad: cantidad,
+              tipo: "CONSUMIBLE",
+              donacionId: parseInt(donationId),
+              bloqueado: true, // Locked - from donation
+              observaciones: `Donación ${donation.code} - Asignación directa`,
+              createdBy: userId,
+              createdByName: userName || null,
+            },
+          });
+        });
+      } catch (error) {
+        // Continue with next item
+      }
     }
   }
 
@@ -519,10 +509,6 @@ throw error;
    */
   async convertAndAssignToEvent(donationId, eventoId, items, userId, userName) {
     try {
-      const { PrismaClient } =
-        await import("../../../../generated/prisma/index.js");
-      const prisma = new PrismaClient();
-
       // 1. Validate donation
       const donation = await DonationsRepository.findById(donationId);
       if (!donation) {
@@ -649,8 +635,6 @@ throw error;
           });
         }
       }
-
-      await prisma.$disconnect();
 
       return {
         success: true,

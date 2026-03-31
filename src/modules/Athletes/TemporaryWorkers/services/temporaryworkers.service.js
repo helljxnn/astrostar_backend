@@ -149,7 +149,8 @@ export class TemporaryWorkersService {
       }
 
       // Verificar si está asociada a algún equipo
-      const teamAssociation = await this.temporaryWorkersRepository.isAssociatedWithTeam(id);
+      const teamAssociation =
+        await this.temporaryWorkersRepository.isAssociatedWithTeam(id);
       if (teamAssociation) {
         return {
           success: false,
@@ -564,38 +565,79 @@ export class TemporaryWorkersService {
       }
 
       // Validar que entrenadores sean mayores de edad
-      if (currentPersonType === "Entrenador" && calculatedAge && calculatedAge < 18) {
+      if (
+        currentPersonType === "Entrenador" &&
+        calculatedAge &&
+        calculatedAge < 18
+      ) {
         errors.push("Los entrenadores deben ser mayores de 18 años");
       }
 
       // Validar edad según tipo de documento
-      const documentTypeId = data.documentTypeId !== undefined ? data.documentTypeId : (existingData ? existingData.documentTypeId : null);
-      if (documentTypeId && calculatedAge !== null && calculatedAge !== undefined) {
+      const documentTypeId =
+        data.documentTypeId !== undefined
+          ? data.documentTypeId
+          : existingData
+            ? existingData.documentTypeId
+            : null;
+      if (
+        documentTypeId &&
+        calculatedAge !== null &&
+        calculatedAge !== undefined
+      ) {
         // Asumiendo que documentTypeId 1 = CC (Cédula) y 2 = TI (Tarjeta de Identidad)
         // Esto debería ajustarse según los IDs reales en la base de datos
-        if (documentTypeId == 1) { // Cédula de Ciudadanía
+        if (documentTypeId == 1) {
+          // Cédula de Ciudadanía
           if (calculatedAge < 18) {
-            errors.push("Para cédula de ciudadanía la persona debe ser mayor de edad (18 años)");
+            errors.push(
+              "Para cédula de ciudadanía la persona debe ser mayor de edad (18 años)",
+            );
           }
-        } else if (documentTypeId == 2) { // Tarjeta de Identidad
+        } else if (documentTypeId == 2) {
+          // Tarjeta de Identidad
           if (calculatedAge >= 18) {
-            errors.push("Para tarjeta de identidad la persona debe ser menor de edad (menor a 18 años)");
+            errors.push(
+              "Para tarjeta de identidad la persona debe ser menor de edad (menor a 18 años)",
+            );
           }
         }
       }
     }
 
     // Validar que entrenadores no puedan usar Tarjeta de Identidad (ID 2)
-    const documentTypeId = data.documentTypeId !== undefined ? data.documentTypeId : (existingData ? existingData.documentTypeId : null);
+    const documentTypeId =
+      data.documentTypeId !== undefined
+        ? data.documentTypeId
+        : existingData
+          ? existingData.documentTypeId
+          : null;
     if (currentPersonType === "Entrenador" && documentTypeId == 2) {
-      errors.push("Los entrenadores no pueden usar Tarjeta de Identidad ya que deben ser mayores de edad");
+      errors.push(
+        "Los entrenadores no pueden usar Tarjeta de Identidad ya que deben ser mayores de edad",
+      );
     }
 
     // Validar campos requeridos según tipo de persona
     if (currentPersonType === "Entrenador") {
-      const email = data.email !== undefined ? data.email : (existingData ? existingData.email : null);
-      const phone = data.phone !== undefined ? data.phone : (existingData ? existingData.phone : null);
-      const address = data.address !== undefined ? data.address : (existingData ? existingData.address : null);
+      const email =
+        data.email !== undefined
+          ? data.email
+          : existingData
+            ? existingData.email
+            : null;
+      const phone =
+        data.phone !== undefined
+          ? data.phone
+          : existingData
+            ? existingData.phone
+            : null;
+      const address =
+        data.address !== undefined
+          ? data.address
+          : existingData
+            ? existingData.address
+            : null;
 
       if (!email || !email.trim()) {
         errors.push("El email es requerido para entrenadores");
@@ -641,13 +683,20 @@ export class TemporaryWorkersService {
     const first = splitName(backendData.firstName);
     const last = splitName(backendData.lastName);
 
+    // Obtener equipo y categoría desde la relación TeamMember activa
+    const activeMembership = backendData.teamMembers?.[0];
+    const teamName =
+      activeMembership?.team?.name ?? backendData.organization ?? null;
+    const category = activeMembership?.team?.category ?? null;
+
     return {
       ...backendData,
       firstName: first.primary,
       middleName: first.secondary,
       lastName: last.primary,
       secondLastName: last.secondary,
-      team: backendData.organization ?? null,
+      team: teamName,
+      category: category,
     };
   }
 
@@ -678,13 +727,19 @@ export class TemporaryWorkersService {
     }
     // El modelo TemporaryPerson no tiene secondLastName separado.
     if (lastName || secondLastName) {
-      backendData.lastName = [lastName, secondLastName].filter(Boolean).join(" ");
+      backendData.lastName = [lastName, secondLastName]
+        .filter(Boolean)
+        .join(" ");
     }
     if (frontendData.identification)
-      backendData.identification = normalizeUtf8Text(frontendData.identification);
+      backendData.identification = normalizeUtf8Text(
+        frontendData.identification,
+      );
     if (frontendData.email) {
       const normalizedEmail = normalizeUtf8Text(frontendData.email);
-      backendData.email = normalizedEmail ? normalizedEmail.toLowerCase() : null;
+      backendData.email = normalizedEmail
+        ? normalizedEmail.toLowerCase()
+        : null;
     }
     if (frontendData.phone)
       backendData.phone = normalizeUtf8Text(frontendData.phone);
@@ -732,4 +787,3 @@ export class TemporaryWorkersService {
     return backendData;
   }
 }
-

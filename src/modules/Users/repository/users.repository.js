@@ -1,6 +1,19 @@
 ﻿import prisma from "../../../config/database.js";
 
 export class UsersRepository {
+  normalizePositiveInt(value, defaultValue, { min = 1, max = 100 } = {}) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed < min) {
+      return defaultValue;
+    }
+
+    if (parsed > max) {
+      return max;
+    }
+
+    return parsed;
+  }
+
   buildSearchFilter(search = "") {
     const normalizedSearch = search.trim();
 
@@ -46,7 +59,15 @@ export class UsersRepository {
     roleId,
     userType,
   }) {
-    const skip = (page - 1) * limit;
+    const safePage = this.normalizePositiveInt(page, 1, {
+      min: 1,
+      max: 1000000,
+    });
+    const safeLimit = this.normalizePositiveInt(limit, 10, {
+      min: 1,
+      max: 100,
+    });
+    const skip = (safePage - 1) * safeLimit;
 
     const where = {
       AND: [
@@ -61,7 +82,7 @@ export class UsersRepository {
       prisma.user.findMany({
         where,
         skip,
-        take: parseInt(limit),
+        take: safeLimit,
         include: {
           role: {
             select: {
@@ -119,10 +140,10 @@ export class UsersRepository {
     return {
       users,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: safePage,
+        limit: safeLimit,
         total,
-        pages: Math.ceil(total / limit),
+        pages: Math.ceil(total / safeLimit),
       },
     };
   }
@@ -211,7 +232,14 @@ export class UsersRepository {
    * Obtener estadísticas de usuarios
    */
   async getStats() {
-    const [totalUsers, activeUsers, usersByRole, usersByType, recentUsers] =
+    const [
+      totalUsers,
+      activeUsers,
+      usersByRole,
+      recentUsers,
+      athleteUsersCount,
+      employeeUsersCount,
+    ] =
       await Promise.all([
         // Total usuarios
         prisma.user.count(),
@@ -228,22 +256,6 @@ export class UsersRepository {
           where: { status: "Active" },
         }),
 
-        // Usuarios por tipo
-        await prisma.$queryRaw`
-        SELECT 
-          COUNT(*) as total,
-          CASE 
-            WHEN a.id IS NOT NULL THEN 'athlete'
-            WHEN e.id IS NOT NULL THEN 'employee'
-            ELSE 'other'
-          END as user_type
-        FROM users u
-        LEFT JOIN athletes a ON u.id = a.user_id
-        LEFT JOIN employees e ON u.id = e.user_id
-        WHERE u.status = 'Active'
-        GROUP BY user_type
-      `,
-
         // Usuarios recientes (últimos 30 días)
         prisma.user.count({
           where: {
@@ -252,7 +264,31 @@ export class UsersRepository {
             },
           },
         }),
+
+        // Usuarios activos por tipo
+        prisma.user.count({
+          where: {
+            status: "Active",
+            athlete: { isNot: null },
+          },
+        }),
+        prisma.user.count({
+          where: {
+            status: "Active",
+            employee: { isNot: null },
+          },
+        }),
       ]);
+
+    const otherUsersCount = Math.max(
+      activeUsers - athleteUsersCount - employeeUsersCount,
+      0,
+    );
+    const usersByType = [
+      { total: athleteUsersCount, user_type: "athlete" },
+      { total: employeeUsersCount, user_type: "employee" },
+      { total: otherUsersCount, user_type: "other" },
+    ].filter((item) => item.total > 0);
 
     return {
       totalUsers,

@@ -1,5 +1,7 @@
 ﻿import { body, param, query, validationResult } from "express-validator";
 
+const withoutHtmlTags = (value) => !/[<>]/.test(String(value ?? ""));
+
 export const handleValidationErrors = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -64,6 +66,8 @@ export const donorsSponsorsValidators = {
       .withMessage("El nombre completo es obligatorio.")
       .isLength({ min: 2, max: 150 })
       .withMessage("El nombre debe tener entre 2 y 150 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("El nombre completo contiene caracteres no permitidos.")
       .trim(),
 
     body("razonSocial")
@@ -72,6 +76,8 @@ export const donorsSponsorsValidators = {
       .withMessage("La raz\u00f3n social es obligatoria.")
       .isLength({ min: 2, max: 200 })
       .withMessage("La raz\u00f3n social debe tener entre 2 y 200 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("La razon social contiene caracteres no permitidos.")
       .trim(),
 
     body("tipoDocumento")
@@ -106,6 +112,8 @@ export const donorsSponsorsValidators = {
       .withMessage("El representante legal es obligatorio.")
       .isLength({ min: 2, max: 150 })
       .withMessage("El representante legal debe tener entre 2 y 150 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("El representante legal contiene caracteres no permitidos.")
       .trim(),
 
     body("telefono")
@@ -131,23 +139,31 @@ export const donorsSponsorsValidators = {
       .withMessage("La direcci\u00f3n es obligatoria.")
       .isLength({ min: 4, max: 200 })
       .withMessage("La direcci\u00f3n debe tener entre 4 y 200 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("La direccion contiene caracteres no permitidos.")
       .trim(),
     body("ciudad")
       .notEmpty()
       .withMessage("La ciudad es obligatoria.")
       .isLength({ min: 2, max: 120 })
       .withMessage("La ciudad debe tener entre 2 y 120 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("La ciudad contiene caracteres no permitidos.")
       .trim(),
     body("pais")
       .notEmpty()
       .withMessage("El pa\u00eds es obligatorio.")
       .isLength({ min: 2, max: 120 })
       .withMessage("El pa\u00eds debe tener entre 2 y 120 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("El pais contiene caracteres no permitidos.")
       .trim(),
     body("descripcion")
       .optional()
       .isLength({ max: 500 })
       .withMessage("La descripción debe tener máximo 500 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("La descripcion contiene caracteres no permitidos.")
       .trim(),
     body("estado")
       .optional()
@@ -164,12 +180,16 @@ export const donorsSponsorsValidators = {
       .optional()
       .isLength({ min: 2, max: 150 })
       .withMessage("El nombre debe tener entre 2 y 150 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("El nombre contiene caracteres no permitidos.")
       .trim(),
 
     body("razonSocial")
       .optional()
       .isLength({ min: 2, max: 200 })
       .withMessage("La raz\u00f3n social debe tener entre 2 y 200 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("La razon social contiene caracteres no permitidos.")
       .trim(),
 
     body("tipoDocumento").optional().isLength({ max: 50 }),
@@ -194,6 +214,8 @@ export const donorsSponsorsValidators = {
       .optional()
       .isLength({ min: 2, max: 150 })
       .withMessage("El representante legal debe tener entre 2 y 150 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("El representante legal contiene caracteres no permitidos.")
       .trim(),
 
     body("telefono")
@@ -218,6 +240,8 @@ export const donorsSponsorsValidators = {
       .withMessage("La direcci\u00f3n no puede estar vac\u00eda.")
       .isLength({ min: 4, max: 200 })
       .withMessage("La direcci\u00f3n debe tener entre 4 y 200 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("La direccion contiene caracteres no permitidos.")
       .trim(),
     body("ciudad")
       .optional()
@@ -225,6 +249,8 @@ export const donorsSponsorsValidators = {
       .withMessage("La ciudad no puede estar vac\u00eda.")
       .isLength({ min: 2, max: 120 })
       .withMessage("La ciudad debe tener entre 2 y 120 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("La ciudad contiene caracteres no permitidos.")
       .trim(),
     body("pais")
       .optional()
@@ -232,11 +258,15 @@ export const donorsSponsorsValidators = {
       .withMessage("El pa\u00eds no puede estar vac\u00edo.")
       .isLength({ min: 2, max: 120 })
       .withMessage("El pa\u00eds debe tener entre 2 y 120 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("El pais contiene caracteres no permitidos.")
       .trim(),
     body("descripcion")
       .optional()
       .isLength({ max: 500 })
       .withMessage("La descripción debe tener máximo 500 caracteres.")
+      .custom(withoutHtmlTags)
+      .withMessage("La descripcion contiene caracteres no permitidos.")
       .trim(),
     body("estado")
       .optional()
@@ -280,7 +310,9 @@ export const donorsSponsorsValidators = {
     body("nombreCompleto")
       .notEmpty()
       .withMessage("El nombre es obligatorio.")
-      .isLength({ min: 2, max: 150 }),
+      .isLength({ min: 2, max: 150 })
+      .custom(withoutHtmlTags)
+      .withMessage("El nombre contiene caracteres no permitidos."),
     body("correo")
       .notEmpty()
       .withMessage("El correo es obligatorio.")
@@ -304,14 +336,31 @@ export const donorsSponsorsValidators = {
       .withMessage(
         "El documento solo puede contener n\u00fameros, letras, puntos o guiones."
       ),
-    body("mensaje").optional().isLength({ max: 500 }),
+    body("mensaje")
+      .optional()
+      .isLength({ max: 500 })
+      .custom(withoutHtmlTags)
+      .withMessage("El mensaje contiene caracteres no permitidos."),
     body("autorizacion")
       .notEmpty()
       .withMessage("Indica si autorizas ser contactado.")
       .isIn(["Si", "No", "Sí", "si", "no"]),
-    body("ciudad").optional().isLength({ min: 2, max: 120 }),
-    body("pais").optional().isLength({ min: 2, max: 120 }),
-    body("direccion").optional().isLength({ min: 4, max: 200 }),
+    body("ciudad")
+      .optional()
+      .isLength({ min: 2, max: 120 })
+      .custom(withoutHtmlTags)
+      .withMessage("La ciudad contiene caracteres no permitidos."),
+    body("pais")
+      .optional()
+      .isLength({ min: 2, max: 120 })
+      .custom(withoutHtmlTags)
+      .withMessage("El pais contiene caracteres no permitidos."),
+    body("direccion")
+      .optional()
+      .isLength({ min: 4, max: 200 })
+      .custom(withoutHtmlTags)
+      .withMessage("La direccion contiene caracteres no permitidos."),
   ],
 };
+
 

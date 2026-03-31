@@ -260,6 +260,15 @@ export class DonationsRepository {
   async update(id, payload) {
     const donationId = parseInt(id);
     const updated = await prisma.$transaction(async (tx) => {
+      const previousStatus = payload.status
+        ? (
+            await tx.donation.findUnique({
+              where: { id: donationId },
+              select: { status: true },
+            })
+          )?.status || null
+        : null;
+
       const donation = await tx.donation.update({
         where: { id: donationId },
         data: {
@@ -307,15 +316,10 @@ export class DonationsRepository {
       }
 
       if (payload.status) {
-        const current = await tx.donation.findUnique({
-          where: { id: donationId },
-          select: { status: true },
-        });
-
         await tx.donationTransaction.create({
           data: {
             donationId,
-            fromStatus: current?.status || null,
+            fromStatus: previousStatus,
             toStatus: this.mapStatusToDb(payload.status),
             reason: payload.statusReason || null,
           },

@@ -13,7 +13,7 @@ const router = Router();
 router.get(
   '/',
   authenticateToken,
-  requirePaymentAdminPermissions,
+  requirePaymentAdminPermissions("Ver"),
   paymentSettingsController.getSettings
 );
 
@@ -24,10 +24,9 @@ router.get(
 router.patch(
   '/',
   authenticateToken,
-  requirePaymentAdminPermissions,
+  requirePaymentAdminPermissions("Aprobar"),
   paymentsValidator.validatePaymentSettings,
   paymentSettingsController.updateSettings
 );
 
 export default router;
-
