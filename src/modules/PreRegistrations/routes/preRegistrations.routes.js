@@ -7,12 +7,20 @@ import { rateLimitKeyGenerator } from "../../../middlewares/rateLimitKeyGenerato
 
 const router = Router();
 
+const resolveRateLimitMax = (envValue, fallback) => {
+  const parsed = Number.parseInt(envValue, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 // Rate limiter para endpoint público (prevenir spam)
 // En desarrollo: más permisivo para pruebas
 // En producción: más restrictivo para seguridad
 const createLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutos
-  max: process.env.NODE_ENV === 'production' ? 3 : 20, // 3 en prod, 20 en dev
+  max: resolveRateLimitMax(
+    process.env.PRE_REGISTRATION_CREATE_LIMIT_MAX,
+    process.env.NODE_ENV === "production" ? 10 : 20,
+  ),
   message: {
     success: false,
     message: "Demasiadas solicitudes. Por favor intenta más tarde.",
@@ -26,7 +34,10 @@ const createLimiter = rateLimit({
 // Rate limiter para reenvío de correo
 const resendLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hora
-  max: process.env.NODE_ENV === 'production' ? 3 : 10, // 3 en prod, 10 en dev
+  max: resolveRateLimitMax(
+    process.env.PRE_REGISTRATION_RESEND_LIMIT_MAX,
+    process.env.NODE_ENV === "production" ? 5 : 10,
+  ),
   message: {
     success: false,
     message: "Demasiados intentos de reenvío. Por favor intenta más tarde.",
