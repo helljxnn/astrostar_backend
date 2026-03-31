@@ -1,6 +1,34 @@
 import eventMaterialsReusableService from "../services/eventMaterialsReusable.service.js";
 
 class EventMaterialsReusableController {
+  constructor() {
+    this.getByEvent = this.getByEvent.bind(this);
+    this.assignMaterial = this.assignMaterial.bind(this);
+    this.removeAssignment = this.removeAssignment.bind(this);
+    this.checkAvailability = this.checkAvailability.bind(this);
+    this.checkBulkAvailability = this.checkBulkAvailability.bind(this);
+    this.getMaterialAssignments = this.getMaterialAssignments.bind(this);
+    this.getReusableMaterialAssignments =
+      this.getReusableMaterialAssignments.bind(this);
+  }
+
+  resolveAuthenticatedUser(req) {
+    const userId = Number.parseInt(req.user?.id, 10);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return null;
+    }
+
+    const fullName = [req.user?.firstName, req.user?.lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    return {
+      userId,
+      userName: fullName || req.user?.name || null,
+    };
+  }
+
   /**
    * Get reusable materials for event
    */
@@ -25,14 +53,19 @@ return res.status(500).json({
   async assignMaterial(req, res) {
     try {
       const { eventoId } = req.params;
-      const userId = req.user?.id || 1;
-      const userName = req.user?.name || "System";
+      const actor = this.resolveAuthenticatedUser(req);
+      if (!actor) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
 
       const result = await eventMaterialsReusableService.assignMaterial(
         eventoId,
         req.body,
-        userId,
-        userName,
+        actor.userId,
+        actor.userName,
       );
 
       if (!result.success) {
@@ -55,13 +88,18 @@ return res.status(500).json({
   async removeAssignment(req, res) {
     try {
       const { assignmentId } = req.params;
-      const userId = req.user?.id || 1;
-      const userName = req.user?.name || "System";
+      const actor = this.resolveAuthenticatedUser(req);
+      if (!actor) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
 
       const result = await eventMaterialsReusableService.removeAssignment(
         assignmentId,
-        userId,
-        userName,
+        actor.userId,
+        actor.userName,
       );
 
       if (!result.success) {

@@ -1,5 +1,23 @@
 import prisma from "../../../config/database.js";
 
+const DOCUMENT_TYPE_NAME_TO_CODE = {
+  "C\u00e9dula de Ciudadan\u00eda": "CC",
+  "Cedula de Ciudadania": "CC",
+  "Tarjeta de Identidad": "TI",
+  "C\u00e9dula de Extranjer\u00eda": "CE",
+  "Cedula de Extranjeria": "CE",
+  Pasaporte: "PAS",
+  NIT: "NIT",
+};
+
+const DOCUMENT_TYPE_CODE_TO_ID = {
+  CC: 1,
+  TI: 2,
+  CE: 3,
+  PAS: 4,
+  NIT: 5,
+};
+
 export class ProvidersRepository {
   async getDocumentTypes() {
     try {
@@ -141,7 +159,7 @@ throw error;
       return null;
     }
 
-    // Para personas jurídicas, mantener validación de unicidad
+    // For legal entities, keep uniqueness validation
     const where = {
       businessName: {
         equals: businessName,
@@ -250,7 +268,7 @@ throw error;
       const hasIngresos = await this.checkHasIngresos(id);
       if (hasIngresos) {
         throw new Error(
-          `No se puede eliminar el proveedor "${provider.businessName}" porque está asociado a ingresos.`
+          `No se puede eliminar el proveedor "${provider.businessName}" porque est\u00e1 asociado a ingresos.`
         );
       }
 
@@ -269,14 +287,24 @@ throw error;
 
   async checkHasIngresos(providerId) {
     try {
-      // Verificar si el proveedor tiene movimientos de materiales (entradas/ingresos) asociados
-      const count = await prisma.materialMovement.count({
-        where: { 
-          proveedorId: parseInt(providerId),
-          tipoMovimiento: 'Entrada' // Entradas = Ingresos de materiales
-        },
-      });
-      return count > 0;
+      const parsedProviderId = parseInt(providerId);
+
+      // Validar movimientos de ingreso y compras asociadas para evitar errores de FK.
+      const [movementsCount, purchasesCount] = await Promise.all([
+        prisma.materialMovement.count({
+          where: {
+            proveedorId: parsedProviderId,
+            tipoMovimiento: "Entrada",
+          },
+        }),
+        prisma.purchases.count({
+          where: {
+            providerId: parsedProviderId,
+          },
+        }),
+      ]);
+
+      return movementsCount > 0 || purchasesCount > 0;
     } catch (error) {
 throw error;
     }
@@ -322,19 +350,10 @@ throw error;
   transformToFrontend(provider) {
     if (!provider) return null;
 
-    // Mapeo de nombres de tipos de documento a códigos
-    const documentTypeNameToCode = {
-      "Cédula de Ciudadanía": "CC",
-      "Tarjeta de Identidad": "TI",
-      "Cédula de Extranjería": "CE",
-      Pasaporte: "PAS",
-      NIT: "NIT",
-    };
-
     // Obtener el código del tipo de documento
     const getDocumentTypeCode = (documentType) => {
       if (!documentType) return "";
-      return documentTypeNameToCode[documentType.name] || "";
+      return DOCUMENT_TYPE_NAME_TO_CODE[documentType.name] || "";
     };
 
     return {
@@ -342,7 +361,14 @@ throw error;
       tipoEntidad: provider.entityType === "legal" ? "juridica" : "natural",
       razonSocial: provider.businessName,
       nit: provider.nit,
-      tipoDocumento: getDocumentTypeCode(provider.documentType),
+      tipoDocumento:
+        provider.entityType === "legal"
+          ? "NIT"
+          : getDocumentTypeCode(provider.documentType),
+      tipoDocumentoNombre:
+        provider.entityType === "legal"
+          ? "NIT"
+          : provider.documentType?.name || "",
       contactoPrincipal: provider.mainContact,
       correo: provider.email,
       telefono: provider.phone,
@@ -359,51 +385,12 @@ throw error;
       servicios: null,
       observaciones: null,
       // Para compatibilidad
-      documentTypeId: provider.documentType?.id || null,
+      documentTypeId: provider.documentType?.id || provider.documentTypeId || null,
+      documentType: provider.documentType || null,
     };
   }
 
   transformToBackend(providerData) {
-    let cleanedNit = providerData.nit;
-
-    if (cleanedNit && typeof cleanedNit === "string") {
-      cleanedNit = cleanedNit.replace(/[.\-\s]/g, "");
-    }
-
-    const documentTypeCodeToName = {
-      CC: "Cédula de Ciudadanía",
-      TI: "Tarjeta de Identidad",
-      CE: "Cédula de Extranjería",
-      PAS: "Pasaporte",
-      NIT: "NIT",
-    };
-
-    const transformed = {
-      entityType: providerData.tipoEntidad === "juridica" ? "legal" : "natural",
-      businessName: providerData.razonSocial,
-      ...(cleanedNit && { nit: cleanedNit }),
-      mainContact: providerData.contactoPrincipal,
-      email: providerData.correo,
-      phone: providerData.telefono,
-      address: providerData.direccion,
-      city: providerData.ciudad,
-      description: providerData.descripcion || "",
-      status: providerData.estado === "Activo" ? "Active" : "Inactive",
-    };
-
-    if (providerData.tipoEntidad === "natural" && providerData.tipoDocumento) {
-      const documentTypeName =
-        documentTypeCodeToName[providerData.tipoDocumento];
-      if (documentTypeName) {
-        transformed.documentTypeId =
-          this.getDocumentTypeIdByName(documentTypeName);
-      }
-    }
-
-    return transformed;
-  }
-
-  transformToBackendOld(providerData) {
     let cleanedNit = providerData.nit;
 
     if (cleanedNit && typeof cleanedNit === "string") {
@@ -426,13 +413,26 @@ throw error;
           : "Active",
     };
 
-    if (providerData.tipoEntidad === "natural" && providerData.tipoDocumento) {
-      if (typeof providerData.tipoDocumento === "number") {
-        transformed.documentTypeId = providerData.tipoDocumento;
-      } else if (typeof providerData.tipoDocumento === "string") {
-        const parsedId = parseInt(providerData.tipoDocumento);
-        if (!isNaN(parsedId)) {
-          transformed.documentTypeId = parsedId;
+    if (providerData.tipoEntidad === "natural") {
+      const rawDocumentTypeId =
+        providerData.documentTypeId ?? providerData.tipoDocumento ?? null;
+      const parsedDocumentTypeId = parseInt(rawDocumentTypeId, 10);
+
+      if (!Number.isNaN(parsedDocumentTypeId)) {
+        transformed.documentTypeId = parsedDocumentTypeId;
+      } else if (providerData.tipoDocumento) {
+        const documentTypeName =
+          ({
+            CC: "Cédula de Ciudadanía",
+            TI: "Tarjeta de Identidad",
+            CE: "Cédula de Extranjería",
+            PAS: "Pasaporte",
+            NIT: "NIT",
+          })[providerData.tipoDocumento] ||
+          providerData.tipoDocumento;
+        if (documentTypeName) {
+          transformed.documentTypeId =
+            this.getDocumentTypeIdByName(documentTypeName);
         }
       }
     }
@@ -441,40 +441,46 @@ throw error;
   }
 
   getDocumentTypeIdByName(documentTypeName) {
-    const documentTypeMap = {
-      "Cédula de Ciudadanía": 1,
-      "Tarjeta de Identidad": 2,
-      "Cédula de Extranjería": 3,
-      Pasaporte: 4,
-      NIT: 5,
-    };
-    return documentTypeMap[documentTypeName] || null;
+    if (!documentTypeName) return null;
+    const normalizedName = documentTypeName.toString().trim();
+    const resolvedCode =
+      DOCUMENT_TYPE_NAME_TO_CODE[normalizedName] || normalizedName.toUpperCase();
+    return DOCUMENT_TYPE_CODE_TO_ID[resolvedCode] || null;
   }
 
   /**
-   * Obtener todos los proveedores para reporte (SIN PAGINACIÓN)
+   * Obtener todos los proveedores para reporte (SIN PAGINACION)
    */
   async findAllForReport({ search = "", status, entityType }) {
     const where = {};
 
-    // Filtro de búsqueda
+    const statusMap = {
+      Activo: "Active",
+      Inactivo: "Inactive",
+    };
+    const entityTypeMap = {
+      juridica: "legal",
+      natural: "natural",
+    };
+
+    // Filtro de busqueda
     if (search && search.trim()) {
       where.OR = [
         { businessName: { contains: search, mode: "insensitive" } },
         { nit: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
-        { contactName: { contains: search, mode: "insensitive" } },
+        { mainContact: { contains: search, mode: "insensitive" } },
       ];
     }
 
     // Filtro de estado
-    if (status) {
-      where.status = status;
+    if (status && status.trim()) {
+      where.status = statusMap[status] || status;
     }
 
     // Filtro de tipo de entidad
-    if (entityType) {
-      where.entityType = entityType;
+    if (entityType && entityType.trim()) {
+      where.entityType = entityTypeMap[entityType] || entityType;
     }
 
     const providers = await prisma.provider.findMany({
@@ -495,7 +501,7 @@ throw error;
 }
 
 /**
- * Función auxiliar para obtener el nombre del tipo de documento
+ * Funcion auxiliar para obtener el nombre del tipo de documento
  */
 export const getDocumentTypeName = async (documentTypeId) => {
   try {
@@ -510,4 +516,5 @@ return null;
 };
 
 export default new ProvidersRepository();
+
 

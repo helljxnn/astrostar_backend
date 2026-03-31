@@ -1,0 +1,66 @@
+{
+  "records": [
+    {
+      "athlete": {
+        "firstName": "Ana",
+        "middleName": "",
+        "lastName": "Lopez",
+        "secondLastName": "Garcia",
+        "documentTypeId": 1,
+        "identification": "100200300",
+        "email": "ana.lopez@example.com",
+        "phoneNumber": "3000000000",
+        "address": "Calle 123",
+        "birthDate": "2010-05-12",
+        "guardianId": 5,
+        "relationship": "Madre",
+        "categoria": "Juvenil",
+        "isScholarship": false,
+        "status": "Active"
+      },
+      "enrollment": {
+        "estado": "Vigente",
+        "fechaInicio": "2025-08-01",
+        "fechaVencimiento": "2026-07-31",
+        "observaciones": "Migrada desde control manual"
+      },
+      "financial": {
+        "monthlyDebtPeriods": ["2026-01", "2026-02"],
+        "waiveHistoricalLateFee": true,
+        "createRenewalObligation": false
+      },
+      "options": {
+        "cutoverDate": "2026-04-01"
+      }
+    },
+    {
+      "athlete": {
+        "firstName": "Laura",
+        "lastName": "Perez",
+        "documentTypeId": 2,
+        "identification": "500600700",
+        "email": "laura.perez@example.com",
+        "phoneNumber": "3010000000",
+        "birthDate": "2003-09-20",
+        "categoria": "Mayores",
+        "isScholarship": false,
+        "status": "Active"
+      },
+      "enrollment": {
+        "estado": "Vencida",
+        "fechaInicio": "2024-01-15",
+        "fechaVencimiento": "2025-01-15",
+        "observaciones": "Pendiente de renovacion al corte"
+      },
+      "financial": {
+        "monthlyDebtStartPeriod": "2025-11",
+        "monthlyDebtEndPeriod": "2026-03",
+        "waiveHistoricalLateFee": true,
+        "createRenewalObligation": true
+      },
+      "options": {
+        "cutoverDate": "2026-04-01"
+      }
+    }
+  ]
+}

@@ -63,6 +63,7 @@ export class RoleController {
       });
     } catch (error) {
       console.error('Error creating role:', error);
+      const normalizedMessage = String(error?.message || "").toLowerCase();
       
       // Error de nombre duplicado de Prisma
       if (error.code === 'P2002') {
@@ -73,7 +74,11 @@ export class RoleController {
       }
 
       // Error personalizado del servicio
-      if (error.message.includes('ya existe')) {
+      if (
+        normalizedMessage.includes("ya existe") ||
+        normalizedMessage.includes("ya esta en uso") ||
+        normalizedMessage.includes("ya está en uso")
+      ) {
         return res.status(400).json({
           success: false,
           message: error.message
@@ -150,6 +155,7 @@ export class RoleController {
       });
     } catch (error) {
       console.error('Error updating role:', error);
+      const normalizedMessage = String(error?.message || "").toLowerCase();
       
       // Error de nombre duplicado de Prisma
       if (error.code === 'P2002') {
@@ -160,7 +166,11 @@ export class RoleController {
       }
 
       // Error personalizado del servicio
-      if (error.message.includes('ya existe')) {
+      if (
+        normalizedMessage.includes("ya existe") ||
+        normalizedMessage.includes("ya esta en uso") ||
+        normalizedMessage.includes("ya está en uso")
+      ) {
         return res.status(400).json({
           success: false,
           message: error.message

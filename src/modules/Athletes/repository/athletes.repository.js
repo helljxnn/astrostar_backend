@@ -71,7 +71,7 @@ export class AthletesRepository {
     };
 
     // Mapear relationship de inglés a español
-    const mapRelationshipToSpanish = (relationship) => {
+    const mapRelationshipToSpanish = (relationship, otherRelationship = null) => {
       const relationshipMap = {
         Mother: "Madre",
         Father: "Padre",
@@ -84,6 +84,10 @@ export class AthletesRepository {
         Family_Friend: "Amigo/a de la familia",
         Other: "Otro",
       };
+      if (relationship === "Other" && otherRelationship) {
+        return otherRelationship;
+      }
+
       return relationshipMap[relationship] || null;
     };
 
@@ -126,7 +130,12 @@ export class AthletesRepository {
         documentTypeId: athlete.guardian.documentTypeId,
         tipoDocumento: athlete.guardian.documentType?.name || '',
       } : null,
-      parentesco: mapRelationshipToSpanish(athlete.relationship),
+      parentesco: mapRelationshipToSpanish(
+        athlete.relationship,
+        athlete.otherRelationship
+      ),
+      otherRelationship: athlete.otherRelationship || null,
+      isScholarship: athlete.isScholarship === true,
       estadoInscripcion: currentInscription
         ? mapInscriptionStatus(currentInscription.status)
         : "Sin inscripción",
@@ -240,6 +249,18 @@ export class AthletesRepository {
     const athleteSpecificData = {
       ...(normalizedStatus ? { status: normalizedStatus } : {}),
       relationship: mapRelationship(athleteData.parentesco),
+      ...(athleteData.otherRelationship !== undefined
+        ? {
+            otherRelationship:
+              athleteData.otherRelationship &&
+              String(athleteData.otherRelationship).trim() !== ""
+                ? String(athleteData.otherRelationship).trim()
+                : null,
+          }
+        : {}),
+      ...(athleteData.isScholarship !== undefined
+        ? { isScholarship: athleteData.isScholarship === true }
+        : {}),
     };
 
     // Manejar guardianId por separado
@@ -252,6 +273,10 @@ export class AthletesRepository {
       if (athleteSpecificData.guardianId && !athleteSpecificData.relationship) {
         athleteSpecificData.relationship = "Other";
       }
+    }
+
+    if (athleteSpecificData.relationship !== "Other") {
+      athleteSpecificData.otherRelationship = null;
     }
 
     return { userData, athleteSpecificData };
@@ -421,10 +446,31 @@ throw error;
         // Sin restricciones de edad
 
         // ✅ NO actualizar passwordHash a menos que haya nueva contraseña
-        const { passwordHash, ...userDataWithoutPassword } = userData;
-        const userUpdateData = passwordHash
-          ? { ...userDataWithoutPassword, passwordHash }
-          : userDataWithoutPassword;
+        const { passwordHash, documentTypeId, ...userDataWithoutPassword } = userData;
+        const allowedUserFields = [
+          "firstName",
+          "middleName",
+          "lastName",
+          "secondLastName",
+          "email",
+          "phoneNumber",
+          "identification",
+          "birthDate",
+          "age",
+          "address",
+        ];
+        const sanitizedUserUpdateData = Object.fromEntries(
+          allowedUserFields
+            .filter((field) => field in athleteData)
+            .map((field) => [field, userDataWithoutPassword[field]]),
+        );
+        const userUpdateData = {
+          ...sanitizedUserUpdateData,
+          ...(documentTypeId
+            ? { documentType: { connect: { id: documentTypeId } } }
+            : {}),
+          ...(passwordHash ? { passwordHash } : {}),
+        };
 
         // Actualizar usuario (solo incluye passwordHash si se envía)
         await tx.user.update({
@@ -441,6 +487,12 @@ throw error;
         const updateData = {
           ...(athleteSpecificData.status ? { status: athleteSpecificData.status } : {}),
           relationship: athleteSpecificData.relationship,
+          ...(athleteSpecificData.otherRelationship !== undefined
+            ? { otherRelationship: athleteSpecificData.otherRelationship }
+            : {}),
+          ...(athleteSpecificData.isScholarship !== undefined
+            ? { isScholarship: athleteSpecificData.isScholarship }
+            : {}),
           ...(athleteData.estado
             ? {
                 currentInscriptionStatus:
@@ -701,9 +753,74 @@ throw error;
                     mode: "insensitive"
                   }
                 }
+              },
+              {
+                guardian: {
+                  firstName: {
+                    contains: searchLower,
+                    mode: "insensitive"
+                  }
+                }
+              },
+              {
+                guardian: {
+                  lastName: {
+                    contains: searchLower,
+                    mode: "insensitive"
+                  }
+                }
               }
             ]
           };
+
+          if (searchWords.length > 1) {
+            searchConditions.OR.push({
+              AND: searchWords.map((word) => ({
+                OR: [
+                  {
+                    user: {
+                      firstName: {
+                        contains: word,
+                        mode: "insensitive"
+                      }
+                    }
+                  },
+                  {
+                    user: {
+                      middleName: {
+                        contains: word,
+                        mode: "insensitive"
+                      }
+                    }
+                  },
+                  {
+                    user: {
+                      lastName: {
+                        contains: word,
+                        mode: "insensitive"
+                      }
+                    }
+                  },
+                  {
+                    user: {
+                      secondLastName: {
+                        contains: word,
+                        mode: "insensitive"
+                      }
+                    }
+                  }
+                ]
+              }))
+            });
+          }
+
+          if (["si", "beca", "becada"].includes(searchLower)) {
+            searchConditions.OR.push({ isScholarship: true });
+          }
+
+          if (["no", "n/a", "na"].includes(searchLower)) {
+            searchConditions.OR.push({ isScholarship: false });
+          }
 
           // ✅ OPTIMIZACIÓN: Búsqueda por nombres usando múltiples palabras
           searchWords.forEach(word => {
@@ -1100,6 +1217,7 @@ throw error;
         data: {
           guardianId: null,
           relationship: null,
+          otherRelationship: null,
         },
       });
 

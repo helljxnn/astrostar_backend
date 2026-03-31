@@ -82,10 +82,13 @@ class CategoriesRepository {
    * Crear categoría
    */
   async create(data, userId) {
+    const descripcion =
+      typeof data.descripcion === "string" ? data.descripcion.trim() : "";
+
     return await prisma.materialCategory.create({
       data: {
         nombre: data.nombre.trim(),
-        descripcion: data.descripcion?.trim() || null,
+        descripcion: descripcion || null,
         estado: "Activo",
         createdBy: userId,
       },
@@ -96,11 +99,14 @@ class CategoriesRepository {
    * Actualizar categoría
    */
   async update(id, data, userId) {
+    const descripcion =
+      typeof data.descripcion === "string" ? data.descripcion.trim() : "";
+
     return await prisma.materialCategory.update({
       where: { id: parseInt(id) },
       data: {
         nombre: data.nombre?.trim(),
-        descripcion: data.descripcion?.trim() || null,
+        descripcion: descripcion || null,
         estado: data.estado,
         updatedBy: userId,
       },
@@ -113,7 +119,9 @@ class CategoriesRepository {
   async toggleStatus(id, userId) {
     const category = await this.findById(id);
     if (!category) {
-      throw new Error("Categoría no encontrada");
+      const notFoundError = new Error("Categoría no encontrada");
+      notFoundError.statusCode = 404;
+      throw notFoundError;
     }
 
     const newStatus = category.estado === "Activo" ? "Inactivo" : "Activo";
@@ -131,6 +139,13 @@ class CategoriesRepository {
    * Eliminar categoría (solo si no tiene materiales)
    */
   async delete(id) {
+    const category = await this.findById(id);
+    if (!category) {
+      const notFoundError = new Error("Categoría no encontrada");
+      notFoundError.statusCode = 404;
+      throw notFoundError;
+    }
+
     // Verificar si tiene materiales asociados
     const materialsCount = await prisma.material.count({
       where: { categoriaId: parseInt(id) },
@@ -180,6 +195,11 @@ class CategoriesRepository {
 
     const result = await prisma.materialCategory.findMany({
       where,
+      include: {
+        _count: {
+          select: { materials: true },
+        },
+      },
       orderBy: { nombre: "asc" },
     });
 

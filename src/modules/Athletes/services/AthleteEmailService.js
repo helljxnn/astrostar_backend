@@ -12,7 +12,7 @@ export class AthleteEmailService extends BaseEmailService {
   async sendAthleteWelcomeEmail(athleteData, credentials) {
     try {
       const { email, firstName, lastName } = athleteData;
-      const { email: loginEmail, temporaryPassword } = credentials;
+      const { email: loginEmail } = credentials;
 
       const mailOptions = {
         from: this.getDefaultFrom(),
@@ -22,13 +22,11 @@ export class AthleteEmailService extends BaseEmailService {
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword,
         ),
         text: this.generateAthleteWelcomeEmailText(
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword,
         ),
       };
 
@@ -53,7 +51,7 @@ export class AthleteEmailService extends BaseEmailService {
   /**
    * Generar template HTML para email de bienvenida de deportista
    */
-  generateAthleteWelcomeEmailTemplate(firstName, lastName, email, password) {
+  generateAthleteWelcomeEmailTemplate(firstName, lastName, email) {
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -89,7 +87,7 @@ export class AthleteEmailService extends BaseEmailService {
                     <strong>📧 Usuario:</strong> ${email}
                 </div>
                 <div class="credential-item">
-                    <strong>🔑 Contraseña:</strong> <code>${password}</code>
+                    <strong>🔑 Contraseña:</strong> Tu número de documento
                 </div>
             </div>
             
@@ -117,7 +115,7 @@ export class AthleteEmailService extends BaseEmailService {
   /**
    * Generar texto plano para email de bienvenida de deportista
    */
-  generateAthleteWelcomeEmailText(firstName, lastName, email, password) {
+  generateAthleteWelcomeEmailText(firstName, lastName, email) {
     return `¡Bienvenido a AstroStar!
 
 Hola ${firstName} ${lastName},
@@ -126,7 +124,7 @@ Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido cr
 
 CREDENCIALES DE ACCESO:
 - Usuario: ${email}
-- Contraseña: ${password}
+- Contraseña: Tu número de documento
 
 Accede al sistema en: ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
 
@@ -246,10 +244,9 @@ Este es un email automático del sistema AstroStar.
         ],
       };
 
-      const result = await this.sendMailWithFallback(mailOptions);
-      return result;
+      return await this.sendMailWithFallback(mailOptions);
     } catch (error) {
-return { success: false, error: error.message };
+      return { success: false, error: error.message };
     }
   }
 
@@ -429,15 +426,11 @@ END:VCALENDAR`;
                 </div>
                 <div style="text-align: center; margin-top: 15px;">
                     <a href="https://www.google.com/maps/place/Unidad+Deportiva+Cristo+Rey/@6.3416350,-75.5084801,17z" 
-                       class="button" 
-                       target="_blank" 
-                       style="color: white;">
+                       class="button" target="_blank" style="color: white;">
                         🗺️ Ver en Google Maps
                     </a>
                     <a href="https://www.google.com/maps/dir/?api=1&destination=6.341634993648127,-75.5084801250086" 
-                       class="button" 
-                       target="_blank" 
-                       style="color: white;">
+                       class="button" target="_blank" style="color: white;">
                         🚗 Cómo llegar
                     </a>
                 </div>
@@ -540,4 +533,3 @@ Unidad Deportiva Cristo Rey, Copacabana, Antioquia`;
 
 // Exportar instancia singleton
 export default new AthleteEmailService();
-

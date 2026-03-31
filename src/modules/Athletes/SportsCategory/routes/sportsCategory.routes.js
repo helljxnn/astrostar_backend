@@ -1,11 +1,61 @@
-﻿import express from 'express';
+import express from 'express';
 import { SportsCategoryController } from '../controllers/sportsCategory.controller.js';
 import { sportsCategoryValidators, handleValidationErrors } from '../validators/sportsCategory.Validation.js';
 import multer from 'multer';
 import { authenticateToken } from '../../../../middlewares/auth.js';
 import { checkPermissions } from '../../../../middlewares/checkPermissions.js';
 
-const upload = multer({ storage: multer.memoryStorage() });
+const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+]);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_IMAGE_SIZE_BYTES },
+  fileFilter: (_req, file, cb) => {
+    if (!file || ALLOWED_IMAGE_MIME_TYPES.has(file.mimetype)) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error("INVALID_IMAGE_TYPE"));
+  },
+});
+
+const uploadSportsCategoryImage = (req, res, next) => {
+  upload.single("file")(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
+
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      res.status(400).json({
+        success: false,
+        message: "La imagen no puede superar 5MB.",
+      });
+      return;
+    }
+
+    if (error.message === "INVALID_IMAGE_TYPE") {
+      res.status(400).json({
+        success: false,
+        message: "Solo se permiten imagenes JPG, PNG o WEBP.",
+      });
+      return;
+    }
+
+    res.status(400).json({
+      success: false,
+      message: "Archivo de imagen invalido.",
+    });
+  });
+};
+
 const router = express.Router();
 const sportsCategoryController = new SportsCategoryController();
 
@@ -171,7 +221,7 @@ router.post(
   '/',
   authenticateToken,
   checkPermissions('sportsCategory', 'Crear'),
-  upload.single('file'),
+  uploadSportsCategoryImage,
   sportsCategoryValidators.create,
   handleValidationErrors,
   (req, res) => sportsCategoryController.createSportsCategory(req, res)
@@ -206,7 +256,7 @@ router.put(
   '/:id',
   authenticateToken,
   checkPermissions('sportsCategory', 'Editar'),
-  upload.single('file'),
+  uploadSportsCategoryImage,
   sportsCategoryValidators.update,
   handleValidationErrors,
   (req, res) => sportsCategoryController.updateSportsCategory(req, res)

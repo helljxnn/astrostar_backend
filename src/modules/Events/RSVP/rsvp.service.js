@@ -240,8 +240,17 @@ export class RSVPService {
    */
   async resendInvitation(invitationId) {
     try {
-      const invitation =
-        await this.rsvpRepository.findByParticipantId(invitationId);
+      const parsedInvitationId = Number.parseInt(invitationId, 10);
+
+      if (!Number.isInteger(parsedInvitationId) || parsedInvitationId <= 0) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: "invitationId invalido",
+        };
+      }
+
+      const invitation = await this.rsvpRepository.findById(parsedInvitationId);
 
       if (!invitation) {
         return {

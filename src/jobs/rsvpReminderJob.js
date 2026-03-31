@@ -9,7 +9,7 @@ import eventEmailService from "../modules/Events/services/EventEmailService.js";
 export function startRSVPReminderJob() {
   // Ejecutar cada hora
   cron.schedule("0 * * * *", async () => {
-    console.log("🔔 [RSVP Job] Ejecutando job de recordatorios RSVP...");
+    console.log("[RSVP Job] Running RSVP reminder job...");
 
     try {
       // Comprobar existencia de la tabla para evitar P2021
@@ -22,14 +22,14 @@ export function startRSVPReminderJob() {
 
       if (!exists) {
         console.warn(
-          "⚠️ [RSVP Job] Tabla event_invitations no existe. Omitiendo job. Ejecuta migraciones si necesitas RSVP.",
+          "[RSVP Job] event_invitations table does not exist. Skipping job. Run migrations if RSVP is required.",
         );
         return;
       }
 
       if (!prisma?.eventInvitation?.findMany) {
         console.warn(
-          "⚠️ [RSVP Job] Prisma client no tiene el modelo eventInvitation. Ejecuta `npm run prisma:generate` (tras detener el backend) para regenerar el cliente.",
+          "[RSVP Job] Prisma client has no eventInvitation model. Run `npm run prisma:generate` (after stopping backend).",
         );
         return;
       }
@@ -63,7 +63,7 @@ export function startRSVPReminderJob() {
       });
 
       console.log(
-        `📬 [RSVP Job] Encontradas ${invitations.length} invitaciones para recordatorio`,
+        `[RSVP Job] Found ${invitations.length} invitations for reminder`,
       );
 
       let successCount = 0;
@@ -82,7 +82,7 @@ export function startRSVPReminderJob() {
               participant,
             );
             console.log(
-              `✅ [RSVP Job] Recordatorio PENDING enviado: ${invitation.recipientEmail}`,
+              `[RSVP Job] Sent PENDING reminder: ${invitation.recipientEmail}`,
             );
           } else if (invitation.status === "CONFIRMED") {
             await eventEmailService.sendConfirmedEventReminder(
@@ -91,7 +91,7 @@ export function startRSVPReminderJob() {
               participant,
             );
             console.log(
-              `✅ [RSVP Job] Recordatorio CONFIRMED enviado: ${invitation.recipientEmail}`,
+              `[RSVP Job] Sent CONFIRMED reminder: ${invitation.recipientEmail}`,
             );
           }
 
@@ -104,7 +104,7 @@ export function startRSVPReminderJob() {
           successCount++;
         } catch (error) {
           console.error(
-            `❌ [RSVP Job] Error enviando recordatorio ${invitation.id}:`,
+            `[RSVP Job] Error sending reminder ${invitation.id}:`,
             error.message,
           );
           errorCount++;
@@ -112,15 +112,15 @@ export function startRSVPReminderJob() {
       }
 
       console.log(
-        `✅ [RSVP Job] Job completado. Exitosos: ${successCount}, Errores: ${errorCount}`,
+        `[RSVP Job] Job completed. Success: ${successCount}, Errors: ${errorCount}`,
       );
     } catch (error) {
-      console.error("❌ [RSVP Job] Error en job de recordatorios:", error);
+      console.error("[RSVP Job] Error in reminder job:", error);
     }
   });
 
   console.log(
-    "✅ [RSVP Job] Job de recordatorios RSVP iniciado (ejecuta cada hora)",
+    "[RSVP Job] RSVP reminder job started (runs every hour)",
   );
 }
 

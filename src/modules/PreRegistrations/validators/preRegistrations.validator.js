@@ -27,6 +27,13 @@ export const preRegistrationSchemas = {
       if (!data.email) {
         errors.push({ field: 'email', message: 'Correo es requerido' });
       }
+
+      if (data.acceptDataPolicy !== true) {
+        errors.push({
+          field: 'acceptDataPolicy',
+          message: 'Debes aceptar la política de tratamiento de datos'
+        });
+      }
       
       // middleName y secondLastName son opcionales, no se validan
       

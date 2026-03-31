@@ -9,6 +9,26 @@ const router = Router();
 router.use(authenticateToken);
 
 // Rutas de matrículas
+router.post(
+  "/legacy-import/preview",
+  checkPermissions("enrollments", "Aceptar"),
+  enrollmentsController.previewLegacyImport
+);
+router.post(
+  "/legacy-import/batch/preview",
+  checkPermissions("enrollments", "Aceptar"),
+  enrollmentsController.previewLegacyImportBatch
+);
+router.post(
+  "/legacy-import",
+  checkPermissions("enrollments", "Aceptar"),
+  enrollmentsController.createLegacyImport
+);
+router.post(
+  "/legacy-import/batch",
+  checkPermissions("enrollments", "Aceptar"),
+  enrollmentsController.createLegacyImportBatch
+);
 router.post("/", checkPermissions("enrollments", "Aceptar"), enrollmentsController.create);
 router.get("/report", checkPermissions("enrollments", "Ver"), enrollmentsController.findAllForReport); // ANTES de /:id
 router.get("/", checkPermissions("enrollments", "Ver"), enrollmentsController.findAll);

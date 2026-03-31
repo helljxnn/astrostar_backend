@@ -372,19 +372,6 @@ throw error;
     }
   }
 
-  async getDocumentTypes() {
-    try {
-      const documentTypes = await this.providersRepository.getDocumentTypes();
-      return {
-        success: true,
-        data: documentTypes,
-        message: "Tipos de documento obtenidos exitosamente.",
-      };
-    } catch (error) {
-throw error;
-    }
-  }
-
   async getReferenceData() {
     try {
       const documentTypes = await this.providersRepository.getDocumentTypes();
@@ -443,7 +430,7 @@ throw error;
    */
   async getAllProvidersForReport({ search = "", status, entityType }) {
     try {
-      const providers = await providersRepository.findAllForReport({
+      const providers = await this.providersRepository.findAllForReport({
         search,
         status,
         entityType,

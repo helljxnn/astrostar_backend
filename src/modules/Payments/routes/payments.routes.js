@@ -11,10 +11,12 @@ import { uploadPaymentReceipt } from "../../../services/shared/middleware/upload
 
 const router = Router();
 
-// Ruta simple para probar
-router.get('/test', (req, res) => {
-  res.json({ message: 'Payments routes working - updated' });
-});
+if (process.env.NODE_ENV === 'development') {
+  // Ruta mínima de diagnóstico solo disponible en desarrollo
+  router.get('/test', (req, res) => {
+    res.json({ message: 'Payments routes working - updated' });
+  });
+}
 
 // ============================================================================
 // RUTAS PARA DEPORTISTAS (RESTAURADAS)
@@ -101,7 +103,20 @@ router.get('/pending', authenticateToken, requirePaymentAdminPermissions('Ver'),
 router.get('/history/report', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getPaymentHistoryForReport); // ANTES de /all
 router.get('/all', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getAllPayments);
 router.get('/monthly-management', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getMonthlyPaymentsManagement);
-router.patch('/:paymentId/approve', authenticateToken, requirePaymentAdminPermissions('Aprobar'), paymentsController.approvePayment);
-router.patch('/:paymentId/reject', authenticateToken, requirePaymentAdminPermissions('Rechazar'), paymentsController.rejectPayment);
+router.patch(
+  '/:paymentId/approve',
+  authenticateToken,
+  paymentsValidator.validatePaymentId,
+  requirePaymentAdminPermissions('Aprobar'),
+  paymentsController.approvePayment
+);
+router.patch(
+  '/:paymentId/reject',
+  authenticateToken,
+  paymentsValidator.validatePaymentId,
+  paymentsValidator.validateRejectPayment,
+  requirePaymentAdminPermissions('Rechazar'),
+  paymentsController.rejectPayment
+);
 
 export default router;

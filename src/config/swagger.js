@@ -126,7 +126,7 @@ const options = {
             },
             nit: { 
               type: "string",
-              description: "NIT for juridica (10 digits) or identification document for natural (varies by document type)"
+              description: "NIT for juridica (9 or 10 digits) or identification document for natural (varies by document type)"
             },
             tipoDocumento: { 
               type: "integer",

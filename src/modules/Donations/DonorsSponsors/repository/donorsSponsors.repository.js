@@ -283,13 +283,19 @@ export class DonorsSponsorsRepository {
   }
 
   async delete(id) {
-    const hasRelations = await prisma.serviceSponsor.count({
-      where: { sponsorId: parseInt(id) },
-    });
+    const sponsorId = parseInt(id);
+    const [serviceRelations, donationRelations] = await Promise.all([
+      prisma.serviceSponsor.count({
+        where: { sponsorId },
+      }),
+      prisma.donation.count({
+        where: { donorSponsorId: sponsorId },
+      }),
+    ]);
 
-    if (hasRelations > 0) {
+    if (serviceRelations > 0 || donationRelations > 0) {
       throw new Error(
-        "No se puede eliminar porque est\u00e1 asociado a eventos o servicios"
+        "No se puede eliminar porque est\u00e1 asociado a donaciones o servicios"
       );
     }
 

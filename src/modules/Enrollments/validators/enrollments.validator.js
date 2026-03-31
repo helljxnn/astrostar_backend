@@ -47,6 +47,68 @@ const validateEnrollment = (enrollment) => {
   return errors;
 };
 
+const validateLegacyEnrollment = (enrollment) => {
+  const errors = [];
+  const validStates = ["Vigente", "Vencida"];
+
+  if (!enrollment.estado) {
+    errors.push({ field: "estado", message: "Estado de matricula es requerido" });
+    return errors;
+  }
+
+  if (!validStates.includes(enrollment.estado)) {
+    errors.push({
+      field: "estado",
+      message: "Estado invalido para importacion legacy. Usa Vigente o Vencida",
+    });
+  }
+
+  return errors;
+};
+
+const validateLegacyImportPayload = (data) => {
+  const errors = [];
+
+  if (!data.athlete) {
+    errors.push({ field: "athlete", message: "Datos del deportista son requeridos" });
+  } else {
+    errors.push(...validateAthlete(data.athlete));
+  }
+
+  if (!data.enrollment) {
+    errors.push({ field: "enrollment", message: "Datos de matricula son requeridos" });
+  } else {
+    errors.push(...validateLegacyEnrollment(data.enrollment));
+  }
+
+  if (errors.length > 0) {
+    return { error: { details: errors }, value: null };
+  }
+
+  return { error: null, value: data };
+};
+
+const validateLegacyImportBatchPayload = (data) => {
+  const errors = [];
+
+  if (!data || typeof data !== "object") {
+    errors.push({ field: "body", message: "El cuerpo de la solicitud es requerido" });
+  }
+
+  if (!Array.isArray(data?.records) || data.records.length === 0) {
+    errors.push({
+      field: "records",
+      message: "Debes enviar al menos un registro para la importación masiva",
+    });
+  }
+
+  if (errors.length > 0) {
+    return { error: { details: errors }, value: null };
+  }
+
+  return { error: null, value: data };
+};
+
 export const enrollmentSchemas = {
   create: {
     validate: (data) => {
@@ -82,6 +144,14 @@ export const enrollmentSchemas = {
       
       return { error: null, value: data };
     }
+  },
+
+  legacyImport: {
+    validate: (data) => validateLegacyImportPayload(data)
+  },
+
+  legacyImportBatch: {
+    validate: (data) => validateLegacyImportBatchPayload(data)
   }
 };
 

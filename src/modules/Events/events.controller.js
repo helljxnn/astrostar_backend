@@ -203,7 +203,7 @@ export class EventsController {
         message: `Se encontraron ${result.pagination.total} eventos.`,
       });
     } catch (error) {
-      console.error("❌ Error en getAllEvents:", error);
+      console.error("Error in getAllEvents:", error);
       console.error("Stack trace:", error.stack);
 
       res.status(500).json({

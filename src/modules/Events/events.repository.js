@@ -473,16 +473,16 @@ export class EventsRepository {
       if (error.code === "P2003") {
         // Foreign key constraint failed
         if (error.meta?.field_name?.includes("sportsCategoryId")) {
-          throw new Error("Una de las categorÃƒÂ­as seleccionadas no existe");
+          throw new Error("Una de las categorias seleccionadas no existe");
         }
         if (error.meta?.field_name?.includes("categoryId")) {
-          throw new Error("La categorÃƒÂ­a del evento seleccionada no existe");
+          throw new Error("La categoria del evento seleccionada no existe");
         }
         if (error.meta?.field_name?.includes("typeId")) {
           throw new Error("El tipo de evento seleccionado no existe");
         }
         throw new Error(
-          "Error de relaciÃƒÂ³n: uno de los IDs proporcionados no existe",
+          "Error de relacion: uno de los IDs proporcionados no existe",
         );
       }
 
@@ -660,16 +660,16 @@ export class EventsRepository {
       if (error.code === "P2003") {
         // Foreign key constraint failed
         if (error.meta?.field_name?.includes("sportsCategoryId")) {
-          throw new Error("Una de las categorÃƒÂ­as seleccionadas no existe");
+          throw new Error("Una de las categorias seleccionadas no existe");
         }
         if (error.meta?.field_name?.includes("categoryId")) {
-          throw new Error("La categorÃƒÂ­a del evento seleccionada no existe");
+          throw new Error("La categoria del evento seleccionada no existe");
         }
         if (error.meta?.field_name?.includes("typeId")) {
           throw new Error("El tipo de evento seleccionado no existe");
         }
         throw new Error(
-          "Error de relaciÃƒÂ³n: uno de los IDs proporcionados no existe",
+          "Error de relacion: uno de los IDs proporcionados no existe",
         );
       }
 
@@ -683,20 +683,32 @@ export class EventsRepository {
   async delete(id) {
     try {
       const eventId = parseInt(id);
+      const deleted = await prisma.$transaction(async (tx) => {
+        // ServiceSponsor no tiene cascada en el esquema actual,
+        // por eso se limpia manualmente antes de eliminar el evento.
+        await tx.serviceSponsor.deleteMany({
+          where: { serviceId: eventId },
+        });
 
-      // Prisma eliminarÃƒÂ¡ automÃƒÂ¡ticamente en cascada:
-      // - ServiceSponsor (onDelete: Cascade)
-      // - Participant (onDelete: Cascade)
-      const deleted = await prisma.service.delete({
-        where: { id: eventId },
+        // Donation.serviceId es opcional; se desacopla para preservar historial.
+        await tx.donation.updateMany({
+          where: { serviceId: eventId },
+          data: { serviceId: null },
+        });
+
+        // Participant, ServiceSportsCategory, EventMaterial y EventMaterialReusable
+        // sí se eliminan por cascada desde Service.
+        return tx.service.delete({
+          where: { id: eventId },
+        });
       });
 
       return deleted;
     } catch (error) {
-      // Proporcionar mensajes de error mÃƒÂ¡s especÃƒÂ­ficos
+      // Proporcionar mensajes de error más específicos
       if (error.code === "P2003") {
         throw new Error(
-          "No se puede eliminar el evento debido a restricciones de clave forÃƒÂ¡nea. Verifica que no tenga relaciones activas.",
+          "No se puede eliminar el evento debido a restricciones de clave foránea. Verifica que no tenga relaciones activas.",
         );
       }
 
@@ -931,7 +943,7 @@ export class EventsRepository {
   }
 
   /**
-   * Obtener eventos agrupados por trimestre y aÃƒÂ±o
+   * Obtener eventos agrupados por trimestre y anio
    */
   async getEventsByQuarter() {
     try {
@@ -946,7 +958,7 @@ export class EventsRepository {
         },
       });
 
-      // Agrupar eventos por aÃƒÂ±o y trimestre
+      // Agrupar eventos por anio y trimestre
       const groupedData = {};
 
       events.forEach((event) => {
@@ -957,7 +969,7 @@ export class EventsRepository {
         // Determinar el trimestre (1-4)
         const quarter = Math.ceil(month / 3);
 
-        // Inicializar el aÃƒÂ±o si no existe
+        // Inicializar el anio si no existe
         if (!groupedData[year]) {
           groupedData[year] = { 1: 0, 2: 0, 3: 0, 4: 0 };
         }
@@ -969,7 +981,7 @@ export class EventsRepository {
       // Convertir a formato de array para el frontend
       const result = [];
 
-      // Obtener los ÃƒÂºltimos 3 aÃƒÂ±os con datos
+      // Obtener los ultimos 3 anios con datos
       const years = Object.keys(groupedData)
         .map(Number)
         .sort((a, b) => b - a)
@@ -982,7 +994,7 @@ export class EventsRepository {
         };
 
         years.forEach((year) => {
-          quarterData[`aÃƒÂ±o${year}`] = groupedData[year]?.[quarter] || 0;
+          quarterData[`anio${year}`] = groupedData[year]?.[quarter] || 0;
         });
 
         result.push(quarterData);
@@ -1275,7 +1287,7 @@ export class EventsRepository {
       // Construir filtros
       const where = {
         status: "Active", // Solo deportistas activos
-        currentInscriptionStatus: "Active", // Solo con inscripciÃƒÂ³n vigente
+        currentInscriptionStatus: "Active", // Solo con inscripcion vigente
       };
 
       // Filtro de bÃƒÂºsqueda
@@ -1342,7 +1354,7 @@ export class EventsRepository {
               orderBy: {
                 inscriptionDate: "desc",
               },
-              take: 1, // Solo la inscripciÃƒÂ³n mÃƒÂ¡s reciente
+              take: 1, // Solo la inscripcion mas reciente
             },
             guardian: {
               select: {
@@ -1499,7 +1511,7 @@ export class EventsRepository {
       }
 
       if (athlete.currentInscriptionStatus !== "Active") {
-        throw new Error("La deportista debe tener una inscripciÃƒÂ³n vigente");
+        throw new Error("La deportista debe tener una inscripcion vigente");
       }
 
       // Verificar que no estÃƒÂ© ya inscrita en este evento
@@ -1511,7 +1523,7 @@ export class EventsRepository {
       });
 
       if (existingParticipant) {
-        throw new Error("La deportista ya estÃƒÂ¡ inscrita en este evento");
+        throw new Error("La deportista ya esta inscrita en este evento");
       }
 
       // Usar la categorÃƒÂ­a de la inscripciÃƒÂ³n activa si no se especifica una
@@ -1620,7 +1632,7 @@ export class EventsRepository {
       });
 
       if (!participant) {
-        throw new Error("La deportista no estÃƒÂ¡ inscrita en este evento");
+        throw new Error("La deportista no esta inscrita en este evento");
       }
 
       // Eliminar la participaciÃƒÂ³n

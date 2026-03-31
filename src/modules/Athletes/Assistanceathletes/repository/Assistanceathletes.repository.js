@@ -2,7 +2,9 @@
 
 export class AssistanceathletesRepository {
   isAttendanceTableMissing(error) {
-    return error?.code === "P2021" && error?.meta?.modelName === "AthleteAttendance";
+    return (
+      error?.code === "P2021" && error?.meta?.modelName === "AthleteAttendance"
+    );
   }
 
   normalizeDate(dateString) {
@@ -19,7 +21,10 @@ export class AssistanceathletesRepository {
     const birth = new Date(birthDate);
     let age = today.getFullYear() - birth.getFullYear();
     const monthDiff = today.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birth.getDate())
+    ) {
       age--;
     }
     return age;
@@ -29,17 +34,44 @@ export class AssistanceathletesRepository {
     const where = {};
 
     if (search) {
-      where.OR = [
-        {
-          user: {
-            OR: [
-              { firstName: { contains: search, mode: "insensitive" } },
-              { lastName: { contains: search, mode: "insensitive" } },
-              { identification: { contains: search, mode: "insensitive" } },
-              { email: { contains: search, mode: "insensitive" } },
+      const userConditions = [
+        { firstName: { contains: search, mode: "insensitive" } },
+        { lastName: { contains: search, mode: "insensitive" } },
+        { identification: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } },
+      ];
+
+      // Búsqueda por nombre completo (ej: "Martha Cataño")
+      const parts = search.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        userConditions.push(
+          {
+            AND: [
+              { firstName: { contains: parts[0], mode: "insensitive" } },
+              {
+                lastName: {
+                  contains: parts.slice(1).join(" "),
+                  mode: "insensitive",
+                },
+              },
             ],
           },
-        },
+          {
+            AND: [
+              { lastName: { contains: parts[0], mode: "insensitive" } },
+              {
+                firstName: {
+                  contains: parts.slice(1).join(" "),
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        );
+      }
+
+      where.OR = [
+        { user: { OR: userConditions } },
         {
           inscriptions: {
             some: {
@@ -66,11 +98,17 @@ export class AssistanceathletesRepository {
   }
 
   buildPagination(page, limit, total) {
+    const currentPage = parseInt(page, 10);
+    const pageLimit = parseInt(limit, 10);
+    const pages = Math.ceil(total / pageLimit);
+
     return {
-      page: parseInt(page, 10),
-      limit: parseInt(limit, 10),
+      page: currentPage,
+      limit: pageLimit,
       total,
-      pages: Math.ceil(total / limit),
+      pages,
+      hasNext: currentPage < pages,
+      hasPrev: currentPage > 1,
     };
   }
 
@@ -147,11 +185,11 @@ export class AssistanceathletesRepository {
     }
 
     const attendanceMap = new Map(
-      attendanceRecords.map((record) => [record.athleteId, record])
+      attendanceRecords.map((record) => [record.athleteId, record]),
     );
 
     const data = athletes.map((athlete) =>
-      this.mapAttendance(athlete, attendanceMap)
+      this.mapAttendance(athlete, attendanceMap),
     );
 
     return {
@@ -181,7 +219,7 @@ export class AssistanceathletesRepository {
           asistencia: item.asistencia,
           observacion: item.observacion || "",
         },
-      })
+      }),
     );
 
     try {
@@ -189,11 +227,20 @@ export class AssistanceathletesRepository {
     } catch (error) {
       if (this.isAttendanceTableMissing(error)) {
         const missingTableError = new Error(
-          "La tabla de asistencias no está disponible. Ejecuta las migraciones pendientes."
+          "La tabla de asistencias no está disponible. Ejecuta las migraciones pendientes.",
         );
         missingTableError.statusCode = 503;
         throw missingTableError;
       }
+
+      if (error?.code === "P2003") {
+        const foreignKeyError = new Error(
+          "Uno o más deportistas no existen o no son válidos.",
+        );
+        foreignKeyError.statusCode = 400;
+        throw foreignKeyError;
+      }
+
       throw error;
     }
     return true;
@@ -242,7 +289,10 @@ export class AssistanceathletesRepository {
               },
             },
           },
-          orderBy: [{ user: { firstName: "asc" } }, { user: { lastName: "asc" } }],
+          orderBy: [
+            { user: { firstName: "asc" } },
+            { user: { lastName: "asc" } },
+          ],
         }),
         prisma.athlete.count({ where }),
       ]);
@@ -263,7 +313,10 @@ export class AssistanceathletesRepository {
               orderBy: { inscriptionDate: "desc" },
             },
           },
-          orderBy: [{ user: { firstName: "asc" } }, { user: { lastName: "asc" } }],
+          orderBy: [
+            { user: { firstName: "asc" } },
+            { user: { lastName: "asc" } },
+          ],
         }),
         prisma.athlete.count({ where }),
       ]);
@@ -332,4 +385,3 @@ export class AssistanceathletesRepository {
     }));
   }
 }
-

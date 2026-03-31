@@ -105,7 +105,7 @@ router.get(
  *         required: true
  *         schema:
  *           type: string
- *         description: NIT for juridica (10 digits) or identification document for natural
+ *         description: NIT for juridica (9 or 10 digits) or identification document for natural
  *         example: "1234567890"
  *       - in: query
  *         name: excludeId
@@ -442,7 +442,7 @@ router.get(
  *                 type: string
  *                 format: email
  *                 maxLength: 150
- *                 description: Email address (optional)
+ *                 description: Email address
  *               telefono:
  *                 type: string
  *                 minLength: 7

@@ -1,236 +1,291 @@
-import categoriesRepository from '../repository/categories.repository.js';
+import categoriesRepository from "../repository/categories.repository.js";
 
 class CategoriesService {
-  /**
-   * Obtener todas las categorías con paginación
-   */
-  async getAll({ page = 1, limit = 10, search = '', estado = null }) {
-    try {
-      const result = await categoriesRepository.findAll({
-        page: parseInt(page),
-        limit: parseInt(limit),
-        search: search.toString().trim(),
-        estado,
-      });
+  constructor() {
+    this.allowedStatusValues = ["Activo", "Inactivo"];
+  }
 
-      return {
-        success: true,
-        data: result.categories,
-        pagination: {
-          total: result.total,
-          page: result.page,
-          limit: result.limit,
-          totalPages: result.pages,
-        },
-      };
-    } catch (error) {
-throw error;
+  createValidationError(message) {
+    const validationError = new Error(message);
+    validationError.statusCode = 400;
+    return validationError;
+  }
+
+  normalizeStatusFilter(estado) {
+    if (estado === undefined || estado === null || estado === "") {
+      return null;
     }
+
+    if (!this.allowedStatusValues.includes(estado)) {
+      throw this.createValidationError("El filtro de estado debe ser Activo o Inactivo");
+    }
+
+    return estado;
   }
 
   /**
-   * Obtener categoría por ID
+   * Obtener todas las categorias con paginacion
+   */
+  async getAll({ page = 1, limit = 10, search = "", estado = null }) {
+    const normalizedStatus = this.normalizeStatusFilter(estado);
+
+    const result = await categoriesRepository.findAll({
+      page: parseInt(page, 10),
+      limit: parseInt(limit, 10),
+      search: search.toString().trim(),
+      estado: normalizedStatus,
+    });
+
+    return {
+      success: true,
+      data: result.categories,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.pages,
+      },
+    };
+  }
+
+  /**
+   * Obtener categoria por ID
    */
   async getById(id) {
-    try {
-      const category = await categoriesRepository.findById(id);
+    const category = await categoriesRepository.findById(id);
 
-      if (!category) {
-        return {
-          success: false,
-          statusCode: 404,
-          message: 'Categoría no encontrada',
-        };
-      }
-
+    if (!category) {
       return {
-        success: true,
-        data: category,
+        success: false,
+        statusCode: 404,
+        message: "Categoria no encontrada",
       };
-    } catch (error) {
-throw error;
     }
+
+    return {
+      success: true,
+      data: category,
+    };
   }
 
   /**
-   * Crear categoría
+   * Crear categoria
    */
   async create(data, userId) {
     try {
-      // Validar datos
       this.validateCategoryData(data);
 
-      // Validar nombre único
       const exists = await categoriesRepository.existsByName(data.nombre);
       if (exists) {
         return {
           success: false,
           statusCode: 400,
-          message: 'Ya existe una categoría con este nombre',
+          message: "Ya existe una categoria con este nombre",
         };
       }
 
       const category = await categoriesRepository.create(data, userId);
-
       return {
         success: true,
         data: category,
-        message: `Categoría "${category.nombre}" creada exitosamente`,
+        message: `Categoria "${category.nombre}" creada exitosamente`,
       };
     } catch (error) {
-throw error;
+      if (error?.statusCode) {
+        return {
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message,
+        };
+      }
+      throw error;
     }
   }
 
   /**
-   * Actualizar categoría
+   * Actualizar categoria
    */
   async update(id, data, userId) {
     try {
-      // Validar datos
       this.validateCategoryData(data);
 
-      // Verificar que existe
       const exists = await categoriesRepository.findById(id);
       if (!exists) {
         return {
           success: false,
           statusCode: 404,
-          message: 'Categoría no encontrada',
+          message: "Categoria no encontrada",
         };
       }
 
-      // Validar nombre único (excepto el mismo registro)
       const nameExists = await categoriesRepository.existsByName(data.nombre, id);
       if (nameExists) {
         return {
           success: false,
           statusCode: 400,
-          message: 'Ya existe otra categoría con este nombre',
+          message: "Ya existe otra categoria con este nombre",
         };
       }
 
       const category = await categoriesRepository.update(id, data, userId);
-
       return {
         success: true,
         data: category,
-        message: `Categoría "${category.nombre}" actualizada exitosamente`,
+        message: `Categoria "${category.nombre}" actualizada exitosamente`,
       };
     } catch (error) {
-throw error;
+      if (error?.statusCode) {
+        return {
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message,
+        };
+      }
+      throw error;
     }
   }
 
   /**
-   * Cambiar estado de categoría
+   * Cambiar estado de categoria
    */
   async toggleStatus(id, userId) {
     try {
       const category = await categoriesRepository.toggleStatus(id, userId);
-
       return {
         success: true,
         data: category,
         message: `Estado actualizado a "${category.estado}"`,
       };
     } catch (error) {
-throw error;
+      if (error?.statusCode) {
+        return {
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message,
+        };
+      }
+      throw error;
     }
   }
 
   /**
-   * Eliminar categoría
+   * Eliminar categoria
    */
   async delete(id) {
     try {
       await categoriesRepository.delete(id);
-
       return {
         success: true,
-        message: 'Categoría eliminada exitosamente',
+        message: "Categoria eliminada exitosamente",
       };
     } catch (error) {
-      if (error.message.includes('material(es) asociado(s)')) {
+      if (error?.statusCode) {
+        return {
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message,
+        };
+      }
+
+      if (error.message.includes("material(es) asociado(s)")) {
         return {
           success: false,
           statusCode: 400,
           message: error.message,
         };
       }
-throw error;
+
+      throw error;
     }
   }
 
   /**
-   * Obtener categorías activas (para selectores)
+   * Obtener categorias activas (para selectores)
    */
   async getActiveCategories() {
-    try {
-      const categories = await categoriesRepository.findAllActive();
-
-      return {
-        success: true,
-        data: categories,
-      };
-    } catch (error) {
-throw error;
-    }
+    const categories = await categoriesRepository.findAllActive();
+    return {
+      success: true,
+      data: categories,
+    };
   }
 
   /**
    * Verificar disponibilidad de nombre
    */
   async checkNameAvailability(nombre, excludeId = null) {
-    try {
-      const exists = await categoriesRepository.existsByName(nombre, excludeId);
-
-      return {
-        success: true,
-        available: !exists,
-        message: exists ? 'El nombre ya está en uso' : 'Nombre disponible',
-      };
-    } catch (error) {
-throw error;
-    }
+    const exists = await categoriesRepository.existsByName(nombre, excludeId);
+    return {
+      success: true,
+      available: !exists,
+      message: exists ? "El nombre ya esta en uso" : "Nombre disponible",
+    };
   }
 
   /**
-   * Validar datos de la categoría
+   * Validar datos de la categoria
    */
   validateCategoryData(data) {
-    if (!data.nombre || !data.nombre.trim()) {
-      throw new Error('El nombre es obligatorio');
+    if (!data || typeof data !== "object") {
+      throw this.createValidationError("Datos invalidos para la categoria");
+    }
+
+    if (typeof data.nombre !== "string") {
+      throw this.createValidationError("El nombre debe ser texto");
+    }
+
+    if (!data.nombre.trim()) {
+      throw this.createValidationError("El nombre es obligatorio");
     }
 
     if (data.nombre.trim().length < 3) {
-      throw new Error('El nombre debe tener al menos 3 caracteres');
+      throw this.createValidationError("El nombre debe tener al menos 3 caracteres");
     }
 
     if (data.nombre.trim().length > 100) {
-      throw new Error('El nombre no puede exceder 100 caracteres');
+      throw this.createValidationError("El nombre no puede exceder 100 caracteres");
+    }
+
+    if (
+      data.descripcion !== undefined &&
+      data.descripcion !== null &&
+      typeof data.descripcion !== "string"
+    ) {
+      throw this.createValidationError("La descripcion debe ser texto");
+    }
+
+    if (
+      typeof data.descripcion === "string" &&
+      data.descripcion.trim().length > 500
+    ) {
+      throw this.createValidationError("La descripcion no puede exceder 500 caracteres");
+    }
+
+    if (
+      data.estado !== undefined &&
+      data.estado !== null &&
+      !this.allowedStatusValues.includes(data.estado)
+    ) {
+      throw this.createValidationError("El estado debe ser Activo o Inactivo");
     }
   }
 
   /**
-   * Obtener todas las categorías para reporte (SIN PAGINACIÓN)
+   * Obtener todas las categorias para reporte (sin paginacion)
    */
-  async getAllForReport({ search = '', estado = null }) {
-    try {
-      const result = await categoriesRepository.findAllForReport({
-        search: search.toString().trim(),
-        estado,
-      });
+  async getAllForReport({ search = "", estado = null }) {
+    const normalizedStatus = this.normalizeStatusFilter(estado);
 
-      return {
-        success: true,
-        data: result.categories,
-      };
-    } catch (error) {
-throw error;
-    }
+    const result = await categoriesRepository.findAllForReport({
+      search: search.toString().trim(),
+      estado: normalizedStatus,
+    });
+
+    return {
+      success: true,
+      data: result.categories,
+    };
   }
 }
 
 export default new CategoriesService();
-

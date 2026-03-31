@@ -1,4 +1,4 @@
-import DonationsService from "../services/donations.services.js";
+﻿import DonationsService from "../services/donations.services.js";
 
 export class DonationsController {
   list = async (req, res) => {
@@ -47,7 +47,7 @@ res.status(500).json({
     } catch (error) {
 res.status(500).json({
         success: false,
-        message: "Error al obtener la donación",
+        message: "Error al obtener la donacion",
       });
     }
   };
@@ -69,7 +69,7 @@ res.status(500).json({
     } catch (error) {
 res.status(500).json({
         success: false,
-        message: "Error al crear la donación",
+        message: "Error al crear la donacion",
       });
     }
   };
@@ -98,7 +98,7 @@ res.status(500).json({
     } catch (error) {
 res.status(500).json({
         success: false,
-        message: "Error al actualizar la donación",
+        message: "Error al actualizar la donacion",
       });
     }
   };
@@ -112,7 +112,7 @@ res.status(500).json({
     } catch (error) {
 res.status(500).json({
         success: false,
-        message: "Error al cambiar estado de la donación",
+        message: "Error al cambiar estado de la donacion",
       });
     }
   };
@@ -125,7 +125,7 @@ res.status(500).json({
     } catch (error) {
 res.status(500).json({
         success: false,
-        message: "Error al eliminar la donación",
+        message: "Error al eliminar la donacion",
       });
     }
   };
@@ -146,12 +146,19 @@ res.status(500).json({
       );
       res.status(201).json(result);
     } catch (error) {
-const status = error.message?.includes("5MB") ? 400 : 500;
+      const message = error?.message || "";
+      const isFileValidationError =
+        error?.code === "LIMIT_FILE_SIZE" ||
+        /archivo|pdf|jpg|png|filetype|limite|5mb/i.test(message);
+      const status = isFileValidationError ? 400 : 500;
+
       res.status(status).json({
         success: false,
         message:
-          error.message ||
-          "Error al subir archivos. Verifique tipo y tamaño (PDF/JPG/PNG, max 5MB).",
+          error?.code === "LIMIT_FILE_SIZE"
+            ? "El archivo supera el limite de 5MB."
+            : message ||
+              "Error al subir archivos. Verifique tipo y tamaño (PDF/JPG/PNG, max 5MB).",
       });
     }
   };
@@ -190,7 +197,7 @@ const status = error.message?.includes("5MB") ? 400 : 500;
     } catch (error) {
 res.status(500).json({
         success: false,
-        message: "Error al convertir donación en materiales",
+        message: "Error al convertir donacion en materiales",
       });
     }
   };
@@ -212,7 +219,7 @@ res.status(500).json({
     } catch (error) {
 res.status(500).json({
         success: false,
-        message: "Error al obtener materiales de la donación",
+        message: "Error al obtener materiales de la donacion",
       });
     }
   };
@@ -262,7 +269,7 @@ res.status(500).json({
     } catch (error) {
 res.status(500).json({
         success: false,
-        message: "Error al convertir y asignar donación al evento",
+        message: "Error al convertir y asignar donacion al evento",
       });
     }
   };
@@ -288,7 +295,7 @@ res.status(500).json({
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="Certificado_Donación_${result.filename}.pdf"`,
+        `attachment; filename="Certificado_Donacion_${result.filename}.pdf"`,
       );
 
       // Send PDF buffer
@@ -296,11 +303,12 @@ res.status(500).json({
     } catch (error) {
 res.status(500).json({
         success: false,
-        message: "Error al generar el certificado de donación",
+        message: "Error al generar el certificado de donacion",
       });
     }
   };
 }
 
 export default new DonationsController();
+
 

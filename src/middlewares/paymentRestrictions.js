@@ -76,7 +76,7 @@ export const checkPaymentRestrictions = async (req, res, next) => {
     next();
 
   } catch (error) {
-    console.error('❌ Error verificando restricciones:', error);
+    console.error('Error verificando restricciones:', error);
     // En caso de error, permitir acceso normal para no bloquear el sistema
     next();
   }
@@ -115,7 +115,7 @@ export const globalPaymentProtection = async (req, res, next) => {
     next();
 
   } catch (error) {
-    console.error('❌ Error en protección global:', error);
+    console.error('Error en proteccion global:', error);
     next();
   }
 };
@@ -200,7 +200,7 @@ export const isAthleteRestricted = async (athleteId) => {
     };
 
   } catch (error) {
-    console.error('❌ Error verificando restricciones:', error);
+    console.error('Error verificando restricciones:', error);
     return { restricted: false };
   }
 };

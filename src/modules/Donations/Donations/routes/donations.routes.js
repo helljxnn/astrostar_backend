@@ -15,15 +15,34 @@ const fileFilter = (req, file, cb) => {
   const allowed = ["application/pdf", "image/jpeg", "image/png"];
   if (allowed.includes(file.mimetype)) return cb(null, true);
   return cb(
-    new Error("Archivo invalido. Solo PDF, JPG o PNG de maximo 10MB."),
+    new Error("Archivo invalido. Solo PDF, JPG o PNG de maximo 5MB."),
     false,
   );
 };
 const upload = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
+const uploadFilesMiddleware = (req, res, next) => {
+  upload.array("files")(req, res, (error) => {
+    if (!error) return next();
+
+    if (error instanceof multer.MulterError && error.code === "LIMIT_FILE_SIZE") {
+      return res.status(400).json({
+        success: false,
+        message: "El archivo supera el limite de 5MB.",
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      message:
+        error.message ||
+        "Error al procesar archivos. Verifique tipo y tamaño (PDF/JPG/PNG, max 5MB).",
+    });
+  });
+};
 
 // Todas las rutas requieren autenticación
 router.use(authenticateToken);
@@ -81,7 +100,7 @@ router.post(
   checkPermissions("donations", "Editar"),
   donationValidators.uploadFiles,
   handleDonationValidation,
-  upload.array("files"),
+  uploadFilesMiddleware,
   DonationsController.uploadFiles,
 );
 

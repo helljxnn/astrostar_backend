@@ -1,5 +1,8 @@
 ﻿import { Router } from "express";
 import { RSVPController } from "./rsvp.controller.js";
+import { authenticateToken } from "../../../middlewares/auth.js";
+import { checkPermissions } from "../../../middlewares/checkPermissions.js";
+import { publicLimiter } from "../../../middlewares/rateLimiter.js";
 
 const router = Router();
 const rsvpController = new RSVPController();
@@ -40,7 +43,7 @@ const rsvpController = new RSVPController();
  *       404:
  *         description: Invitación no encontrada
  */
-router.get("/rsvp", rsvpController.handleRSVPResponse);
+router.get("/rsvp", publicLimiter, rsvpController.handleRSVPResponse);
 
 /**
  * @swagger
@@ -81,7 +84,11 @@ router.get("/rsvp", rsvpController.handleRSVPResponse);
  *       404:
  *         description: Invitación no encontrada
  */
-router.get("/rsvp/status/:token", rsvpController.getInvitationStatus);
+router.get(
+  "/rsvp/status/:token",
+  publicLimiter,
+  rsvpController.getInvitationStatus,
+);
 
 /**
  * @swagger
@@ -110,7 +117,12 @@ router.get("/rsvp/status/:token", rsvpController.getInvitationStatus);
  *       500:
  *         description: Error al enviar email
  */
-router.post("/rsvp/resend", rsvpController.resendInvitation);
+router.post(
+  "/rsvp/resend",
+  authenticateToken,
+  checkPermissions("eventsManagement", "Inscribir"),
+  rsvpController.resendInvitation,
+);
 
 export default router;
 

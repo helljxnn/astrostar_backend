@@ -2,9 +2,12 @@ import movementsRepository from "../repository/movements.repository.js";
 import materialsRepository from "../repository/materials.repository.js";
 
 class MovementsService {
-  /**
-   * Obtener todos los movimientos con paginación
-   */
+  createValidationError(message) {
+    const validationError = new Error(message);
+    validationError.statusCode = 400;
+    return validationError;
+  }
+
   async getAll({
     page = 1,
     limit = 10,
@@ -12,15 +15,23 @@ class MovementsService {
     tipo = null,
     origen = null,
     search = "",
+    dateFrom = null,
+    dateTo = null,
+    inventarioDestino = null,
+    tipoSalida = null,
   }) {
     try {
       const result = await movementsRepository.findAll({
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
         materialId,
         tipo,
         origen,
         search: search.toString().trim(),
+        dateFrom,
+        dateTo,
+        inventarioDestino,
+        tipoSalida,
       });
 
       return {
@@ -32,50 +43,44 @@ class MovementsService {
         pages: result.pages,
       };
     } catch (error) {
-throw error;
-    }
-  }
-
-  /**
-   * Obtener movimiento por ID
-   */
-  async getById(id) {
-    try {
-      const movement = await movementsRepository.findById(id);
-
-      if (!movement) {
+      if (error?.statusCode) {
         return {
           success: false,
-          statusCode: 404,
-          message: "Movimiento no encontrado",
+          statusCode: error.statusCode,
+          message: error.message,
         };
       }
-
-      return {
-        success: true,
-        data: movement,
-      };
-    } catch (error) {
-throw error;
+      throw error;
     }
   }
 
-  /**
-   * Register movement (ATOMIC TRANSACTION)
-   * Main method for registering entries and exits
-   */
+  async getById(id) {
+    const movement = await movementsRepository.findById(id);
+
+    if (!movement) {
+      return {
+        success: false,
+        statusCode: 404,
+        message: "Movimiento no encontrado",
+      };
+    }
+
+    return {
+      success: true,
+      data: movement,
+    };
+  }
+
   async registerMovement(data, userId, userName) {
     try {
-      // 1. Validate data
       this.validateMovementData(data);
 
-      // 2. Get material for validations
       const material = await materialsRepository.findById(data.material_id);
       if (!material) {
         return {
           success: false,
           statusCode: 404,
-          message: "Material not found",
+          message: "Material no encontrado",
         };
       }
 
@@ -83,20 +88,18 @@ throw error;
         return {
           success: false,
           statusCode: 400,
-          message: "Cannot register movements on inactive materials",
+          message: "No se pueden registrar movimientos para materiales inactivos",
         };
       }
 
-      // 3. Determine inventory destination
       const inventoryDestination = data.inventario_destino || "FUNDACION";
 
-      // 4. Prepare movement data
       const movementData = {
         material_id: data.material_id,
         material_nombre: material.nombre,
         categoria: material.categoria,
         tipo_movimiento: data.tipo_movimiento,
-        cantidad: parseInt(data.cantidad),
+        cantidad: parseInt(data.cantidad, 10),
         inventario_destino: inventoryDestination,
         evento_id: data.evento_id || null,
         observaciones: data.observaciones || null,
@@ -104,11 +107,10 @@ throw error;
         reference_type: data.reference_type || null,
         created_by_name: userName || null,
         fecha_ingreso: data.fecha_ingreso || null,
-        proveedor_id: data.proveedor_id ? parseInt(data.proveedor_id) : null,
-        donacion_id: data.donacion_id ? parseInt(data.donacion_id) : null,
+        proveedor_id: data.proveedor_id ? parseInt(data.proveedor_id, 10) : null,
+        donacion_id: data.donacion_id ? parseInt(data.donacion_id, 10) : null,
       };
 
-      // 5. Register movement with transaction (automatically calculates and validates stock)
       const movement = await movementsRepository.registerMovement(
         movementData,
         userId,
@@ -117,10 +119,17 @@ throw error;
       return {
         success: true,
         data: movement,
-        message: `${data.tipo_movimiento} movement registered successfully`,
+        message: `Movimiento ${data.tipo_movimiento} registrado correctamente`,
       };
     } catch (error) {
-// Specific errors
+      if (error?.statusCode) {
+        return {
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message,
+        };
+      }
+
       if (
         error.message.includes("Insufficient stock") ||
         error.message.includes("Stock insuficiente")
@@ -147,12 +156,8 @@ throw error;
     }
   }
 
-  /**
-   * Actualizar movimiento existente
-   */
-  async updateMovement(id, data, userId, userName) {
+  async updateMovement(id, data) {
     try {
-      // 1. Verificar que el movimiento existe
       const existingMovement = await movementsRepository.findById(id);
       if (!existingMovement) {
         return {
@@ -162,7 +167,6 @@ throw error;
         };
       }
 
-      // 2. ❌ BLOQUEAR edición de movimientos automáticos del sistema
       const systemMovements = [
         "Salida",
         "Baja",
@@ -180,21 +184,15 @@ throw error;
         };
       }
 
-      // 3. Validar datos de actualización
       this.validateUpdateData(data);
 
-      // 4. Preparar datos del movimiento (solo campos editables)
       const movementData = {
         observaciones: data.observaciones || null,
         fecha_ingreso: data.fechaIngreso || null,
-        proveedor_id: data.proveedor_id ? parseInt(data.proveedor_id) : null,
+        proveedor_id: data.proveedor_id ? parseInt(data.proveedor_id, 10) : null,
       };
 
-      // 5. Actualizar movimiento
-      const movement = await movementsRepository.updateMovement(
-        id,
-        movementData,
-      );
+      const movement = await movementsRepository.updateMovement(id, movementData);
 
       return {
         success: true,
@@ -202,16 +200,19 @@ throw error;
         message: "Movimiento actualizado exitosamente",
       };
     } catch (error) {
-throw error;
+      if (error?.statusCode) {
+        return {
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message,
+        };
+      }
+      throw error;
     }
   }
 
-  /**
-   * Eliminar movimiento (solo permitido para Entradas)
-   */
   async deleteMovement(id) {
     try {
-      // 1. Verificar que el movimiento existe
       const existingMovement = await movementsRepository.findById(id);
       if (!existingMovement) {
         return {
@@ -221,7 +222,6 @@ throw error;
         };
       }
 
-      // 2. ❌ BLOQUEAR eliminación de movimientos automáticos del sistema
       const systemMovements = [
         "Salida",
         "Baja",
@@ -239,7 +239,6 @@ throw error;
         };
       }
 
-      // 3. Eliminar movimiento (esto debería revertir el stock también)
       await movementsRepository.deleteMovement(id);
 
       return {
@@ -247,204 +246,210 @@ throw error;
         message: "Movimiento eliminado exitosamente",
       };
     } catch (error) {
-throw error;
+      if (
+        error.message.includes("Cannot delete movement because it would leave stock negative")
+      ) {
+        return {
+          success: false,
+          statusCode: 400,
+          message: error.message,
+        };
+      }
+      throw error;
     }
   }
 
-  /**
-   * Obtener historial de movimientos de un material
-   */
   async getMaterialHistory(materialId, limit = 10) {
-    try {
-      const movements = await movementsRepository.getHistoryByMaterial(
-        materialId,
-        limit,
-      );
+    const movements = await movementsRepository.getHistoryByMaterial(
+      materialId,
+      limit,
+    );
 
-      return {
-        success: true,
-        data: movements,
-      };
-    } catch (error) {
-throw error;
-    }
+    return {
+      success: true,
+      data: movements,
+    };
   }
 
-  /**
-   * Obtener estadísticas de movimientos
-   */
   async getStatistics(materialId = null, startDate = null, endDate = null) {
-    try {
-      const stats = await movementsRepository.getStatistics(
-        materialId,
-        startDate,
-        endDate,
-      );
+    const stats = await movementsRepository.getStatistics(
+      materialId,
+      startDate,
+      endDate,
+    );
 
-      return {
-        success: true,
-        data: stats,
-      };
-    } catch (error) {
-throw error;
-    }
+    return {
+      success: true,
+      data: stats,
+    };
   }
 
-  /**
-   * Obtener movimientos por rango de fechas
-   */
   async getByDateRange(startDate, endDate, filters = {}) {
-    try {
-      const movements = await movementsRepository.findByDateRange(
-        startDate,
-        endDate,
-        filters,
-      );
+    const movements = await movementsRepository.findByDateRange(
+      startDate,
+      endDate,
+      filters,
+    );
 
-      return {
-        success: true,
-        data: movements,
-      };
-    } catch (error) {
-throw error;
-    }
+    return {
+      success: true,
+      data: movements,
+    };
   }
 
-  /**
-   * Obtener últimos movimientos (para dashboard)
-   */
   async getRecentMovements(limit = 5) {
-    try {
-      const movements = await movementsRepository.getRecentMovements(limit);
+    const movements = await movementsRepository.getRecentMovements(limit);
 
-      return {
-        success: true,
-        data: movements,
-      };
-    } catch (error) {
-throw error;
-    }
+    return {
+      success: true,
+      data: movements,
+    };
   }
 
-  /**
-   * Validate movement data
-   */
   validateMovementData(data) {
-    // Material
-    if (!data.material_id) {
-      throw new Error("Material is required");
+    if (!data || typeof data !== "object") {
+      throw this.createValidationError("Datos inválidos del movimiento");
     }
 
-    // Movement type
+    if (!data.material_id || Number.isNaN(parseInt(data.material_id, 10))) {
+      throw this.createValidationError("El material es obligatorio");
+    }
+
     if (!data.tipo_movimiento) {
-      throw new Error("Movement type is required");
+      throw this.createValidationError("El tipo de movimiento es obligatorio");
     }
 
     if (!["Entrada", "Salida"].includes(data.tipo_movimiento)) {
-      throw new Error('Movement type must be "Entrada" or "Salida"');
+      throw this.createValidationError(
+        'El tipo de movimiento debe ser "Entrada" o "Salida"',
+      );
     }
 
-    // Quantity
-    if (!data.cantidad) {
-      throw new Error("Quantity is required");
+    if (data.cantidad === undefined || data.cantidad === null || data.cantidad === "") {
+      throw this.createValidationError("La cantidad es obligatoria");
     }
 
-    const cantidad = parseInt(data.cantidad);
-    if (isNaN(cantidad) || cantidad <= 0) {
-      throw new Error("Quantity must be a positive number");
+    const cantidad = parseInt(data.cantidad, 10);
+    if (Number.isNaN(cantidad) || cantidad <= 0) {
+      throw this.createValidationError("La cantidad debe ser un número positivo");
     }
 
-    // Specific validations for ENTRY
     if (data.tipo_movimiento === "Entrada") {
-      // Inventory destination required
       if (!data.inventario_destino) {
-        throw new Error("Inventory destination is required");
+        throw this.createValidationError("El destino de inventario es obligatorio");
       }
 
       if (!["FUNDACION", "EVENTOS"].includes(data.inventario_destino)) {
-        throw new Error("Destination must be FUNDACION or EVENTOS");
+        throw this.createValidationError(
+          "El destino debe ser FUNDACION o EVENTOS",
+        );
       }
 
-      // Entry date optional but if provided must be valid
       if (data.fecha_ingreso) {
         const fechaIngreso = new Date(data.fecha_ingreso);
+        if (Number.isNaN(fechaIngreso.getTime())) {
+          throw this.createValidationError("La fecha de ingreso no es válida");
+        }
+
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
         fechaIngreso.setHours(0, 0, 0, 0);
 
         if (fechaIngreso > hoy) {
-          throw new Error("Entry date cannot be in the future");
+          throw this.createValidationError("La fecha de ingreso no puede ser futura");
         }
       }
 
-      // proveedor_id is optional, but if sent must be valid
-      if (data.proveedor_id && isNaN(parseInt(data.proveedor_id))) {
-        throw new Error("Provider ID must be a valid number");
+      if (
+        data.proveedor_id !== undefined &&
+        data.proveedor_id !== null &&
+        data.proveedor_id !== "" &&
+        Number.isNaN(parseInt(data.proveedor_id, 10))
+      ) {
+        throw this.createValidationError(
+          "El ID del proveedor debe ser un número válido",
+        );
       }
     }
 
-    // Observations
-    if (data.observaciones && data.observaciones.length > 1000) {
-      throw new Error("Observations cannot exceed 1000 characters");
+    if (
+      data.observaciones &&
+      typeof data.observaciones === "string" &&
+      data.observaciones.length > 1000
+    ) {
+      throw this.createValidationError(
+        "Las observaciones no pueden exceder 1000 caracteres",
+      );
     }
   }
 
-  /**
-   * Validar datos de actualización de movimiento
-   */
   validateUpdateData(data) {
-    // Fecha de ingreso (si se envía)
+    if (!data || typeof data !== "object") {
+      throw this.createValidationError("Datos inválidos para actualizar");
+    }
+
     if (data.fechaIngreso) {
       const fechaIngreso = new Date(data.fechaIngreso);
+      if (Number.isNaN(fechaIngreso.getTime())) {
+        throw this.createValidationError("La fecha de ingreso no es válida");
+      }
+
       const hoy = new Date();
       hoy.setHours(0, 0, 0, 0);
       fechaIngreso.setHours(0, 0, 0, 0);
 
       if (fechaIngreso > hoy) {
-        throw new Error("La fecha de ingreso no puede ser futura");
+        throw this.createValidationError("La fecha de ingreso no puede ser futura");
       }
     }
 
-    // proveedor_id es opcional, pero si se envía debe ser válido
-    if (data.proveedor_id && isNaN(parseInt(data.proveedor_id))) {
-      throw new Error("El ID del proveedor debe ser un número válido");
+    if (
+      data.proveedor_id !== undefined &&
+      data.proveedor_id !== null &&
+      data.proveedor_id !== "" &&
+      Number.isNaN(parseInt(data.proveedor_id, 10))
+    ) {
+      throw this.createValidationError(
+        "El ID del proveedor debe ser un número válido",
+      );
     }
 
-    // Observaciones
-    if (data.observaciones && data.observaciones.length > 1000) {
-      throw new Error("Las observaciones no pueden exceder 1000 caracteres");
+    if (
+      data.observaciones &&
+      typeof data.observaciones === "string" &&
+      data.observaciones.length > 1000
+    ) {
+      throw this.createValidationError(
+        "Las observaciones no pueden exceder 1000 caracteres",
+      );
     }
   }
 
-  /**
-   * Obtener todos los movimientos para reporte (SIN PAGINACIÓN)
-   */
   async getAllForReport({
     search = "",
     materialId,
     tipoMovimiento,
     startDate,
     endDate,
+    inventarioDestino,
+    tipoSalida,
   }) {
-    try {
-      const movements = await movementsRepository.findAllForReport({
-        search,
-        materialId,
-        tipoMovimiento,
-        startDate,
-        endDate,
-      });
+    const movements = await movementsRepository.findAllForReport({
+      search,
+      materialId,
+      tipoMovimiento,
+      startDate,
+      endDate,
+      inventarioDestino,
+      tipoSalida,
+    });
 
-      return {
-        success: true,
-        data: movements,
-        message: `Se encontraron ${movements.length} movimientos para el reporte.`,
-      };
-    } catch (error) {
-throw error;
-    }
+    return {
+      success: true,
+      data: movements,
+      message: `Se encontraron ${movements.length} movimientos para el reporte.`,
+    };
   }
 }
 
 export default new MovementsService();
-

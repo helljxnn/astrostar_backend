@@ -83,7 +83,6 @@ const cloudinaryUpload = async (req, res, next) => {
 
     next();
   } catch (error) {
-    console.error('Error uploading to Cloudinary:', error);
     return res.status(500).json({
       success: false,
       message: 'Error al subir el archivo'
@@ -98,11 +97,33 @@ export const upload = multer({
   limits
 });
 
-// Middleware combinado: multer + cloudinary
-export const uploadPaymentReceipt = [
-  upload.single('receipt'),
-  cloudinaryUpload
-];
+// Middleware combinado: multer + cloudinary con manejo explícito de errores
+export const uploadPaymentReceipt = (req, res, next) => {
+  upload.single('receipt')(req, res, (error) => {
+    if (error instanceof multer.MulterError) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          success: false,
+          message: 'El archivo no debe superar los 5MB'
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        message: 'Error al procesar el archivo adjunto'
+      });
+    }
+
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message || 'Archivo de comprobante inválido'
+      });
+    }
+
+    return cloudinaryUpload(req, res, next);
+  });
+};
 
 // Upload solo para imágenes (para otros módulos)
 export const uploadImage = multer({ 

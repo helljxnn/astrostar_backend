@@ -1,8 +1,50 @@
+import prisma from "../../../../config/database.js";
 import { GuardiansRepository } from "../repository/guardians.repository.js";
+
+const normalizeDocumentTypeName = (value) =>
+  String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const isForbiddenGuardianDocumentType = (documentTypeName) => {
+  const normalized = normalizeDocumentTypeName(documentTypeName);
+
+  return (
+    normalized === "ti" ||
+    normalized === "nit" ||
+    (normalized.includes("tarjeta") && normalized.includes("identidad")) ||
+    (normalized.includes("registro") && normalized.includes("civil")) ||
+    normalized.includes("tributaria")
+  );
+};
 
 export class GuardiansService {
   constructor() {
     this.guardiansRepository = new GuardiansRepository();
+  }
+
+  async validateGuardianDocumentType(documentTypeId) {
+    const parsedDocumentTypeId = parseInt(documentTypeId, 10);
+    if (!Number.isFinite(parsedDocumentTypeId)) {
+      throw new Error("El tipo de documento del acudiente es obligatorio.");
+    }
+
+    const documentType = await prisma.documentType.findUnique({
+      where: { id: parsedDocumentTypeId },
+      select: { id: true, name: true },
+    });
+
+    if (!documentType) {
+      throw new Error("Tipo de documento de acudiente no encontrado.");
+    }
+
+    if (isForbiddenGuardianDocumentType(documentType.name)) {
+      throw new Error(
+        "El acudiente no puede usar Registro Civil, Tarjeta de Identidad ni NIT. Selecciona un documento válido para adulto."
+      );
+    }
   }
 
   async getAllGuardians({ page = 1, limit = 10, search = "", status }) {
@@ -53,6 +95,8 @@ export class GuardiansService {
         estado: guardianData.estado || "Activo"
       };
 
+      await this.validateGuardianDocumentType(dataWithDefaults.documentTypeId);
+
       const existingGuardian = await this.guardiansRepository.findByDocument(dataWithDefaults.identification);
       if (existingGuardian) {
         throw new Error(`El acudiente con documento "${dataWithDefaults.identification}" ya está registrado.`);
@@ -81,14 +125,26 @@ export class GuardiansService {
         };
       }
 
-      if (updateData.identificacion && updateData.identificacion !== existingGuardian.identificacion) {
+      if (updateData.documentTypeId !== undefined && updateData.documentTypeId !== null && updateData.documentTypeId !== "") {
+        await this.validateGuardianDocumentType(updateData.documentTypeId);
+      }
+
+      const nextIdentification =
+        updateData.identification || updateData.identificacion;
+      const currentIdentification =
+        existingGuardian.identification || existingGuardian.identificacion;
+
+      if (
+        nextIdentification &&
+        nextIdentification !== currentIdentification
+      ) {
         const existingByDocument = await this.guardiansRepository.findByDocument(
-          updateData.identificacion,
+          nextIdentification,
           id
         );
         if (existingByDocument) {
           throw new Error(
-            `El documento "${updateData.identificacion}" ya está registrado por otro acudiente.`
+            `El documento "${nextIdentification}" ya esta registrado por otro acudiente.`
           );
         }
       }

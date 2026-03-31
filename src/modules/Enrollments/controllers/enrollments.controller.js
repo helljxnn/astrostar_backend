@@ -1,4 +1,5 @@
 import { enrollmentsService } from "../services/enrollments.service.js";
+import { legacyEnrollmentImportService } from "../services/legacyEnrollmentImport.service.js";
 import { enrollmentSchemas } from "../validators/enrollments.validator.js";
 
 export const enrollmentsController = {
@@ -24,7 +25,150 @@ export const enrollmentsController = {
         temporaryPassword: result.temporaryPassword
       });
     } catch (error) {
-      return res.status(500).json({
+      const rawMessage = String(error?.message || "");
+      const normalizedMessage = rawMessage
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+      const isBusinessError =
+        normalizedMessage.includes("ya existe") ||
+        normalizedMessage.includes("obligatorio") ||
+        normalizedMessage.includes("acudiente") ||
+        normalizedMessage.includes("tipo de documento") ||
+        normalizedMessage.includes("no encontrado") ||
+        normalizedMessage.includes("invalido") ||
+        normalizedMessage.includes("no puede usar");
+
+      const statusCode = isBusinessError ? 400 : 500;
+
+      return res.status(statusCode).json({
+        success: false,
+        message: rawMessage,
+      });
+    }
+  },
+
+  async previewLegacyImport(req, res) {
+    try {
+      const { error, value } = enrollmentSchemas.legacyImport.validate(req.body);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.details[0].message,
+        });
+      }
+
+      const result = await legacyEnrollmentImportService.preview(value, {
+        performedBy: req.user?.id ?? null,
+      });
+
+      return res.json({
+        success: true,
+        message: "Preview de importacion legacy generado correctamente.",
+        data: result.plan,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async createLegacyImport(req, res) {
+    try {
+      const { error, value } = enrollmentSchemas.legacyImport.validate(req.body);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.details[0].message,
+        });
+      }
+
+      const result = await legacyEnrollmentImportService.create(value, {
+        performedBy: req.user?.id ?? null,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message:
+          "Deportista importada correctamente como saldo inicial sin cobro automatico de matricula.",
+        data: result,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async previewLegacyImportBatch(req, res) {
+    try {
+      const { error, value } = enrollmentSchemas.legacyImportBatch.validate(req.body);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.details[0].message,
+        });
+      }
+
+      const result = await legacyEnrollmentImportService.previewBatch(value, {
+        performedBy: req.user?.id ?? null,
+      });
+
+      return res.json({
+        success: true,
+        message:
+          result.summary.invalidRows > 0
+            ? "Preview generado. Corrige las filas marcadas antes de importar."
+            : "Preview de importacion masiva generado correctamente.",
+        data: result,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
+  },
+
+  async createLegacyImportBatch(req, res) {
+    try {
+      const { error, value } = enrollmentSchemas.legacyImportBatch.validate(req.body);
+      if (error) {
+        return res.status(400).json({
+          success: false,
+          message: error.details[0].message,
+        });
+      }
+
+      const result = await legacyEnrollmentImportService.createBatch(value, {
+        performedBy: req.user?.id ?? null,
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: "Importacion masiva completada correctamente.",
+        data: result,
+      });
+    } catch (error) {
+      if (error?.preview) {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          data: error.preview,
+          errors: error.preview.rows
+            .filter((row) => row.status === "error")
+            .map((row) => ({
+              rowNumber: row.rowNumber,
+              errors: row.errors,
+            })),
+        });
+      }
+
+      return res.status(400).json({
         success: false,
         message: error.message,
       });
@@ -135,6 +279,22 @@ const result = await enrollmentsService.findAll({
    */
   async processExpired(req, res) {
     try {
+      const roleName = String(req.user?.role?.name || req.user?.role || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+      const isAdmin =
+        roleName === "admin" ||
+        roleName === "administrador" ||
+        roleName === "administrador sistema";
+
+      if (!isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Solo administradores pueden procesar matriculas vencidas",
+        });
+      }
+
       const result = await enrollmentsService.processExpiredEnrollments();
 
       return res.json({
@@ -162,11 +322,14 @@ return res.status(500).json({
    */
   async findAllForReport(req, res) {
     try {
-      const { estado, athleteId, search } = req.query;
+      const { estado, athleteId, search, dateFrom, dateTo, vencimiento } = req.query;
       const result = await enrollmentsService.findAllForReport({
         estado,
         athleteId,
         search: search?.trim() || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        vencimiento: vencimiento || undefined,
       });
 
       return res.json(result);
@@ -204,5 +367,3 @@ return res.status(500).json({
     }
   },
 };
-
-
