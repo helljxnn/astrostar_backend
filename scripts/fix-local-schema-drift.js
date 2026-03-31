@@ -5,6 +5,39 @@ const prisma = new PrismaClient();
 
 const steps = [
   {
+    name: "pre_registrations: normalize PreRegistrationStatus enum to EN labels",
+    sql: `DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_type t
+    JOIN pg_enum e ON t.oid = e.enumtypid
+    WHERE t.typname = 'PreRegistrationStatus' AND e.enumlabel = 'Pendiente'
+  ) THEN
+    ALTER TYPE "PreRegistrationStatus" RENAME VALUE 'Pendiente' TO 'Pending';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_type t
+    JOIN pg_enum e ON t.oid = e.enumtypid
+    WHERE t.typname = 'PreRegistrationStatus' AND e.enumlabel = 'Procesada'
+  ) THEN
+    ALTER TYPE "PreRegistrationStatus" RENAME VALUE 'Procesada' TO 'Processed';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_type t
+    JOIN pg_enum e ON t.oid = e.enumtypid
+    WHERE t.typname = 'PreRegistrationStatus' AND e.enumlabel = 'Rechazada'
+  ) THEN
+    ALTER TYPE "PreRegistrationStatus" RENAME VALUE 'Rechazada' TO 'Rejected';
+  END IF;
+END
+$$;`,
+  },
+  {
     name: "employee_schedules: restore status columns",
     sql: `ALTER TABLE "employee_schedules"
 ADD COLUMN IF NOT EXISTS "status" "ScheduleStatus" NOT NULL DEFAULT 'Programado',
