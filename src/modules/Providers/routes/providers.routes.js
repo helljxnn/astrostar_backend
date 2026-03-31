@@ -442,7 +442,7 @@ router.get(
  *                 type: string
  *                 format: email
  *                 maxLength: 150
- *                 description: Email address (optional)
+ *                 description: Email address
  *               telefono:
  *                 type: string
  *                 minLength: 7

@@ -17,13 +17,13 @@ export class AthleteEmailService extends BaseEmailService {
       const mailOptions = {
         from: this.getDefaultFrom(),
         to: email,
-                subject: "🎉 Bienvenido a AstroStar - Credenciales de Acceso",
-                html: this.generateAthleteWelcomeEmailTemplate(
+        subject: "🎉 Bienvenido a AstroStar - Credenciales de Acceso",
+        html: this.generateAthleteWelcomeEmailTemplate(
           firstName,
           lastName,
           loginEmail,
         ),
-                text: this.generateAthleteWelcomeEmailText(
+        text: this.generateAthleteWelcomeEmailText(
           firstName,
           lastName,
           loginEmail,
@@ -72,39 +72,40 @@ export class AthleteEmailService extends BaseEmailService {
 <body>
     <div class="container">
         <div class="header">
-                        <h1>🌟 ¡Bienvenido a AstroStar!</h1>
-                        <p>Sistema de Gestión Deportiva</p>
+            <h1>🌟 ¡Bienvenido a AstroStar!</h1>
+            <p>Sistema de Gestión Deportiva</p>
         </div>
         
         <div class="content">
             <h2>Hola ${firstName} ${lastName},</h2>
             
-                        <p>¡Nos complace darte la bienvenida a AstroStar! Tu cuenta de deportista ha sido creada exitosamente.</p>
+            <p>¡Nos complace darte la bienvenida a AstroStar! Tu cuenta de deportista ha sido creada exitosamente.</p>
             
             <div class="credentials-box">
-                                <h3>🔐 Tus Credenciales de Acceso</h3>
+                <h3>🔐 Tus Credenciales de Acceso</h3>
                 <div class="credential-item">
-                                        <strong>📧 Usuario:</strong> ${email}
+                    <strong>📧 Usuario:</strong> ${email}
                 </div>
                 <div class="credential-item">
-                                        <strong>🔑 Contraseña:</strong> Tu número de documento
+                    <strong>🔑 Contraseña:</strong> Tu número de documento
                 </div>
             </div>
             
             <div style="text-align: center;">
-                <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/login" class="button">                    🚀 Acceder al Sistema
+                <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/login" class="button">
+                    🚀 Acceder al Sistema
                 </a>
             </div>
             
-                        <p>¡¡Esperamos que tengas una excelente experiencia en AstroStar!</p>
+            <p>¡Esperamos que tengas una excelente experiencia en AstroStar!</p>
             
             <p>Saludos cordiales,<br>
             <strong>Equipo AstroStar</strong></p>
         </div>
         
         <div class="footer">
-                        <p>Este es un email automático del sistema AstroStar. Por favor no respondas a este mensaje.</p>
-                        <p>© ${new Date().getFullYear()} AstroStar - Sistema de Gestión Deportiva</p>
+            <p>Este es un email automático del sistema AstroStar. Por favor no respondas a este mensaje.</p>
+            <p>© ${new Date().getFullYear()} AstroStar - Sistema de Gestión Deportiva</p>
         </div>
     </div>
 </body>
@@ -115,7 +116,7 @@ export class AthleteEmailService extends BaseEmailService {
    * Generar texto plano para email de bienvenida de deportista
    */
   generateAthleteWelcomeEmailText(firstName, lastName, email) {
-        return `¡Bienvenido a AstroStar!
+    return `¡Bienvenido a AstroStar!
 
 Hola ${firstName} ${lastName},
 
@@ -127,7 +128,7 @@ CREDENCIALES DE ACCESO:
 
 Accede al sistema en: ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
 
-Â¡¡Esperamos que tengas una excelente experiencia en AstroStar!
+¡Esperamos que tengas una excelente experiencia en AstroStar!
 
 Saludos cordiales,
 Equipo AstroStar
@@ -138,7 +139,7 @@ Este es un email automático del sistema AstroStar.
   }
 
   /**
-   * Notificar al deportista que se creÃ³ una cita
+   * Notificar al deportista que se creó una cita
    */
   async sendAppointmentNotification({
     to,
@@ -157,16 +158,16 @@ Este es un email automático del sistema AstroStar.
     }
 
     const subject = "Nueva cita programada";
-    const plainText = `Hola ${athleteName || "deportista"}, se programÃ³ una cita para el ${date} a las ${time}${
+    const plainText = `Hola ${athleteName || "deportista"}, se programó una cita para el ${date} a las ${time}${
       specialistName ? ` con ${specialistName}` : ""
-    }. Ingresa al mÃ³dulo de citas para mÃ¡s detalles.`;
+    }. Ingresa al módulo de citas para más detalles.`;
 
     const html = `
       <p>Hola ${athleteName || "deportista"},</p>
-      <p>Se programÃ³ una cita para el <strong>${date}</strong> a las <strong>${time}</strong>${
+      <p>Se programó una cita para el <strong>${date}</strong> a las <strong>${time}</strong>${
         specialistName ? ` con <strong>${specialistName}</strong>` : ""
       }.</p>
-      <p>Por favor ingresa al mÃ³dulo de citas para mÃ¡s detalles.</p>
+      <p>Por favor ingresa al módulo de citas para más detalles.</p>
     `;
 
     const mailOptions = {
@@ -243,10 +244,9 @@ Este es un email automático del sistema AstroStar.
         ],
       };
 
-      const result = await this.sendMailWithFallback(mailOptions);
-      return result;
+      return await this.sendMailWithFallback(mailOptions);
     } catch (error) {
-return { success: false, error: error.message };
+      return { success: false, error: error.message };
     }
   }
 
@@ -369,50 +369,50 @@ END:VCALENDAR`;
 <body>
     <div class="container">
         <div class="header">
-            <h1>ðŸŒŸ Â¡Cita Programada!</h1>
-            <p style="margin: 0; font-size: 16px;">Sistema de GestiÃ³n Deportiva</p>
+            <h1>🌟 ¡Cita Programada!</h1>
+            <p style="margin: 0; font-size: 16px;">Sistema de Gestión Deportiva</p>
         </div>
         
         <div class="content">
             <h2>Hola ${athleteName},</h2>
             
-            <p>Â¡Se ha programado una cita para ti en AstroStar! A continuaciÃ³n encontrarÃ¡s todos los detalles.</p>
+            <p>¡Se ha programado una cita para ti en AstroStar! A continuación encontrarás todos los detalles.</p>
             
             <div class="details-box">
-                <h3>ðŸ“… Detalles de tu Cita</h3>
+                <h3>📅 Detalles de tu Cita</h3>
                 <div class="detail-item">
-                    <strong>ðŸ“… Fecha:</strong> <span>${formattedDate}</span>
+                    <strong>📅 Fecha:</strong> <span>${formattedDate}</span>
                 </div>
                 <div class="detail-item">
-                    <strong>ðŸ• Horario:</strong> <span>${startTime} - ${endTime}</span>
+                    <strong>🕐 Horario:</strong> <span>${startTime} - ${endTime}</span>
                 </div>
                 <div class="detail-item">
-                    <strong>ðŸ‘¨â€âš•ï¸ Especialista:</strong> <span>${specialistName}</span>
+                    <strong>👨‍⚕️ Especialista:</strong> <span>${specialistName}</span>
                 </div>
                 ${
                   description
                     ? `<div class="detail-item">
-                    <strong>ðŸ“ DescripciÃ³n:</strong> <span>${description}</span>
+                    <strong>📝 Descripción:</strong> <span>${description}</span>
                 </div>`
                     : ""
                 }
             </div>
 
             <div class="contact-box">
-                <h3>ðŸ“§ InformaciÃ³n de Contacto</h3>
+                <h3>📧 Información de Contacto</h3>
                 <div class="contact-item">
-                    <strong>ðŸ“§ Correo:</strong> <a href="mailto:astrostar.java@gmail.com" style="color: #667eea; text-decoration: none;">astrostar.java@gmail.com</a>
+                    <strong>📧 Correo:</strong> <a href="mailto:astrostar.java@gmail.com" style="color: #667eea; text-decoration: none;">astrostar.java@gmail.com</a>
                 </div>
                 <div class="contact-item">
-                    <strong>ðŸ“ž TelÃ©fono:</strong> <a href="tel:+573001234567" style="color: #667eea; text-decoration: none;">+57 300 123 4567</a>
+                    <strong>📞 Teléfono:</strong> <a href="tel:+573001234567" style="color: #667eea; text-decoration: none;">+57 300 123 4567</a>
                 </div>
                 <p style="margin: 10px 0 0 0; font-size: 14px; color: #666;">
-                    Si necesitas cancelar o reprogramar tu cita, contÃ¡ctanos con anticipaciÃ³n.
+                    Si necesitas cancelar o reprogramar tu cita, contáctanos con anticipación.
                 </p>
             </div>
             
             <div class="location-box">
-                <h3>ðŸ“ UbicaciÃ³n</h3>
+                <h3>📍 Ubicación</h3>
                 <div class="detail-item" style="background: #fff3e0;">
                     <strong>Lugar:</strong> <span>Unidad Deportiva Cristo Rey, Copacabana, Antioquia</span>
                 </div>
@@ -426,40 +426,36 @@ END:VCALENDAR`;
                 </div>
                 <div style="text-align: center; margin-top: 15px;">
                     <a href="https://www.google.com/maps/place/Unidad+Deportiva+Cristo+Rey/@6.3416350,-75.5084801,17z" 
-                       class="button" 
-                       target="_blank" 
-                       style="color: white;">
-                        ðŸ—ºï¸ Ver en Google Maps
+                       class="button" target="_blank" style="color: white;">
+                        🗺️ Ver en Google Maps
                     </a>
                     <a href="https://www.google.com/maps/dir/?api=1&destination=6.341634993648127,-75.5084801250086" 
-                       class="button" 
-                       target="_blank" 
-                       style="color: white;">
-                        ðŸš— CÃ³mo llegar
+                       class="button" target="_blank" style="color: white;">
+                        🚗 Cómo llegar
                     </a>
                 </div>
             </div>
             
             <div class="warning">
-                <strong>ðŸ”” Recordatorios AutomÃ¡ticos:</strong>
+                <strong>🔔 Recordatorios Automáticos:</strong>
                 <ul style="margin: 10px 0 0 0;">
-                    <li>RecibirÃ¡s una notificaciÃ³n 1 hora antes de la cita</li>
-                    <li>RecibirÃ¡s una notificaciÃ³n 15 minutos antes de la cita</li>
-                    <li>Si agregas el evento a tu calendario, tambiÃ©n recibirÃ¡s recordatorios allÃ­</li>
+                    <li>Recibirás una notificación 1 hora antes de la cita</li>
+                    <li>Recibirás una notificación 15 minutos antes de la cita</li>
+                    <li>Si agregas el evento a tu calendario, también recibirás recordatorios allí</li>
                 </ul>
             </div>
             
-            <h3>ðŸ“‹ Recomendaciones:</h3>
+            <h3>📋 Recomendaciones:</h3>
             <ol>
                 <li>Llega 10 minutos antes de tu cita</li>
                 <li>Trae tu documento de identidad</li>
-                <li>Usa ropa cÃ³moda y deportiva</li>
-                <li>Puedes usar el archivo adjunto (.ics) para agregarlo a cualquier aplicaciÃ³n de calendario</li>
+                <li>Usa ropa cómoda y deportiva</li>
+                <li>Puedes usar el archivo adjunto (.ics) para agregarlo a cualquier aplicación de calendario</li>
             </ol>
             
             <p>Si tienes alguna pregunta, no dudes en contactarnos.</p>
             
-            <p>Â¡Te esperamos!</p>
+            <p>¡Te esperamos!</p>
             
             <p style="margin-top: 30px;">
                 Saludos cordiales,<br>
@@ -468,8 +464,8 @@ END:VCALENDAR`;
         </div>
         
         <div class="footer">
-            <p style="margin: 5px 0;">Este es un correo automÃ¡tico del sistema AstroStar. Por favor no respondas a este mensaje.</p>
-            <p style="margin: 5px 0;">Â© ${new Date().getFullYear()} AstroStar - Sistema de GestiÃ³n Deportiva</p>
+            <p style="margin: 5px 0;">Este es un correo automático del sistema AstroStar. Por favor no respondas a este mensaje.</p>
+            <p style="margin: 5px 0;">© ${new Date().getFullYear()} AstroStar - Sistema de Gestión Deportiva</p>
             <p style="margin: 5px 0;">Unidad Deportiva Cristo Rey, Copacabana, Antioquia</p>
         </div>
     </div>
@@ -500,42 +496,40 @@ DETALLES DE LA CITA:
 - Fecha: ${formattedDate}
 - Hora: ${startTime} - ${endTime}
 - Especialista: ${specialistName}
-${description ? `- DescripciÃ³n: ${description}` : ""}
+${description ? `- Descripción: ${description}` : ""}
 
-INFORMACIÃ“N DE CONTACTO:
+INFORMACIÓN DE CONTACTO:
 - Correo: astrostar.java@gmail.com
-- TelÃ©fono: +57 300 123 4567
+- Teléfono: +57 300 123 4567
 
-UBICACIÃ“N:
+UBICACIÓN:
 - Lugar: Unidad Deportiva Cristo Rey, Copacabana, Antioquia
 - Ver en Google Maps: https://www.google.com/maps/place/Unidad+Deportiva+Cristo+Rey/@6.3416350,-75.5084801,17z
-- CÃ³mo llegar: https://www.google.com/maps/dir/?api=1&destination=6.341634993648127,-75.5084801250086
+- Cómo llegar: https://www.google.com/maps/dir/?api=1&destination=6.341634993648127,-75.5084801250086
 
 RECORDATORIOS:
-- RecibirÃ¡s notificaciones 1 hora y 15 minutos antes de la cita
+- Recibirás notificaciones 1 hora y 15 minutos antes de la cita
 - Llega 10 minutos antes de tu cita
 - Trae tu documento de identidad
-- Usa ropa cÃ³moda y deportiva
+- Usa ropa cómoda y deportiva
 
 AGREGAR A CALENDARIO:
 - Usa el archivo adjunto (.ics) para agregar la cita a tu calendario
 - Compatible con Google Calendar, Outlook, Apple Calendar y otros
 
-Si necesitas cancelar o reprogramar, contÃ¡ctanos con anticipaciÃ³n.
+Si necesitas cancelar o reprogramar, contáctanos con anticipación.
 
-Â¡Te esperamos!
+¡Te esperamos!
 
 Saludos cordiales,
 Equipo AstroStar
 
 ---
-Este es un correo automÃ¡tico del sistema AstroStar.
-Â© ${new Date().getFullYear()} AstroStar - Sistema de GestiÃ³n Deportiva
+Este es un correo automático del sistema AstroStar.
+© ${new Date().getFullYear()} AstroStar - Sistema de Gestión Deportiva
 Unidad Deportiva Cristo Rey, Copacabana, Antioquia`;
   }
 }
 
 // Exportar instancia singleton
 export default new AthleteEmailService();
-
-

@@ -161,6 +161,13 @@ export class SportsCategoryController {
         });
       }
 
+      const normalizedStatus =
+        status === "Active"
+          ? "Activo"
+          : status === "Inactive"
+            ? "Inactivo"
+            : status;
+
       // Subir imagen a Cloudinary solo si se envia archivo
       let imageUrl = null;
       if (req.file) {
@@ -186,7 +193,7 @@ export class SportsCategoryController {
         descripcion: description || null,
         edadMinima: Number(minAge),
         edadMaxima: Number(maxAge),
-        estado: status || "Activo",
+        estado: normalizedStatus || "Activo",
         publicar: publicar === "true" || publicar === true,
         archivo: imageUrl, // URL de Cloudinary
       };
@@ -212,6 +219,12 @@ export class SportsCategoryController {
     try {
       const { id } = req.params;
       const { name, description, minAge, maxAge, status, publicar } = req.body;
+      const normalizedStatus =
+        status === "Active"
+          ? "Activo"
+          : status === "Inactive"
+            ? "Inactivo"
+            : status;
 
       if (!id) {
         return res.status(400).json({
@@ -228,7 +241,7 @@ export class SportsCategoryController {
       if (description !== undefined) updateData.descripcion = description;
       if (minAge !== undefined) updateData.edadMinima = Number(minAge);
       if (maxAge !== undefined) updateData.edadMaxima = Number(maxAge);
-      if (status !== undefined) updateData.estado = status;
+      if (status !== undefined) updateData.estado = normalizedStatus;
       if (publicar !== undefined)
         updateData.publicar = publicar === "true" || publicar === true;
 

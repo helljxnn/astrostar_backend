@@ -407,6 +407,19 @@ async function upsertAdminUser() {
     select: { id: true },
   });
 
+  const ensureAdminEmployee = async (userId) => {
+    await prisma.employee.upsert({
+      where: { userId },
+      update: {
+        status: "Activo",
+      },
+      create: {
+        userId,
+        status: "Activo",
+      },
+    });
+  };
+
   if (existingAdmin) {
     await prisma.user.update({
       where: { id: existingAdmin.id },
@@ -416,10 +429,11 @@ async function upsertAdminUser() {
         status: "Active",
       },
     });
+    await ensureAdminEmployee(existingAdmin.id);
     return { email: adminEmail, password: adminPassword, created: false };
   }
 
-  await prisma.user.create({
+  const createdAdmin = await prisma.user.create({
     data: {
       firstName: "Administrador",
       middleName: "del",
@@ -437,6 +451,7 @@ async function upsertAdminUser() {
       status: "Active",
     },
   });
+  await ensureAdminEmployee(createdAdmin.id);
 
   return { email: adminEmail, password: adminPassword, created: true };
 }

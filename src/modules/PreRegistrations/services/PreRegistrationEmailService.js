@@ -22,8 +22,6 @@ export class PreRegistrationEmailService extends BaseEmailService {
    */
   async sendPreRegistrationEmail(preRegistrationData) {
     try {
-      console.log("📧 [PreRegistrationEmail] Iniciando envío de email");
-
       const {
         firstName,
         lastName,
@@ -58,7 +56,6 @@ export class PreRegistrationEmailService extends BaseEmailService {
       const result = await this.sendMailWithFallback(mailOptions);
 
       if (result.success) {
-        console.log("✅ [PreRegistrationEmail] Email enviado exitosamente");
         return {
           success: true,
           messageId: result.messageId,
@@ -66,14 +63,12 @@ export class PreRegistrationEmailService extends BaseEmailService {
         };
       }
 
-      console.warn("⚠️ [PreRegistrationEmail] No se pudo enviar el email");
       return {
         success: false,
         error: result.error,
         message: "No se pudo enviar el email de confirmación",
       };
     } catch (error) {
-      console.error("❌ [PreRegistrationEmail] Error:", error);
       return {
         success: false,
         error: error.message,

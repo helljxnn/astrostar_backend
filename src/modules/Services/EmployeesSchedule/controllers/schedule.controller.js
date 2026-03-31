@@ -40,7 +40,7 @@ export class ScheduleController {
   getScheduleById = async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await this.scheduleService.getScheduleById(id);
+      const result = await this.scheduleService.getScheduleById(id, req.user);
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
@@ -90,20 +90,32 @@ export class ScheduleController {
   createSchedule = async (req, res) => {
     try {
       const scheduleData = req.body;
-      const result = await this.scheduleService.createSchedule(scheduleData);
+      const result = await this.scheduleService.createSchedule(scheduleData, req.user);
       res.status(201).json({
         success: true,
         data: result.data,
         message: result.message
       });
     } catch (error) {
-      console.error('Error creating schedule:', error);
-      if (error.message.includes('ya existe un horario') || error.message.includes('no existe') || error.message.includes('no está activo')) {
-        return res.status(400).json({
+      const errorMessage = String(error?.message || "");
+      const normalizedMessage = errorMessage.toLowerCase();
+      if (normalizedMessage.includes('no tienes permisos')) {
+        return res.status(403).json({
           success: false,
-          message: error.message
+          message: errorMessage
         });
       }
+      if (
+        normalizedMessage.includes('ya existe un horario') ||
+        normalizedMessage.includes('no existe') ||
+        normalizedMessage.includes('no está activo')
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: errorMessage
+        });
+      }
+      console.error('Error creating schedule:', error);
       res.status(500).json({
         success: false,
         message: 'Error interno del servidor al crear el horario.',
@@ -119,7 +131,7 @@ export class ScheduleController {
     try {
       const { id } = req.params;
       const updateData = req.body;
-      const result = await this.scheduleService.updateSchedule(id, updateData);
+      const result = await this.scheduleService.updateSchedule(id, updateData, req.user);
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
@@ -133,10 +145,11 @@ export class ScheduleController {
       });
     } catch (error) {
       console.error('Error updating schedule:', error);
-      if (error.message.includes('ya existe un horario')) {
+      const errorMessage = String(error?.message || "");
+      if (errorMessage.toLowerCase().includes('ya existe un horario')) {
         return res.status(400).json({
           success: false,
-          message: error.message
+          message: errorMessage
         });
       }
       res.status(500).json({
@@ -153,7 +166,7 @@ export class ScheduleController {
   deleteSchedule = async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await this.scheduleService.deleteSchedule(id);
+      const result = await this.scheduleService.deleteSchedule(id, req.user);
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
@@ -187,7 +200,7 @@ export class ScheduleController {
           message: 'El motivo de la novedad es obligatorio.'
         });
       }
-      const result = await this.scheduleService.registerNovelty(id, req.body || {});
+      const result = await this.scheduleService.registerNovelty(id, req.body || {}, req.user);
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,

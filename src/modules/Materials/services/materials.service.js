@@ -31,10 +31,12 @@ class MaterialsService {
           page: result.page,
           limit: result.limit,
           totalPages: result.pages,
+          hasNext: result.page < result.pages,
+          hasPrev: result.page > 1,
         },
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -58,7 +60,7 @@ throw error;
         data: material,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -111,7 +113,7 @@ throw error;
         message: `Material "${material.nombre}" creado exitosamente`,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -183,7 +185,7 @@ throw error;
           message: error.message,
         };
       }
-throw error;
+      throw error;
     }
   }
 
@@ -200,7 +202,7 @@ throw error;
         message: `Estado actualizado a "${material.estado}"`,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -242,7 +244,7 @@ throw error;
           message: error.message,
         };
       }
-throw error;
+      throw error;
     }
   }
 
@@ -261,7 +263,7 @@ throw error;
         data: history,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -284,7 +286,7 @@ throw error;
           : "Nombre disponible",
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 
@@ -549,7 +551,7 @@ throw error;
         },
       };
     } catch (error) {
-throw error;
+      throw error;
     } finally {
       await prismaInstance.$disconnect();
     }
@@ -580,10 +582,9 @@ throw error;
         message: `Se encontraron ${materials.length} materiales para el reporte.`,
       };
     } catch (error) {
-throw error;
+      throw error;
     }
   }
 }
 
 export default new MaterialsService();
-

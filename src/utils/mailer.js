@@ -1,11 +1,16 @@
 ﻿import nodemailer from "nodemailer";
-import 'dotenv/config';
+import "dotenv/config";
 
 // Verificación de variables de entorno para evitar errores silenciosos
-if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+if (
+  !process.env.SMTP_HOST ||
+  !process.env.SMTP_PORT ||
+  !process.env.EMAIL_USER ||
+  !process.env.EMAIL_PASSWORD
+) {
   throw new Error(
     "Faltan variables de entorno para la configuración del correo. " +
-    "Asegúrate de que SMTP_HOST, SMTP_PORT, EMAIL_USER y EMAIL_PASSWORD estén definidas en tu archivo .env"
+      "Asegúrate de que SMTP_HOST, SMTP_PORT, EMAIL_USER y EMAIL_PASSWORD estén definidas en tu archivo .env",
   );
 }
 
@@ -19,6 +24,9 @@ const transporter = nodemailer.createTransport({
   auth: {
     user: process.env.EMAIL_USER, // Tu correo de Gmail
     pass: process.env.EMAIL_PASSWORD, // Tu contraseña de aplicación de Gmail
+  },
+  defaults: {
+    encoding: "utf8",
   },
 });
 
@@ -34,6 +42,7 @@ export async function sendPasswordResetEmail({ to, firstName, url }) {
     from: `"AstroStar" <${process.env.EMAIL_USER}>`, // Muestra "AstroStar" como el remitente
     to: to,
     subject: "Restablece tu contraseña de AstroStar",
+    encoding: "utf8",
     html: `
       <div style="font-family: Arial, sans-serif; line-height: 1.6;">
         <h2>Hola ${firstName},</h2>
@@ -52,4 +61,3 @@ export async function sendPasswordResetEmail({ to, firstName, url }) {
   await transporter.sendMail(mailOptions);
   console.log(`Correo de restablecimiento de contraseña enviado a: ${to}`);
 }
-

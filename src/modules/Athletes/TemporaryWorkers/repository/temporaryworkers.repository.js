@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from '../../../../../generated/prisma/index.js';
+﻿import { PrismaClient } from "../../../../../generated/prisma/index.js";
 
 const prisma = new PrismaClient();
 
@@ -6,95 +6,135 @@ export class TemporaryWorkersRepository {
   /**
    * Obtener todas las personas temporales con paginación y filtros
    */
-  async findAll({ page = 1, limit = 10, search = '', status = '', personType = '' }) {
+  async findAll({
+    page = 1,
+    limit = 10,
+    search = "",
+    status = "",
+    personType = "",
+  }) {
     try {
       const skip = (page - 1) * limit;
-    
-    // Construir filtros
-    const where = {};
-    
-    if (search) {
-      // Para campos de texto usar contains
-      const textSearchConditions = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } }
-      ];
 
-      // Agregar campos opcionales solo si no son null
-      if (search.trim()) {
-        textSearchConditions.push(
-          { identification: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { phone: { contains: search, mode: 'insensitive' } }
-        );
-      }
+      // Construir filtros
+      const where = {};
 
-      // Para enums usar comparación parcial (insensible a mayúsculas)
-      const searchLower = search.toLowerCase();
-      const enumSearchConditions = [];
+      if (search) {
+        // Para campos de texto usar contains
+        const textSearchConditions = [
+          { firstName: { contains: search, mode: "insensitive" } },
+          { lastName: { contains: search, mode: "insensitive" } },
+          { identification: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+          { phone: { contains: search, mode: "insensitive" } },
+        ];
 
-      // Buscar en personType - coincidencia parcial
-      if ('deportista'.includes(searchLower) && searchLower.length > 0) {
-        enumSearchConditions.push({ personType: 'Deportista' });
-      }
-      if ('entrenador'.includes(searchLower) && searchLower.length > 0) {
-        enumSearchConditions.push({ personType: 'Entrenador' });
-      }
-
-      // Buscar en status - coincidencia más precisa
-      if (searchLower.length > 0) {
-        // Para "activo" - verificar que la búsqueda coincida con el inicio de "activo"
-        // pero que NO coincida con el inicio de "inactivo"
-        if ('activo'.startsWith(searchLower) && !'inactivo'.startsWith(searchLower)) {
-          enumSearchConditions.push({ status: 'Active' });
+        // Búsqueda por nombre completo (ej: "Martha Cataño")
+        const parts = search.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          textSearchConditions.push(
+            {
+              AND: [
+                { firstName: { contains: parts[0], mode: "insensitive" } },
+                {
+                  lastName: {
+                    contains: parts.slice(1).join(" "),
+                    mode: "insensitive",
+                  },
+                },
+              ],
+            },
+            {
+              AND: [
+                { lastName: { contains: parts[0], mode: "insensitive" } },
+                {
+                  firstName: {
+                    contains: parts.slice(1).join(" "),
+                    mode: "insensitive",
+                  },
+                },
+              ],
+            },
+          );
         }
-        
-        // Para "inactivo" - debe coincidir con el inicio de "inactivo"
-        if ('inactivo'.startsWith(searchLower)) {
-          enumSearchConditions.push({ status: 'Inactive' });
-        }
-        
-        // También buscar por términos en inglés
-        if ('active'.startsWith(searchLower) && !'inactive'.startsWith(searchLower)) {
-          enumSearchConditions.push({ status: 'Active' });
-        }
-        
-        if ('inactive'.startsWith(searchLower)) {
-          enumSearchConditions.push({ status: 'Inactive' });
-        }
-      }
 
-      where.OR = [...textSearchConditions, ...enumSearchConditions];
-    }
-    
-    if (status) {
-      where.status = status;
-    }
-    
-    if (personType) {
-      where.personType = personType;
-    }
+        // Para enums usar comparación parcial (insensible a mayúsculas)
+        const searchLower = search.toLowerCase();
+        const enumSearchConditions = [];
 
-    // Obtener datos con paginación
-    const [temporaryPersons, total] = await Promise.all([
-      prisma.temporaryPerson.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          documentType: {
-            select: {
-              id: true,
-              name: true
-            }
+        // Buscar en personType - coincidencia parcial
+        if ("deportista".includes(searchLower) && searchLower.length > 0) {
+          enumSearchConditions.push({ personType: "Deportista" });
+        }
+        if ("entrenador".includes(searchLower) && searchLower.length > 0) {
+          enumSearchConditions.push({ personType: "Entrenador" });
+        }
+
+        // Buscar en status - coincidencia más precisa
+        if (searchLower.length > 0) {
+          if (
+            "activo".startsWith(searchLower) &&
+            !"inactivo".startsWith(searchLower)
+          ) {
+            enumSearchConditions.push({ status: "Active" });
           }
-        },
-        orderBy: {
-          createdAt: 'desc'
+          if ("inactivo".startsWith(searchLower)) {
+            enumSearchConditions.push({ status: "Inactive" });
+          }
+          if (
+            "active".startsWith(searchLower) &&
+            !"inactive".startsWith(searchLower)
+          ) {
+            enumSearchConditions.push({ status: "Active" });
+          }
+          if ("inactive".startsWith(searchLower)) {
+            enumSearchConditions.push({ status: "Inactive" });
+          }
         }
-      }),
-      prisma.temporaryPerson.count({ where })
-    ]);
+
+        where.OR = [...textSearchConditions, ...enumSearchConditions];
+      }
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (personType) {
+        where.personType = personType;
+      }
+
+      // Obtener datos con paginación
+      const [temporaryPersons, total] = await Promise.all([
+        prisma.temporaryPerson.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            documentType: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+            teamMembers: {
+              where: { isActive: true },
+              include: {
+                team: {
+                  select: {
+                    name: true,
+                    category: true,
+                  },
+                },
+              },
+              take: 1,
+            },
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+        }),
+        prisma.temporaryPerson.count({ where }),
+      ]);
 
       return {
         temporaryPersons,
@@ -104,11 +144,11 @@ export class TemporaryWorkersRepository {
           total,
           totalPages: Math.ceil(total / limit),
           hasNext: page < Math.ceil(total / limit),
-          hasPrev: page > 1
-        }
+          hasPrev: page > 1,
+        },
       };
     } catch (error) {
-      console.error('Error in findAll repository:', error);
+      console.error("Error in findAll repository:", error);
       throw error;
     }
   }
@@ -123,10 +163,22 @@ export class TemporaryWorkersRepository {
         documentType: {
           select: {
             id: true,
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+        teamMembers: {
+          where: { isActive: true },
+          include: {
+            team: {
+              select: {
+                name: true,
+                category: true,
+              },
+            },
+          },
+          take: 1,
+        },
+      },
     });
   }
 
@@ -141,21 +193,22 @@ export class TemporaryWorkersRepository {
           documentType: {
             select: {
               id: true,
-              name: true
-            }
-          }
-        }
+              name: true,
+            },
+          },
+        },
       });
     } catch (error) {
-      if (error.code === 'P2002') {
-        // Error de constraint único
+      if (error.code === "P2002") {
         const field = error.meta?.target?.[0];
-        if (field === 'identification') {
-          throw new Error('La identificación ya está en uso por otra persona temporal.');
-        } else if (field === 'email') {
-          throw new Error('El email ya está en uso por otra persona temporal.');
+        if (field === "identification") {
+          throw new Error(
+            "La identificación ya está en uso por otra persona temporal.",
+          );
+        } else if (field === "email") {
+          throw new Error("El email ya está en uso por otra persona temporal.");
         }
-        throw new Error('Ya existe una persona temporal con estos datos.');
+        throw new Error("Ya existe una persona temporal con estos datos.");
       }
       throw error;
     }
@@ -173,23 +226,24 @@ export class TemporaryWorkersRepository {
           documentType: {
             select: {
               id: true,
-              name: true
-            }
-          }
-        }
+              name: true,
+            },
+          },
+        },
       });
     } catch (error) {
-      if (error.code === 'P2002') {
-        // Error de constraint único
+      if (error.code === "P2002") {
         const field = error.meta?.target?.[0];
-        if (field === 'identification') {
-          throw new Error('La identificación ya está en uso por otra persona temporal.');
-        } else if (field === 'email') {
-          throw new Error('El email ya está en uso por otra persona temporal.');
+        if (field === "identification") {
+          throw new Error(
+            "La identificación ya está en uso por otra persona temporal.",
+          );
+        } else if (field === "email") {
+          throw new Error("El email ya está en uso por otra persona temporal.");
         }
-        throw new Error('Ya existe una persona temporal con estos datos.');
-      } else if (error.code === 'P2025') {
-        throw new Error('La persona temporal no fue encontrada.');
+        throw new Error("Ya existe una persona temporal con estos datos.");
+      } else if (error.code === "P2025") {
+        throw new Error("La persona temporal no fue encontrada.");
       }
       throw error;
     }
@@ -201,7 +255,7 @@ export class TemporaryWorkersRepository {
   async delete(id) {
     return await prisma.temporaryPerson.update({
       where: { id: parseInt(id) },
-      data: { status: 'Inactive' }
+      data: { status: "Inactive" },
     });
   }
 
@@ -210,7 +264,7 @@ export class TemporaryWorkersRepository {
    */
   async hardDelete(id) {
     return await prisma.temporaryPerson.delete({
-      where: { id: parseInt(id) }
+      where: { id: parseInt(id) },
     });
   }
 
@@ -222,7 +276,6 @@ export class TemporaryWorkersRepository {
     if (excludeId) {
       where.id = { not: parseInt(excludeId) };
     }
-    
     return await prisma.temporaryPerson.findFirst({ where });
   }
 
@@ -234,7 +287,6 @@ export class TemporaryWorkersRepository {
     if (excludeId) {
       where.id = { not: parseInt(excludeId) };
     }
-    
     return await prisma.temporaryPerson.findFirst({ where });
   }
 
@@ -244,14 +296,12 @@ export class TemporaryWorkersRepository {
   async getStats() {
     const [total, active, inactive, byType] = await Promise.all([
       prisma.temporaryPerson.count(),
-      prisma.temporaryPerson.count({ where: { status: 'Active' } }),
-      prisma.temporaryPerson.count({ where: { status: 'Inactive' } }),
+      prisma.temporaryPerson.count({ where: { status: "Active" } }),
+      prisma.temporaryPerson.count({ where: { status: "Inactive" } }),
       prisma.temporaryPerson.groupBy({
-        by: ['personType'],
-        _count: {
-          id: true
-        }
-      })
+        by: ["personType"],
+        _count: { id: true },
+      }),
     ]);
 
     const typeStats = byType.reduce((acc, item) => {
@@ -265,7 +315,7 @@ export class TemporaryWorkersRepository {
       active,
       inactive,
       deportista: typeStats.deportista || 0,
-      entrenador: typeStats.entrenador || 0
+      entrenador: typeStats.entrenador || 0,
     };
   }
 
@@ -279,12 +329,11 @@ export class TemporaryWorkersRepository {
         team: {
           select: {
             id: true,
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+      },
     });
-
     return teamMember;
   }
 
@@ -295,37 +344,19 @@ export class TemporaryWorkersRepository {
     const documentTypes = await prisma.documentType.findMany({
       where: {
         NOT: [
-          { name: 'Número de Identificación Tributaria' },
-          { name: 'Registro Civil' } // Solo para deportistas
-        ]
+          { name: "Número de Identificación Tributaria" },
+          { name: "Registro Civil" },
+        ],
       },
       select: {
         id: true,
-        name: true
+        name: true,
       },
       orderBy: {
-        name: 'asc'
-      }
+        name: "asc",
+      },
     });
 
     return { documentTypes };
-  }
-  /**
-   * Verificar si una persona temporal está asociada a algún equipo
-   */
-  async isAssociatedWithTeam(id) {
-    const teamMember = await prisma.teamMember.findFirst({
-      where: { temporaryPersonId: parseInt(id) },
-      include: {
-        team: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
-    });
-
-    return teamMember;
   }
 }

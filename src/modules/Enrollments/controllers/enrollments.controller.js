@@ -25,9 +25,26 @@ export const enrollmentsController = {
         temporaryPassword: result.temporaryPassword
       });
     } catch (error) {
-      return res.status(500).json({
+      const rawMessage = String(error?.message || "");
+      const normalizedMessage = rawMessage
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+
+      const isBusinessError =
+        normalizedMessage.includes("ya existe") ||
+        normalizedMessage.includes("obligatorio") ||
+        normalizedMessage.includes("acudiente") ||
+        normalizedMessage.includes("tipo de documento") ||
+        normalizedMessage.includes("no encontrado") ||
+        normalizedMessage.includes("invalido") ||
+        normalizedMessage.includes("no puede usar");
+
+      const statusCode = isBusinessError ? 400 : 500;
+
+      return res.status(statusCode).json({
         success: false,
-        message: error.message,
+        message: rawMessage,
       });
     }
   },
@@ -262,6 +279,22 @@ const result = await enrollmentsService.findAll({
    */
   async processExpired(req, res) {
     try {
+      const roleName = String(req.user?.role?.name || req.user?.role || "")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase();
+      const isAdmin =
+        roleName === "admin" ||
+        roleName === "administrador" ||
+        roleName === "administrador sistema";
+
+      if (!isAdmin) {
+        return res.status(403).json({
+          success: false,
+          message: "Solo administradores pueden procesar matriculas vencidas",
+        });
+      }
+
       const result = await enrollmentsService.processExpiredEnrollments();
 
       return res.json({
@@ -334,5 +367,3 @@ return res.status(500).json({
     }
   },
 };
-
-

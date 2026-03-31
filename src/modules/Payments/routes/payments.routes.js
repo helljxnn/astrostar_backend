@@ -103,7 +103,20 @@ router.get('/pending', authenticateToken, requirePaymentAdminPermissions('Ver'),
 router.get('/history/report', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getPaymentHistoryForReport); // ANTES de /all
 router.get('/all', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getAllPayments);
 router.get('/monthly-management', authenticateToken, requirePaymentAdminPermissions('Ver'), paymentsController.getMonthlyPaymentsManagement);
-router.patch('/:paymentId/approve', authenticateToken, requirePaymentAdminPermissions('Aprobar'), paymentsController.approvePayment);
-router.patch('/:paymentId/reject', authenticateToken, requirePaymentAdminPermissions('Rechazar'), paymentsController.rejectPayment);
+router.patch(
+  '/:paymentId/approve',
+  authenticateToken,
+  paymentsValidator.validatePaymentId,
+  requirePaymentAdminPermissions('Aprobar'),
+  paymentsController.approvePayment
+);
+router.patch(
+  '/:paymentId/reject',
+  authenticateToken,
+  paymentsValidator.validatePaymentId,
+  paymentsValidator.validateRejectPayment,
+  requirePaymentAdminPermissions('Rechazar'),
+  paymentsController.rejectPayment
+);
 
 export default router;

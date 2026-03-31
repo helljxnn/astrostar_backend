@@ -19,6 +19,31 @@ const buildErrorResponse = (error, fallbackMessage) => {
 };
 
 class EventMaterialsConsumableController {
+  constructor() {
+    this.getByEvent = this.getByEvent.bind(this);
+    this.loadDonationMaterials = this.loadDonationMaterials.bind(this);
+    this.assignMaterial = this.assignMaterial.bind(this);
+    this.removeAssignment = this.removeAssignment.bind(this);
+    this.finalizeEvent = this.finalizeEvent.bind(this);
+  }
+
+  resolveAuthenticatedUser(req) {
+    const userId = Number.parseInt(req.user?.id, 10);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return null;
+    }
+
+    const fullName = [req.user?.firstName, req.user?.lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    return {
+      userId,
+      userName: fullName || req.user?.name || null,
+    };
+  }
+
   /**
    * Get consumable materials for event
    */
@@ -43,14 +68,19 @@ class EventMaterialsConsumableController {
   async loadDonationMaterials(req, res) {
     try {
       const { eventoId } = req.params;
-      const userId = Number.parseInt(req.user?.id, 10) || 1;
-      const userName = req.user?.name || "System";
+      const actor = this.resolveAuthenticatedUser(req);
+      if (!actor) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
 
       const result =
         await eventMaterialsConsumableService.loadDonationMaterials(
           eventoId,
-          userId,
-          userName,
+          actor.userId,
+          actor.userName,
         );
 
       return res.status(200).json(result);
@@ -69,14 +99,19 @@ class EventMaterialsConsumableController {
   async assignMaterial(req, res) {
     try {
       const { eventoId } = req.params;
-      const userId = Number.parseInt(req.user?.id, 10) || 1;
-      const userName = req.user?.name || "System";
+      const actor = this.resolveAuthenticatedUser(req);
+      if (!actor) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
 
       const result = await eventMaterialsConsumableService.assignMaterial(
         eventoId,
         req.body,
-        userId,
-        userName,
+        actor.userId,
+        actor.userName,
       );
 
       if (!result.success) {
@@ -99,13 +134,18 @@ class EventMaterialsConsumableController {
   async removeAssignment(req, res) {
     try {
       const { assignmentId } = req.params;
-      const userId = Number.parseInt(req.user?.id, 10) || 1;
-      const userName = req.user?.name || "System";
+      const actor = this.resolveAuthenticatedUser(req);
+      if (!actor) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
 
       const result = await eventMaterialsConsumableService.removeAssignment(
         assignmentId,
-        userId,
-        userName,
+        actor.userId,
+        actor.userName,
       );
 
       if (!result.success) {
@@ -128,13 +168,18 @@ class EventMaterialsConsumableController {
   async finalizeEvent(req, res) {
     try {
       const { eventoId } = req.params;
-      const userId = Number.parseInt(req.user?.id, 10) || 1;
-      const userName = req.user?.name || "System";
+      const actor = this.resolveAuthenticatedUser(req);
+      if (!actor) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
 
       const result = await eventMaterialsConsumableService.finalizeEvent(
         eventoId,
-        userId,
-        userName,
+        actor.userId,
+        actor.userName,
       );
 
       if (!result.success) {

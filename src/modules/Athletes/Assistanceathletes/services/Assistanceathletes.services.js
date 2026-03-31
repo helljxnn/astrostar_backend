@@ -5,6 +5,13 @@ export class AssistanceathletesService {
     this.repository = new AssistanceathletesRepository();
   }
 
+  resolveErrorMessage(error, fallbackMessage) {
+    if (error?.statusCode && error?.message) {
+      return error.message;
+    }
+    return fallbackMessage;
+  }
+
   async getAttendanceByDate(params) {
     try {
       const result = await this.repository.getAttendanceByDate(params);
@@ -16,7 +23,10 @@ export class AssistanceathletesService {
     } catch (error) {
 return {
         success: false,
-        message: error?.message || "Error al obtener la asistencia.",
+        message: this.resolveErrorMessage(
+          error,
+          "Error al obtener la asistencia.",
+        ),
         statusCode: error?.statusCode || 500,
       };
     }
@@ -32,7 +42,10 @@ return {
     } catch (error) {
 return {
         success: false,
-        message: error?.message || "Error al guardar la asistencia.",
+        message: this.resolveErrorMessage(
+          error,
+          "Error al guardar la asistencia.",
+        ),
         statusCode: error?.statusCode || 500,
       };
     }
@@ -52,7 +65,10 @@ return {
     } catch (error) {
 return {
         success: false,
-        message: error?.message || "Error al obtener el historial de asistencia.",
+        message: this.resolveErrorMessage(
+          error,
+          "Error al obtener el historial de asistencia.",
+        ),
         statusCode: error?.statusCode || 500,
       };
     }
@@ -70,7 +86,10 @@ return {
     } catch (error) {
 return {
         success: false,
-        message: error?.message || "Error al obtener el resumen de asistencia.",
+        message: this.resolveErrorMessage(
+          error,
+          "Error al obtener el resumen de asistencia.",
+        ),
         statusCode: error?.statusCode || 500,
       };
     }

@@ -38,6 +38,24 @@ export class RSVPRepository {
   }
 
   /**
+   * Buscar invitacion por id
+   */
+  async findById(id) {
+    return await prisma.eventInvitation.findUnique({
+      where: { id },
+      include: {
+        participant: {
+          include: {
+            service: true,
+            athlete: { include: { user: true } },
+            team: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
    * Actualizar estado de invitación
    */
   async updateStatus(id, status) {

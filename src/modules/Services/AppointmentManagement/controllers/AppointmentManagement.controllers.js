@@ -61,7 +61,10 @@ export class AppointmentController {
   getAppointmentById = async (req, res) => {
     try {
       const { id } = req.params;
-      const result = await this.appointmentService.getAppointmentById(id);
+      const result = await this.appointmentService.getAppointmentById(
+        id,
+        req.user,
+      );
       if (!result.success) {
         return res.status(result.statusCode).json({
           success: false,
@@ -90,8 +93,10 @@ export class AppointmentController {
   createAppointment = async (req, res) => {
     try {
       const appointmentData = req.body;
-      const result =
-        await this.appointmentService.createAppointment(appointmentData);
+      const result = await this.appointmentService.createAppointment(
+        appointmentData,
+        req.user,
+      );
       res.status(201).json({
         success: true,
         data: result.data,
@@ -99,7 +104,7 @@ export class AppointmentController {
       });
     } catch (error) {
       console.error("Error creating appointment:", error);
-      return res.status(400).json({
+      return res.status(error.statusCode || 400).json({
         success: false,
         message: error.message,
       });
@@ -116,6 +121,7 @@ export class AppointmentController {
       const result = await this.appointmentService.updateAppointment(
         id,
         updateData,
+        req.user,
       );
       if (!result.success) {
         return res.status(result.statusCode).json({
@@ -130,7 +136,7 @@ export class AppointmentController {
       });
     } catch (error) {
       console.error("Error updating appointment:", error);
-      return res.status(400).json({
+      return res.status(error.statusCode || 400).json({
         success: false,
         message: error.message,
       });
@@ -153,6 +159,7 @@ export class AppointmentController {
       const result = await this.appointmentService.cancelAppointment(
         id,
         cancelReason,
+        req.user,
       );
       if (!result.success) {
         return res.status(result.statusCode).json({
@@ -194,6 +201,7 @@ export class AppointmentController {
       const result = await this.appointmentService.completeAppointment(
         id,
         conclusion,
+        req.user,
       );
 
       if (!result.success) {
@@ -275,9 +283,12 @@ export class AppointmentController {
   getActiveSpecialists = async (req, res) => {
     try {
       const { specialty = "" } = req.query;
-      const result = await this.appointmentService.getActiveSpecialists({
-        specialty,
-      });
+      const result = await this.appointmentService.getActiveSpecialists(
+        {
+          specialty,
+        },
+        req.user,
+      );
       res.json({
         success: true,
         data: result.data,

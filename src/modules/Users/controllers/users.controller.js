@@ -1,6 +1,18 @@
 ﻿// UsersController.js
 import usersService from "../services/users.service.js";
 
+const sanitizePaginationParam = (
+  value,
+  defaultValue,
+  { min = 1, max = 100 } = {},
+) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < min) {
+    return defaultValue;
+  }
+  return parsed > max ? max : parsed;
+};
+
 export class UsersController {
   async getUsers(req, res) {
     try {
@@ -12,13 +24,26 @@ export class UsersController {
         roleId,
         userType,
       } = req.query;
+      const safePage = sanitizePaginationParam(page, 1, {
+        min: 1,
+        max: 1000000,
+      });
+      const safeLimit = sanitizePaginationParam(limit, 10, {
+        min: 1,
+        max: 100,
+      });
+      const parsedRoleId = roleId ? Number.parseInt(roleId, 10) : undefined;
+      const safeRoleId =
+        Number.isFinite(parsedRoleId) && parsedRoleId > 0
+          ? parsedRoleId
+          : undefined;
 
       const result = await usersService.getUsers({
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: safePage,
+        limit: safeLimit,
         search,
         status,
-        roleId: roleId ? parseInt(roleId) : undefined,
+        roleId: safeRoleId,
         userType,
       });
 

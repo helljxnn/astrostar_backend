@@ -47,10 +47,7 @@ export class EmployeeEmailService extends BaseEmailService {
         message: "Error enviando email",
       };
     } catch (error) {
-      console.warn(
-        "⚠️  Error enviando email, pero continuando:",
-        error.message,
-      );
+      console.warn("Warning sending email, continuing:", error.message);
       return {
         success: false,
         error: error.message,
@@ -241,6 +238,7 @@ Este es un email automático del sistema AstroStar.
     const formattedDate = this.formatDate(scheduleData.date);
     const recurrenceText = this.formatScheduleRecurrence(
       scheduleData.recurrence,
+      scheduleData.customRecurrence,
     );
 
     return `
@@ -330,6 +328,7 @@ Este es un email automático del sistema AstroStar.
     const formattedDate = this.formatDate(scheduleData.date);
     const recurrenceText = this.formatScheduleRecurrence(
       scheduleData.recurrence,
+      scheduleData.customRecurrence,
     );
 
     return `
@@ -356,20 +355,81 @@ Este es un mensaje automático de AstroStar. Por favor no respondas a este corre
   /**
    * Formatear recurrencia de horarios
    */
-  formatScheduleRecurrence(recurrence = "no") {
+  formatScheduleRecurrence(recurrence = "no", customRecurrence = null) {
+    if (recurrence === "personalizado" || recurrence === "custom") {
+      return this.formatCustomRecurrence(customRecurrence);
+    }
+
     const labels = {
-      no: "Sin repetición",
-      dia: "Cada día",
+      no: null, // Sin repetición no se muestra
+      dia: "Todos los días",
       semana: "Cada semana",
       mes: "Cada mes",
       anio: "Cada año",
-      laboral: "Días laborales",
-      personalizado: "Repetición personalizada",
+      laboral: "Días laborales (lunes a viernes)",
     };
-    return labels[recurrence] || "Sin repetición";
+    return labels[recurrence] ?? null;
+  }
+
+  /**
+   * Interpretar y formatear recurrencia personalizada
+   */
+  formatCustomRecurrence(customRecurrence) {
+    if (!customRecurrence) return "Repetición personalizada";
+
+    try {
+      const custom =
+        typeof customRecurrence === "string"
+          ? JSON.parse(customRecurrence)
+          : customRecurrence;
+
+      const DIAS = [
+        "domingo",
+        "lunes",
+        "martes",
+        "miércoles",
+        "jueves",
+        "viernes",
+        "sábado",
+      ];
+      const FREQ_LABELS = {
+        dia: "día(s)",
+        semana: "semana(s)",
+        mes: "mes(es)",
+        anio: "año(s)",
+      };
+
+      const interval = custom.interval || 1;
+      const freq = custom.frequency || custom.freq || "semana";
+      const freqLabel = FREQ_LABELS[freq] || freq;
+
+      let text = `Cada ${interval} ${freqLabel}`;
+
+      if (
+        freq === "semana" &&
+        Array.isArray(custom.dias) &&
+        custom.dias.length > 0
+      ) {
+        const diasNombres = custom.dias
+          .map((d) => DIAS[Number(d)])
+          .filter(Boolean)
+          .map((d) => d.charAt(0).toUpperCase() + d.slice(1));
+        text += ` — días: ${diasNombres.join(", ")}`;
+      }
+
+      if (custom.endDate) {
+        const end = new Date(custom.endDate);
+        if (!isNaN(end.getTime())) {
+          text += ` (hasta el ${end.toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" })})`;
+        }
+      }
+
+      return text;
+    } catch {
+      return "Repetición personalizada";
+    }
   }
 }
 
 // Exportar instancia singleton
 export default new EmployeeEmailService();
-

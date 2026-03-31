@@ -19,6 +19,10 @@ const BUSINESS_CONSTANTS = {
 let cachedSettings = null;
 let cacheTimestamp = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+const PAYMENT_REVIEW_TX_OPTIONS = {
+  maxWait: 5000,
+  timeout: 15000,
+};
 
 /**
  * Obtener configuración de pagos con cache inteligente
@@ -47,6 +51,14 @@ const invalidateSettingsCache = () => {
   cachedSettings = null;
   cacheTimestamp = null;
 };
+
+const escapeHtml = (value = "") =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 
 // ============================================================================
 // UTILIDADES
@@ -703,26 +715,29 @@ const sendPaymentStatusEmail = async (payment, status, rejectionReason = null) =
 
   const athleteName = `${payment?.athlete?.user?.firstName || ""} ${payment?.athlete?.user?.lastName || ""}`.trim();
   const periodLabel = getObligationPeriodLabel(payment?.obligation);
+  const safeAthleteName = escapeHtml(athleteName || "deportista");
+  const safePeriodLabel = escapeHtml(periodLabel);
   const statusText = status === "APPROVED" ? "aprobado" : "rechazado";
   const subject = status === "APPROVED"
     ? "Comprobante de pago aprobado"
     : "Comprobante de pago rechazado";
 
-  const rejectionHtml = rejectionReason
-    ? `<p><strong>Motivo:</strong> ${rejectionReason}</p>`
+  const safeRejectionReason = rejectionReason ? escapeHtml(rejectionReason) : "";
+  const rejectionHtml = safeRejectionReason
+    ? `<p><strong>Motivo:</strong> ${safeRejectionReason}</p>`
     : "";
 
   const html = `
     <div style="font-family: Arial, sans-serif; color: #1f2937;">
       <h2 style="margin-bottom: 12px;">Comprobante ${statusText}</h2>
-      <p>Hola ${athleteName || "deportista"},</p>
-      <p>Tu comprobante de pago para <strong>${periodLabel}</strong> fue ${statusText}.</p>
+      <p>Hola ${safeAthleteName},</p>
+      <p>Tu comprobante de pago para <strong>${safePeriodLabel}</strong> fue ${statusText}.</p>
       ${rejectionHtml}
       <p style="margin-top: 16px;">Si necesitas soporte, responde a este correo.</p>
     </div>
   `;
 
-  const text = `Hola ${athleteName || "deportista"},\nTu comprobante de pago para ${periodLabel} fue ${statusText}.\n${rejectionReason ? `Motivo: ${rejectionReason}\n` : ""}\nSi necesitas soporte, responde a este correo.`;
+  const text = `Hola ${athleteName || "deportista"},\nTu comprobante de pago para ${periodLabel} fue ${statusText}.\n${safeRejectionReason ? `Motivo: ${safeRejectionReason}\n` : ""}\nSi necesitas soporte, responde a este correo.`;
 
   await emailService.sendMailWithFallback({
     from: emailService.getDefaultFrom(),
@@ -1632,7 +1647,7 @@ throw new Error('Error al obtener historial de pagos del atleta');
    * Aprobar pago (MEJORADO - Con transacción y control de concurrencia)
    */
   async approvePayment(paymentId, reviewedBy) {
-    return await prisma.$transaction(async (tx) => {
+    const payment = await prisma.$transaction(async (tx) => {
       // Verificar estado actual del pago (control de concurrencia)
       const currentPayment = await tx.payment.findUnique({
         where: { id: paymentId },
@@ -1673,36 +1688,34 @@ throw new Error('Error al obtener historial de pagos del atleta');
         }
       });
 
-      // Manejar lógica post-aprobación según tipo de obligación
       if (payment.obligation.type === 'ENROLLMENT_INITIAL') {
-        // Pago inicial: activar la matrícula que estaba en Pending_Payment
         await this._processInitialEnrollmentPayment(tx, payment);
       } else if (payment.obligation.type === 'ENROLLMENT_RENEWAL') {
-        // Renovación: crear nueva matrícula por 1 año
         await this._processEnrollmentRenewal(tx, payment);
       }
 
-      // Cubrir mensualidad del mes del envío del comprobante (si aplica)
       if (isEnrollmentPaymentType(payment.obligation.type)) {
         await this._applyEnrollmentMonthlyCoverage(tx, payment);
       }
 
-      // Notificación por email (no bloqueante)
-      try {
-        await sendPaymentStatusEmail(payment, 'APPROVED');
-      } catch {
-        // Ignorar fallos de email para no bloquear la aprobación
-      }
-
       return payment;
-    });
+    }, PAYMENT_REVIEW_TX_OPTIONS);
+
+    // Email fuera de transacción para evitar timeout del commit
+    try {
+      await sendPaymentStatusEmail(payment, 'APPROVED');
+    } catch {
+      // Ignorar fallos de email para no bloquear la aprobación
+    }
+
+    return payment;
   },
 
   /**
    * Rechazar pago (MEJORADO - Con transacción y control de concurrencia)
    */
   async rejectPayment(paymentId, reviewedBy, rejectionReason) {
-    return await prisma.$transaction(async (tx) => {
+    const payment = await prisma.$transaction(async (tx) => {
       // Verificar estado actual del pago (control de concurrencia)
       const currentPayment = await tx.payment.findUnique({
         where: { id: paymentId }
@@ -1742,15 +1755,17 @@ throw new Error('Error al obtener historial de pagos del atleta');
         }
       });
 
-      // Notificación por email (no bloqueante)
-      try {
-        await sendPaymentStatusEmail(payment, 'REJECTED', rejectionReason);
-      } catch {
-        // Ignorar fallos de email para no bloquear el rechazo
-      }
-
       return payment;
-    });
+    }, PAYMENT_REVIEW_TX_OPTIONS);
+
+    // Email fuera de transacción para evitar timeout del commit
+    try {
+      await sendPaymentStatusEmail(payment, 'REJECTED', rejectionReason);
+    } catch {
+      // Ignorar fallos de email para no bloquear el rechazo
+    }
+
+    return payment;
   },
 
   // ============================================================================

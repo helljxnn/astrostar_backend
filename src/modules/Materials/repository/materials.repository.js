@@ -772,7 +772,7 @@ class MaterialsRepository {
     if (search && search.trim()) {
       where.OR = [
         { nombre: { contains: search, mode: "insensitive" } },
-        { codigo: { contains: search, mode: "insensitive" } },
+        { categoria: { contains: search, mode: "insensitive" } },
         { descripcion: { contains: search, mode: "insensitive" } },
       ];
     }
@@ -787,11 +787,24 @@ class MaterialsRepository {
 
     const materials = await prisma.material.findMany({
       where,
-      include: {
-        categoria: {
+      select: {
+        id: true,
+        nombre: true,
+        categoriaId: true,
+        categoria: true,
+        descripcion: true,
+        stockFundacion: true,
+        stockEventos: true,
+        stockEventosReservado: true,
+        unidadMedida: true,
+        estado: true,
+        createdAt: true,
+        updatedAt: true,
+        category: {
           select: {
             id: true,
             nombre: true,
+            estado: true,
           },
         },
       },

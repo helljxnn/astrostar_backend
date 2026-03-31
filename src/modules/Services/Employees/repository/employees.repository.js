@@ -35,7 +35,7 @@ export class EmployeeRepository {
     const searchConditions = [];
 
     if (search) {
-      // Búsqueda en campos de texto
+      // Búsqueda en campos de texto individuales
       searchConditions.push(
         { user: { firstName: { contains: search, mode: "insensitive" } } },
         { user: { lastName: { contains: search, mode: "insensitive" } } },
@@ -44,6 +44,38 @@ export class EmployeeRepository {
         { user: { role: { name: { contains: search, mode: "insensitive" } } } },
         { specialty: { contains: search, mode: "insensitive" } },
       );
+
+      // Búsqueda por nombre completo (ej: "Cristobal Lascarro")
+      const parts = search.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        searchConditions.push({
+          user: {
+            AND: [
+              { firstName: { contains: parts[0], mode: "insensitive" } },
+              {
+                lastName: {
+                  contains: parts.slice(1).join(" "),
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        });
+        // También intentar primer término como apellido y segundo como nombre
+        searchConditions.push({
+          user: {
+            AND: [
+              { lastName: { contains: parts[0], mode: "insensitive" } },
+              {
+                firstName: {
+                  contains: parts.slice(1).join(" "),
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        });
+      }
 
       // Búsqueda en enum de estado (case-insensitive match)
       const searchLower = search.toLowerCase();
@@ -113,6 +145,7 @@ export class EmployeeRepository {
         },
         purchases: true,
         donationsResponsible: true,
+        appointments: true,
       },
     });
   }
@@ -431,6 +464,37 @@ export class EmployeeRepository {
         { user: { role: { name: { contains: search, mode: "insensitive" } } } },
         { specialty: { contains: search, mode: "insensitive" } },
       );
+
+      // Búsqueda por nombre completo (ej: "Cristobal Lascarro")
+      const parts = search.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        searchConditions.push({
+          user: {
+            AND: [
+              { firstName: { contains: parts[0], mode: "insensitive" } },
+              {
+                lastName: {
+                  contains: parts.slice(1).join(" "),
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        });
+        searchConditions.push({
+          user: {
+            AND: [
+              { lastName: { contains: parts[0], mode: "insensitive" } },
+              {
+                firstName: {
+                  contains: parts.slice(1).join(" "),
+                  mode: "insensitive",
+                },
+              },
+            ],
+          },
+        });
+      }
 
       const searchLower = search.toLowerCase();
       const statusValues = ["Activo", "Licencia", "Desvinculado", "Fallecido"];

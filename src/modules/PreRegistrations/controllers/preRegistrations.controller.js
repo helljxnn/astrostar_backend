@@ -4,11 +4,8 @@ import { preRegistrationSchemas } from "../validators/preRegistrations.validator
 export const preRegistrationsController = {
   async create(req, res) {
     try {
-      console.log('📥 [PreRegistration] Datos recibidos:', req.body);
-      
       const { error, value } = preRegistrationSchemas.create.validate(req.body);
       if (error) {
-        console.log('❌ [PreRegistration] Error de validación:', error.details);
         return res.status(400).json({
           success: false,
           message: error.details[0]?.message || 'Error de validación',
@@ -16,9 +13,7 @@ export const preRegistrationsController = {
         });
       }
 
-      console.log('✅ [PreRegistration] Datos validados:', value);
       const preRegistration = await preRegistrationsService.create(value);
-      console.log('✅ [PreRegistration] Pre-inscripción creada:', preRegistration);
 
       return res.status(201).json({
         success: true,
@@ -26,7 +21,6 @@ export const preRegistrationsController = {
         data: preRegistration,
       });
     } catch (error) {
-      console.error('❌ [PreRegistration] Error en create:', error);
       return res.status(500).json({
         success: false,
         message: error.message,
@@ -116,7 +110,6 @@ export const preRegistrationsController = {
         data: preRegistration,
       });
     } catch (error) {
-      console.error('Error en updateStatus:', error);
       if (
         error.message?.includes("Estado de preinscripcion no valido") ||
         error.message?.includes("El estado es requerido")

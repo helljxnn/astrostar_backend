@@ -64,7 +64,7 @@ export const paymentSettingsController = {
       const {
         monthlyAmount,
         enrollmentAmount,
-        graceDays
+        lateFeeDailyAmount
       } = req.body;
 
       // Validaciones de negocio
@@ -82,17 +82,17 @@ export const paymentSettingsController = {
         });
       }
 
-      if (graceDays && (graceDays < 1 || graceDays > 15)) {
+      if (lateFeeDailyAmount !== undefined && (lateFeeDailyAmount < 0 || lateFeeDailyAmount > 100000)) {
         return res.status(400).json({
           success: false,
-          message: "Los días de gracia deben estar entre 1 y 15"
+          message: "El valor de mora diaria debe estar entre $0 y $100,000"
         });
       }
 
       const updatedSettings = await paymentsService.updatePaymentSettings({
         ...(monthlyAmount && { monthlyAmount }),
         ...(enrollmentAmount && { enrollmentAmount }),
-        ...(graceDays && { graceDays })
+        ...(lateFeeDailyAmount !== undefined && { lateFeeDailyAmount })
       });
 
       return res.status(200).json({
@@ -105,4 +105,3 @@ export const paymentSettingsController = {
     }
   }
 };
-

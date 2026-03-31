@@ -1,6 +1,6 @@
 ﻿// 📁 Services/Employees/EmployeesSchedule/services/schedule.services.js
-import { ScheduleRepository } from '../repository/schedule.repository.js';
-import emailService from '../../../../services/emailService.js';
+import { ScheduleRepository } from "../repository/schedule.repository.js";
+import emailService from "../../../../services/emailService.js";
 
 export class ScheduleService {
   constructor() {
@@ -21,26 +21,36 @@ export class ScheduleService {
    */
   mapDayOfWeek(fecha) {
     const date = this.normalizeDateOnly(fecha);
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
     return days[date.getDay()];
   }
 
   normalizeText(value) {
-    return value ? String(value).trim().replace(/\s+/g, ' ') : '';
+    return value ? String(value).trim().replace(/\s+/g, " ") : "";
   }
 
   normalizeTime(value) {
     if (!value) return null;
     const match = String(value).match(/^([01]?\d|2[0-3]):([0-5]\d)$/);
     if (!match) return null;
-    const hours = String(match[1]).padStart(2, '0');
-    const minutes = String(match[2]).padStart(2, '0');
+    const hours = String(match[1]).padStart(2, "0");
+    const minutes = String(match[2]).padStart(2, "0");
     return `${hours}:${minutes}`;
   }
 
   parseTimeRange(value) {
     if (!value) return null;
-    const match = String(value).match(/([01]?\d|2[0-3]):([0-5]\d)\s*-\s*([01]?\d|2[0-3]):([0-5]\d)/);
+    const match = String(value).match(
+      /([01]?\d|2[0-3]):([0-5]\d)\s*-\s*([01]?\d|2[0-3]):([0-5]\d)/,
+    );
     if (!match) return null;
     const startTime = this.normalizeTime(`${match[1]}:${match[2]}`);
     const endTime = this.normalizeTime(`${match[3]}:${match[4]}`);
@@ -49,15 +59,15 @@ export class ScheduleService {
   }
 
   normalizeCustomFrequency(value) {
-    if (!value) return 'semana';
+    if (!value) return "semana";
     const normalized = String(value)
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
       .toLowerCase()
       .trim();
-    return ['dia', 'semana', 'mes', 'anio'].includes(normalized)
+    return ["dia", "semana", "mes", "anio"].includes(normalized)
       ? normalized
-      : 'semana';
+      : "semana";
   }
 
   normalizeCustomDays(days = []) {
@@ -70,14 +80,14 @@ export class ScheduleService {
   normalizeCustomRecurrence(value) {
     if (!value) return null;
     let raw = value;
-    if (typeof value === 'string') {
+    if (typeof value === "string") {
       try {
         raw = JSON.parse(value);
       } catch (_error) {
         return null;
       }
     }
-    if (!raw || typeof raw !== 'object') return null;
+    if (!raw || typeof raw !== "object") return null;
 
     return {
       ...raw,
@@ -110,7 +120,9 @@ export class ScheduleService {
       return scoped;
     }
 
-    const employee = await this.scheduleRepository.findEmployeeByUserId(user?.id);
+    const employee = await this.scheduleRepository.findEmployeeByUserId(
+      user?.id,
+    );
     if (employee?.id) {
       scoped.employeeId = parseInt(employee.id);
     }
@@ -120,7 +132,7 @@ export class ScheduleService {
 
   timeToMinutes(value) {
     if (!value) return null;
-    const parts = String(value).split(':');
+    const parts = String(value).split(":");
     if (parts.length < 2) return null;
     const hours = Number(parts[0]);
     const minutes = Number(parts[1]);
@@ -130,25 +142,27 @@ export class ScheduleService {
 
   formatEmployeeName(user = {}) {
     const clean = (value) => {
-      if (!value) return '';
+      if (!value) return "";
       const text = String(value).trim();
-      if (text.toLowerCase() === 'null' || text.toLowerCase() === 'undefined') return '';
+      if (text.toLowerCase() === "null" || text.toLowerCase() === "undefined")
+        return "";
       return text;
     };
 
     const {
-      firstName = '',
-      middleName = '',
-      lastName = '',
-      secondLastName = '',
+      firstName = "",
+      middleName = "",
+      lastName = "",
+      secondLastName = "",
     } = user || {};
-    const fullName = `${clean(firstName)} ${clean(middleName)} ${clean(lastName)} ${clean(secondLastName)}`
-      .replace(/\s+/g, ' ')
-      .trim();
-    return fullName || 'Empleado';
+    const fullName =
+      `${clean(firstName)} ${clean(middleName)} ${clean(lastName)} ${clean(secondLastName)}`
+        .replace(/\s+/g, " ")
+        .trim();
+    return fullName || "Empleado";
   }
 
-  notifyEmployeeSchedule({ schedule, action = 'created' }) {
+  notifyEmployeeSchedule({ schedule, action = "created" }) {
     const employeeUser = schedule?.employee?.user;
     const to = employeeUser?.email;
     if (!to) return;
@@ -164,20 +178,40 @@ export class ScheduleService {
           startTime: schedule.startTime,
           endTime: schedule.endTime,
           recurrence: schedule.recurrence,
+          customRecurrence: schedule.customRecurrence,
           description: schedule.description,
         },
       })
       .then((result) => {
         if (!result?.success) {
           console.warn(
-            '⚠️  No se pudo enviar el email de horario:',
+            "[ScheduleEmail] Could not send schedule email:",
             result?.error || result,
           );
         }
       })
       .catch((err) =>
-        console.warn('⚠️  Error enviando email de horario:', err?.message),
+        console.warn(
+          "[ScheduleEmail] Error sending schedule email:",
+          err?.message,
+        ),
       );
+  }
+
+  async getScopedEmployeeId(user = null) {
+    const scopedFilters = await this.resolveScopeFilters({}, user);
+    return scopedFilters.employeeId || null;
+  }
+
+  async assertScopedEmployeeAccess(targetEmployeeId, user = null) {
+    const scopedEmployeeId = await this.getScopedEmployeeId(user);
+    if (!scopedEmployeeId) return;
+
+    if (parseInt(targetEmployeeId) !== parseInt(scopedEmployeeId)) {
+      throw new Error(
+        "No tienes permisos para gestionar horarios de otro empleado.",
+      );
+    }
   }
 
   /**
@@ -200,7 +234,7 @@ export class ScheduleService {
       });
       return result;
     } catch (error) {
-      console.error('Service error - getAllSchedules:', error);
+      console.error("Service error - getAllSchedules:", error);
       throw error;
     }
   }
@@ -208,22 +242,30 @@ export class ScheduleService {
   /**
    * Obtener horario por ID
    */
-  async getScheduleById(id) {
+  async getScheduleById(id, user = null) {
     try {
       const schedule = await this.scheduleRepository.findById(id);
       if (!schedule) {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el horario con ID ${id}.`
+          message: `No se encontró el horario con ID ${id}.`,
         };
       }
+      await this.assertScopedEmployeeAccess(schedule.employeeId, user);
       return {
         success: true,
-        data: schedule
+        data: schedule,
       };
     } catch (error) {
-      console.error('Service error - getScheduleById:', error);
+      if (error.message.includes("No tienes permisos")) {
+        return {
+          success: false,
+          statusCode: 403,
+          message: error.message,
+        };
+      }
+      console.error("Service error - getScheduleById:", error);
       throw error;
     }
   }
@@ -242,10 +284,10 @@ export class ScheduleService {
       );
       return {
         success: true,
-        data: schedules
+        data: schedules,
       };
     } catch (error) {
-      console.error('Service error - getSchedulesByEmployee:', error);
+      console.error("Service error - getSchedulesByEmployee:", error);
       throw error;
     }
   }
@@ -253,13 +295,17 @@ export class ScheduleService {
   /**
    * Crear horario con todas las validaciones
    */
-  async createSchedule(scheduleData) {
+  async createSchedule(scheduleData, user = null) {
     try {
+      await this.assertScopedEmployeeAccess(scheduleData.empleadoId, user);
+
       // 1. REGLA DE NEGOCIO: Validar que el empleado existe y está activo
       const employees = await this.scheduleRepository.getActiveEmployees();
-      const employeeExists = employees.find(emp => emp.id === parseInt(scheduleData.empleadoId));
+      const employeeExists = employees.find(
+        (emp) => emp.id === parseInt(scheduleData.empleadoId),
+      );
       if (!employeeExists) {
-        throw new Error('El empleado no existe o no está activo.');
+        throw new Error("El empleado no existe o no está activo.");
       }
 
       // 2. REGLA DE NEGOCIO: Validar que la fecha no sea pasada
@@ -267,25 +313,27 @@ export class ScheduleService {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (scheduleDate < today) {
-        throw new Error('No se puede crear un horario en una fecha pasada.');
+        throw new Error("No se puede crear un horario en una fecha pasada.");
       }
 
       // 3. REGLA DE NEGOCIO: Validar que hora inicio sea menor que hora fin
       if (scheduleData.horaInicio >= scheduleData.horaFin) {
-        throw new Error('La hora de inicio debe ser menor que la hora de fin.');
+        throw new Error("La hora de inicio debe ser menor que la hora de fin.");
       }
 
       // 4. REGLA DE NEGOCIO: Verificar conflictos de horario
-        const conflict = await this.scheduleRepository.checkScheduleConflict(
-          scheduleData.empleadoId,
-          scheduleDate,
-          scheduleData.horaInicio,
-          scheduleData.horaFin
-        );
+      const conflict = await this.scheduleRepository.checkScheduleConflict(
+        scheduleData.empleadoId,
+        scheduleDate,
+        scheduleData.horaInicio,
+        scheduleData.horaFin,
+      );
       if (conflict) {
-        const conflictDate = new Date(conflict.scheduleDate).toLocaleDateString('es-CO');
+        const conflictDate = new Date(conflict.scheduleDate).toLocaleDateString(
+          "es-CO",
+        );
         throw new Error(
-          `Ya existe un horario para este empleado el ${conflictDate} que se solapa con el horario ingresado (${conflict.startTime} - ${conflict.endTime}).`
+          `Ya existe un horario para este empleado el ${conflictDate} que se solapa con el horario ingresado (${conflict.startTime} - ${conflict.endTime}).`,
         );
       }
 
@@ -303,21 +351,27 @@ export class ScheduleService {
         dayOfWeek: dayOfWeek,
         startTime: scheduleData.horaInicio,
         endTime: scheduleData.horaFin,
-        recurrence: scheduleData.repeticion || 'no',
-        customRecurrence: customRecurrence ? JSON.stringify(customRecurrence) : null,
-        description: scheduleData.descripcion?.trim() || null
+        recurrence: scheduleData.repeticion || "no",
+        customRecurrence: customRecurrence
+          ? JSON.stringify(customRecurrence)
+          : null,
+        description: scheduleData.descripcion?.trim() || null,
       };
 
       // 7. Crear el horario
-      const newSchedule = await this.scheduleRepository.create(scheduleDataForDB);
-      this.notifyEmployeeSchedule({ schedule: newSchedule, action: 'created' });
+      const newSchedule =
+        await this.scheduleRepository.create(scheduleDataForDB);
+      this.notifyEmployeeSchedule({ schedule: newSchedule, action: "created" });
       return {
         success: true,
         data: newSchedule,
-        message: `Horario para "${newSchedule.employee.user.firstName} ${newSchedule.employee.user.lastName}" creado exitosamente.`
+        message: `Horario para "${newSchedule.employee.user.firstName} ${newSchedule.employee.user.lastName}" creado exitosamente.`,
       };
     } catch (error) {
-      console.error('Service error - createSchedule:', error);
+      if (error.message.includes("No tienes permisos")) {
+        throw error;
+      }
+      console.error("Service error - createSchedule:", error);
       throw error;
     }
   }
@@ -325,7 +379,7 @@ export class ScheduleService {
   /**
    * Actualizar horario
    */
-  async updateSchedule(id, updateData) {
+  async updateSchedule(id, updateData, user = null) {
     try {
       // 1. REGLA DE NEGOCIO: Verificar que el horario existe
       const existingSchedule = await this.scheduleRepository.findById(id);
@@ -333,20 +387,24 @@ export class ScheduleService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el horario con ID ${id}.`
+          message: `No se encontró el horario con ID ${id}.`,
         };
       }
+      await this.assertScopedEmployeeAccess(existingSchedule.employeeId, user);
 
       // 2. Si se actualiza fecha u horario, verificar conflictos
       if (updateData.fecha || updateData.horaInicio || updateData.horaFin) {
         const scheduleDate =
-          this.normalizeDateOnly(updateData.fecha) || existingSchedule.scheduleDate;
+          this.normalizeDateOnly(updateData.fecha) ||
+          existingSchedule.scheduleDate;
         const startTime = updateData.horaInicio || existingSchedule.startTime;
         const endTime = updateData.horaFin || existingSchedule.endTime;
 
         // Validar hora inicio < hora fin
         if (startTime >= endTime) {
-          throw new Error('La hora de inicio debe ser menor que la hora de fin.');
+          throw new Error(
+            "La hora de inicio debe ser menor que la hora de fin.",
+          );
         }
 
         // Verificar conflictos
@@ -355,12 +413,14 @@ export class ScheduleService {
           scheduleDate,
           startTime,
           endTime,
-          id
+          id,
         );
         if (conflict) {
-          const conflictDate = new Date(conflict.scheduleDate).toLocaleDateString('es-CO');
+          const conflictDate = new Date(
+            conflict.scheduleDate,
+          ).toLocaleDateString("es-CO");
           throw new Error(
-            `Ya existe un horario para este empleado el ${conflictDate} que se solapa con el horario ingresado.`
+            `Ya existe un horario para este empleado el ${conflictDate} que se solapa con el horario ingresado.`,
           );
         }
       }
@@ -368,12 +428,16 @@ export class ScheduleService {
       // 4. Preparar datos actualizados
       const scheduleDataForDB = {};
       if (updateData.fecha) {
-        scheduleDataForDB.scheduleDate = this.normalizeDateOnly(updateData.fecha);
+        scheduleDataForDB.scheduleDate = this.normalizeDateOnly(
+          updateData.fecha,
+        );
         scheduleDataForDB.dayOfWeek = this.mapDayOfWeek(updateData.fecha);
       }
-      if (updateData.horaInicio) scheduleDataForDB.startTime = updateData.horaInicio;
+      if (updateData.horaInicio)
+        scheduleDataForDB.startTime = updateData.horaInicio;
       if (updateData.horaFin) scheduleDataForDB.endTime = updateData.horaFin;
-      if (updateData.repeticion) scheduleDataForDB.recurrence = updateData.repeticion;
+      if (updateData.repeticion)
+        scheduleDataForDB.recurrence = updateData.repeticion;
       if (updateData.customRecurrence !== undefined) {
         const customRecurrence = this.normalizeCustomRecurrence(
           updateData.customRecurrence,
@@ -389,19 +453,32 @@ export class ScheduleService {
         return {
           success: false,
           statusCode: 400,
-          message: 'No hay campos para actualizar.'
+          message: "No hay campos para actualizar.",
         };
       }
       // 4. Actualizar el horario
-      const updatedSchedule = await this.scheduleRepository.update(id, scheduleDataForDB);
-      this.notifyEmployeeSchedule({ schedule: updatedSchedule, action: 'updated' });
+      const updatedSchedule = await this.scheduleRepository.update(
+        id,
+        scheduleDataForDB,
+      );
+      this.notifyEmployeeSchedule({
+        schedule: updatedSchedule,
+        action: "updated",
+      });
       return {
         success: true,
         data: updatedSchedule,
-        message: 'Horario actualizado exitosamente.'
+        message: "Horario actualizado exitosamente.",
       };
     } catch (error) {
-      console.error('Service error - updateSchedule:', error);
+      if (error.message.includes("No tienes permisos")) {
+        return {
+          success: false,
+          statusCode: 403,
+          message: error.message,
+        };
+      }
+      console.error("Service error - updateSchedule:", error);
       throw error;
     }
   }
@@ -409,26 +486,34 @@ export class ScheduleService {
   /**
    * Eliminar horario
    */
-  async deleteSchedule(id) {
+  async deleteSchedule(id, user = null) {
     try {
       const scheduleToDelete = await this.scheduleRepository.findById(id);
       if (!scheduleToDelete) {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el horario con ID ${id}.`
+          message: `No se encontró el horario con ID ${id}.`,
         };
       }
+      await this.assertScopedEmployeeAccess(scheduleToDelete.employeeId, user);
 
       const deleted = await this.scheduleRepository.delete(id);
       if (deleted) {
         return {
           success: true,
-          message: 'Horario eliminado exitosamente.'
+          message: "Horario eliminado exitosamente.",
         };
       }
     } catch (error) {
-      console.error('Service error - deleteSchedule:', error);
+      if (error.message.includes("No tienes permisos")) {
+        return {
+          success: false,
+          statusCode: 403,
+          message: error.message,
+        };
+      }
+      console.error("Service error - deleteSchedule:", error);
       throw error;
     }
   }
@@ -436,61 +521,66 @@ export class ScheduleService {
   /**
    * Registrar una novedad en un horario
    */
-  async registerNovelty(id, payload = {}) {
+  async registerNovelty(id, payload = {}, user = null) {
     try {
       const schedule = await this.scheduleRepository.findById(id);
       if (!schedule) {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontró el horario con ID ${id}.`
+          message: `No se encontró el horario con ID ${id}.`,
         };
       }
+      await this.assertScopedEmployeeAccess(schedule.employeeId, user);
 
       const motivoCancelacion = this.normalizeText(
-        payload.motivoCancelacion || payload.reason || payload.motivo || ''
+        payload.motivoCancelacion || payload.reason || payload.motivo || "",
       );
       if (!motivoCancelacion) {
         return {
           success: false,
           statusCode: 400,
-          message: 'El motivo de la novedad es obligatorio.'
+          message: "El motivo de la novedad es obligatorio.",
         };
       }
 
-      const noveltyDateRaw = payload.fecha || payload.date || schedule.scheduleDate;
+      const noveltyDateRaw =
+        payload.fecha || payload.date || schedule.scheduleDate;
       const noveltyDate = this.normalizeDateOnly(noveltyDateRaw);
       if (!noveltyDate) {
         return {
           success: false,
           statusCode: 400,
-          message: 'La fecha de la novedad es inválida.'
+          message: "La fecha de la novedad es inválida.",
         };
       }
 
-      const rawType = this.normalizeText(payload.tipoCancelacion || payload.type).toLowerCase();
+      const rawType = this.normalizeText(
+        payload.tipoCancelacion || payload.type,
+      ).toLowerCase();
       const directRange =
         payload.horaInicio && payload.horaFin
           ? {
               startTime: this.normalizeTime(payload.horaInicio),
-              endTime: this.normalizeTime(payload.horaFin)
+              endTime: this.normalizeTime(payload.horaFin),
             }
           : null;
-      const parsedRange = directRange || this.parseTimeRange(payload.tiempoCancelacion);
+      const parsedRange =
+        directRange || this.parseTimeRange(payload.tiempoCancelacion);
 
-      let noveltyType = ['full', 'time'].includes(rawType) ? rawType : '';
+      let noveltyType = ["full", "time"].includes(rawType) ? rawType : "";
       if (!noveltyType) {
-        noveltyType = parsedRange ? 'time' : 'full';
+        noveltyType = parsedRange ? "time" : "full";
       }
 
       let startTime = null;
       let endTime = null;
-      if (noveltyType === 'time') {
+      if (noveltyType === "time") {
         if (!parsedRange?.startTime || !parsedRange?.endTime) {
           return {
             success: false,
             statusCode: 400,
-            message: 'Debe indicar el tramo de tiempo de la novedad.'
+            message: "Debe indicar el tramo de tiempo de la novedad.",
           };
         }
         startTime = parsedRange.startTime;
@@ -505,7 +595,7 @@ export class ScheduleService {
           return {
             success: false,
             statusCode: 400,
-            message: 'El rango de tiempo de la novedad no es válido.'
+            message: "El rango de tiempo de la novedad no es válido.",
           };
         }
       }
@@ -513,20 +603,27 @@ export class ScheduleService {
       await this.scheduleRepository.createNovelty({
         scheduleId: schedule.id,
         date: noveltyDate,
-        type: noveltyType === 'time' ? 'time' : 'full',
+        type: noveltyType === "time" ? "time" : "full",
         startTime,
         endTime,
-        reason: motivoCancelacion
+        reason: motivoCancelacion,
       });
 
       const refreshedSchedule = await this.scheduleRepository.findById(id);
       return {
         success: true,
         data: refreshedSchedule || schedule,
-        message: 'Novedad registrada exitosamente.'
+        message: "Novedad registrada exitosamente.",
       };
     } catch (error) {
-      console.error('Service error - registerNovelty:', error);
+      if (error.message.includes("No tienes permisos")) {
+        return {
+          success: false,
+          statusCode: 403,
+          message: error.message,
+        };
+      }
+      console.error("Service error - registerNovelty:", error);
       throw error;
     }
   }
@@ -538,20 +635,25 @@ export class ScheduleService {
     try {
       const employees = await this.scheduleRepository.getActiveEmployees();
       const specialtyLabels = {
-        psicologia: 'Psicología',
-        fisioterapia: 'Fisioterapia',
-        nutricion: 'Nutricion'
+        psicologia: "Psicología",
+        fisioterapia: "Fisioterapia",
+        nutricion: "Nutricion",
       };
 
-      let formattedEmployees = employees.map(emp => ({
+      let formattedEmployees = employees.map((emp) => ({
         id: emp.id,
         empleadoId: emp.id,
-        nombre: `${emp.user.firstName} ${emp.user.middleName || ''} ${emp.user.lastName} ${emp.user.secondLastName || ''}`.replace(/\s+/g, ' ').trim(),
-        cargo: emp.user.role?.name || 'Empleado',
+        nombre:
+          `${emp.user.firstName} ${emp.user.middleName || ""} ${emp.user.lastName} ${emp.user.secondLastName || ""}`
+            .replace(/\s+/g, " ")
+            .trim(),
+        cargo: emp.user.role?.name || "Empleado",
         specialty: emp.specialty || null,
-        specialtyLabel: emp.specialty ? (specialtyLabels[emp.specialty] || emp.specialty) : null,
+        specialtyLabel: emp.specialty
+          ? specialtyLabels[emp.specialty] || emp.specialty
+          : null,
         email: emp.user.email,
-        identification: emp.user.identification
+        identification: emp.user.identification,
       }));
 
       const scopedFilters = await this.resolveScopeFilters({}, user);
@@ -562,12 +664,11 @@ export class ScheduleService {
       }
       return {
         success: true,
-        data: formattedEmployees
+        data: formattedEmployees,
       };
     } catch (error) {
-      console.error('Service error - getActiveEmployees:', error);
+      console.error("Service error - getActiveEmployees:", error);
       throw error;
     }
   }
 }
-

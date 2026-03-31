@@ -82,7 +82,22 @@ res.status(500).json({
         message: result.message,
       });
     } catch (error) {
-if (error.message.includes('ya está registrado')) {
+      const normalizedMessage = String(error?.message || "").toLowerCase();
+
+      if (error?.code === "P2002") {
+        const targetField = error?.meta?.target?.[0];
+        const duplicateMessage =
+          targetField === "email"
+            ? "El correo ingresado ya esta registrado por otro acudiente."
+            : "El documento ingresado ya esta registrado por otro acudiente.";
+
+        return res.status(400).json({
+          success: false,
+          message: duplicateMessage,
+        });
+      }
+
+      if (normalizedMessage.includes("ya esta registrado")) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -121,7 +136,22 @@ if (error.message.includes('ya está registrado')) {
         message: result.message,
       });
     } catch (error) {
-if (error.message.includes('ya está registrado')) {
+      const normalizedMessage = String(error?.message || "").toLowerCase();
+
+      if (error?.code === "P2002") {
+        const targetField = error?.meta?.target?.[0];
+        const duplicateMessage =
+          targetField === "email"
+            ? "El correo ingresado ya esta registrado por otro acudiente."
+            : "El documento ingresado ya esta registrado por otro acudiente.";
+
+        return res.status(400).json({
+          success: false,
+          message: duplicateMessage,
+        });
+      }
+
+      if (normalizedMessage.includes("ya esta registrado")) {
         return res.status(400).json({
           success: false,
           message: error.message,
@@ -161,38 +191,6 @@ if (error.message.includes('ya está registrado')) {
 res.status(500).json({
         success: false,
         message: "Error interno del servidor al eliminar acudiente",
-      });
-    }
-  };
-
-  getGuardiansWithAthletes = async (req, res) => {
-    try {
-      const {
-        page = 1,
-        limit = 10,
-        search = "",
-        status,
-      } = req.query;
-
-      // Usar el mismo método getAllGuardians que ya incluye la información de deportistas
-      const result = await this.guardiansService.getAllGuardians({
-        page: parseInt(page),
-        limit: parseInt(limit),
-        search,
-        status,
-      });
-
-      res.json({
-        success: true,
-        data: result.data,
-        pagination: result.pagination,
-        message: `Se encontraron ${result.pagination?.total || 0} acudientes con información de deportistas.`,
-      });
-    } catch (error) {
-res.status(500).json({
-        success: false,
-        message: "Error interno del servidor al obtener acudientes con información de deportistas",
-        error: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };
