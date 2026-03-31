@@ -255,9 +255,32 @@ export class AppointmentService {
   }
 
   normalizeFrequency(value = "") {
-    const frequency = String(value || "").toLowerCase();
-    if (frequency === "ao" || frequency === "ano") return "anio";
+    const frequency = String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+
+    if (["ao", "ano", "anual", "year", "years"].includes(frequency)) {
+      return "anio";
+    }
+    if (["diaria", "diario"].includes(frequency)) {
+      return "dia";
+    }
+    if (["semanal"].includes(frequency)) {
+      return "semana";
+    }
+    if (["mensual"].includes(frequency)) {
+      return "mes";
+    }
+
     return frequency || "semana";
+  }
+
+  normalizeCustomDays(days = []) {
+    return [...new Set((Array.isArray(days) ? days : []).map((day) => Number(day)))]
+      .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6)
+      .sort((a, b) => a - b);
   }
 
   isSameDate(first, second) {
@@ -350,7 +373,7 @@ export class AppointmentService {
 
     const interval = Number(custom.interval) || 1;
     const frequency = this.normalizeFrequency(custom.frequency || "semana");
-    const dias = Array.isArray(custom.dias) ? custom.dias : [];
+    const dias = this.normalizeCustomDays(custom.dias);
     const endType = custom.endType || "";
     const endDateValue =
       endType === "el"
