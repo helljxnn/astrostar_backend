@@ -191,6 +191,29 @@ const calculateExpirationDate = (startDate, years = ENROLLMENT_CONSTANTS.ENROLLM
   return expirationDate;
 };
 
+const generateTemporaryPassword = () => {
+  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lowercase = "abcdefghijkmnpqrstuvwxyz";
+  const numbers = "23456789";
+  const symbols = "!@#$%&*";
+
+  let password = "";
+  password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+  password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+  password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+  password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+
+  const allChars = uppercase + lowercase + numbers + symbols;
+  for (let i = 4; i < 12; i++) {
+    password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+  }
+
+  return password
+    .split("")
+    .sort(() => Math.random() - 0.5)
+    .join("");
+};
+
 const resolveEnrollmentDates = () => {
   const fechaInicio = new Date();
   const fechaVencimiento = calculateExpirationDate(fechaInicio);
@@ -312,7 +335,7 @@ const getOrCreateAthleteRole = async (tx) => {
  */
 const createUser = async (tx, athleteData, roleId, age) => {
   const bcrypt = await import('bcrypt');
-  const tempPassword = athleteData.identification?.trim();
+  const tempPassword = generateTemporaryPassword();
   const passwordHash = await bcrypt.default.hash(tempPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
   const cleanEmail = normalizeEmail(athleteData.email);
   
@@ -561,7 +584,7 @@ export const enrollmentsService = {
 
     // PASO 3: Preparar hash de contraseña fuera de transacción
     const bcrypt = await import('bcrypt');
-    const tempPassword = cleanIdentification;
+    const tempPassword = generateTemporaryPassword();
     const passwordHash = await bcrypt.default.hash(tempPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
     const processedPreRegistrationStatus = await resolvePreRegistrationStatus(PRE_REGISTRATION_STATUS.PROCESSED);
     const paymentSettings = normalizedAthlete.isScholarship === true
@@ -617,7 +640,7 @@ export const enrollmentsService = {
         }
       });
 
-      // Crear matr?cula (operaci?n at?mica)
+      // Crear matricula (operacion atomica)
       const scholarshipEnrollmentDates = resolveEnrollmentDates();
       const newEnrollment = await tx.enrollment.create({
         data: {
@@ -627,8 +650,8 @@ export const enrollmentsService = {
             : ENROLLMENT_STATUS.PENDING_PAYMENT,
           observaciones: normalizedAthlete.isScholarship === true
             ? (enrollment?.observaciones
-                ? `${enrollment.observaciones} | Matr?cula activada por beca`
-                : 'Matr?cula activada autom?ticamente por beca')
+                ? `${enrollment.observaciones} | Matricula activada por beca`
+                : 'Matricula activada automaticamente por beca')
             : (enrollment?.observaciones || null),
           fechaInicio: normalizedAthlete.isScholarship === true ? scholarshipEnrollmentDates.fechaInicio : null,
           fechaVencimiento: normalizedAthlete.isScholarship === true ? scholarshipEnrollmentDates.fechaVencimiento : null,
@@ -658,7 +681,7 @@ export const enrollmentsService = {
         });
       }
 
-      // Marcar pre-inscripci?n como procesada (solo si existe ID)
+      // Marcar pre-inscripcion como procesada (solo si existe ID)
       if (preRegistrationId) {
         await tx.preRegistration.update({
           where: { id: preRegistrationId },

@@ -12,21 +12,23 @@ export class AthleteEmailService extends BaseEmailService {
   async sendAthleteWelcomeEmail(athleteData, credentials) {
     try {
       const { email, firstName, lastName } = athleteData;
-      const { email: loginEmail } = credentials;
+      const { email: loginEmail, temporaryPassword } = credentials || {};
 
       const mailOptions = {
         from: this.getDefaultFrom(),
         to: email,
-        subject: "🎉 Bienvenido a AstroStar - Credenciales de Acceso",
+        subject: "Bienvenido a AstroStar - Credenciales de Acceso",
         html: this.generateAthleteWelcomeEmailTemplate(
           firstName,
           lastName,
           loginEmail,
+          temporaryPassword,
         ),
         text: this.generateAthleteWelcomeEmailText(
           firstName,
           lastName,
           loginEmail,
+          temporaryPassword,
         ),
       };
 
@@ -51,7 +53,10 @@ export class AthleteEmailService extends BaseEmailService {
   /**
    * Generar template HTML para email de bienvenida de deportista
    */
-  generateAthleteWelcomeEmailTemplate(firstName, lastName, email) {
+  generateAthleteWelcomeEmailTemplate(firstName, lastName, email, temporaryPassword) {
+    const passwordLine = temporaryPassword
+      ? `<div class="credential-item"><strong>Contrasena temporal:</strong> ${temporaryPassword}</div>`
+      : `<div class="credential-item"><strong>Contrasena:</strong> Usa la contrasena actual asociada a tu cuenta.</div>`;
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -72,32 +77,30 @@ export class AthleteEmailService extends BaseEmailService {
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌟 ¡Bienvenido a AstroStar!</h1>
+            <h1>Bienvenido a AstroStar</h1>
             <p>Sistema de Gestión Deportiva</p>
         </div>
         
         <div class="content">
             <h2>Hola ${firstName} ${lastName},</h2>
             
-            <p>¡Nos complace darte la bienvenida a AstroStar! Tu cuenta de deportista ha sido creada exitosamente.</p>
+            <p>Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido creada exitosamente.</p>
             
             <div class="credentials-box">
-                <h3>🔐 Tus Credenciales de Acceso</h3>
+                <h3>Tus Credenciales de Acceso</h3>
                 <div class="credential-item">
-                    <strong>📧 Usuario:</strong> ${email}
+                    <strong>Usuario:</strong> ${email}
                 </div>
-                <div class="credential-item">
-                    <strong>🔑 Contraseña:</strong> Tu número de documento
-                </div>
+                ${passwordLine}
             </div>
             
             <div style="text-align: center;">
                 <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/login" class="button">
-                    🚀 Acceder al Sistema
+                    Acceder al Sistema
                 </a>
             </div>
             
-            <p>¡Esperamos que tengas una excelente experiencia en AstroStar!</p>
+            <p>Esperamos que tengas una excelente experiencia en AstroStar.</p>
             
             <p>Saludos cordiales,<br>
             <strong>Equipo AstroStar</strong></p>
@@ -115,8 +118,11 @@ export class AthleteEmailService extends BaseEmailService {
   /**
    * Generar texto plano para email de bienvenida de deportista
    */
-  generateAthleteWelcomeEmailText(firstName, lastName, email) {
-    return `¡Bienvenido a AstroStar!
+  generateAthleteWelcomeEmailText(firstName, lastName, email, temporaryPassword) {
+    const passwordLine = temporaryPassword
+      ? `- Contrasena temporal: ${temporaryPassword}`
+      : "- Contrasena: usa la contrasena actual asociada a tu cuenta";
+    return `Bienvenido a AstroStar
 
 Hola ${firstName} ${lastName},
 
@@ -124,11 +130,11 @@ Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido cr
 
 CREDENCIALES DE ACCESO:
 - Usuario: ${email}
-- Contraseña: Tu número de documento
+${passwordLine}
 
 Accede al sistema en: ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
 
-¡Esperamos que tengas una excelente experiencia en AstroStar!
+Esperamos que tengas una excelente experiencia en AstroStar.
 
 Saludos cordiales,
 Equipo AstroStar

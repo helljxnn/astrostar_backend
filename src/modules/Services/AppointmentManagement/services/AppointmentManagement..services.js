@@ -1165,6 +1165,7 @@ export class AppointmentService {
         return {
           id: athlete.id,
           athleteId: athlete.id,
+          userId: athlete.user.id,
           nombre:
             `${athlete.user.firstName} ${athlete.user.middleName || ""} ${athlete.user.lastName} ${athlete.user.secondLastName || ""}`
               .replace(/\s+/g, " ")
@@ -1172,8 +1173,6 @@ export class AppointmentService {
           nombres: athlete.user.firstName,
           apellidos:
             `${athlete.user.lastName} ${athlete.user.secondLastName || ""}`.trim(),
-          email: athlete.user.email,
-          identification: athlete.user.identification,
           categoryId,
           categoryName,
           category: categoryName,
@@ -1229,12 +1228,11 @@ export class AppointmentService {
           return {
             id: emp.id,
             specialistId: emp.id,
+            userId: emp.user.id,
             nombre: fullName,
             cargo: roleName,
             specialty: specialtyKey,
             specialtyLabel: this.resolveSpecialtyLabel(specialtyKey),
-            email: emp.user.email,
-            identification: emp.user.identification,
           };
         })
         .filter((spec) => APPOINTMENT_ALLOWED_SPECIALTIES.has(spec.specialty));

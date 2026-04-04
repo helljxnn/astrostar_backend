@@ -14,6 +14,15 @@ class DashboardRepository {
     return Number.isFinite(numberValue) ? numberValue : 0;
   }
 
+  getEventWhere() {
+    return {
+      OR: [
+        { ServiceType: { is: { name: { in: ["Clausura", "Taller", "Torneo", "Festival"] } } } },
+        { categoryId: { not: null } },
+      ],
+    };
+  }
+
   async getActiveDonorsCount(sponsorDelegate) {
     if (!sponsorDelegate?.count) {
       return 0;
@@ -51,17 +60,17 @@ class DashboardRepository {
 
         // Total de deportistas activos
         prisma.athlete.count({
-          where: { status: "ACTIVE" },
+          where: { status: "Active" },
         }),
 
         // Total de eventos
         prisma.service.count({
-          where: { type: "EVENT" },
+          where: this.getEventWhere(),
         }),
 
         // Total de empleados activos
         prisma.employee.count({
-          where: { status: "ACTIVE" },
+          where: { status: "Activo" },
         }),
 
         // Total de donaciones
@@ -111,38 +120,38 @@ class DashboardRepository {
       ] = await Promise.all([
         // Total de eventos
         prisma.service.count({
-          where: { type: "EVENT" },
+          where: this.getEventWhere(),
         }),
 
         // Eventos programados
         prisma.service.count({
           where: {
-            type: "EVENT",
             status: "Programado",
+            ...this.getEventWhere(),
           },
         }),
 
         // Eventos en curso
         prisma.service.count({
           where: {
-            type: "EVENT",
             status: "En_curso",
+            ...this.getEventWhere(),
           },
         }),
 
         // Eventos completados
         prisma.service.count({
           where: {
-            type: "EVENT",
             status: "Finalizado",
+            ...this.getEventWhere(),
           },
         }),
 
         // Eventos cancelados
         prisma.service.count({
           where: {
-            type: "EVENT",
             status: "Cancelado",
+            ...this.getEventWhere(),
           },
         }),
 
@@ -203,18 +212,18 @@ class DashboardRepository {
 
         // Deportistas activos
         prisma.athlete.count({
-          where: { status: "ACTIVE" },
+          where: { status: "Active" },
         }),
 
         // Deportistas suspendidos
         prisma.athlete.count({
-          where: { status: "SUSPENDED" },
+          where: { status: "Inactive" },
         }),
 
         // Deportistas con inscripcion vencida
         prisma.enrollment.count({
           where: {
-            status: "EXPIRED",
+            estado: "Vencida",
           },
         }),
 
@@ -264,17 +273,17 @@ class DashboardRepository {
 
         // Citas completadas
         prisma.appointment.count({
-          where: { status: "COMPLETED" },
+          where: { status: "Completado" },
         }),
 
         // Citas pendientes
         prisma.appointment.count({
-          where: { status: "SCHEDULED" },
+          where: { status: "Programado" },
         }),
 
         // Citas canceladas
         prisma.appointment.count({
-          where: { status: "CANCELLED" },
+          where: { status: "Cancelado" },
         }),
 
         // Total de empleados
@@ -282,7 +291,7 @@ class DashboardRepository {
 
         // Empleados activos
         prisma.employee.count({
-          where: { status: "ACTIVE" },
+          where: { status: "Activo" },
         }),
 
         // Por especialidad
@@ -396,7 +405,7 @@ class DashboardRepository {
       }),
       prisma.service.count({
         where: {
-          type: "EVENT",
+          ...this.getEventWhere(),
           createdAt: { gte: sevenDaysAgo },
         },
       }),
@@ -419,7 +428,7 @@ class DashboardRepository {
   async getEventsByQuarter() {
     const events = await prisma.service.findMany({
       where: {
-        type: "EVENT",
+        ...this.getEventWhere(),
         status: "Finalizado",
       },
       select: { endDate: true },
@@ -467,7 +476,7 @@ class DashboardRepository {
   async getEventsByType() {
     const eventTypes = await prisma.service.groupBy({
       by: ["typeId"],
-      where: { type: "EVENT" },
+      where: this.getEventWhere(),
       _count: { id: true },
     });
 
@@ -491,26 +500,34 @@ class DashboardRepository {
    * Obtener deportistas por categoria
    */
   async getAthletesByCategory() {
-    const byCategory = await prisma.athlete.groupBy({
-      by: ["sportsCategoryId"],
-      _count: { id: true },
+    const athletes = await prisma.athlete.findMany({
+      where: { status: "Active" },
+      select: {
+        inscriptions: {
+          where: { status: "Active" },
+          orderBy: { inscriptionDate: "desc" },
+          take: 1,
+          select: {
+            sportsCategory: {
+              select: { nombre: true },
+            },
+          },
+        },
+      },
     });
 
-    const categoryIds = byCategory
-      .map((bc) => bc.sportsCategoryId)
-      .filter(Boolean);
-    const categories = await prisma.sportsCategory.findMany({
-      where: { id: { in: categoryIds } },
-      select: { id: true, name: true },
+    const categoryCounts = new Map();
+
+    athletes.forEach((athlete) => {
+      const categoryName =
+        athlete.inscriptions?.[0]?.sportsCategory?.nombre || "Sin categoria";
+      categoryCounts.set(categoryName, (categoryCounts.get(categoryName) || 0) + 1);
     });
 
-    return byCategory.map((bc) => {
-      const category = categories.find((c) => c.id === bc.sportsCategoryId);
-      return {
-        name: category?.name || "Sin categoria",
-        count: bc._count.id,
-      };
-    });
+    return Array.from(categoryCounts.entries()).map(([name, count]) => ({
+      name,
+      count,
+    }));
   }
 
   /**
@@ -518,7 +535,11 @@ class DashboardRepository {
    */
   async getAthletesByAge() {
     const athletes = await prisma.athlete.findMany({
-      select: { birthDate: true },
+      select: {
+        user: {
+          select: { birthDate: true },
+        },
+      },
     });
 
     const ageRanges = {
@@ -530,10 +551,10 @@ class DashboardRepository {
     };
 
     athletes.forEach((athlete) => {
-      if (!athlete.birthDate) return;
+      const birthDate = athlete.user?.birthDate;
+      if (!birthDate) return;
 
-      const age =
-        new Date().getFullYear() - new Date(athlete.birthDate).getFullYear();
+      const age = new Date().getFullYear() - new Date(birthDate).getFullYear();
 
       if (age >= 6 && age <= 10) ageRanges["6-10"]++;
       else if (age >= 11 && age <= 15) ageRanges["11-15"]++;
@@ -554,13 +575,13 @@ class DashboardRepository {
   async getEnrollmentStats() {
     const [active, expired, suspended] = await Promise.all([
       prisma.enrollment.count({
-        where: { status: "ACTIVE" },
+        where: { estado: "Vigente" },
       }),
       prisma.enrollment.count({
-        where: { status: "EXPIRED" },
+        where: { estado: "Vencida" },
       }),
-      prisma.enrollment.count({
-        where: { status: "SUSPENDED" },
+      prisma.inscription.count({
+        where: { status: "Suspended" },
       }),
     ]);
 
@@ -752,13 +773,13 @@ class DashboardRepository {
     const [recent, previous] = await Promise.all([
       prisma.service.count({
         where: {
-          type: "EVENT",
+          ...this.getEventWhere(),
           createdAt: { gte: thirtyDaysAgo },
         },
       }),
       prisma.service.count({
         where: {
-          type: "EVENT",
+          ...this.getEventWhere(),
           createdAt: { gte: sixtyDaysAgo, lt: thirtyDaysAgo },
         },
       }),

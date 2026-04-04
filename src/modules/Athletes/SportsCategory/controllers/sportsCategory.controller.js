@@ -205,7 +205,7 @@ export class SportsCategoryController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: error.message || "Error al crear la categoría.",
+        message: "Error interno del servidor al crear la categoría.",
         statusCode: 500,
       });
     }
@@ -280,7 +280,7 @@ export class SportsCategoryController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: error.message || "Error al actualizar la categoría.",
+        message: "Error interno del servidor al actualizar la categoría.",
         statusCode: 500,
       });
     }
@@ -306,7 +306,7 @@ export class SportsCategoryController {
     } catch (error) {
       res.status(500).json({
         success: false,
-        message: error.message || "Error al eliminar la categoría.",
+        message: "Error interno del servidor al eliminar la categoría.",
         statusCode: 500,
       });
     }

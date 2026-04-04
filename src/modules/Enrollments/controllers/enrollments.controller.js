@@ -21,8 +21,7 @@ export const enrollmentsController = {
         success: true,
         message: "Deportista matriculada exitosamente. Credenciales enviadas por email.",
         data: result,
-        emailSent: result.emailSent,
-        temporaryPassword: result.temporaryPassword
+        emailSent: result.emailSent
       });
     } catch (error) {
       const rawMessage = String(error?.message || "");
@@ -44,7 +43,10 @@ export const enrollmentsController = {
 
       return res.status(statusCode).json({
         success: false,
-        message: rawMessage,
+        message:
+          statusCode >= 500
+            ? "Error interno del servidor al crear la matricula."
+            : rawMessage,
       });
     }
   },
@@ -199,7 +201,7 @@ const result = await enrollmentsService.findAll({
     } catch (error) {
       return res.status(500).json({
         success: false,
-        message: error.message,
+        message: "Error interno del servidor al obtener matriculas.",
       });
     }
   },
@@ -233,7 +235,7 @@ const result = await enrollmentsService.findAll({
     } catch (error) {
       return res.status(500).json({
         success: false,
-        message: error.message,
+        message: "Error interno del servidor al obtener matriculas.",
       });
     }
   },
@@ -259,7 +261,7 @@ const result = await enrollmentsService.findAll({
     } catch (error) {
       return res.status(500).json({
         success: false,
-        message: error.message,
+        message: "Error interno del servidor al actualizar la matricula.",
       });
     }
   },
@@ -303,9 +305,9 @@ const result = await enrollmentsService.findAll({
         data: result,
       });
     } catch (error) {
-return res.status(500).json({
+      return res.status(500).json({
         success: false,
-        message: error.message,
+        message: "Error interno del servidor al procesar matriculas vencidas.",
       });
     }
   },
@@ -336,7 +338,7 @@ return res.status(500).json({
     } catch (error) {
       return res.status(500).json({
         success: false,
-        message: error.message,
+        message: "Error interno del servidor al generar reporte de matriculas.",
       });
     }
   },

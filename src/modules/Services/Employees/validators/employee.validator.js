@@ -188,11 +188,11 @@ export const employeeValidators = {
       ),
     body("temporaryPassword")
       .optional()
-      .isLength({ min: 6, max: 50 })
-      .withMessage("La contraseña temporal debe tener entre 6 y 50 caracteres.")
-      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,}$/)
+      .isLength({ min: 8, max: 50 })
+      .withMessage("La contraseña temporal debe tener entre 8 y 50 caracteres.")
+      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>])[A-Za-z\d!@#$%^&*(),.?":{}|<>]{8,}$/)
       .withMessage(
-        "La contraseña debe contener al menos: 1 minúscula, 1 mayúscula, 1 número.",
+        "La contraseña debe contener al menos: 1 minúscula, 1 mayúscula, 1 número y 1 carácter especial.",
       ),
   ],
 

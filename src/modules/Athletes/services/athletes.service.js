@@ -153,8 +153,8 @@ export class AthletesService {
         }
       }
 
-      // REGLA DE NEGOCIO: Usar documento de identidad como contraseña inicial
-      const temporaryPassword = dataWithDefaults.identification?.trim();
+      // REGLA DE NEGOCIO: Generar contraseña temporal segura
+      const temporaryPassword = this.generateTemporaryPassword();
       dataWithDefaults.temporaryPassword = temporaryPassword;
 
       const newAthlete = await this.athletesRepository.create(dataWithDefaults);
@@ -225,10 +225,7 @@ export class AthletesService {
             `El documento "${updateData.identification}" ya está registrado.`,
           );
         }
-        const newPassword = updateData.identification?.trim();
-        if (newPassword) {
-          updateData.passwordHash = await bcrypt.hash(newPassword, 10);
-        }
+        // No resetear contrasena automaticamente al cambiar identificacion
       }
 
       // Validar email único si se está actualizando
@@ -303,15 +300,13 @@ export class AthletesService {
       // Si el email cambió, enviar correo de verificación al nuevo email
       let emailSent = false;
       if (emailChanged) {
-        const temporaryPassword =
-          updateData.identification?.trim() || existingAthlete.identification;
         const emailResult = await this.sendWelcomeEmail(
           {
             email: updateData.email,
             firstName: updatedAthlete.firstName,
             lastName: updatedAthlete.lastName,
           },
-          temporaryPassword,
+          null,
         );
         emailSent = emailResult.success;
       }
@@ -473,7 +468,7 @@ export class AthletesService {
 
       const credentials = {
         email: athleteData.email,
-        temporaryPassword,
+        temporaryPassword: temporaryPassword || null,
       };
 
       const result = await emailService.sendAthleteWelcomeEmail(

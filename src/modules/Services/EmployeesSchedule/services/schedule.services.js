@@ -652,8 +652,6 @@ export class ScheduleService {
         specialtyLabel: emp.specialty
           ? specialtyLabels[emp.specialty] || emp.specialty
           : null,
-        email: emp.user.email,
-        identification: emp.user.identification,
       }));
 
       const scopedFilters = await this.resolveScopeFilters({}, user);

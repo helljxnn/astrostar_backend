@@ -40,7 +40,7 @@ export class RoleController {
       res.status(500).json({
         success: false,
         message: 'Error fetching roles',
-        error: error.message
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
   };

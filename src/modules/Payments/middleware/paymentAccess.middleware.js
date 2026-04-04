@@ -185,7 +185,7 @@ export const requireAthleteOwnership = (req, res, next) => {
       return next();
     }
 
-    // ✅ CORRECCIÓN: Verificar múltiples formas de obtener el athleteId
+    // CORRECCIÓN: Verificar múltiples formas de obtener el athleteId
     let userAthleteId = null;
     
     // Opción 1: req.user.athlete.id (si existe la relación)
@@ -206,7 +206,7 @@ export const requireAthleteOwnership = (req, res, next) => {
       });
     }
 
-    // ✅ CORRECCIÓN CRÍTICA: Si el usuario está pidiendo su propio user.id pero tiene athlete.id diferente,
+    // CORRECCIÓN CRÍTICA: Si el usuario está pidiendo su propio user.id pero tiene athlete.id diferente,
     // redirigir automáticamente al athlete.id correcto
     if (req.user.role?.name === 'Deportista' && req.user.athlete?.id && requestedAthleteId === req.user.id) {
       
