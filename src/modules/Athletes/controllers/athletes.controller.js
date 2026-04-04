@@ -128,7 +128,7 @@ export class AthletesController {
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al crear deportista",
-        error: error.message,
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   };

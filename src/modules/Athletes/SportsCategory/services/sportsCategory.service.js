@@ -143,7 +143,7 @@ export class SportsCategoryService {
           descripcion: true,
           edadMinima: true,
           edadMaxima: true,
-          archivo: true, // ✅ URL de la imagen de Cloudinary
+          archivo: true, // URL de la imagen de Cloudinary
           createdAt: true,
         },
         orderBy: { createdAt: "desc" },
@@ -157,7 +157,7 @@ export class SportsCategoryService {
           description: cat.descripcion,
           minAge: cat.edadMinima,
           maxAge: cat.edadMaxima,
-          imageUrl: cat.archivo, // ✅ Campo para frontend
+          imageUrl: cat.archivo, // Campo para frontend
           createdAt: cat.createdAt,
         })),
       };
@@ -525,7 +525,7 @@ export class SportsCategoryService {
 
       return {
         success: false,
-        message: `Error al eliminar la categoría: ${error.message}`,
+        message: "Error interno del servidor al eliminar la categoría.",
         statusCode: 500,
       };
     }
@@ -763,7 +763,7 @@ export class SportsCategoryService {
       maxAge: category.edadMaxima,
       status: category.estado,
       publish: category.publicar,
-      imageUrl: category.archivo, // ✅ URL de Cloudinary
+      imageUrl: category.archivo, // URL de Cloudinary
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
       associations: {

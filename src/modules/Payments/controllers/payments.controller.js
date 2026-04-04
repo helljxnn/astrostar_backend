@@ -60,9 +60,12 @@ const resolveErrorStatusCode = (error) => {
 };
 
 const handleError = (res, error, defaultMessage = "Error interno del servidor") => {
+  const message = process.env.NODE_ENV === "development"
+    ? error.message || defaultMessage
+    : defaultMessage;
   return res.status(resolveErrorStatusCode(error)).json({
     success: false,
-    message: error.message || defaultMessage
+    message
   });
 };
 
@@ -134,6 +137,9 @@ export const paymentsController = {
 
   async downloadPaymentReceipt(req, res) {
     try {
+      const validationError = handleValidationErrors(req, res);
+      if (validationError) return validationError;
+
       const { paymentId } = req.params;
       const payment = await paymentsService.getPaymentById(parseInt(paymentId));
 
@@ -159,6 +165,9 @@ export const paymentsController = {
 
   async checkAthleteAccess(req, res) {
     try {
+      const validationError = handleValidationErrors(req, res);
+      if (validationError) return validationError;
+
       const { athleteId } = req.params;
       const accessCheck = await paymentsService.checkAthleteAccessRestrictions(parseInt(athleteId));
 
@@ -173,6 +182,9 @@ export const paymentsController = {
 
   async getAthletePaymentHistory(req, res) {
     try {
+      const validationError = handleValidationErrors(req, res);
+      if (validationError) return validationError;
+
       const { athleteId } = req.params;
       const { page = 1, limit = 20 } = req.query;
       
@@ -239,6 +251,9 @@ export const paymentsController = {
 
   async getAthleteMonthlyHistory(req, res) {
     try {
+      const validationError = handleValidationErrors(req, res);
+      if (validationError) return validationError;
+
       const { athleteId } = req.params;
       const result = await paymentsService.getAthleteMonthlyHistory(parseInt(athleteId));
       return res.status(200).json({

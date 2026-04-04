@@ -104,9 +104,13 @@ export class AppointmentController {
       });
     } catch (error) {
       console.error("Error creating appointment:", error);
-      return res.status(error.statusCode || 400).json({
+      const statusCode = error.statusCode || 500;
+      return res.status(statusCode).json({
         success: false,
-        message: error.message,
+        message:
+          statusCode >= 500
+            ? "Error interno del servidor al crear la cita."
+            : error.message,
       });
     }
   };
@@ -136,9 +140,13 @@ export class AppointmentController {
       });
     } catch (error) {
       console.error("Error updating appointment:", error);
-      return res.status(error.statusCode || 400).json({
+      const statusCode = error.statusCode || 500;
+      return res.status(statusCode).json({
         success: false,
-        message: error.message,
+        message:
+          statusCode >= 500
+            ? "Error interno del servidor al actualizar la cita."
+            : error.message,
       });
     }
   };

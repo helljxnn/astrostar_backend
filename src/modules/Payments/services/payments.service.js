@@ -223,7 +223,7 @@ return 0;
 
 /**
  * Calcula la mora total usando la tarifa diaria de la configuración
- * ✅ REGLA EMPRESARIAL MEJORADA: Mora congelada para atletas inactivos
+ * REGLA EMPRESARIAL MEJORADA: Mora congelada para atletas inactivos
  * @param {number} lateDays - Días de mora desde vencimiento hasta hoy
  * @param {number} [lateFeeDailyAmount] - Tarifa diaria (lee de BD). Fallback: constante.
  * @param {Object} [athlete] - Datos del atleta (opcional, para validar estado)
@@ -240,12 +240,12 @@ const calculateLateFee = (
 ) => {
   if (lateDays <= 0) return 0;
   
-  // ✅ REGLA CRÍTICA: No calcular mora si matrícula vencida
+  // REGLA CRÍTICA: No calcular mora si matrícula vencida
   if (enrollment && enrollment.estado !== 'Vigente') {
     return 0;
   }
   
-  // ✅ NUEVA REGLA EMPRESARIAL: Mora congelada para atletas inactivos
+  // NUEVA REGLA EMPRESARIAL: Mora congelada para atletas inactivos
   if (athlete && athlete.status !== 'Active') {
     // Si el atleta está inactivo, calcular mora solo hasta la fecha de inactivación
     if (athlete.statusAssignedAt && dueEnd) {
@@ -1063,7 +1063,7 @@ export const paymentsService = {
               athleteId: athlete.id,
               type: 'MONTHLY',
               period: currentPeriod,
-              baseAmount: settings.monthlyAmount, // ✅ Variable - se congela
+              baseAmount: settings.monthlyAmount, // Variable - se congela
               dueStart,
               dueEnd
             }
@@ -1074,7 +1074,7 @@ export const paymentsService = {
             athleteName: `${athlete.user.firstName} ${athlete.user.lastName}`,
             status: 'created',
             period: currentPeriod,
-            amount: settings.monthlyAmount // ✅ Dinámico
+            amount: settings.monthlyAmount // Dinámico
           });
 
         } catch (error) {
@@ -1242,7 +1242,7 @@ export const paymentsService = {
     const currentMonth = getCurrentPeriod();
     const settings = await getPaymentSettings();
 
-    // ✅ Obtener datos del atleta y matrícula para validar estado
+    // Obtener datos del atleta y matrícula para validar estado
     const athlete = await prisma.athlete.findUnique({
       where: { id: athleteId },
       select: { status: true, statusAssignedAt: true }
@@ -1275,7 +1275,7 @@ export const paymentsService = {
     // Buscar mensualidad actual específicamente
     const currentMonthObligation = monthlyDetails.find(m => m.period === currentMonth);
 
-    // ✅ Reparación automática: matrícula inicial aprobada pero sin fechas
+    // Reparación automática: matrícula inicial aprobada pero sin fechas
     if (
       enrollment &&
       enrollment.estado === 'Vigente' &&
@@ -1343,9 +1343,9 @@ export const paymentsService = {
       
       // Estado de matrícula (inicial o renovación)
       enrollment: enrollmentObligation ? {
-        needsRenewal: enrollmentObligation.type === 'ENROLLMENT_RENEWAL', // ✅ Solo true para renovaciones
-        isInitial: enrollmentObligation.type === 'ENROLLMENT_INITIAL',    // ✅ Nuevo campo
-        type: enrollmentObligation.type,                                  // ✅ Tipo explícito
+        needsRenewal: enrollmentObligation.type === 'ENROLLMENT_RENEWAL', // Solo true para renovaciones
+        isInitial: enrollmentObligation.type === 'ENROLLMENT_INITIAL',    // Nuevo campo
+        type: enrollmentObligation.type,                                  // Tipo explícito
         amount: enrollmentObligation.baseAmount,
         obligationId: enrollmentObligation.id,
         dueDate: enrollmentObligation.dueEnd,
@@ -1402,7 +1402,7 @@ export const paymentsService = {
       const result = await paymentsRepository.getAthletePaymentHistory(athleteId, filters);
       const settings = await getPaymentSettings();
 
-      // ✅ Obtener datos del atleta para validar estado (mora congelada)
+      // Obtener datos del atleta para validar estado (mora congelada)
       const athlete = await prisma.athlete.findUnique({
         where: { id: athleteId },
         select: { status: true, statusAssignedAt: true }
@@ -1422,7 +1422,7 @@ export const paymentsService = {
           new Date(),
           payment.obligation.metadata
         );
-        // ✅ Pasar atleta, enrollment y dueEnd para mora congelada
+        // Pasar atleta, enrollment y dueEnd para mora congelada
         const lateFee = calculateLateFee(
           lateDays,
           settings.lateFeeDailyAmount,
@@ -1847,7 +1847,7 @@ throw new Error('Error al obtener historial de pagos del atleta');
         }
       }
 
-      if (maxLateDays >= BUSINESS_CONSTANTS.MAX_LATE_DAYS_MONTHLY) { // ✅ Constante fija
+      if (maxLateDays >= BUSINESS_CONSTANTS.MAX_LATE_DAYS_MONTHLY) { // Constante fija
         return {
           restricted: true,
           reason: 'MONTHLY_OVERDUE',
@@ -1866,7 +1866,7 @@ throw new Error('Error al obtener historial de pagos del atleta');
 
   /**
    * Obtener pagos pendientes de aprobación
-   * ✅ CORREGIDO: Ahora calcula mora con las mismas validaciones que getMonthlyPaymentsManagement
+   * CORREGIDO: Ahora calcula mora con las mismas validaciones que getMonthlyPaymentsManagement
    */
   async getPendingPayments(filters = {}) {
     try {
@@ -2213,7 +2213,7 @@ throw error;
    */
   async updatePaymentSettings(newSettings) {
     const updated = await paymentSettingsRepository.updateSettings(newSettings);
-    invalidateSettingsCache(); // ✅ Invalidar cache
+    invalidateSettingsCache(); // Invalidar cache
     return updated;
   },
 
@@ -2332,14 +2332,14 @@ throw error;
           obligation.metadata
         );
         
-        // ✅ OBTENER MATRÍCULA ACTUAL PARA VALIDAR ESTADO
+        // OBTENER MATRÍCULA ACTUAL PARA VALIDAR ESTADO
         const enrollment = await prisma.enrollment.findFirst({
           where: { athleteId: obligation.athleteId },
           orderBy: { createdAt: 'desc' },
           select: { estado: true, fechaInicio: true, fechaVencimiento: true }
         });
         
-        // ✅ CALCULAR MORA CON VALIDACIONES Y MORA CONGELADA PARA INACTIVOS
+        // CALCULAR MORA CON VALIDACIONES Y MORA CONGELADA PARA INACTIVOS
         const lateFee = calculateLateFee(
           lateDays,
           settings.lateFeeDailyAmount,
@@ -2623,7 +2623,7 @@ throw new Error(`Error al obtener gestión mensual: ${error.message}`);
 
   /**
    * Obtener todos los pagos pendientes para reporte (SIN PAGINACIÓN)
-   * ✅ CORREGIDO: Ahora calcula mora con las mismas validaciones
+   * CORREGIDO: Ahora calcula mora con las mismas validaciones
    */
   async getPendingPaymentsForReport(filters = {}) {
     try {

@@ -1,5 +1,26 @@
 import prisma from "../../../../config/database.js";
 
+const athleteUserSelect = {
+  id: true,
+  firstName: true,
+  middleName: true,
+  lastName: true,
+  secondLastName: true,
+};
+
+const specialistUserSelect = {
+  id: true,
+  firstName: true,
+  middleName: true,
+  lastName: true,
+  secondLastName: true,
+  role: {
+    select: {
+      name: true,
+    },
+  },
+};
+
 export class AppointmentRepository {
   async findEmployeeByUserId(userId) {
     if (!userId) return null;
@@ -83,37 +104,14 @@ export class AppointmentRepository {
           athlete: {
             include: {
               user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  middleName: true,
-                  lastName: true,
-                  secondLastName: true,
-                  email: true,
-                  identification: true,
-                  phoneNumber: true,
-                },
+                select: athleteUserSelect,
               },
             },
           },
           specialist: {
             include: {
               user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  middleName: true,
-                  lastName: true,
-                  secondLastName: true,
-                  email: true,
-                  identification: true,
-                  phoneNumber: true,
-                  role: {
-                    select: {
-                      name: true,
-                    },
-                  },
-                },
+                select: specialistUserSelect,
               },
             },
           },
@@ -145,37 +143,14 @@ export class AppointmentRepository {
         athlete: {
           include: {
             user: {
-              select: {
-                id: true,
-                firstName: true,
-                middleName: true,
-                lastName: true,
-                secondLastName: true,
-                email: true,
-                identification: true,
-                phoneNumber: true,
-              },
+              select: athleteUserSelect,
             },
           },
         },
         specialist: {
           include: {
             user: {
-              select: {
-                id: true,
-                firstName: true,
-                middleName: true,
-                lastName: true,
-                secondLastName: true,
-                email: true,
-                identification: true,
-                phoneNumber: true,
-                role: {
-                  select: {
-                    name: true,
-                  },
-                },
-              },
+              select: specialistUserSelect,
             },
           },
         },
@@ -192,15 +167,15 @@ export class AppointmentRepository {
       include: {
         athlete: {
           include: {
-            user: true,
+            user: {
+              select: athleteUserSelect,
+            },
           },
         },
         specialist: {
           include: {
             user: {
-              include: {
-                role: true,
-              },
+              select: specialistUserSelect,
             },
           },
         },
@@ -218,15 +193,15 @@ export class AppointmentRepository {
       include: {
         athlete: {
           include: {
-            user: true,
+            user: {
+              select: athleteUserSelect,
+            },
           },
         },
         specialist: {
           include: {
             user: {
-              include: {
-                role: true,
-              },
+              select: specialistUserSelect,
             },
           },
         },
@@ -308,8 +283,6 @@ export class AppointmentRepository {
             middleName: true,
             lastName: true,
             secondLastName: true,
-            email: true,
-            identification: true,
           },
         },
         inscriptions: {
@@ -353,8 +326,6 @@ export class AppointmentRepository {
             middleName: true,
             lastName: true,
             secondLastName: true,
-            email: true,
-            identification: true,
             role: {
               select: {
                 name: true,
