@@ -169,11 +169,17 @@ export const requireAthleteOwnership = (req, res, next) => {
     const { athleteId } = req.params;
     const requestedAthleteId = parseInt(athleteId);
 
-    // Si es admin, permitir acceso
+    // Si es admin o tiene permiso de gestión de pagos, permitir acceso
     const userPermissions = req.user.role?.permissions || {};
-    const isAdmin = userPermissions.Admin || 
-                   userPermissions.Pagos?.Administrar ||
-                   req.user.role?.name === 'Administrador';
+    const roleName = String(req.user.role?.name || "").toLowerCase();
+    const resolvedPaymentsModule = resolveModuleKey(
+      "paymentsManagement",
+      userPermissions,
+    );
+    const isAdmin =
+      roleName === "admin" ||
+      roleName === "administrador" ||
+      hasNormalizedPermission(userPermissions, resolvedPaymentsModule, "Ver");
     
     if (isAdmin) {
       return next();

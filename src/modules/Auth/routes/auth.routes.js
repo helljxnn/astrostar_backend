@@ -81,16 +81,26 @@ router.post(
 router.post(
   "/request-email-change",
   authenticateToken,
+  authValidators.requestEmailChange,
+  handleValidationErrors,
   authController.requestEmailChange,
 );
 
 router.post(
   "/verify-email-change",
   authenticateToken,
+  authValidators.verifyEmailChange,
+  handleValidationErrors,
   authController.verifyEmailChange,
 );
 
-router.put("/profile", authenticateToken, authController.updateProfile);
+router.put(
+  "/profile",
+  authenticateToken,
+  authValidators.updateProfile,
+  handleValidationErrors,
+  authController.updateProfile,
+);
 
 router.post("/logout-all", authenticateToken, authController.logoutAll);
 

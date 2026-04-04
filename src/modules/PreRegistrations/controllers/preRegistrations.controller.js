@@ -21,9 +21,28 @@ export const preRegistrationsController = {
         data: preRegistration,
       });
     } catch (error) {
+      const message = error?.message || "Error al crear la inscripción";
+
+      if (message.includes("ya está inscrito")) {
+        return res.status(409).json({
+          success: false,
+          message,
+        });
+      }
+
+      if (
+        message.includes("Estado de preinscripcion no valido") ||
+        message.includes("requerido")
+      ) {
+        return res.status(400).json({
+          success: false,
+          message,
+        });
+      }
+
       return res.status(500).json({
         success: false,
-        message: error.message,
+        message,
       });
     }
   },
