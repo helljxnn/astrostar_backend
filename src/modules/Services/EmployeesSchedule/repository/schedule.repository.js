@@ -1,6 +1,22 @@
 ﻿// 📁 Services/Employees/EmployeesSchedule/repository/schedule.repository.js
 import prisma from "../../../../config/database.js";
 
+const scheduleUserSelect = {
+  id: true,
+  firstName: true,
+  middleName: true,
+  lastName: true,
+  secondLastName: true,
+  email: true,
+  phoneNumber: true,
+  role: {
+    select: {
+      id: true,
+      name: true,
+    },
+  },
+};
+
 export class ScheduleRepository {
   async findEmployeeByUserId(userId) {
     if (!userId) return null;
@@ -32,21 +48,7 @@ export class ScheduleRepository {
           employee: {
             include: {
               user: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  middleName: true,
-                  lastName: true,
-                  secondLastName: true,
-                  email: true,
-                  phoneNumber: true,
-                  role: {
-                    select: {
-                      id: true,
-                      name: true,
-                    },
-                  },
-                },
+                select: scheduleUserSelect,
               },
             },
           },
@@ -83,21 +85,7 @@ export class ScheduleRepository {
         employee: {
           include: {
             user: {
-              select: {
-                id: true,
-                firstName: true,
-                middleName: true,
-                lastName: true,
-                secondLastName: true,
-                email: true,
-                phoneNumber: true,
-                role: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
-                },
-              },
+              select: scheduleUserSelect,
             },
           },
         },
@@ -119,7 +107,9 @@ export class ScheduleRepository {
       include: {
         employee: {
           include: {
-            user: true,
+            user: {
+              select: scheduleUserSelect,
+            },
           },
         },
         novelties: {
@@ -177,7 +167,9 @@ export class ScheduleRepository {
       include: {
         employee: {
           include: {
-            user: true,
+            user: {
+              select: scheduleUserSelect,
+            },
           },
         },
       },
@@ -194,7 +186,9 @@ export class ScheduleRepository {
       include: {
         employee: {
           include: {
-            user: true,
+            user: {
+              select: scheduleUserSelect,
+            },
           },
         },
         novelties: {
@@ -249,8 +243,6 @@ export class ScheduleRepository {
             middleName: true,
             lastName: true,
             secondLastName: true,
-            email: true,
-            identification: true,
             role: {
               select: {
                 name: true,

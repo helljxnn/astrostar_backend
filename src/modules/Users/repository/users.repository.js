@@ -108,8 +108,6 @@ export class UsersRepository {
                   id: true,
                   firstName: true,
                   lastName: true,
-                  email: true,
-                  phone: true,
                 },
               },
             },
@@ -118,17 +116,6 @@ export class UsersRepository {
             select: {
               id: true,
               status: true,
-              employeePermissions: {
-                include: {
-                  permission: {
-                    select: {
-                      id: true,
-                      name: true,
-                      description: true,
-                    },
-                  },
-                },
-              },
             },
           },
         },
@@ -418,8 +405,6 @@ export class UsersRepository {
                 id: true,
                 firstName: true,
                 lastName: true,
-                email: true,
-                phone: true,
               },
             },
           },
@@ -428,17 +413,6 @@ export class UsersRepository {
           select: {
             id: true,
             status: true,
-            employeePermissions: {
-              include: {
-                permission: {
-                  select: {
-                    id: true,
-                    name: true,
-                    description: true,
-                  },
-                },
-              },
-            },
           },
         },
       },

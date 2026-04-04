@@ -86,6 +86,29 @@ const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 const normalizeIdentifier = (value) => String(value || "").trim();
 const normalizePhone = (value) => String(value || "").trim();
 
+const generateTemporaryPassword = () => {
+  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lowercase = "abcdefghijkmnpqrstuvwxyz";
+  const numbers = "23456789";
+  const symbols = "!@#$%&*";
+
+  let password = "";
+  password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
+  password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
+  password += numbers.charAt(Math.floor(Math.random() * numbers.length));
+  password += symbols.charAt(Math.floor(Math.random() * symbols.length));
+
+  const allChars = uppercase + lowercase + numbers + symbols;
+  for (let i = 4; i < 12; i++) {
+    password += allChars.charAt(Math.floor(Math.random() * allChars.length));
+  }
+
+  return password
+    .split("")
+    .sort(() => Math.random() - 0.5)
+    .join("");
+};
+
 const normalizeBoolean = (value, defaultValue = false) => {
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return value === 1;
@@ -1326,7 +1349,7 @@ const persistLegacyImportRecord = async ({
   importedAt,
   guardianCache,
 }) => {
-  const temporaryPassword = normalized.athlete.identification;
+  const temporaryPassword = normalized.temporaryPassword || generateTemporaryPassword();
   const passwordHash =
     normalized.passwordHash ||
     (await bcrypt.hash(temporaryPassword, LEGACY_IMPORT_DEFAULTS.BCRYPT_SALT_ROUNDS));
@@ -1670,8 +1693,9 @@ export const legacyEnrollmentImportService = {
       : null;
     const importedAt = new Date();
 
+    const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await bcrypt.hash(
-      normalized.athlete.identification,
+      temporaryPassword,
       LEGACY_IMPORT_DEFAULTS.BCRYPT_SALT_ROUNDS
     );
 
@@ -1684,6 +1708,7 @@ export const legacyEnrollmentImportService = {
           normalized: {
             ...normalized,
             passwordHash,
+            temporaryPassword,
           },
           settings,
           athleteRole,
@@ -1730,16 +1755,18 @@ export const legacyEnrollmentImportService = {
       preparedBatch.rows.map(async (row) => {
         if (row.status !== "ready") return row;
 
-        return {
-          ...row,
-          normalized: {
-            ...row.normalized,
-            passwordHash: await bcrypt.hash(
-              row.normalized.athlete.identification,
-              LEGACY_IMPORT_DEFAULTS.BCRYPT_SALT_ROUNDS
-            ),
-          },
-        };
+         const temporaryPassword = generateTemporaryPassword();
+         return {
+           ...row,
+           normalized: {
+             ...row.normalized,
+             passwordHash: await bcrypt.hash(
+               temporaryPassword,
+               LEGACY_IMPORT_DEFAULTS.BCRYPT_SALT_ROUNDS
+             ),
+             temporaryPassword,
+           },
+         };
       })
     );
 

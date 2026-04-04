@@ -105,7 +105,7 @@ export class AthletesRepository {
       middleName: athlete.user?.middleName || "",
       lastName: athlete.user?.lastName || "",
       secondLastName: athlete.user?.secondLastName || "",
-      nombreCompleto: nombreCompleto, // ✅ AGREGADO
+      nombreCompleto: nombreCompleto, // Agregado
       documentTypeId: athlete.user?.documentTypeId,
       documentTypeName: athlete.user?.documentType?.name || "",
       identification: athlete.user?.identification || "",
@@ -328,7 +328,7 @@ export class AthletesRepository {
       const athleteAge =
         userData.age ?? calculateAgeFromBirthDate(userData.birthDate);
       
-      // ✅ VALIDACIÓN DE EDAD VS CATEGORÍA ELIMINADA
+      // Validacion de edad vs categoria eliminada
       // El cliente tiene control total sobre qué deportistas asignar a qué categorías
       // Sin restricciones de edad
 
@@ -441,11 +441,11 @@ throw error;
           throw new Error("Atleta no encontrado");
         }
 
-        // ✅ VALIDACIÓN DE EDAD VS CATEGORÍA ELIMINADA
+      // Validacion de edad vs categoria eliminada
         // El cliente tiene control total sobre qué deportistas asignar a qué categorías
         // Sin restricciones de edad
 
-        // ✅ NO actualizar passwordHash a menos que haya nueva contraseña
+      // No actualizar passwordHash a menos que haya nueva contrasena
         const { passwordHash, documentTypeId, ...userDataWithoutPassword } = userData;
         const allowedUserFields = [
           "firstName",
@@ -622,7 +622,7 @@ throw error;
     }) {
       const skip = (page - 1) * limit;
 
-      // ✅ OPTIMIZACIÓN: Construir filtros de base de datos en lugar de filtrar en memoria
+      // Optimizacion: construir filtros de base de datos en lugar de filtrar en memoria
       const where = {
         AND: []
       };
@@ -646,7 +646,7 @@ throw error;
         });
       }
 
-      // ✅ OPTIMIZACIÓN: Filtro por categoría usando JOIN en lugar de memoria
+      // Optimizacion: filtro por categoria usando JOIN en lugar de memoria
       if (categoria) {
         where.AND.push({
           inscriptions: {
@@ -659,7 +659,7 @@ throw error;
         });
       }
 
-      // ✅ OPTIMIZACIÓN: Búsqueda usando base de datos con índices
+      // Optimizacion: busqueda usando base de datos con indices
       if (search) {
         const searchLower = search.toLowerCase().trim().replace(/\s+/g, ' ');
         const searchWords = searchLower.split(' ');
@@ -822,7 +822,7 @@ throw error;
             searchConditions.OR.push({ isScholarship: false });
           }
 
-          // ✅ OPTIMIZACIÓN: Búsqueda por nombres usando múltiples palabras
+          // Optimizacion: busqueda por nombres usando multiples palabras
           searchWords.forEach(word => {
             searchConditions.OR.push(
               // Nombres del atleta
@@ -887,7 +887,7 @@ throw error;
         delete where.AND;
       }
 
-      // ✅ OPTIMIZACIÓN: Consulta única con paginación en base de datos
+      // Optimizacion: consulta unica con paginacion en base de datos
       const [athletes, total] = await Promise.all([
         prisma.athlete.findMany({
           where,
@@ -909,11 +909,11 @@ throw error;
                 sportsCategory: true,
               },
               orderBy: { inscriptionDate: "desc" },
-              take: 1, // ✅ OPTIMIZACIÓN: Solo traer la inscripción más reciente
+              take: 1, // Optimizacion: solo traer la inscripcion mas reciente
             },
             enrollments: {
               orderBy: { createdAt: "desc" },
-              take: 3, // ✅ OPTIMIZACIÓN: Limitar matrículas para reducir payload
+              take: 3, // Optimizacion: limitar matriculas para reducir payload
             },
           },
           orderBy: { createdAt: "desc" },
@@ -1010,7 +1010,7 @@ throw error;
         throw new Error('Estado inválido. Use "Activo" o "Inactivo".');
       }
 
-      // ✅ SOLUCIÓN: Actualizar AMBAS tablas en una transacción
+      // Solucion: actualizar ambas tablas en una transaccion
       const result = await prisma.$transaction(async (tx) => {
         // 1. Obtener el atleta para conseguir el userId
         const athlete = await tx.athlete.findUnique({
@@ -1027,7 +1027,7 @@ throw error;
           where: { id: parseInt(id) },
           data: {
             status: normalizedStatus,
-            statusAssignedAt: new Date() // ✅ Actualizar fecha de cambio de estado
+            statusAssignedAt: new Date() // Actualizar fecha de cambio de estado
           },
           include: {
             user: {
@@ -1045,7 +1045,7 @@ throw error;
           },
         });
 
-        // 3. ✅ CRÍTICO: Actualizar tabla users para sincronizar el estado
+        // 3. Critico: actualizar tabla users para sincronizar el estado
         await tx.user.update({
           where: { id: athlete.userId },
           data: {

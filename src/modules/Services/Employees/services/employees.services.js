@@ -160,8 +160,8 @@ export class EmployeeService {
         );
       }
 
-      // 3. REGLA DE NEGOCIO: Usar documento de identidad como contraseña inicial
-      const temporaryPassword = employeeData.identification?.trim();
+      // 3. REGLA DE NEGOCIO: Generar contraseña temporal segura
+      const temporaryPassword = this.generateTemporaryPassword();
       const passwordHash = await bcrypt.hash(temporaryPassword, 10);
 
       // 4. Preparar datos del usuario

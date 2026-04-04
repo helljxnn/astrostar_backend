@@ -17,7 +17,7 @@ export class EmployeeEmailService extends BaseEmailService {
       const mailOptions = {
         from: this.getDefaultFrom(),
         to: email,
-        subject: "🎉 Bienvenido a AstroStar - Credenciales de Acceso",
+        subject: "Bienvenido a AstroStar - Credenciales de Acceso",
         html: this.generateWelcomeEmailTemplate(
           firstName,
           lastName,
@@ -82,7 +82,7 @@ export class EmployeeEmailService extends BaseEmailService {
 <body>
     <div class="container">
         <div class="header">
-            <h1>🌟 ¡Bienvenido a AstroStar!</h1>
+            <h1>Bienvenido a AstroStar</h1>
             <p>Sistema de Gestión Deportiva</p>
         </div>
         
@@ -92,17 +92,17 @@ export class EmployeeEmailService extends BaseEmailService {
             <p>¡Nos complace darte la bienvenida al equipo de AstroStar! Tu cuenta de empleado ha sido creada exitosamente.</p>
             
             <div class="credentials-box">
-                <h3>🔐 Tus Credenciales de Acceso</h3>
+                <h3>Tus Credenciales de Acceso</h3>
                 <div class="credential-item">
-                    <strong>📧 Usuario:</strong> ${email}
+                    <strong>Usuario:</strong> ${email}
                 </div>
                 <div class="credential-item">
-                    <strong>🔑 Contraseña:</strong> Tu número de documento de identidad
+                    <strong>Contraseña temporal:</strong> ${password}
                 </div>
             </div>
             
             <div class="warning">
-                <strong>⚠️ Importante - Seguridad:</strong>
+                <strong>Importante - Seguridad:</strong>
                 <ul>
                     <li>Por razones de seguridad, <strong>es recomendable cambiar tu contraseña</strong> después de tu primer inicio de sesión</li>
                     <li>Elige una contraseña segura que incluya letras, números y símbolos</li>
@@ -113,11 +113,11 @@ export class EmployeeEmailService extends BaseEmailService {
             
             <div style="text-align: center;">
                 <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/login" class="button">
-                    🚀 Acceder al Sistema
+                    Acceder al Sistema
                 </a>
             </div>
             
-            <h3>📋 Próximos Pasos:</h3>
+            <h3>Proximos Pasos:</h3>
             <ol>
                 <li>Inicia sesión con tu correo y contraseña</li>
                 <li><strong>Cambia tu contraseña inmediatamente</strong> por una segura y personal</li>
@@ -146,7 +146,7 @@ export class EmployeeEmailService extends BaseEmailService {
    * Generar texto plano para email de bienvenida
    */
   generateWelcomeEmailText(firstName, lastName, email, password) {
-    return `¡Bienvenido a AstroStar!
+    return `Bienvenido a AstroStar
 
 Hola ${firstName} ${lastName},
 
@@ -154,7 +154,7 @@ Nos complace darte la bienvenida al equipo de AstroStar. Tu cuenta de empleado h
 
 CREDENCIALES DE ACCESO:
 - Usuario: ${email}
-- Contraseña: Tu número de documento de identidad
+- Contraseña temporal: ${password}
 
 IMPORTANTE - SEGURIDAD:
 - Por razones de seguridad, DEBES CAMBIAR tu contraseña después de tu primer inicio de sesión

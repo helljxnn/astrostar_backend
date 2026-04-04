@@ -9,6 +9,12 @@ export class AuthService {
     this.authRepository = new AuthRepository();
   }
 
+  isStrongPassword(password) {
+    return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/.test(
+      String(password || ""),
+    );
+  }
+
   getJwtSecret() {
     const secret = process.env.JWT_SECRET;
     if (!secret) {
@@ -160,11 +166,12 @@ export class AuthService {
         };
       }
 
-      if (newPassword.length < 6) {
+      if (!this.isStrongPassword(newPassword)) {
         return {
           success: false,
           statusCode: 400,
-          message: "La nueva contraseña debe tener al menos 6 caracteres",
+          message:
+            "La nueva contraseña debe tener al menos 8 caracteres e incluir mayúscula, minúscula, número y carácter especial",
         };
       }
 
@@ -392,11 +399,12 @@ export class AuthService {
   async resetPassword(token, newPassword) {
     try {
       // 1. Validar nueva contraseña
-      if (!newPassword || newPassword.length < 6) {
+      if (!this.isStrongPassword(newPassword)) {
         return {
           success: false,
           statusCode: 400,
-          message: "La contraseña debe tener al menos 6 caracteres",
+          message:
+            "La contraseña debe tener al menos 8 caracteres e incluir mayúscula, minúscula, número y carácter especial",
         };
       }
 

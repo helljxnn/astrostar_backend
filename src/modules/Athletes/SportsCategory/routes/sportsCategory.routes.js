@@ -60,7 +60,7 @@ const router = express.Router();
 const sportsCategoryController = new SportsCategoryController();
 
 /* ========================================================== */
-/* ⚠️ RUTAS ESPECÍFICAS PRIMERO (orden es crítico)          */
+/* Rutas especificas primero (orden es critico) */
 /* ========================================================== */
 
 /**

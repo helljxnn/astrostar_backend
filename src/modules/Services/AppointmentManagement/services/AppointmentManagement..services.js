@@ -3,9 +3,9 @@ import emailService from "../../../../services/emailService.js";
 import appointmentEmailService from "./AppointmentEmail.service.js";
 
 const SPECIALTY_LABELS = {
-  psicologia: "PsicologÃ­a",
+  psicologia: "Psicología",
   fisioterapia: "Fisioterapia",
-  nutricion: "NutriciÃ³n",
+  nutricion: "Nutrición",
   medicina: "Medicina Deportiva",
 };
 
@@ -238,7 +238,7 @@ export class AppointmentService {
     const endDate = new Date(endValue);
 
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-      throw new Error("La fecha y hora de la cita no son vÃ¡lidas.");
+      throw new Error("La fecha y hora de la cita no son válidas.");
     }
 
     return { startDate, endDate };
@@ -559,7 +559,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontrÃ³ la cita con ID ${id}.`,
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
 
@@ -615,13 +615,13 @@ export class AppointmentService {
       const athlete =
         await this.appointmentRepository.findAthleteById(athleteId);
       if (!athlete) {
-        throw new Error("El deportista no existe o no estÃ¡ activo.");
+        throw new Error("El deportista no existe o no está activo.");
       }
 
       const specialist =
         await this.appointmentRepository.findSpecialistById(specialistId);
       if (!specialist) {
-        throw new Error("El especialista no existe o no estÃ¡ activo.");
+        throw new Error("El especialista no existe o no está activo.");
       }
 
       const { startDate, endDate } = this.parseDateTimePayload(appointmentData);
@@ -641,7 +641,7 @@ export class AppointmentService {
       const startDateKey = this.formatDateKey(startDate);
       const endDateKey = this.formatDateKey(endDate);
       if (startDateKey !== endDateKey) {
-        throw new Error("La cita debe iniciar y finalizar el mismo dÃ­a.");
+        throw new Error("La cita debe iniciar y finalizar el mismo día.");
       }
 
       const appointmentDate = this.normalizeDateOnly(startDate);
@@ -749,7 +749,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontrÃ³ la cita con ID ${id}.`,
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
 
@@ -818,7 +818,7 @@ export class AppointmentService {
           return {
             success: false,
             statusCode: 400,
-            message: "El deportista no existe o no estÃ¡ activo.",
+            message: "El deportista no existe o no está activo.",
           };
         }
         payload.athleteId = parseInt(athleteId);
@@ -831,7 +831,7 @@ export class AppointmentService {
           return {
             success: false,
             statusCode: 400,
-            message: "El especialista no existe o no estÃ¡ activo.",
+            message: "El especialista no existe o no está activo.",
           };
         }
         payload.specialistId = parseInt(specialistId);
@@ -891,7 +891,7 @@ export class AppointmentService {
         const startKey = this.formatDateKey(startDate);
         const endKey = this.formatDateKey(endDate);
         if (startKey !== endKey) {
-          throw new Error("La cita debe iniciar y finalizar el mismo dÃ­a.");
+          throw new Error("La cita debe iniciar y finalizar el mismo día.");
         }
 
         const now = new Date();
@@ -970,7 +970,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontrÃ³ la cita con ID ${id}.`,
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
 
@@ -978,7 +978,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 400,
-          message: "La cita ya estÃ¡ cancelada.",
+          message: "La cita ya está cancelada.",
         };
       }
 
@@ -1001,7 +1001,7 @@ export class AppointmentService {
         conclusion: null,
       });
 
-      // Enviar correos de cancelaciÃ³n (no bloqueante)
+      // Enviar correos de cancelación (no bloqueante)
       if (
         appointment.athlete &&
         appointment.athlete.user &&
@@ -1053,7 +1053,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontrÃ³ la cita con ID ${id}.`,
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
 
@@ -1061,7 +1061,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 400,
-          message: "La cita ya estÃ¡ completada.",
+          message: "La cita ya está completada.",
         };
       }
 
@@ -1086,7 +1086,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 400,
-          message: "No se puede completar una cita que aÃºn no ha ocurrido.",
+          message: "No se puede completar una cita que aún no ha ocurrido.",
         };
       }
 
@@ -1117,7 +1117,7 @@ export class AppointmentService {
         return {
           success: false,
           statusCode: 404,
-          message: `No se encontrÃ³ la cita con ID ${id}.`,
+          message: `No se encontró la cita con ID ${id}.`,
         };
       }
 
@@ -1165,6 +1165,7 @@ export class AppointmentService {
         return {
           id: athlete.id,
           athleteId: athlete.id,
+          userId: athlete.user.id,
           nombre:
             `${athlete.user.firstName} ${athlete.user.middleName || ""} ${athlete.user.lastName} ${athlete.user.secondLastName || ""}`
               .replace(/\s+/g, " ")
@@ -1172,8 +1173,6 @@ export class AppointmentService {
           nombres: athlete.user.firstName,
           apellidos:
             `${athlete.user.lastName} ${athlete.user.secondLastName || ""}`.trim(),
-          email: athlete.user.email,
-          identification: athlete.user.identification,
           categoryId,
           categoryName,
           category: categoryName,
@@ -1190,7 +1189,7 @@ export class AppointmentService {
       });
 
       // Los profesionales de salud solo ven deportistas activos (ya filtrado en la query)
-      // pero podrÃ­amos agregar filtros adicionales aquÃ­ si fuera necesario
+      // pero podríamos agregar filtros adicionales aquí si fuera necesario
 
       return {
         success: true,
@@ -1229,12 +1228,11 @@ export class AppointmentService {
           return {
             id: emp.id,
             specialistId: emp.id,
+            userId: emp.user.id,
             nombre: fullName,
             cargo: roleName,
             specialty: specialtyKey,
             specialtyLabel: this.resolveSpecialtyLabel(specialtyKey),
-            email: emp.user.email,
-            identification: emp.user.identification,
           };
         })
         .filter((spec) => APPOINTMENT_ALLOWED_SPECIALTIES.has(spec.specialty));
