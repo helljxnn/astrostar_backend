@@ -8,11 +8,17 @@ ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV NODE_ENV=production
 
+# Build tools for native deps (bcrypt) and Prisma engines
+RUN apk add --no-cache python3 make g++ openssl
+
 # Copy package files
 COPY package*.json ./
 
 # Copy Prisma schema before install because postinstall runs prisma generate
 COPY prisma ./prisma
+
+# Avoid prisma generate during npm ci; run it after full copy
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
 
 # Install production dependencies
 RUN npm ci --omit=dev
@@ -31,6 +37,9 @@ WORKDIR /app
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV NODE_ENV=production
+
+# Runtime openssl needed for Prisma engines
+RUN apk add --no-cache openssl
 
 COPY --from=build --chown=65532:65532 /app /app
 
