@@ -29,7 +29,7 @@ COPY . .
 # Regenerate Prisma client after full source copy to avoid stale generated client files
 RUN npx prisma generate
 
-FROM cgr.dev/chainguard/node:latest
+FROM cgr.dev/chainguard/node:latest-dev
 
 USER root
 WORKDIR /app
