@@ -1,6 +1,11 @@
-﻿import prisma from "../../../config/database.js";
+import prisma from "../../../config/database.js";
+import crypto from "crypto";
 
 export class AuthRepository {
+  hashToken(token) {
+    return crypto.createHash("sha256").update(String(token || "")).digest("hex");
+  }
+
   normalizeEmail(email) {
     return String(email || "").toLowerCase().trim();
   }
@@ -513,10 +518,12 @@ export class AuthRepository {
    */
   async createRefreshToken(userId, token, expiresAt) {
     try {
+      const tokenHash = this.hashToken(token);
+
       return await prisma.refreshToken.create({
         data: {
           userId: parseInt(userId),
-          token,
+          token: tokenHash,
           expiresAt,
         },
       });
@@ -531,9 +538,11 @@ export class AuthRepository {
    */
   async findValidRefreshToken(token) {
     try {
+      const tokenHash = this.hashToken(token);
+
       return await prisma.refreshToken.findFirst({
         where: {
-          token,
+          OR: [{ token }, { token: tokenHash }],
           expiresAt: {
             gt: new Date(),
           },
@@ -560,8 +569,12 @@ export class AuthRepository {
    */
   async deleteRefreshToken(token) {
     try {
+      const tokenHash = this.hashToken(token);
+
       return await prisma.refreshToken.deleteMany({
-        where: { token },
+        where: {
+          OR: [{ token }, { token: tokenHash }],
+        },
       });
     } catch (error) {
       console.error("Repository error - deleteRefreshToken:", error);
