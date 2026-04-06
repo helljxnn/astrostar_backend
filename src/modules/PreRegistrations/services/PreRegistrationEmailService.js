@@ -88,6 +88,21 @@ export class PreRegistrationEmailService extends BaseEmailService {
     phoneNumber,
     email,
   ) {
+    const displayFirstName = this.getSafeHtmlText(firstName, "Aspirante");
+    const displayFullName = this.getSafeHtmlText(
+      nombreCompleto,
+      "Nombre por confirmar",
+    );
+    const displayIdentification = this.getSafeHtmlText(
+      identification,
+      "No proporcionado",
+    );
+    const displayBirthDate = this.getSafeHtmlText(
+      this.formatDate(birthDate),
+      "No proporcionada",
+    );
+    const displayPhone = this.getSafeHtmlText(phoneNumber, "No proporcionado");
+    const displayEmail = this.getSafeHtmlText(email, "No proporcionado");
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -121,7 +136,7 @@ export class PreRegistrationEmailService extends BaseEmailService {
         </div>
         
         <div class="content">
-            <h2>Hola ${firstName},</h2>
+            <h2>Hola ${displayFirstName},</h2>
             
             <p>¡Gracias por tu interés en formar parte de la Fundación Manuela Vanegas! Hemos recibido tu solicitud de inscripción exitosamente.</p>
             
@@ -129,23 +144,23 @@ export class PreRegistrationEmailService extends BaseEmailService {
                 <h3>📋 Datos de tu Inscripción</h3>
                 <div class="info-row">
                     <span class="info-label">Nombre completo:</span>
-                    <span class="info-value">${nombreCompleto}</span>
+                    <span class="info-value">${displayFullName}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Documento:</span>
-                    <span class="info-value">${identification || 'No proporcionado'}</span>
+                    <span class="info-value">${displayIdentification}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Fecha de nacimiento:</span>
-                    <span class="info-value">${this.formatDate(birthDate)}</span>
+                    <span class="info-value">${displayBirthDate}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Teléfono:</span>
-                    <span class="info-value">${phoneNumber}</span>
+                    <span class="info-value">${displayPhone}</span>
                 </div>
                 <div class="info-row">
                     <span class="info-label">Email:</span>
-                    <span class="info-value">${email}</span>
+                    <span class="info-value">${displayEmail}</span>
                 </div>
             </div>
             
@@ -196,15 +211,24 @@ export class PreRegistrationEmailService extends BaseEmailService {
     nombreCompleto,
     identification,
   ) {
+    const displayFirstName = this.getSafeText(firstName, "Aspirante");
+    const displayFullName = this.getSafeText(
+      nombreCompleto,
+      "Nombre por confirmar",
+    );
+    const displayIdentification = this.getSafeText(
+      identification,
+      "No proporcionado",
+    );
     return `¡Bienvenida a la Fundación Manuela Vanegas!
 
-Hola ${firstName},
+Hola ${displayFirstName},
 
 Gracias por tu interés en formar parte de la Fundación Manuela Vanegas. Hemos recibido tu solicitud de inscripción exitosamente.
 
 DATOS DE TU INSCRIPCIÓN:
-- Nombre completo: ${nombreCompleto}
-- Documento: ${identification || 'No proporcionado'}
+- Nombre completo: ${displayFullName}
+- Documento: ${displayIdentification}
 
 PRÓXIMOS PASOS:
 

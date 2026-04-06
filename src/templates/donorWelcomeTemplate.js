@@ -1,16 +1,33 @@
-﻿/**
+function safeText(value, fallback = "") {
+  if (value === null || value === undefined) return fallback;
+  const text = String(value).replace(/\s+/g, " ").trim();
+  if (!text || /^(undefined|null|nan)$/i.test(text)) return fallback;
+  return text;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Template de correo de bienvenida para donantes
  * Con gradiente azul-morado según la imagen de referencia
  */
-
 export function generateDonorWelcomeHTML(donorData) {
-  const {
-    nombreCompleto,
-    correo,
-    telefono,
-    ciudad,
-    pais,
-  } = donorData;
+  const displayName = escapeHtml(
+    safeText(donorData.nombreCompleto, "Aliado de la fundación"),
+  );
+  const displayEmail = escapeHtml(safeText(donorData.correo, "No registrado"));
+  const displayPhone = escapeHtml(
+    safeText(donorData.telefono, "No registrado"),
+  );
+  const displayCity = escapeHtml(safeText(donorData.ciudad, "No registrada"));
+  const displayCountry = escapeHtml(safeText(donorData.pais, "No registrado"));
 
   return `
 <!DOCTYPE html>
@@ -131,7 +148,7 @@ export function generateDonorWelcomeHTML(donorData) {
     </div>
     
     <div class="content">
-      <p class="greeting">Hola <strong>${nombreCompleto}</strong>,</p>
+      <p class="greeting">Hola <strong>${displayName}</strong>,</p>
       
       <p class="message">
         Recibimos tu información y en breve un miembro del equipo se comunicará contigo 
@@ -142,13 +159,13 @@ export function generateDonorWelcomeHTML(donorData) {
       <div class="data-box">
         <h3>Tus datos registrados</h3>
         <div class="data-item">
-          <strong>Correo:</strong> <a href="mailto:${correo}">${correo}</a>
+          <strong>Correo:</strong> <a href="mailto:${displayEmail}">${displayEmail}</a>
         </div>
         <div class="data-item">
-          <strong>Teléfono:</strong> ${telefono}
+          <strong>Teléfono:</strong> ${displayPhone}
         </div>
         <div class="data-item">
-          <strong>Ciudad / País:</strong> ${ciudad}, ${pais}
+          <strong>Ciudad / País:</strong> ${displayCity}, ${displayCountry}
         </div>
         <div class="data-item">
           <strong>Mensaje:</strong> Registro creado desde el landing de donaciones.
@@ -180,28 +197,29 @@ export function generateDonorWelcomeHTML(donorData) {
 }
 
 export function generateDonorWelcomeText(donorData) {
-  const {
-    nombreCompleto,
-    correo,
-    telefono,
-    ciudad,
-    pais,
-  } = donorData;
+  const displayName = safeText(
+    donorData.nombreCompleto,
+    "Aliado de la fundación",
+  );
+  const displayEmail = safeText(donorData.correo, "No registrado");
+  const displayPhone = safeText(donorData.telefono, "No registrado");
+  const displayCity = safeText(donorData.ciudad, "No registrada");
+  const displayCountry = safeText(donorData.pais, "No registrado");
 
   return `
 ¡Gracias por tu interés en donar!
 Fundación Manuela Vanegas
 
-Hola ${nombreCompleto},
+Hola ${displayName},
 
 Recibimos tu información y en breve un miembro del equipo se comunicará contigo 
 para confirmar los detalles de tu apoyo. Te contactaremos por el medio que registraste 
 para continuar el proceso.
 
 TUS DATOS REGISTRADOS:
-- Correo: ${correo}
-- Teléfono: ${telefono}
-- Ciudad / País: ${ciudad}, ${pais}
+- Correo: ${displayEmail}
+- Teléfono: ${displayPhone}
+- Ciudad / País: ${displayCity}, ${displayCountry}
 - Mensaje: Registro creado desde el landing de donaciones.
 
 Si ya hiciste tu donación y necesitas tu certificado, escríbenos a 
@@ -214,4 +232,3 @@ Este es un mensaje automático del sistema AstroStar.
 © ${new Date().getFullYear()} Fundación Manuela Vanegas
   `;
 }
-

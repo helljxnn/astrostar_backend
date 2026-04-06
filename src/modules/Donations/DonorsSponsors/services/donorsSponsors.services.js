@@ -91,6 +91,11 @@ export class DonorsSponsorsService {
 
   async createFromLanding(payload) {
     try {
+      const authorizationValue = payload.autorizacion || "Si";
+      const baseDescription =
+        payload.mensaje ||
+        payload.descripcion ||
+        "Registro creado desde el landing de donaciones.";
       const landingPayload = {
         tipo: "Donante",
         tipoPersona: "Natural",
@@ -104,11 +109,8 @@ export class DonorsSponsorsService {
         ciudad: payload.ciudad || payload.city || "",
         pais: payload.pais || payload.country || "",
         estado: "Por confirmar",
-        descripcion:
-          payload.mensaje ||
-          payload.descripcion ||
-          "Registro creado desde el landing de donaciones.",
-        autorizacion: payload.autorizacion || "Si",
+        descripcion: `${baseDescription}\nAutorizacion: ${authorizationValue}`,
+        autorizacion: authorizationValue,
       };
 
       await this.ensureUnique(landingPayload);

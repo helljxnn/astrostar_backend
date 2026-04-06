@@ -287,8 +287,8 @@ const uploadSignatureFile = (req, res, next) => {
  *           type: string
  *           minLength: 6
  *           maxLength: 50
- *           example: "TempPass123"
- *           description: "Contraseña temporal (opcional, se genera automáticamente si no se proporciona)"
+ *           example: "1234567890"
+ *           description: "Contraseña inicial (número de documento). Campo informativo, se asigna automáticamente."
  *     
  *     UpdateEmployeeRequest:
  *       type: object

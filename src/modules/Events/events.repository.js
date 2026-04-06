@@ -21,7 +21,7 @@ const sanitizeText = (value) => {
 
 export class EventsRepository {
   /**
-   * Transformar evento del backend al formato esperado por el frontend mÃƒÂ³vil
+   * Transformar evento del backend al formato esperado por el frontend móvil
    */
   transformEventForMobile(service) {
     try {
@@ -40,7 +40,7 @@ export class EventsRepository {
         scheduleFile: service.scheduleFile,
         publish: service.publish,
         typeId: service.typeId,
-        // Mapear categorÃƒÂ­as deportivas con validaciÃƒÂ³n
+        // Mapear categorías deportivas con validación
         categories: service.serviceSportsCategories
           ? service.serviceSportsCategories
               .filter((ssc) => ssc && ssc.sportsCategory) // Filtrar nulls
@@ -57,14 +57,14 @@ export class EventsRepository {
                 ),
               }))
           : [],
-        // Para compatibilidad - primera categorÃƒÂ­a como categoryId
+        // Para compatibilidad - primera categoría como categoryId
         categoryId:
           service.serviceSportsCategories &&
           service.serviceSportsCategories.length > 0 &&
           service.serviceSportsCategories[0].sportsCategory
             ? service.serviceSportsCategories[0].sportsCategory.id
             : service.categoryId || null, // fallback al categoryId directo
-        // CategorÃƒÂ­a del evento (EventCategory)
+        // Categoría del evento (EventCategory)
         eventCategory: service.event_categories
           ? {
               id: service.event_categories.id,
@@ -79,7 +79,7 @@ export class EventsRepository {
               description: sanitizeText(service.ServiceType.description) || null,
             }
           : null,
-        // Para compatibilidad mÃƒÂ³vil con validaciÃƒÂ³n
+        // Para compatibilidad móvil con validación
         sponsors: service.ServiceSponsor
           ? service.ServiceSponsor.filter((ss) => ss && ss.Sponsor) // Filtrar nulls
               .map((ss) => ({
@@ -101,7 +101,7 @@ export class EventsRepository {
       };
     } catch (error) {
       console.error("Error transforming event:", service.id, error.message);
-      // Retornar un objeto mÃƒÂ­nimo en caso de error
+      // Retornar un objeto mínimo en caso de error
       return {
         id: service.id,
         name: sanitizeText(service.name) || "Evento sin nombre",
@@ -133,7 +133,7 @@ export class EventsRepository {
   }
 
   /**
-   * Obtener todos los eventos con paginaciÃƒÂ³n y filtros
+   * Obtener todos los eventos con paginación y filtros
    */
   async findAll({
     page = 1,
@@ -163,7 +163,7 @@ export class EventsRepository {
       }
 
       if (categoryId) {
-        // Filtrar por categorÃƒÂ­a deportiva a travÃƒÂ©s de la relaciÃƒÂ³n muchos a muchos
+        // Filtrar por categoría deportiva a través de la relación muchos a muchos
         where.serviceSportsCategories = {
           some: {
             sportsCategoryId: parseInt(categoryId),
@@ -179,7 +179,7 @@ export class EventsRepository {
         where.publish = publish === "true";
       }
 
-      // Obtener datos con paginaciÃƒÂ³n
+      // Obtener datos con paginación
       const [services, total] = await Promise.all([
         prisma.service.findMany({
           where,
@@ -243,7 +243,7 @@ export class EventsRepository {
         prisma.service.count({ where }),
       ]);
 
-      // Transformar eventos para el formato mÃƒÂ³vil con manejo de errores
+      // Transformar eventos para el formato móvil con manejo de errores
       const transformedEvents = services.map((service, index) => {
         try {
           return this.transformEventForMobile(service);
@@ -358,7 +358,7 @@ export class EventsRepository {
       return null;
     }
 
-    // Transformar para el formato mÃƒÂ³vil
+    // Transformar para el formato móvil
     return this.transformEventForMobile(service);
   }
 
@@ -393,7 +393,7 @@ export class EventsRepository {
         ...eventData,
       };
 
-      // Si hay categorÃƒÂ­as deportivas, agregarlas
+      // Si hay categorías deportivas, agregarlas
       if (categoryIds && categoryIds.length > 0) {
         createData.serviceSportsCategories = {
           create: categoryIds.map((categoryId) => ({
@@ -469,7 +469,7 @@ export class EventsRepository {
         },
       });
     } catch (error) {
-      // Manejar errores especÃƒÂ­ficos de Prisma
+      // Manejar errores específicos de Prisma
       if (error.code === "P2003") {
         // Foreign key constraint failed
         if (error.meta?.field_name?.includes("sportsCategoryId")) {
@@ -505,15 +505,15 @@ export class EventsRepository {
       // Extraer sponsorNames y categoryIds si existen
       const { sponsorNames, categoryIds, ...eventData } = data;
 
-      // Primero actualizar los datos bÃƒÂ¡sicos del evento
+      // Primero actualizar los datos básicos del evento
       const updatedEvent = await prisma.service.update({
         where: { id: eventId },
         data: eventData,
       });
 
-      // Actualizar categorÃƒÂ­as deportivas si se proporcionaron
+      // Actualizar categorías deportivas si se proporcionaron
       if (categoryIds !== undefined) {
-        // Obtener categorÃƒÂ­as actuales
+        // Obtener categorías actuales
         const currentCategories = await prisma.serviceSportsCategory.findMany({
           where: { serviceId: eventId },
           select: { sportsCategoryId: true },
@@ -524,26 +524,26 @@ export class EventsRepository {
         );
         const newCategoryIds = categoryIds.map((id) => parseInt(id));
 
-        // Identificar categorÃƒÂ­as que se estÃƒÂ¡n eliminando
+        // Identificar categorías que se están eliminando
         const removedCategoryIds = currentCategoryIds.filter(
           (id) => !newCategoryIds.includes(id),
         );
 
-        // Identificar categorÃƒÂ­as que se estÃƒÂ¡n agregando
+        // Identificar categorías que se están agregando
         const addedCategoryIds = newCategoryIds.filter(
           (id) => !currentCategoryIds.includes(id),
         );
 
-        // Si hay categorÃƒÂ­as que se estÃƒÂ¡n eliminando, eliminar inscripciones asociadas PRIMERO
+        // Si hay categorías que se están eliminando, eliminar inscripciones asociadas PRIMERO
         if (removedCategoryIds.length > 0) {
-          // Obtener nombres de las categorÃƒÂ­as para el log
+          // Obtener nombres de las categorías para el log
           const removedCategories = await prisma.sportsCategory.findMany({
             where: { id: { in: removedCategoryIds } },
             select: { id: true, nombre: true },
           });
 
-          // Eliminar TODOS los participantes (equipos e individuales) cuya categorÃƒÂ­a deportiva
-          // estÃƒÂ© en la lista de categorÃƒÂ­as removidas
+          // Eliminar TODOS los participantes (equipos e individuales) cuya categoría deportiva
+          // esté en la lista de categorías removidas
           const deletedParticipants = await prisma.participant.deleteMany({
             where: {
               serviceId: eventId,
@@ -553,7 +553,7 @@ export class EventsRepository {
             },
           });
 
-          // Ahora sÃƒÂ­ eliminar las relaciones de categorÃƒÂ­as removidas
+          // Ahora sí eliminar las relaciones de categorías removidas
           await prisma.serviceSportsCategory.deleteMany({
             where: {
               serviceId: eventId,
@@ -564,7 +564,7 @@ export class EventsRepository {
           });
         }
 
-        // Agregar solo las categorÃƒÂ­as nuevas (no las que ya existen)
+        // Agregar solo las categorías nuevas (no las que ya existen)
         if (addedCategoryIds.length > 0) {
           await prisma.serviceSportsCategory.createMany({
             data: addedCategoryIds.map((categoryId) => ({
@@ -678,7 +678,7 @@ export class EventsRepository {
   }
 
   /**
-   * Eliminar evento fÃƒÂ­sicamente
+   * Eliminar evento físicamente
    */
   async delete(id) {
     try {
@@ -721,7 +721,7 @@ export class EventsRepository {
   }
 
   /**
-   * Obtener estadÃƒÂ­sticas de eventos
+   * Obtener estadísticas de eventos
    */
   async findPublicEvents({ limit = 1000 } = {}) {
     const parsedLimit = Number.parseInt(limit, 10);
@@ -788,7 +788,7 @@ export class EventsRepository {
   }
 
   async getStats() {
-    // Calcular fechas para comparaciÃƒÂ³n (ÃƒÂºltimos 30 dÃƒÂ­as vs 30 dÃƒÂ­as anteriores)
+    // Calcular fechas para comparación (últimos 30 días vs 30 días anteriores)
     const now = new Date();
     const thirtyDaysAgo = new Date(now);
     thirtyDaysAgo.setDate(now.getDate() - 30);
@@ -805,7 +805,7 @@ export class EventsRepository {
       byType,
       enrolledAthletes,
       enrolledTeams,
-      // Datos del perÃƒÂ­odo anterior para calcular tendencias
+      // Datos del período anterior para calcular tendencias
       totalPrevious,
       enrolledAthletesPrevious,
       enrolledTeamsPrevious,
@@ -840,7 +840,7 @@ export class EventsRepository {
           teamId: { not: null },
         },
       }),
-      // Eventos creados hace 30-60 dÃƒÂ­as
+      // Eventos creados hace 30-60 días
       prisma.service.count({
         where: {
           createdAt: {
@@ -849,7 +849,7 @@ export class EventsRepository {
           },
         },
       }),
-      // Deportistas inscritas hace 30-60 dÃƒÂ­as
+      // Deportistas inscritas hace 30-60 días
       prisma.participant.count({
         where: {
           athleteId: { not: null },
@@ -859,7 +859,7 @@ export class EventsRepository {
           },
         },
       }),
-      // Equipos inscritos hace 30-60 dÃƒÂ­as
+      // Equipos inscritos hace 30-60 días
       prisma.participant.count({
         where: {
           teamId: { not: null },
@@ -900,7 +900,7 @@ export class EventsRepository {
       (a, b) => b.count - a.count,
     );
 
-    // Calcular eventos prÃƒÂ³ximos (programados + en curso)
+    // Calcular eventos próximos (programados + en curso)
     const upcoming = programado + enCurso;
 
     // Calcular porcentajes de crecimiento
@@ -909,7 +909,7 @@ export class EventsRepository {
       return Math.round(((current - previous) / previous) * 100);
     };
 
-    // Eventos creados en los ÃƒÂºltimos 30 dÃƒÂ­as
+    // Eventos creados en los últimos 30 días
     const totalRecent = await prisma.service.count({
       where: {
         createdAt: {
@@ -1013,7 +1013,7 @@ export class EventsRepository {
   async getReferenceData() {
     const [sportsCategories, eventCategories, types, sponsors] =
       await Promise.all([
-        // Obtener categorÃƒÂ­as deportivas especÃƒÂ­ficas del mÃƒÂ³dulo de eventos
+        // Obtener categorías deportivas específicas del módulo de eventos
         prisma.sportsCategory.findMany({
           select: {
             id: true,
@@ -1028,7 +1028,7 @@ export class EventsRepository {
             nombre: "asc",
           },
         }),
-        // Obtener categorÃƒÂ­as de eventos
+        // Obtener categorías de eventos
         prisma.eventCategory.findMany({
           select: {
             id: true,
@@ -1066,7 +1066,7 @@ export class EventsRepository {
         }),
       ]);
 
-    // Mapear las categorÃƒÂ­as deportivas al formato esperado por el frontend
+    // Mapear las categorías deportivas al formato esperado por el frontend
     const mappedSportsCategories = sportsCategories.map((category) => ({
       id: category.id,
       name: sanitizeText(category.nombre),
@@ -1100,11 +1100,11 @@ export class EventsRepository {
   }
 
   /**
-   * Encontrar eventos que deberÃƒÂ­an estar finalizados
+   * Encontrar eventos que deberían estar finalizados
    */
   async findEventsToFinalize(currentDate, currentTime) {
     try {
-      // Obtener todos los eventos que no estÃƒÂ¡n finalizados ni cancelados
+      // Obtener todos los eventos que no están finalizados ni cancelados
       const events = await prisma.service.findMany({
         where: {
           status: {
@@ -1121,7 +1121,7 @@ export class EventsRepository {
       });
 
       // Filtrar manualmente los eventos que deben finalizarse
-      // currentDate ya viene en formato YYYY-MM-DD desde BogotÃƒÂ¡
+      // currentDate ya viene en formato YYYY-MM-DD desde Bogotá
       const eventsToFinalize = events.filter((event) => {
         // Validar que el evento tenga fecha y hora de fin
         if (!event.endDate || !event.endTime) {
@@ -1136,12 +1136,12 @@ export class EventsRepository {
           "-" +
           String(eventEndDate.getDate()).padStart(2, "0");
 
-        // Si la fecha de fin es anterior a hoy (BogotÃƒÂ¡), finalizar
+        // Si la fecha de fin es anterior a hoy (Bogotá), finalizar
         if (eventEndDateStr < currentDate) {
           return true;
         }
 
-        // Si la fecha de fin es hoy (BogotÃƒÂ¡), verificar la hora
+        // Si la fecha de fin es hoy (Bogotá), verificar la hora
         if (eventEndDateStr === currentDate) {
           // Comparar horas (formato HH:MM)
           const [eventHour, eventMin] = event.endTime.split(":").map(Number);
@@ -1150,7 +1150,7 @@ export class EventsRepository {
           const eventMinutes = eventHour * 60 + eventMin;
           const currentMinutes = currentHour * 60 + currentMin;
 
-          // Si la hora de fin ya pasÃƒÂ³, finalizar
+          // Si la hora de fin ya pasó, finalizar
           if (eventMinutes <= currentMinutes) {
             return true;
           }
@@ -1166,7 +1166,7 @@ export class EventsRepository {
   }
 
   /**
-   * Encontrar eventos que deberÃƒÂ­an estar en curso
+   * Encontrar eventos que deberían estar en curso
    */
   async findEventsToStartInProgress(currentDate, currentTime) {
     try {
@@ -1187,7 +1187,7 @@ export class EventsRepository {
       });
 
       // Filtrar manualmente los eventos que deben estar en curso
-      // currentDate ya viene en formato YYYY-MM-DD desde BogotÃƒÂ¡
+      // currentDate ya viene en formato YYYY-MM-DD desde Bogotá
       const eventsToStartInProgress = events.filter((event) => {
         // Validar que el evento tenga fechas y horas completas
         if (
@@ -1215,7 +1215,7 @@ export class EventsRepository {
           "-" +
           String(eventEndDate.getDate()).padStart(2, "0");
 
-        // Si la fecha de inicio es anterior a hoy, el evento deberÃƒÂ­a estar en curso
+        // Si la fecha de inicio es anterior a hoy, el evento debería estar en curso
         if (eventStartDateStr < currentDate && eventEndDateStr >= currentDate) {
           return true;
         }
@@ -1228,7 +1228,7 @@ export class EventsRepository {
           const eventMinutes = eventHour * 60 + eventMin;
           const currentMinutes = currentHour * 60 + currentMin;
 
-          // Si la hora de inicio ya pasÃƒÂ³ y no ha terminado, poner en curso
+          // Si la hora de inicio ya pasó y no ha terminado, poner en curso
           if (eventMinutes <= currentMinutes) {
             // Verificar que no haya terminado
             if (eventEndDateStr > currentDate) {
@@ -1255,7 +1255,7 @@ export class EventsRepository {
   }
 
   /**
-   * Actualizar el estado de mÃƒÂºltiples eventos
+   * Actualizar el estado de múltiples eventos
    */
   async updateMultipleStatuses(eventIds, newStatus) {
     try {
@@ -1290,7 +1290,7 @@ export class EventsRepository {
         currentInscriptionStatus: "Active", // Solo con inscripcion vigente
       };
 
-      // Filtro de bÃƒÂºsqueda
+      // Filtro de búsqueda
       if (search) {
         where.user = {
           OR: [
@@ -1302,7 +1302,7 @@ export class EventsRepository {
         };
       }
 
-      // Obtener deportistas que NO estÃƒÂ¡n ya inscritas en este evento
+      // Obtener deportistas que NO están ya inscritas en este evento
       const [athletes, total] = await Promise.all([
         prisma.athlete.findMany({
           where: {
@@ -1386,7 +1386,7 @@ export class EventsRepository {
       // Transformar deportistas al formato esperado
       const transformedAthletes = athletes
         .filter((athlete) => {
-          // Si se especifica una categorÃƒÂ­a, filtrar por ella
+          // Si se especifica una categoría, filtrar por ella
           if (categoryId) {
             const currentInscription = athlete.inscriptions[0];
             return (
@@ -1481,7 +1481,7 @@ export class EventsRepository {
         );
       }
 
-      // Verificar que la deportista existe y estÃƒÂ¡ activa
+      // Verificar que la deportista existe y está activa
       const athlete = await prisma.athlete.findUnique({
         where: { id: parseInt(athleteId) },
         include: {
@@ -1514,7 +1514,7 @@ export class EventsRepository {
         throw new Error("La deportista debe tener una inscripcion vigente");
       }
 
-      // Verificar que no estÃƒÂ© ya inscrita en este evento
+      // Verificar que no esté ya inscrita en este evento
       const existingParticipant = await prisma.participant.findFirst({
         where: {
           serviceId: parseInt(eventId),
@@ -1526,12 +1526,12 @@ export class EventsRepository {
         throw new Error("La deportista ya esta inscrita en este evento");
       }
 
-      // Usar la categorÃƒÂ­a de la inscripciÃƒÂ³n activa si no se especifica una
+      // Usar la categoría de la inscripción activa si no se especifica una
       const currentInscription = athlete.inscriptions[0];
       const finalSportsCategoryId =
         sportsCategoryId || currentInscription?.sportsCategoryId;
 
-      // Crear la participaciÃƒÂ³n
+      // Crear la participación
       const participant = await prisma.participant.create({
         data: {
           type: "Individual",
@@ -1611,7 +1611,7 @@ export class EventsRepository {
    */
   async unenrollAthlete(eventId, athleteId) {
     try {
-      // Verificar que la participaciÃƒÂ³n existe
+      // Verificar que la participación existe
       const participant = await prisma.participant.findFirst({
         where: {
           serviceId: parseInt(eventId),
@@ -1635,7 +1635,7 @@ export class EventsRepository {
         throw new Error("La deportista no esta inscrita en este evento");
       }
 
-      // Eliminar la participaciÃƒÂ³n
+      // Eliminar la participación
       await prisma.participant.delete({
         where: { id: participant.id },
       });
@@ -1674,15 +1674,15 @@ export class EventsRepository {
   }
 
   /**
-   * Verificar inscripciones afectadas por cambio de categorÃƒÂ­as
-   * Retorna informaciÃƒÂ³n sobre equipos y deportistas que serÃƒÂ­an eliminados
+   * Verificar inscripciones afectadas por cambio de categorías
+   * Retorna información sobre equipos y deportistas que serían eliminados
    */
   async checkAffectedRegistrations(eventId, newCategoryIds) {
     try {
       const parsedEventId = parseInt(eventId);
       const parsedNewCategoryIds = newCategoryIds.map((id) => parseInt(id));
 
-      // Obtener categorÃƒÂ­as actuales del evento
+      // Obtener categorías actuales del evento
       const currentCategories = await prisma.serviceSportsCategory.findMany({
         where: { serviceId: parsedEventId },
         include: {
@@ -1699,7 +1699,7 @@ export class EventsRepository {
         (c) => c.sportsCategoryId,
       );
 
-      // Identificar categorÃƒÂ­as que se estÃƒÂ¡n eliminando
+      // Identificar categorías que se están eliminando
       const removedCategoryIds = currentCategoryIds.filter(
         (id) => !parsedNewCategoryIds.includes(id),
       );
@@ -1714,7 +1714,7 @@ export class EventsRepository {
         };
       }
 
-      // Obtener informaciÃƒÂ³n de las categorÃƒÂ­as removidas
+      // Obtener información de las categorías removidas
       const removedCategories = currentCategories
         .filter((c) => removedCategoryIds.includes(c.sportsCategoryId))
         .map((c) => ({

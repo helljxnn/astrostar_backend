@@ -191,29 +191,6 @@ const calculateExpirationDate = (startDate, years = ENROLLMENT_CONSTANTS.ENROLLM
   return expirationDate;
 };
 
-const generateTemporaryPassword = () => {
-  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const lowercase = "abcdefghijkmnpqrstuvwxyz";
-  const numbers = "23456789";
-  const symbols = "!@#$%&*";
-
-  let password = "";
-  password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-  password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-  password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-  password += symbols.charAt(Math.floor(Math.random() * symbols.length));
-
-  const allChars = uppercase + lowercase + numbers + symbols;
-  for (let i = 4; i < 12; i++) {
-    password += allChars.charAt(Math.floor(Math.random() * allChars.length));
-  }
-
-  return password
-    .split("")
-    .sort(() => Math.random() - 0.5)
-    .join("");
-};
-
 const resolveEnrollmentDates = () => {
   const fechaInicio = new Date();
   const fechaVencimiento = calculateExpirationDate(fechaInicio);
@@ -335,8 +312,11 @@ const getOrCreateAthleteRole = async (tx) => {
  */
 const createUser = async (tx, athleteData, roleId, age) => {
   const bcrypt = await import('bcrypt');
-  const tempPassword = generateTemporaryPassword();
-  const passwordHash = await bcrypt.default.hash(tempPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
+  const initialPassword = athleteData.identification?.trim();
+  if (!initialPassword) {
+    throw new Error("La identificación es obligatoria para definir la contraseña inicial");
+  }
+  const passwordHash = await bcrypt.default.hash(initialPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
   const cleanEmail = normalizeEmail(athleteData.email);
   
   const newUser = await tx.user.create({
@@ -368,7 +348,7 @@ const createUser = async (tx, athleteData, roleId, age) => {
     },
   });
 
-  return { user: newUser, tempPassword };
+  return { user: newUser, tempPassword: initialPassword };
 };
 
 /**
@@ -482,9 +462,9 @@ const markPreRegistrationAsProcessed = async (tx, preRegistrationId, email, iden
 /**
  * Envía email de bienvenida al atleta (versión async no bloqueante)
  * @param {Object} user - Datos del usuario
- * @param {string} tempPassword - Contraseña temporal
+ * @param {string} initialPassword - Contraseña inicial
  */
-const sendWelcomeEmail = async (user, tempPassword) => {
+const sendWelcomeEmail = async (user, initialPassword) => {
   try {
     const athleteInfo = {
       email: user.email,
@@ -494,7 +474,9 @@ const sendWelcomeEmail = async (user, tempPassword) => {
 
     const credentials = {
       email: user.email,
-      temporaryPassword: tempPassword
+      password: initialPassword,
+      passwordIsDocument: true,
+      passwordLabel: "Contraseña inicial",
     };
 
     // Envío asíncrono sin await para no bloquear
@@ -584,7 +566,10 @@ export const enrollmentsService = {
 
     // PASO 3: Preparar hash de contraseña fuera de transacción
     const bcrypt = await import('bcrypt');
-    const tempPassword = generateTemporaryPassword();
+    if (!cleanIdentification) {
+      throw new Error("La identificación es obligatoria para definir la contraseña inicial");
+    }
+    const tempPassword = cleanIdentification;
     const passwordHash = await bcrypt.default.hash(tempPassword, ENROLLMENT_CONSTANTS.BCRYPT_SALT_ROUNDS);
     const processedPreRegistrationStatus = await resolvePreRegistrationStatus(PRE_REGISTRATION_STATUS.PROCESSED);
     const paymentSettings = normalizedAthlete.isScholarship === true
@@ -744,7 +729,9 @@ export const enrollmentsService = {
 
         const credentials = {
           email: result.athlete.user.email,
-          temporaryPassword: result.tempPassword
+          password: result.tempPassword,
+          passwordIsDocument: true,
+          passwordLabel: "Contraseña inicial",
         };
 
         await emailService.sendAthleteWelcomeEmail(athleteInfo, credentials);

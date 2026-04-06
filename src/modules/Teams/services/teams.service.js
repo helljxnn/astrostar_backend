@@ -107,9 +107,6 @@ export class TeamsService {
         message: `Equipo "${teamData.nombre}" creado exitosamente.`,
       };
     } catch (error) {
-      console.error('❌ [SERVICE] Error en createTeam:', error);
-      console.error('❌ [SERVICE] Error stack:', error.stack);
-      
       if (error.message.includes('ya está asignado')) {
         throw new Error(`Error de asignación: ${error.message}`);
       }
@@ -123,7 +120,6 @@ export class TeamsService {
         throw error;
       }
       
-      console.error('Error no manejado en createTeam:', error);
       throw error; // Lanzar el error original en lugar de uno genérico
     }
   }
@@ -178,7 +174,6 @@ export class TeamsService {
         throw error;
       }
       
-      console.error('Error no manejado en updateTeam:', error);
       throw new Error('Error interno del servidor al actualizar equipo');
     }
   }

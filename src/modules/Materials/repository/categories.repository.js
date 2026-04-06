@@ -29,9 +29,7 @@ class CategoriesRepository {
             select: { materials: true },
           },
         },
-        orderBy: {
-          nombre: "asc",
-        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       }),
       prisma.materialCategory.count({ where }),
     ]);

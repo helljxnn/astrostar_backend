@@ -1,19 +1,41 @@
-﻿/**
+function safeText(value, fallback = "") {
+  if (value === null || value === undefined) return fallback;
+  const text = String(value).replace(/\s+/g, " ").trim();
+  if (!text || /^(undefined|null|nan)$/i.test(text)) return fallback;
+  return text;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Template de correo para notificaciones de horarios
  */
-
 export function generateScheduleNotificationHTML(data) {
-  const {
-    employeeName,
-    actionTitle,
-    scheduleDate,
-    timeRange,
-    recurrenceLabel,
-    description,
-  } = data;
-
   const baseUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-  const hasDescription = description && String(description).trim() !== "";
+  const displayEmployeeName = escapeHtml(
+    safeText(data.employeeName, "Colaborador"),
+  );
+  const displayActionTitle = escapeHtml(
+    safeText(data.actionTitle, "Actualización de horario"),
+  );
+  const displayScheduleDate = escapeHtml(
+    safeText(data.scheduleDate, "Fecha por confirmar"),
+  );
+  const displayTimeRange = escapeHtml(
+    safeText(data.timeRange, "Horario por confirmar"),
+  );
+  const displayRecurrenceLabel = escapeHtml(
+    safeText(data.recurrenceLabel, "Sin repetición"),
+  );
+  const displayDescription = escapeHtml(safeText(data.description));
+  const hasDescription = Boolean(displayDescription);
 
   return `
 <!DOCTYPE html>
@@ -21,7 +43,7 @@ export function generateScheduleNotificationHTML(data) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${actionTitle} - AstroStar</title>
+  <title>${displayActionTitle} - AstroStar</title>
   <style>
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     .container { max-width: 640px; margin: 0 auto; padding: 20px; }
@@ -39,20 +61,20 @@ export function generateScheduleNotificationHTML(data) {
 <body>
   <div class="container">
     <div class="header">
-      <div class="badge">${actionTitle}</div>
+      <div class="badge">${displayActionTitle}</div>
       <h1 style="margin: 10px 0 0 0;">Horario de trabajo</h1>
       <p style="margin: 8px 0 0 0; opacity: .9;">AstroStar - Sistema de Gestión</p>
     </div>
     <div class="content">
-      <p>Hola <strong>${employeeName}</strong>,</p>
-      <p>Tu horario ha sido <strong>${actionTitle.toLowerCase()}</strong>. Aquí están los detalles:</p>
+      <p>Hola <strong>${displayEmployeeName}</strong>,</p>
+      <p>Tu horario ha sido <strong>${displayActionTitle.toLowerCase()}</strong>. Aquí están los detalles:</p>
 
       <div class="card">
         <h3>Detalle del horario</h3>
-        <p class="detail">📅 <span class="highlight">${scheduleDate}</span></p>
-        <p class="detail">⏰ <span class="highlight">${timeRange}</span></p>
-        <p class="detail">🔁 ${recurrenceLabel}</p>
-        ${hasDescription ? `<p class="detail">📝 ${description}</p>` : ""}
+        <p class="detail">📅 <span class="highlight">${displayScheduleDate}</span></p>
+        <p class="detail">⏰ <span class="highlight">${displayTimeRange}</span></p>
+        <p class="detail">🔁 ${displayRecurrenceLabel}</p>
+        ${hasDescription ? `<p class="detail">📝 ${displayDescription}</p>` : ""}
       </div>
 
       <div class="card" style="background:#f0f4ff;">
@@ -83,26 +105,30 @@ export function generateScheduleNotificationHTML(data) {
 }
 
 export function generateScheduleNotificationText(data) {
-  const {
-    employeeName,
-    actionTitle,
-    scheduleDate,
-    timeRange,
-    recurrenceLabel,
-    description,
-  } = data;
+  const displayEmployeeName = safeText(data.employeeName, "Colaborador");
+  const displayActionTitle = safeText(
+    data.actionTitle,
+    "Actualización de horario",
+  );
+  const displayScheduleDate = safeText(data.scheduleDate, "Fecha por confirmar");
+  const displayTimeRange = safeText(data.timeRange, "Horario por confirmar");
+  const displayRecurrenceLabel = safeText(
+    data.recurrenceLabel,
+    "Sin repetición",
+  );
+  const displayDescription = safeText(data.description);
 
   return `
-${actionTitle} - AstroStar
+${displayActionTitle} - AstroStar
 
-Hola ${employeeName},
+Hola ${displayEmployeeName},
 
-Tu horario ha sido ${actionTitle.toLowerCase()}.
+Tu horario ha sido ${displayActionTitle.toLowerCase()}.
 
-Fecha: ${scheduleDate}
-Horario: ${timeRange}
-Repetición: ${recurrenceLabel}
-${description ? `Descripción: ${description}\n` : ""}
+Fecha: ${displayScheduleDate}
+Horario: ${displayTimeRange}
+Repetición: ${displayRecurrenceLabel}
+${displayDescription ? `Descripción: ${displayDescription}\n` : ""}
 
 Si necesitas cambios, contacta a tu coordinador.
 
@@ -112,4 +138,3 @@ Este correo fue enviado al email registrado en tu perfil.
 © ${new Date().getFullYear()} AstroStar
   `;
 }
-

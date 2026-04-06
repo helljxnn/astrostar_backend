@@ -12,23 +12,40 @@ export class AthleteEmailService extends BaseEmailService {
   async sendAthleteWelcomeEmail(athleteData, credentials) {
     try {
       const { email, firstName, lastName } = athleteData;
-      const { email: loginEmail, temporaryPassword } = credentials || {};
+      const {
+        email: loginEmail,
+        temporaryPassword,
+        password,
+        passwordLabel,
+        passwordIsDocument,
+      } = credentials || {};
+      const accessPassword = password ?? temporaryPassword;
+      const resolvedPasswordLabel =
+        passwordLabel ||
+        (passwordIsDocument
+          ? "Contraseña inicial"
+          : "Contraseña de acceso");
+      const displayedPasswordValue = passwordIsDocument
+        ? "tu número de documento"
+        : accessPassword;
 
       const mailOptions = {
         from: this.getDefaultFrom(),
         to: email,
-        subject: "Bienvenido a AstroStar - Credenciales de Acceso",
+        subject: "Bienvenida a AstroStar - Credenciales de Acceso",
         html: this.generateAthleteWelcomeEmailTemplate(
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword,
+          displayedPasswordValue,
+          resolvedPasswordLabel,
         ),
         text: this.generateAthleteWelcomeEmailText(
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword,
+          displayedPasswordValue,
+          resolvedPasswordLabel,
         ),
       };
 
@@ -53,63 +70,99 @@ export class AthleteEmailService extends BaseEmailService {
   /**
    * Generar template HTML para email de bienvenida de deportista
    */
-  generateAthleteWelcomeEmailTemplate(firstName, lastName, email, temporaryPassword) {
-    const passwordLine = temporaryPassword
-      ? `<div class="credential-item"><strong>Contrasena temporal:</strong> ${temporaryPassword}</div>`
-      : `<div class="credential-item"><strong>Contrasena:</strong> Usa la contrasena actual asociada a tu cuenta.</div>`;
+  generateAthleteWelcomeEmailTemplate(
+    firstName,
+    lastName,
+    email,
+    password,
+    passwordLabel,
+  ) {
+    const displayName = this.getSafeHtmlText(
+      this.formatFullName([firstName, lastName], "Deportista"),
+    );
+    const loginEmail = this.getSafeHtmlText(email, "No disponible");
+    const safePasswordValue = this.getSafeHtmlText(
+      password,
+      "Se enviará por un canal seguro.",
+    );
+    const safePasswordLabel = this.getSafeHtmlText(
+      passwordLabel,
+      "Contraseña de acceso",
+    );
+
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bienvenido a AstroStar</title>
+    <title>Bienvenida a AstroStar</title>
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
-        .credentials-box { background: white; border: 2px solid #667eea; border-radius: 8px; padding: 20px; margin: 20px 0; }
-        .credential-item { margin: 10px 0; padding: 10px; background: #f0f4ff; border-radius: 5px; }
-        .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
-        .button { display: inline-block; background: #667eea; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; margin: 15px 0; }
+        body { margin: 0; padding: 0; background: #f7f6fb; font-family: Arial, sans-serif; color: #252336; }
+        .container { max-width: 640px; margin: 0 auto; padding: 24px; }
+        .card { background: #ffffff; border-radius: 18px; overflow: hidden; box-shadow: 0 16px 40px rgba(38, 32, 81, 0.12); border: 1px solid #eceaf8; }
+        .header { background: linear-gradient(135deg, #e96d8f 0%, #845ef7 100%); color: #ffffff; padding: 30px 28px; text-align: left; }
+        .header h1 { margin: 0; font-size: 28px; line-height: 1.2; }
+        .header p { margin: 10px 0 0; font-size: 14px; opacity: 0.95; }
+        .content { padding: 26px 28px 14px; }
+        .content h2 { margin: 0 0 12px; color: #3f3a63; font-size: 22px; }
+        .content p { margin: 0 0 14px; color: #4f4a70; line-height: 1.55; }
+        .credentials-box { background: #f8f5ff; border: 1px solid #d8cdf9; border-radius: 14px; padding: 18px; margin: 18px 0; }
+        .credentials-title { margin: 0 0 12px; color: #4b3e7f; font-size: 16px; font-weight: 700; }
+        .credential-item { margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: #ffffff; border: 1px solid #ebe6fb; color: #322f4d; }
+        .note-box { background: #fff7ef; border: 1px solid #ffd5a4; border-radius: 12px; padding: 14px 16px; margin: 18px 0; color: #66412f; }
+        .note-box ul { margin: 8px 0 0; padding-left: 18px; }
+        .note-box li { margin: 6px 0; }
+        .button-wrap { text-align: center; margin: 24px 0 16px; }
+        .button { display: inline-block; background: #6d4ff2; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 999px; font-weight: 700; }
+        .footer { text-align: center; padding: 18px 28px 24px; color: #7b7798; font-size: 12px; border-top: 1px solid #f0eef8; }
     </style>
 </head>
 <body>
     <div class="container">
+      <div class="card">
         <div class="header">
-            <h1>Bienvenido a AstroStar</h1>
-            <p>Sistema de Gestión Deportiva</p>
+            <h1>Bienvenida a AstroStar</h1>
+            <p>Fundación Manuela Vanégas</p>
         </div>
-        
+
         <div class="content">
-            <h2>Hola ${firstName} ${lastName},</h2>
-            
-            <p>Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido creada exitosamente.</p>
-            
+            <h2>Hola ${displayName},</h2>
+
+            <p>Nos alegra darte la bienvenida. Tu cuenta de deportista ya está lista para que puedas ingresar y continuar con tu proceso en la fundación.</p>
+
             <div class="credentials-box">
-                <h3>Tus Credenciales de Acceso</h3>
+                <p class="credentials-title">Credenciales de acceso</p>
                 <div class="credential-item">
-                    <strong>Usuario:</strong> ${email}
+                    <strong>Correo:</strong> ${loginEmail}
                 </div>
-                ${passwordLine}
+                <div class="credential-item">
+                    <strong>${safePasswordLabel}:</strong> ${safePasswordValue}
+                </div>
             </div>
-            
-            <div style="text-align: center;">
+
+            <div class="note-box">
+              <strong>Recomendación de seguridad:</strong>
+              <ul>
+                <li>Inicia sesión con tu correo y tu número de documento.</li>
+                <li>Cuando ingreses, cambia la contraseña por una personal y segura.</li>
+                <li>No compartas tus credenciales con otras personas.</li>
+              </ul>
+            </div>
+
+            <div class="button-wrap">
                 <a href="${process.env.FRONTEND_URL || "http://localhost:3000"}/login" class="button">
                     Acceder al Sistema
                 </a>
             </div>
-            
-            <p>Esperamos que tengas una excelente experiencia en AstroStar.</p>
-            
-            <p>Saludos cordiales,<br>
-            <strong>Equipo AstroStar</strong></p>
+
+            <p>Gracias por confiar en AstroStar y en la Fundación Manuela Vanégas.</p>
         </div>
-        
+
         <div class="footer">
-            <p>Este es un email automático del sistema AstroStar. Por favor no respondas a este mensaje.</p>
-            <p>© ${new Date().getFullYear()} AstroStar - Sistema de Gestión Deportiva</p>
+            <p>Este es un correo automático. Por favor, no respondas este mensaje.</p>
+            <p>© ${new Date().getFullYear()} AstroStar - Fundación Manuela Vanégas</p>
         </div>
+      </div>
     </div>
 </body>
 </html>`;
@@ -118,30 +171,48 @@ export class AthleteEmailService extends BaseEmailService {
   /**
    * Generar texto plano para email de bienvenida de deportista
    */
-  generateAthleteWelcomeEmailText(firstName, lastName, email, temporaryPassword) {
-    const passwordLine = temporaryPassword
-      ? `- Contrasena temporal: ${temporaryPassword}`
-      : "- Contrasena: usa la contrasena actual asociada a tu cuenta";
-    return `Bienvenido a AstroStar
+  generateAthleteWelcomeEmailText(
+    firstName,
+    lastName,
+    email,
+    password,
+    passwordLabel,
+  ) {
+    const displayName = this.formatFullName([firstName, lastName], "Deportista");
+    const loginEmail = this.getSafeText(email, "No disponible");
+    const safePassword = this.getSafeText(
+      password,
+      "Se enviará por un canal seguro.",
+    );
+    const safePasswordLabel = this.getSafeText(
+      passwordLabel,
+      "Contraseña de acceso",
+    );
+    return `Bienvenida a AstroStar
 
-Hola ${firstName} ${lastName},
+Hola ${displayName},
 
-Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido creada exitosamente.
+Tu cuenta de deportista fue creada exitosamente en AstroStar.
 
 CREDENCIALES DE ACCESO:
-- Usuario: ${email}
-${passwordLine}
+- Correo: ${loginEmail}
+- ${safePasswordLabel}: ${safePassword}
+
+RECOMENDACION DE SEGURIDAD:
+- Inicia sesión con tu correo y número de documento.
+- Cambia tu contraseña después del primer ingreso.
+- No compartas tus credenciales.
 
 Accede al sistema en: ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
 
-Esperamos que tengas una excelente experiencia en AstroStar.
+Gracias por ser parte de AstroStar y la Fundación Manuela Vanégas.
 
 Saludos cordiales,
 Equipo AstroStar
 
 ---
 Este es un email automático del sistema AstroStar.
-© ${new Date().getFullYear()} AstroStar - Sistema de Gestión Deportiva`;
+© ${new Date().getFullYear()} AstroStar - Fundación Manuela Vanégas`;
   }
 
   /**
@@ -164,16 +235,23 @@ Este es un email automático del sistema AstroStar.
     }
 
     const subject = "Nueva cita programada";
-    const plainText = `Hola ${athleteName || "deportista"}, se programó una cita para el ${date} a las ${time}${
-      specialistName ? ` con ${specialistName}` : ""
+    const athleteDisplay = this.getSafeText(athleteName, "deportista");
+    const specialistDisplay = this.getSafeText(specialistName);
+    const dateDisplay = this.getSafeText(date, "fecha por confirmar");
+    const timeDisplay = this.getSafeText(time, "hora por confirmar");
+
+    const plainText = `Hola ${athleteDisplay}, se programo una cita para el ${dateDisplay} a las ${timeDisplay}${
+      specialistDisplay ? ` con ${specialistDisplay}` : ""
     }. Ingresa al módulo de citas para más detalles.`;
 
     const html = `
-      <p>Hola ${athleteName || "deportista"},</p>
-      <p>Se programó una cita para el <strong>${date}</strong> a las <strong>${time}</strong>${
-        specialistName ? ` con <strong>${specialistName}</strong>` : ""
+      <p>Hola ${this.getSafeHtmlText(athleteDisplay)},</p>
+      <p>Se programo una cita para el <strong>${this.getSafeHtmlText(dateDisplay)}</strong> a las <strong>${this.getSafeHtmlText(timeDisplay)}</strong>${
+        specialistDisplay
+          ? ` con <strong>${this.getSafeHtmlText(specialistDisplay)}</strong>`
+          : ""
       }.</p>
-      <p>Por favor ingresa al módulo de citas para más detalles.</p>
+      <p>Por favor ingresa al modulo de citas para mas detalles.</p>
     `;
 
     const mailOptions = {

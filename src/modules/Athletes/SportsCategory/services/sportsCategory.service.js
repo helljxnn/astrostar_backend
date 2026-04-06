@@ -628,48 +628,55 @@ export class SportsCategoryService {
         return age;
       };
 
-      const athletes = await prisma.inscription.findMany({
+      const athletes = await prisma.athlete.findMany({
         where: {
-          sportsCategoryId: Number(id),
-          status: "Active",
-        },
-        include: {
-          sportsCategory: {
-            select: {
-              nombre: true,
+          inscriptions: {
+            some: {
+              sportsCategoryId: Number(id),
             },
           },
-          athlete: {
-            include: {
-              user: {
+        },
+        include: {
+          user: {
+            select: {
+              firstName: true,
+              middleName: true,
+              lastName: true,
+              secondLastName: true,
+              email: true,
+              identification: true,
+              birthDate: true,
+              age: true,
+              documentType: {
                 select: {
-                  firstName: true,
-                  middleName: true,
-                  lastName: true,
-                  secondLastName: true,
-                  email: true,
-                  identification: true,
-                  birthDate: true,
-                  age: true,
-                  documentType: {
-                    select: {
-                      name: true,
-                    },
-                  },
+                  name: true,
                 },
               },
             },
           },
-        },
-        orderBy: {
-          inscriptionDate: "desc",
+          inscriptions: {
+            where: {
+              sportsCategoryId: Number(id),
+            },
+            include: {
+              sportsCategory: {
+                select: {
+                  nombre: true,
+                },
+              },
+            },
+            orderBy: [{ inscriptionDate: "desc" }, { id: "desc" }],
+            take: 1,
+          },
         },
       });
 
       const data = athletes
-        .map((inscription) => {
-          const user = inscription?.athlete?.user;
+        .map((athlete) => {
+          const user = athlete?.user;
           if (!user) return null;
+
+          const latestInscription = athlete.inscriptions?.[0] || null;
           const nameParts = [
             user.firstName,
             user.middleName,
@@ -686,18 +693,28 @@ export class SportsCategoryService {
               : calculateAge(user.birthDate);
 
           return {
-            id: inscription.athlete?.id ?? inscription.athleteId,
+            id: athlete.id,
             nombre: nameParts || "Sin nombre",
             email: user.email || "",
             documento: user.identification || "",
             tipoDocumento: user.documentType?.name || "",
             edad: ageValue,
-            categoria: inscription.sportsCategory?.nombre || null,
-            estado: inscription.status,
+            categoria:
+              latestInscription?.sportsCategory?.nombre || category.nombre || null,
+            estado:
+              latestInscription?.status ||
+              athlete.currentInscriptionStatus ||
+              null,
+            estadoDeportista: athlete.status || null,
             fechaNacimiento: user.birthDate || null,
           };
         })
-        .filter(Boolean);
+        .filter(Boolean)
+        .sort((a, b) =>
+          String(a.nombre || "").localeCompare(String(b.nombre || ""), "es", {
+            sensitivity: "base",
+          }),
+        );
 
       return {
         success: true,

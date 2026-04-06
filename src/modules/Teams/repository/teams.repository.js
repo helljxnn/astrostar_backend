@@ -208,8 +208,10 @@ export class TeamsRepository {
       where.status = normalizedStatus;
     }
 
-    if (teamType === "Temporal") {
-      where.category = { not: null };
+    if (teamType) {
+      const normalizedType =
+        teamType.toLowerCase() === "fundacion" ? "Fundacion" : "Temporal";
+      where.teamType = normalizedType;
     }
 
     return where;
@@ -304,8 +306,8 @@ export class TeamsRepository {
           })
           .map((member) => {
             try {
-              if (member.temporaryPerson) {
-                return {
+      if (member.temporaryPerson) {
+        return {
                   id: member.temporaryPerson.id,
                   name: `${member.temporaryPerson.firstName || ""} ${
                     member.temporaryPerson.lastName || ""
@@ -331,8 +333,7 @@ export class TeamsRepository {
                 };
               }
               return null;
-            } catch (memberError) {
-              console.error("Error transformando miembro:", memberError);
+            } catch {
               return null;
             }
           })
@@ -373,11 +374,8 @@ export class TeamsRepository {
               type: "fundacion",
             };
           }
-        } catch (trainerError) {
-          console.error(
-            "Error transformando entrenador principal:",
-            trainerError,
-          );
+        } catch {
+          // Ignorar errores y continuar con el siguiente entrenador
         }
 
         // Segundo entrenador (solo para equipos de fundación)
@@ -396,11 +394,8 @@ export class TeamsRepository {
                 type: "fundacion",
               };
             }
-          } catch (secondTrainerError) {
-            console.error(
-              "Error transformando segundo entrenador:",
-              secondTrainerError,
-            );
+          } catch {
+            // Ignorar errores y continuar
           }
         }
       }
@@ -443,8 +438,6 @@ export class TeamsRepository {
         segundoEntrenadorData: segundoEntrenadorData,
       };
     } catch (error) {
-      console.error("Error en transformToFrontend:", error);
-      console.error("Team data:", JSON.stringify(team, null, 2));
       throw error;
     }
   }
@@ -594,7 +587,6 @@ export class TeamsRepository {
         return this.transformToFrontend(createdTeam);
       });
     } catch (error) {
-      console.error("Error en create():", error.message);
       throw error;
     }
   }
@@ -608,17 +600,38 @@ export class TeamsRepository {
         segundoEntrenadorId,
       } = transformed;
 
-      const teamInfo = {
-        name: transformed.name,
-        description: transformed.description,
-        coach: transformed.coach,
-        category: transformed.category,
-        teamType: transformed.teamType || "Temporal",
-        status: transformed.status,
-      };
-
       const currentTeam = await this.findById(id);
       if (!currentTeam) throw new Error("Equipo no encontrado");
+
+      const resolvedName =
+        transformed.name && transformed.name.trim()
+          ? transformed.name
+          : currentTeam.nombre;
+      const resolvedDescription =
+        transformed.description !== null && transformed.description !== undefined
+          ? transformed.description
+          : currentTeam.descripcion || null;
+      const resolvedCoach =
+        transformed.coach !== null && transformed.coach !== undefined
+          ? transformed.coach
+          : currentTeam.entrenador || null;
+      const resolvedCategory =
+        transformed.category !== null && transformed.category !== undefined
+          ? transformed.category
+          : currentTeam.categoria || null;
+      const resolvedTeamType = transformed.teamType || currentTeam.teamType;
+      const resolvedStatus =
+        transformed.status ||
+        (currentTeam.estado === "Inactivo" ? "Inactive" : "Active");
+
+      const teamInfo = {
+        name: resolvedName,
+        description: resolvedDescription,
+        coach: resolvedCoach,
+        category: resolvedCategory,
+        teamType: resolvedTeamType,
+        status: resolvedStatus,
+      };
 
       // Validar solo los deportistas
       await this.validateMembers(deportistasIds, currentTeam.teamType);
@@ -641,9 +654,6 @@ export class TeamsRepository {
         currentTeam.teamType,
         id,
       );
-
-      await this.validateMembersAvailability(deportistasIds, currentTeam.teamType, id);
-      await this.validateTrainerAvailability(entrenadorId, currentTeam.teamType, id);
 
       return await prisma.$transaction(async (tx) => {
         if (currentTeam.teamType === "Temporal") {
@@ -763,7 +773,6 @@ export class TeamsRepository {
         return this.transformToFrontend(finalTeam);
       });
     } catch (error) {
-      console.error("Error en update():", error);
       throw error;
     }
   }
@@ -792,7 +801,6 @@ export class TeamsRepository {
         return { nombre: team.nombre };
       });
     } catch (error) {
-      console.error("Error en delete():", error);
       throw error;
     }
   }
@@ -893,7 +901,6 @@ export class TeamsRepository {
 
       return this.transformToFrontend(updatedTeam);
     } catch (error) {
-      console.error("Error en changeStatus():", error);
       throw error;
     }
   }
@@ -979,7 +986,6 @@ export class TeamsRepository {
 
       return { isDuplicate: false };
     } catch (error) {
-      console.error("Error checking duplicate temporal team:", error);
       throw error;
     }
   }
@@ -1016,10 +1022,6 @@ export class TeamsRepository {
         message: "Persona disponible",
       };
     } catch (error) {
-      console.error(
-        "[REPO] Error checking temporal person availability:",
-        error,
-      );
       throw error;
     }
   }
@@ -1058,7 +1060,6 @@ export class TeamsRepository {
 
       return conflicts;
     } catch (error) {
-      console.error("[REPO] Error checking conflicts:", error);
       throw error;
     }
   }
@@ -1095,7 +1096,6 @@ export class TeamsRepository {
         })),
       };
     } catch (error) {
-      console.error("[REPO] Error verificando asignacion a eventos:", error);
       throw error;
     }
   }
@@ -1115,17 +1115,19 @@ export class TeamsRepository {
     const entrenadorId = frontendData.entrenadorData?.id || null;
     const segundoEntrenadorId = frontendData.segundoEntrenadorData?.id || null;
 
-    let teamType = frontendData.teamType || "Temporal";
-    if (teamType === "temporal") teamType = "Temporal";
-    if (teamType === "fundacion") teamType = "Fundacion";
+    let teamType = frontendData.teamType;
+    if (teamType) {
+      if (teamType === "temporal") teamType = "Temporal";
+      if (teamType === "fundacion") teamType = "Fundacion";
+    }
 
     const statusMap = { Activo: "Active", Inactivo: "Inactive" };
     const status = frontendData.estado
       ? statusMap[frontendData.estado] || "Active"
-      : "Active";
+      : null;
 
     return {
-      name: normalizeUtf8Text(frontendData.nombre) || "",
+      name: normalizeUtf8Text(frontendData.nombre) || null,
       description: normalizeUtf8Text(frontendData.descripcion),
       coach: normalizeUtf8Text(frontendData.entrenador),
       category: normalizeUtf8Text(frontendData.categoria),

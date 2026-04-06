@@ -41,6 +41,13 @@ return { success: false, error: error.message };
    */
   generateWelcomeEmailHTML(donorData) {
     const { nombreCompleto, tipo, ciudad, pais } = donorData;
+    const displayName = this.getSafeHtmlText(
+      nombreCompleto,
+      "Aliado de la fundación",
+    );
+    const displayType = this.getSafeHtmlText(tipo, "donante");
+    const displayCity = this.getSafeHtmlText(ciudad);
+    const displayCountry = this.getSafeHtmlText(pais);
 
     return `
       <!DOCTYPE html>
@@ -72,11 +79,11 @@ return { success: false, error: error.message };
                 <tr>
                   <td style="padding: 40px 30px;">
                     <h2 style="margin: 0 0 20px 0; color: #333333; font-size: 24px;">
-                      ¡Gracias por tu apoyo, ${nombreCompleto}!
+                      ¡Gracias por tu apoyo, ${displayName}!
                     </h2>
                     
                     <p style="margin: 0 0 15px 0; color: #666666; font-size: 16px; line-height: 1.6;">
-                      Hemos recibido tu información como <strong>${tipo}</strong> y queremos agradecerte por tu interés en apoyar nuestra misión.
+                      Hemos recibido tu información como <strong>${displayType}</strong> y queremos agradecerte por tu interés en apoyar nuestra misión.
                     </p>
 
                     <p style="margin: 0 0 15px 0; color: #666666; font-size: 16px; line-height: 1.6;">
@@ -97,9 +104,9 @@ return { success: false, error: error.message };
                       </p>
                     </div>
 
-                    ${ciudad && pais ? `
+                    ${displayCity && displayCountry ? `
                     <p style="margin: 20px 0 0 0; color: #999999; font-size: 14px;">
-                      Ubicación registrada: ${ciudad}, ${pais}
+                      Ubicación registrada: ${displayCity}, ${displayCountry}
                     </p>
                     ` : ''}
                   </td>
