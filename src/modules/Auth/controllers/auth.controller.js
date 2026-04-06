@@ -6,6 +6,25 @@ export class AuthController {
     this.authService = new AuthService();
   }
 
+  getRefreshTokenCookieOptions = () => {
+    const isProduction = process.env.NODE_ENV === "production";
+    const configuredSameSite = (process.env.AUTH_COOKIE_SAMESITE || "").trim();
+    const sameSite = configuredSameSite || (isProduction ? "none" : "lax");
+
+    return {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite,
+      path: "/",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
+    };
+  };
+
+  getRefreshTokenClearOptions = () => {
+    const { maxAge, ...cookieOptions } = this.getRefreshTokenCookieOptions();
+    return cookieOptions;
+  };
+
   /**
    * @swagger
    * /api/auth/login:
@@ -71,12 +90,11 @@ export class AuthController {
       }
 
       // Establecer refresh token en cookie HttpOnly
-      res.cookie("refreshToken", result.refreshToken, {
-        httpOnly: true, // No accesible desde JavaScript
-        secure: process.env.NODE_ENV === "production", // Solo HTTPS en producción
-        sameSite: "strict", // Protección CSRF
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 días
-      });
+      res.cookie(
+        "refreshToken",
+        result.refreshToken,
+        this.getRefreshTokenCookieOptions(),
+      );
 
       const clientType = (req.headers["x-client-type"] || "")
         .toString()
@@ -661,7 +679,10 @@ export class AuthController {
 
       if (!result.success) {
         // Si el refresh token es inválido, limpiar la cookie
-        res.clearCookie("refreshToken");
+        res.clearCookie(
+          "refreshToken",
+          this.getRefreshTokenClearOptions(),
+        );
         return res.status(result.statusCode).json({
           success: false,
           message: result.message,
@@ -730,11 +751,10 @@ export class AuthController {
       }
 
       // Limpiar la cookie del refresh token
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
-      });
+      res.clearCookie(
+        "refreshToken",
+        this.getRefreshTokenClearOptions(),
+      );
 
       res.json({
         success: true,
