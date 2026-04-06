@@ -177,6 +177,11 @@ export class AthletesRepository {
   transformToBackend(athleteData) {
     // Mapear el parentesco
     const mapRelationship = (parentesco) => {
+      if (!parentesco || String(parentesco).trim() === "") {
+        return null;
+      }
+
+      const normalized = String(parentesco).trim();
       const relationshipMap = {
         Madre: "Mother",
         Padre: "Father",
@@ -188,20 +193,23 @@ export class AthletesRepository {
         "Vecino/a": "Neighbor",
         "Amigo/a de la familia": "Family_Friend",
         Otro: "Other",
+        Mother: "Mother",
+        Father: "Father",
+        Grandparent: "Grandparent",
+        Uncle_Aunt: "Uncle_Aunt",
+        Sibling: "Sibling",
+        Cousin: "Cousin",
+        Legal_Guardian: "Legal_Guardian",
+        Neighbor: "Neighbor",
+        Family_Friend: "Family_Friend",
+        Other: "Other",
       };
-      
-      // Si el parentesco existe en el mapa, usarlo
-      if (relationshipMap[parentesco]) {
-        return relationshipMap[parentesco];
+
+      if (relationshipMap[normalized]) {
+        return relationshipMap[normalized];
       }
-      
-      // Si no existe pero hay un valor, usar "Other" como fallback
-      if (parentesco && parentesco.trim() !== '') {
-        return "Other";
-      }
-      
-      // Solo devolver null si realmente no hay parentesco
-      return null;
+
+      return "Other";
     };
 
     // Calcular edad automáticamente
