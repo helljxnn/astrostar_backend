@@ -399,7 +399,8 @@ async function upsertAdminUser() {
   }
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL || "astrostar.java@gmail.com";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD || "Admin123*";
+  const adminPassword =
+    process.env.SEED_ADMIN_PASSWORD || "AstroStar#Q7mP4!L9v2";
   const adminHash = await bcrypt.hash(adminPassword, 10);
 
   const existingAdmin = await prisma.user.findUnique({
@@ -427,6 +428,7 @@ async function upsertAdminUser() {
         roleId: adminRole.id,
         documentTypeId: defaultDocumentType.id,
         status: "Active",
+        passwordHash: adminHash,
       },
     });
     await ensureAdminEmployee(existingAdmin.id);
