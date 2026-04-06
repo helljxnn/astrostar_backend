@@ -1,4 +1,20 @@
-﻿/**
+function safeText(value, fallback = "") {
+  if (value === null || value === undefined) return fallback;
+  const text = String(value).replace(/\s+/g, " ").trim();
+  if (!text || /^(undefined|null|nan)$/i.test(text)) return fallback;
+  return text;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
  * Genera el HTML para el email de invitación RSVP
  * @param {Object} data - Datos para el template
  * @returns {string} HTML del email
@@ -16,6 +32,19 @@ export function getRSVPInvitationHTML(data) {
     declineUrl,
   } = data;
 
+  const displayRecipient = escapeHtml(safeText(recipientName, "participante"));
+  const displayTeamName = escapeHtml(safeText(teamName, "tu equipo"));
+  const displayEventName = escapeHtml(safeText(eventName, "Evento AstroStar"));
+  const displayEventDate = escapeHtml(
+    safeText(eventDate, "Fecha por confirmar"),
+  );
+  const displayEventTime = escapeHtml(
+    safeText(eventTime, "Hora por confirmar"),
+  );
+  const displayEventLocation = escapeHtml(
+    safeText(eventLocation, "Lugar por confirmar"),
+  );
+
   return `
 <!DOCTYPE html>
 <html lang="es">
@@ -29,43 +58,34 @@ export function getRSVPInvitationHTML(data) {
     <tr>
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-          
-          <!-- Header -->
           <tr>
             <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 28px;">¡Estás Inscrito!</h1>
+              <h1 style="color: #ffffff; margin: 0; font-size: 28px;">Inscripción Confirmada</h1>
             </td>
           </tr>
-          
-          <!-- Body -->
           <tr>
             <td style="padding: 40px 30px;">
               <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                Hola <strong>${recipientName}</strong>,
+                Hola <strong>${displayRecipient}</strong>,
               </p>
-              
               <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
                 ${
                   isTeam
-                    ? `Tu equipo <strong>${teamName}</strong> ha sido inscrito exitosamente al evento:`
+                    ? `Tu equipo <strong>${displayTeamName}</strong> ha sido inscrito exitosamente al evento:`
                     : "Has sido inscrito exitosamente al evento:"
                 }
               </p>
-              
               <div style="background-color: #f8f9fa; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0;">
-                <h2 style="color: #667eea; margin: 0 0 10px; font-size: 22px;">${eventName}</h2>
+                <h2 style="color: #667eea; margin: 0 0 10px; font-size: 22px;">${displayEventName}</h2>
                 <p style="color: #666666; margin: 5px 0; font-size: 14px;">
-                  📅 <strong>Fecha:</strong> ${eventDate}<br>
-                  🕐 <strong>Hora:</strong> ${eventTime}<br>
-                  📍 <strong>Lugar:</strong> ${eventLocation}
+                  <strong>Fecha:</strong> ${displayEventDate}<br>
+                  <strong>Hora:</strong> ${displayEventTime}<br>
+                  <strong>Lugar:</strong> ${displayEventLocation}
                 </p>
               </div>
-              
               <p style="color: #333333; font-size: 16px; line-height: 1.6; margin: 20px 0;">
                 Por favor, confirma tu asistencia haciendo clic en uno de los siguientes botones:
               </p>
-              
-              <!-- Buttons -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin: 30px 0;">
                 <tr>
                   <td align="center" style="padding: 10px;">
@@ -73,7 +93,7 @@ export function getRSVPInvitationHTML(data) {
                       <tr>
                         <td style="background-color: #10b981; border-radius: 8px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);">
                           <a href="${confirmUrl}" style="display: inline-block; color: #ffffff; text-decoration: none; padding: 16px 50px; font-size: 16px; font-weight: bold; border-radius: 8px;">
-                            ✓ Confirmar Asistencia
+                            Confirmar Asistencia
                           </a>
                         </td>
                       </tr>
@@ -86,7 +106,7 @@ export function getRSVPInvitationHTML(data) {
                       <tr>
                         <td style="background-color: #ef4444; border-radius: 8px; box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);">
                           <a href="${declineUrl}" style="display: inline-block; color: #ffffff; text-decoration: none; padding: 16px 50px; font-size: 16px; font-weight: bold; border-radius: 8px;">
-                            ✗ No Podré Asistir
+                            No podré asistir
                           </a>
                         </td>
                       </tr>
@@ -94,11 +114,9 @@ export function getRSVPInvitationHTML(data) {
                   </td>
                 </tr>
               </table>
-              
-              <!-- Calendar -->
               <div style="background-color: #f0f9ff; border-radius: 8px; padding: 20px; margin: 30px 0; text-align: center;">
                 <p style="color: #0369a1; font-size: 15px; margin: 0 0 8px; font-weight: 600;">
-                  📆 Agrega este evento a tu calendario
+                  Agrega este evento a tu calendario
                 </p>
                 <p style="color: #64748b; font-size: 13px; margin: 0;">
                   El archivo .ics está adjunto a este correo
@@ -106,8 +124,6 @@ export function getRSVPInvitationHTML(data) {
               </div>
             </td>
           </tr>
-          
-          <!-- Footer -->
           <tr>
             <td style="background-color: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="color: #999999; font-size: 12px; margin: 0;">
@@ -116,7 +132,6 @@ export function getRSVPInvitationHTML(data) {
               </p>
             </td>
           </tr>
-          
         </table>
       </td>
     </tr>
@@ -125,4 +140,3 @@ export function getRSVPInvitationHTML(data) {
 </html>
   `;
 }
-

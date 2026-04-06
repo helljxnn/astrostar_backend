@@ -102,7 +102,6 @@ export class TemporaryWorkersController {
         message: `Se encontraron ${result.pagination.total} personas temporales.`,
       });
     } catch (error) {
-      console.error("Error fetching temporary workers:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener personas temporales.",
@@ -166,7 +165,6 @@ export class TemporaryWorkersController {
         message: "Persona temporal encontrada exitosamente.",
       });
     } catch (error) {
-      console.error("Error fetching temporary worker by ID:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener la persona temporal.",
@@ -224,8 +222,6 @@ export class TemporaryWorkersController {
         warnings: warnings.length > 0 ? warnings : undefined,
       });
     } catch (error) {
-      console.error("Error creating temporary worker:", error);
-
       // Manejar errores específicos
       if (error.message.includes("ya está en uso")) {
         return res.status(400).json({
@@ -319,8 +315,6 @@ export class TemporaryWorkersController {
         warnings: warnings.length > 0 ? warnings : undefined,
       });
     } catch (error) {
-      console.error("Error updating temporary worker:", error);
-
       // Manejar errores específicos
       if (error.message.includes("ya está en uso")) {
         return res.status(400).json({
@@ -392,8 +386,6 @@ export class TemporaryWorkersController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error deleting temporary worker:", error);
-
       if (error.message.includes("ya está inactiva")) {
         return res.status(400).json({
           success: false,
@@ -465,7 +457,6 @@ export class TemporaryWorkersController {
         message: "Estadísticas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error("Error fetching temporary worker stats:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener estadísticas.",
@@ -515,7 +506,6 @@ export class TemporaryWorkersController {
         message: "Datos de referencia obtenidos exitosamente.",
       });
     } catch (error) {
-      console.error("Error fetching reference data:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener datos de referencia.",
@@ -583,7 +573,6 @@ export class TemporaryWorkersController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error checking identification availability:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al verificar identificación.",
@@ -649,7 +638,6 @@ export class TemporaryWorkersController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error checking email availability:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al verificar email.",

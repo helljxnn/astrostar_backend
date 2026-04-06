@@ -148,7 +148,6 @@ export class TemporaryWorkersRepository {
         },
       };
     } catch (error) {
-      console.error("Error in findAll repository:", error);
       throw error;
     }
   }

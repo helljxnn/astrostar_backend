@@ -54,6 +54,13 @@ res.status(500).json({
 
   create = async (req, res) => {
     try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
       const payload = {
         ...req.body,
         serviceId: req.body.serviceId || req.body.eventId || null,
@@ -61,8 +68,11 @@ res.status(500).json({
           ? parseInt(req.body.responsibleId)
           : null,
       };
-      const userId = req.user?.id || 1;
-      const userName = req.user?.name || req.user?.username || "Sistema";
+      const userName =
+        req.user?.name ||
+        req.user?.username ||
+        `${req.user?.firstName || ""} ${req.user?.lastName || ""}`.trim() ||
+        "Sistema";
 
       const result = await DonationsService.create(payload, userId, userName);
       res.status(201).json(result);
@@ -76,12 +86,18 @@ res.status(500).json({
 
   update = async (req, res) => {
     try {
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
       const { id } = req.params;
       const payload = {
         ...req.body,
         serviceId: req.body.serviceId || req.body.eventId || undefined,
       };
-      const userId = req.user?.id || 1;
       const userName =
         req.user?.name ||
         req.user?.username ||
@@ -172,8 +188,18 @@ res.status(500).json({
     try {
       const { id } = req.params;
       const { items } = req.body;
-      const userId = req.user?.id || 1;
-      const userName = req.user?.name || req.user?.username || "Sistema";
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
+      const userName =
+        req.user?.name ||
+        req.user?.username ||
+        `${req.user?.firstName || ""} ${req.user?.lastName || ""}`.trim() ||
+        "Sistema";
 
       if (!items || !Array.isArray(items) || items.length === 0) {
         return res.status(400).json({
@@ -236,8 +262,18 @@ res.status(500).json({
     try {
       const { id } = req.params;
       const { eventoId, items } = req.body;
-      const userId = req.user?.id || 1;
-      const userName = req.user?.name || req.user?.username || "Sistema";
+      const userId = req.user?.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado",
+        });
+      }
+      const userName =
+        req.user?.name ||
+        req.user?.username ||
+        `${req.user?.firstName || ""} ${req.user?.lastName || ""}`.trim() ||
+        "Sistema";
 
       if (!eventoId) {
         return res.status(400).json({

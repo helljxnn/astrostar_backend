@@ -61,6 +61,14 @@ export class EmployeeEmailService extends BaseEmailService {
    * Generar template HTML para email de bienvenida
    */
   generateWelcomeEmailTemplate(firstName, lastName, email, password) {
+    const displayName = this.getSafeHtmlText(
+      this.formatFullName([firstName, lastName], "Colaborador"),
+    );
+    const loginEmail = this.getSafeHtmlText(email, "No disponible");
+    const temporaryPassword = this.getSafeHtmlText(
+      password,
+      "Se enviará por un canal seguro.",
+    );
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -87,17 +95,17 @@ export class EmployeeEmailService extends BaseEmailService {
         </div>
         
         <div class="content">
-            <h2>Hola ${firstName} ${lastName},</h2>
+            <h2>Hola ${displayName},</h2>
             
             <p>¡Nos complace darte la bienvenida al equipo de AstroStar! Tu cuenta de empleado ha sido creada exitosamente.</p>
             
             <div class="credentials-box">
                 <h3>Tus Credenciales de Acceso</h3>
                 <div class="credential-item">
-                    <strong>Usuario:</strong> ${email}
+                    <strong>Usuario:</strong> ${loginEmail}
                 </div>
                 <div class="credential-item">
-                    <strong>Contraseña temporal:</strong> ${password}
+                    <strong>Contraseña temporal:</strong> ${temporaryPassword}
                 </div>
             </div>
             
@@ -146,15 +154,21 @@ export class EmployeeEmailService extends BaseEmailService {
    * Generar texto plano para email de bienvenida
    */
   generateWelcomeEmailText(firstName, lastName, email, password) {
+    const displayName = this.formatFullName([firstName, lastName], "Colaborador");
+    const loginEmail = this.getSafeText(email, "No disponible");
+    const temporaryPassword = this.getSafeText(
+      password,
+      "Se enviará por un canal seguro.",
+    );
     return `Bienvenido a AstroStar
 
-Hola ${firstName} ${lastName},
+Hola ${displayName},
 
 Nos complace darte la bienvenida al equipo de AstroStar. Tu cuenta de empleado ha sido creada exitosamente.
 
 CREDENCIALES DE ACCESO:
-- Usuario: ${email}
-- Contraseña temporal: ${password}
+- Usuario: ${loginEmail}
+- Contraseña temporal: ${temporaryPassword}
 
 IMPORTANTE - SEGURIDAD:
 - Por razones de seguridad, DEBES CAMBIAR tu contraseña después de tu primer inicio de sesión
@@ -240,6 +254,13 @@ Este es un email automático del sistema AstroStar.
       scheduleData.recurrence,
       scheduleData.customRecurrence,
     );
+    const displayName = this.getSafeHtmlText(employeeName, "Colaborador");
+    const startTime = this.getSafeHtmlText(
+      scheduleData.startTime,
+      "Por confirmar",
+    );
+    const endTime = this.getSafeHtmlText(scheduleData.endTime, "Por confirmar");
+    const description = this.getSafeHtmlText(scheduleData.description);
 
     return `
       <!DOCTYPE html>
@@ -270,8 +291,8 @@ Este es un email automático del sistema AstroStar.
           </div>
 
           <div class="content">
-            <p>Hola <strong>${employeeName}</strong>,</p>
-            <p>Te informamos que tu horario ha sido <strong>${action}</strong>.</p>
+            <p>Hola <strong>${displayName}</strong>,</p>
+            <p>Te informamos que tu horario ha sido <strong>${this.getSafeHtmlText(action, "actualizado")}</strong>.</p>
 
             <div class="schedule-details">
               <h3>Detalles del Horario:</h3>
@@ -281,11 +302,11 @@ Este es un email automático del sistema AstroStar.
               </div>
               <div class="detail-row">
                 <span class="detail-label">Hora de inicio:</span>
-                <span class="detail-value">${scheduleData.startTime}</span>
+                <span class="detail-value">${startTime}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Hora de fin:</span>
-                <span class="detail-value">${scheduleData.endTime}</span>
+                <span class="detail-value">${endTime}</span>
               </div>
               ${
                 recurrenceText
@@ -298,11 +319,11 @@ Este es un email automático del sistema AstroStar.
                   : ""
               }
               ${
-                scheduleData.description
+                description
                   ? `
               <div class="detail-row">
                 <span class="detail-label">Descripción:</span>
-                <span class="detail-value">${scheduleData.description}</span>
+                <span class="detail-value">${description}</span>
               </div>
               `
                   : ""
@@ -330,20 +351,21 @@ Este es un email automático del sistema AstroStar.
       scheduleData.recurrence,
       scheduleData.customRecurrence,
     );
+    const description = this.getSafeText(scheduleData.description);
 
     return `
 AstroStar - Notificación de Horario
 
-Hola ${employeeName},
+Hola ${this.getSafeText(employeeName, "Colaborador")},
 
-Te informamos que tu horario ha sido ${action}.
+Te informamos que tu horario ha sido ${this.getSafeText(action, "actualizado")}.
 
 Detalles del Horario:
 - Fecha: ${formattedDate}
-- Hora de inicio: ${scheduleData.startTime}
-- Hora de fin: ${scheduleData.endTime}
+- Hora de inicio: ${this.getSafeText(scheduleData.startTime, "Por confirmar")}
+- Hora de fin: ${this.getSafeText(scheduleData.endTime, "Por confirmar")}
 ${recurrenceText ? `- Recurrencia: ${recurrenceText}` : ""}
-${scheduleData.description ? `- Descripción: ${scheduleData.description}` : ""}
+${description ? `- Descripcion: ${description}` : ""}
 
 Si tienes alguna pregunta o necesitas hacer cambios, por favor contacta a tu supervisor.
 
