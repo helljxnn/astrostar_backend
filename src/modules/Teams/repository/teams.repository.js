@@ -600,6 +600,9 @@ export class TeamsRepository {
         segundoEntrenadorId,
       } = transformed;
 
+      const currentTeam = await this.findById(id);
+      if (!currentTeam) throw new Error("Equipo no encontrado");
+
       const resolvedName =
         transformed.name && transformed.name.trim()
           ? transformed.name
@@ -630,9 +633,6 @@ export class TeamsRepository {
         status: resolvedStatus,
       };
 
-      const currentTeam = await this.findById(id);
-      if (!currentTeam) throw new Error("Equipo no encontrado");
-
       // Validar solo los deportistas
       await this.validateMembers(deportistasIds, currentTeam.teamType);
 
@@ -654,9 +654,6 @@ export class TeamsRepository {
         currentTeam.teamType,
         id,
       );
-
-      await this.validateMembersAvailability(deportistasIds, currentTeam.teamType, id);
-      await this.validateTrainerAvailability(entrenadorId, currentTeam.teamType, id);
 
       return await prisma.$transaction(async (tx) => {
         if (currentTeam.teamType === "Temporal") {

@@ -12,7 +12,22 @@ export class EmployeeEmailService extends BaseEmailService {
   async sendWelcomeEmail(employeeData, credentials) {
     try {
       const { email, firstName, lastName } = employeeData;
-      const { email: loginEmail, temporaryPassword } = credentials;
+      const {
+        email: loginEmail,
+        temporaryPassword,
+        password,
+        passwordLabel,
+        passwordIsDocument,
+      } = credentials;
+      const accessPassword = password ?? temporaryPassword;
+      const resolvedPasswordLabel =
+        passwordLabel ||
+        (passwordIsDocument
+          ? "Contraseña inicial"
+          : "Contraseña de acceso");
+      const displayedPasswordValue = passwordIsDocument
+        ? "numero de documento"
+        : accessPassword;
 
       const mailOptions = {
         from: this.getDefaultFrom(),
@@ -22,13 +37,15 @@ export class EmployeeEmailService extends BaseEmailService {
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword,
+          displayedPasswordValue,
+          resolvedPasswordLabel,
         ),
         text: this.generateWelcomeEmailText(
           firstName,
           lastName,
           loginEmail,
-          temporaryPassword,
+          displayedPasswordValue,
+          resolvedPasswordLabel,
         ),
       };
 
@@ -60,7 +77,13 @@ export class EmployeeEmailService extends BaseEmailService {
   /**
    * Generar template HTML para email de bienvenida
    */
-  generateWelcomeEmailTemplate(firstName, lastName, email, password) {
+  generateWelcomeEmailTemplate(
+    firstName,
+    lastName,
+    email,
+    password,
+    passwordLabel,
+  ) {
     const displayName = this.getSafeHtmlText(
       this.formatFullName([firstName, lastName], "Colaborador"),
     );
@@ -68,6 +91,10 @@ export class EmployeeEmailService extends BaseEmailService {
     const temporaryPassword = this.getSafeHtmlText(
       password,
       "Se enviará por un canal seguro.",
+    );
+    const safePasswordLabel = this.getSafeHtmlText(
+      passwordLabel,
+      "Contraseña de acceso",
     );
     return `<!DOCTYPE html>
 <html lang="es">
@@ -105,7 +132,7 @@ export class EmployeeEmailService extends BaseEmailService {
                     <strong>Usuario:</strong> ${loginEmail}
                 </div>
                 <div class="credential-item">
-                    <strong>Contraseña temporal:</strong> ${temporaryPassword}
+                    <strong>${safePasswordLabel}:</strong> ${temporaryPassword}
                 </div>
             </div>
             
@@ -125,7 +152,7 @@ export class EmployeeEmailService extends BaseEmailService {
                 </a>
             </div>
             
-            <h3>Proximos Pasos:</h3>
+            <h3>Próximos Pasos:</h3>
             <ol>
                 <li>Inicia sesión con tu correo y contraseña</li>
                 <li><strong>Cambia tu contraseña inmediatamente</strong> por una segura y personal</li>
@@ -153,12 +180,16 @@ export class EmployeeEmailService extends BaseEmailService {
   /**
    * Generar texto plano para email de bienvenida
    */
-  generateWelcomeEmailText(firstName, lastName, email, password) {
+  generateWelcomeEmailText(firstName, lastName, email, password, passwordLabel) {
     const displayName = this.formatFullName([firstName, lastName], "Colaborador");
     const loginEmail = this.getSafeText(email, "No disponible");
     const temporaryPassword = this.getSafeText(
       password,
       "Se enviará por un canal seguro.",
+    );
+    const safePasswordLabel = this.getSafeText(
+      passwordLabel,
+      "Contraseña de acceso",
     );
     return `Bienvenido a AstroStar
 
@@ -168,7 +199,7 @@ Nos complace darte la bienvenida al equipo de AstroStar. Tu cuenta de empleado h
 
 CREDENCIALES DE ACCESO:
 - Usuario: ${loginEmail}
-- Contraseña temporal: ${temporaryPassword}
+- ${safePasswordLabel}: ${temporaryPassword}
 
 IMPORTANTE - SEGURIDAD:
 - Por razones de seguridad, DEBES CAMBIAR tu contraseña después de tu primer inicio de sesión
