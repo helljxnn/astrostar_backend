@@ -1,5 +1,6 @@
 import winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { sanitizeLogValue } from "../utils/asciiSanitizer.js";
@@ -7,7 +8,26 @@ import { sanitizeLogValue } from "../utils/asciiSanitizer.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const logDir = path.join(__dirname, "../../logs");
+const isAzureAppService = Boolean(process.env.WEBSITE_SITE_NAME);
+const defaultLogDir = isAzureAppService
+  ? "/home/LogFiles/astrostar"
+  : path.join(__dirname, "../../logs");
+const logDir = process.env.LOG_DIR || defaultLogDir;
+
+const canUseFileLogs = (() => {
+  try {
+    fs.mkdirSync(logDir, { recursive: true });
+    return true;
+  } catch (error) {
+    console.error("[LOGGER] File logging disabled", {
+      message: error.message,
+      code: error.code,
+      path: logDir,
+    });
+    return false;
+  }
+})();
+
 const asciiFormat = winston.format((info) => sanitizeLogValue(info))();
 
 const logFormat = winston.format.combine(
@@ -31,43 +51,70 @@ const consoleFormat = winston.format.combine(
   }),
 );
 
-const errorTransport = new DailyRotateFile({
-  filename: path.join(logDir, "error-%DATE%.log"),
-  datePattern: "YYYY-MM-DD",
-  level: "error",
-  maxSize: "20m",
-  maxFiles: "30d",
-  format: logFormat,
-  zippedArchive: true,
-});
+const createRotateTransport = (options) => new DailyRotateFile(options);
 
-const combinedTransport = new DailyRotateFile({
-  filename: path.join(logDir, "combined-%DATE%.log"),
-  datePattern: "YYYY-MM-DD",
-  maxSize: "20m",
-  maxFiles: "14d",
-  format: logFormat,
-  zippedArchive: true,
-});
+const fileTransports = canUseFileLogs
+  ? [
+      createRotateTransport({
+        filename: path.join(logDir, "error-%DATE%.log"),
+        datePattern: "YYYY-MM-DD",
+        level: "error",
+        maxSize: "20m",
+        maxFiles: "30d",
+        format: logFormat,
+        zippedArchive: true,
+      }),
+      createRotateTransport({
+        filename: path.join(logDir, "combined-%DATE%.log"),
+        datePattern: "YYYY-MM-DD",
+        maxSize: "20m",
+        maxFiles: "14d",
+        format: logFormat,
+        zippedArchive: true,
+      }),
+      createRotateTransport({
+        filename: path.join(logDir, "security-%DATE%.log"),
+        datePattern: "YYYY-MM-DD",
+        level: "warn",
+        maxSize: "20m",
+        maxFiles: "90d",
+        format: logFormat,
+        zippedArchive: true,
+      }),
+      createRotateTransport({
+        filename: path.join(logDir, "access-%DATE%.log"),
+        datePattern: "YYYY-MM-DD",
+        maxSize: "20m",
+        maxFiles: "7d",
+        format: logFormat,
+        zippedArchive: true,
+      }),
+    ]
+  : [];
 
-const securityTransport = new DailyRotateFile({
-  filename: path.join(logDir, "security-%DATE%.log"),
-  datePattern: "YYYY-MM-DD",
-  level: "warn",
-  maxSize: "20m",
-  maxFiles: "90d",
-  format: logFormat,
-  zippedArchive: true,
-});
+const exceptionHandlers = canUseFileLogs
+  ? [
+      createRotateTransport({
+        filename: path.join(logDir, "exceptions-%DATE%.log"),
+        datePattern: "YYYY-MM-DD",
+        maxSize: "20m",
+        maxFiles: "30d",
+        format: logFormat,
+      }),
+    ]
+  : [];
 
-const accessTransport = new DailyRotateFile({
-  filename: path.join(logDir, "access-%DATE%.log"),
-  datePattern: "YYYY-MM-DD",
-  maxSize: "20m",
-  maxFiles: "7d",
-  format: logFormat,
-  zippedArchive: true,
-});
+const rejectionHandlers = canUseFileLogs
+  ? [
+      createRotateTransport({
+        filename: path.join(logDir, "rejections-%DATE%.log"),
+        datePattern: "YYYY-MM-DD",
+        maxSize: "20m",
+        maxFiles: "30d",
+        format: logFormat,
+      }),
+    ]
+  : [];
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || "info",
@@ -76,33 +123,12 @@ const logger = winston.createLogger({
     service: "astrostar-backend",
     environment: process.env.NODE_ENV || "development",
   },
-  transports: [
-    errorTransport,
-    combinedTransport,
-    securityTransport,
-    accessTransport,
-  ],
-  exceptionHandlers: [
-    new DailyRotateFile({
-      filename: path.join(logDir, "exceptions-%DATE%.log"),
-      datePattern: "YYYY-MM-DD",
-      maxSize: "20m",
-      maxFiles: "30d",
-      format: logFormat,
-    }),
-  ],
-  rejectionHandlers: [
-    new DailyRotateFile({
-      filename: path.join(logDir, "rejections-%DATE%.log"),
-      datePattern: "YYYY-MM-DD",
-      maxSize: "20m",
-      maxFiles: "30d",
-      format: logFormat,
-    }),
-  ],
+  transports: fileTransports,
+  exceptionHandlers,
+  rejectionHandlers,
 });
 
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== "production" || !canUseFileLogs) {
   logger.add(
     new winston.transports.Console({
       format: consoleFormat,
