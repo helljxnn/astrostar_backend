@@ -103,21 +103,29 @@ export class AthletesService {
 
   async createAthlete(athleteData) {
     try {
+      const identification = athleteData.identification?.trim() || "";
+      if (!identification) {
+        throw new Error(
+          "La identificación es obligatoria para definir la contraseña inicial.",
+        );
+      }
+
       // Establecer estado por defecto como "Activo" si no se proporciona
       const dataWithDefaults = {
         ...athleteData,
         estado: athleteData.estado || "Activo",
         isScholarship: athleteData.isScholarship === true,
+        identification,
       };
 
       // Validar documento único en TODOS los usuarios
       const existingUserByDocument =
         await this.athletesRepository.findByIdentification(
-          dataWithDefaults.identification,
+          identification,
         );
       if (existingUserByDocument) {
         throw new Error(
-          `El documento "${dataWithDefaults.identification}" ya está registrado.`,
+          `El documento "${identification}" ya está registrado.`,
         );
       }
 
@@ -153,9 +161,9 @@ export class AthletesService {
         }
       }
 
-      // REGLA DE NEGOCIO: Generar contraseña temporal segura
-      const temporaryPassword = this.generateTemporaryPassword();
-      dataWithDefaults.temporaryPassword = temporaryPassword;
+      // REGLA DE NEGOCIO: La contraseña inicial es el documento
+      const initialPassword = identification;
+      dataWithDefaults.temporaryPassword = initialPassword;
 
       const newAthlete = await this.athletesRepository.create(dataWithDefaults);
 
@@ -176,7 +184,8 @@ export class AthletesService {
       // Enviar email de bienvenida con credenciales
       const emailResult = await this.sendWelcomeEmail(
         newAthlete,
-        temporaryPassword,
+        initialPassword,
+        { passwordIsDocument: true, passwordLabel: "Contraseña inicial" },
       );
 
       return {
@@ -184,7 +193,7 @@ export class AthletesService {
         data: newAthlete,
         temporaryPassword:
           process.env.NODE_ENV === "development"
-            ? temporaryPassword
+            ? initialPassword
             : undefined,
         emailSent: emailResult.success,
         message: `Deportista "${dataWithDefaults.firstName} ${dataWithDefaults.lastName}" creado exitosamente con estado Activo. ${emailResult.success ? "Credenciales enviadas por email." : "Error enviando credenciales por email."}`,
@@ -425,40 +434,9 @@ export class AthletesService {
   }
 
   /**
-   * Generar contraseña temporal segura
-   */
-  generateTemporaryPassword() {
-    // Caracteres seguros (sin caracteres ambiguos como 0, O, l, I)
-    const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-    const lowercase = "abcdefghijkmnpqrstuvwxyz";
-    const numbers = "23456789";
-    const symbols = "!@#$%&*";
-
-    let password = "";
-
-    // Asegurar al menos un carácter de cada tipo
-    password += uppercase.charAt(Math.floor(Math.random() * uppercase.length));
-    password += lowercase.charAt(Math.floor(Math.random() * lowercase.length));
-    password += numbers.charAt(Math.floor(Math.random() * numbers.length));
-    password += symbols.charAt(Math.floor(Math.random() * symbols.length));
-
-    // Completar con caracteres aleatorios
-    const allChars = uppercase + lowercase + numbers + symbols;
-    for (let i = 4; i < 12; i++) {
-      password += allChars.charAt(Math.floor(Math.random() * allChars.length));
-    }
-
-    // Mezclar la contraseña
-    return password
-      .split("")
-      .sort(() => Math.random() - 0.5)
-      .join("");
-  }
-
-  /**
    * Enviar email de bienvenida con credenciales
    */
-  async sendWelcomeEmail(athleteData, temporaryPassword) {
+  async sendWelcomeEmail(athleteData, password, options = {}) {
     try {
       const athleteInfo = {
         email: athleteData.email,
@@ -468,7 +446,13 @@ export class AthletesService {
 
       const credentials = {
         email: athleteData.email,
-        temporaryPassword: temporaryPassword || null,
+        password: password || null,
+        passwordIsDocument: options.passwordIsDocument === true,
+        passwordLabel:
+          options.passwordLabel ||
+          (options.passwordIsDocument
+            ? "Contraseña inicial"
+            : "Contraseña de acceso"),
       };
 
       const result = await emailService.sendAthleteWelcomeEmail(

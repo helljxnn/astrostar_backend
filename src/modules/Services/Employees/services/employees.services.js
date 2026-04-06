@@ -149,20 +149,27 @@ export class EmployeeService {
         throw new Error(`El email "${employeeData.email}" ya está en uso.`);
       }
 
-      // 2. REGLA DE NEGOCIO: Verificar identificación única
-      const existingUserByIdentification =
-        await this.employeeRepository.findByIdentification(
-          employeeData.identification,
-        );
-      if (existingUserByIdentification) {
+      const identification = employeeData.identification?.trim() || "";
+      if (!identification) {
         throw new Error(
-          `La identificación "${employeeData.identification}" ya está en uso.`,
+          "La identificación es obligatoria para definir la contraseña inicial.",
         );
       }
 
-      // 3. REGLA DE NEGOCIO: Generar contraseña temporal segura
-      const temporaryPassword = this.generateTemporaryPassword();
-      const passwordHash = await bcrypt.hash(temporaryPassword, 10);
+      // 2. REGLA DE NEGOCIO: Verificar identificación única
+      const existingUserByIdentification =
+        await this.employeeRepository.findByIdentification(
+          identification,
+        );
+      if (existingUserByIdentification) {
+        throw new Error(
+          `La identificación "${identification}" ya está en uso.`,
+        );
+      }
+
+      // 3. REGLA DE NEGOCIO: La contraseña inicial es el documento
+      const initialPassword = identification;
+      const passwordHash = await bcrypt.hash(initialPassword, 10);
 
       // 4. Preparar datos del usuario
       const birthDate = employeeData.birthDate
@@ -181,7 +188,7 @@ export class EmployeeService {
         address: employeeData.address?.trim() || null,
         birthDate: birthDate,
         age: age,
-        identification: employeeData.identification?.trim() || "",
+        identification,
         status: "Active",
         documentTypeId: employeeData.documentTypeId
           ? parseInt(employeeData.documentTypeId)
@@ -222,7 +229,8 @@ export class EmployeeService {
       // 8. REGLA DE NEGOCIO: Enviar credenciales por email
       const emailResult = await this.sendWelcomeEmail(
         newEmployee,
-        temporaryPassword,
+        initialPassword,
+        { passwordIsDocument: true },
       );
 
       return {
@@ -230,7 +238,7 @@ export class EmployeeService {
         data: newEmployee,
         temporaryPassword:
           process.env.NODE_ENV === "development"
-            ? temporaryPassword
+            ? initialPassword
             : undefined,
         emailSent: emailResult.success,
         message: `Empleado "${newEmployee.user.firstName} ${newEmployee.user.lastName}" creado exitosamente. ${emailResult.success ? "Credenciales enviadas por email." : "Error enviando credenciales por email."}`,
@@ -695,7 +703,7 @@ export class EmployeeService {
   /**
    * Enviar email de bienvenida con credenciales
    */
-  async sendWelcomeEmail(employeeData, temporaryPassword) {
+  async sendWelcomeEmail(employeeData, password, options = {}) {
     try {
       const employeeInfo = {
         email: employeeData.user.email,
@@ -705,7 +713,8 @@ export class EmployeeService {
 
       const credentials = {
         email: employeeData.user.email,
-        temporaryPassword,
+        temporaryPassword: password,
+        passwordIsDocument: Boolean(options.passwordIsDocument),
       };
 
       const result = await emailService.sendWelcomeEmail(

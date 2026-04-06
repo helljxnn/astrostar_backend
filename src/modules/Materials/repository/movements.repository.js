@@ -220,7 +220,7 @@ class MovementsRepository {
 
     if (tipoSalida) {
       if (tipoSalida === "Baja") {
-        where.tipoMovimiento = { in: ["Baja", "BAJA"] };
+        where.tipoMovimiento = "Baja";
       } else if (tipoSalida === "TRANSFERENCIA") {
         where.tipoMovimiento = "TRANSFERENCIA";
       } else if (tipoSalida === "SALIDA_EVENTO") {
@@ -787,7 +787,7 @@ class MovementsRepository {
 
     if (tipoSalida) {
       if (tipoSalida === "Baja") {
-        where.tipoMovimiento = { in: ["Baja", "BAJA"] };
+        where.tipoMovimiento = "Baja";
       } else if (tipoSalida === "TRANSFERENCIA") {
         where.tipoMovimiento = "TRANSFERENCIA";
       } else if (tipoSalida === "SALIDA_EVENTO") {

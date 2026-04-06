@@ -441,6 +441,75 @@ throw error;
           throw new Error("Atleta no encontrado");
         }
 
+        const currentInscription = currentAthlete.inscriptions[0] || null;
+        let resolvedSportsCategoryId = currentInscription?.sportsCategoryId || null;
+
+        if (Object.prototype.hasOwnProperty.call(athleteData, "categoria")) {
+          const categoryName = String(athleteData.categoria || "").trim();
+          if (!categoryName) {
+            throw new Error("La categoría es obligatoria.");
+          }
+
+          const sportsCategory = await tx.sportsCategory.findFirst({
+            where: {
+              nombre: {
+                equals: categoryName,
+                mode: "insensitive",
+              },
+              estado: "Activo",
+            },
+            select: {
+              id: true,
+              nombre: true,
+            },
+          });
+
+          if (!sportsCategory) {
+            throw new Error(
+              `Categoría deportiva "${athleteData.categoria}" no encontrada`,
+            );
+          }
+
+          resolvedSportsCategoryId = sportsCategory.id;
+
+          if (currentInscription) {
+            if (currentInscription.sportsCategoryId !== sportsCategory.id) {
+              await tx.inscription.update({
+                where: { id: currentInscription.id },
+                data: {
+                  sportsCategoryId: sportsCategory.id,
+                  conceptDate: new Date(),
+                  concept: `Inscripción actualizada a categoría ${sportsCategory.nombre}`,
+                },
+              });
+            }
+          } else {
+            const now = new Date();
+            const expirationDate = new Date(now);
+            expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+
+            const inscriptionStatus =
+              athleteSpecificData.status === "Inactive" ||
+              athleteData.estado === "Inactivo"
+                ? "Suspended"
+                : "Active";
+
+            await tx.inscription.create({
+              data: {
+                athleteId: parseInt(id),
+                sportsCategoryId: sportsCategory.id,
+                type: "initial_inscription",
+                status: inscriptionStatus,
+                previousStatus: null,
+                inscriptionDate: now,
+                conceptDate: now,
+                expirationDate,
+                concept: `Inscripción actualizada a categoría ${sportsCategory.nombre}`,
+              },
+            });
+          }
+        }
+
       // Validacion de edad vs categoria eliminada
         // El cliente tiene control total sobre qué deportistas asignar a qué categorías
         // Sin restricciones de edad
@@ -530,14 +599,13 @@ throw error;
           athleteData.shouldUpdateInscription &&
           athleteData.estado === "Inactivo"
         ) {
-          const currentInscription = currentAthlete.inscriptions[0];
-
           if (currentInscription && currentInscription.status === "Active") {
             // Crear registro de cambio de estado
             await tx.inscription.create({
               data: {
                 athleteId: parseInt(id),
-                sportsCategoryId: currentInscription.sportsCategoryId,
+                sportsCategoryId:
+                  resolvedSportsCategoryId || currentInscription.sportsCategoryId,
                 type: "status_change",
                 status: "Suspended",
                 previousStatus: "Active",

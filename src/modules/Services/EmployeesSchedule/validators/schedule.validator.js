@@ -280,7 +280,7 @@ export const scheduleValidators = {
         return true;
       }),
     body('explicacionTiempo')
-      .optional()
+      .optional({ values: 'falsy' })
       .isLength({ min: 3, max: 500 })
       .withMessage('La explicación de la novedad debe tener entre 3 y 500 caracteres.')
       .trim(),

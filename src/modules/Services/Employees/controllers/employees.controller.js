@@ -200,8 +200,8 @@ export class EmployeeController {
    *                   $ref: '#/components/schemas/Employee'
    *                 temporaryPassword:
    *                   type: string
-   *                   example: "Abc123def"
-   *                   description: "Contraseña temporal generada (solo en desarrollo)"
+   *                   example: "1234567890"
+   *                   description: "Contraseña inicial (número de documento, solo en desarrollo)"
    *                 message:
    *                   type: string
    *                   example: "Empleado 'Juan Pérez' creado exitosamente."
