@@ -1,51 +1,40 @@
-FROM node:20-alpine AS build
+FROM cgr.dev/chainguard/node:latest-dev AS build
 
-USER root
 WORKDIR /app
 
-# Keep UTF-8 locale and minimize mojibake risks in process output.
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV NODE_ENV=production
-
-# Build tools for native deps (bcrypt) and Prisma engines
-RUN apk add --no-cache python3 make g++ openssl
-
-# Copy package files
-COPY package*.json ./
-
-# Copy Prisma schema before install because postinstall runs prisma generate
-COPY prisma ./prisma
-
-# Avoid prisma generate during npm ci; run it after full copy
 ENV PRISMA_SKIP_POSTINSTALL_GENERATE=true
 
-# Install production dependencies
+USER root
+RUN apk add --no-cache python3
+
+COPY package*.json ./
+COPY prisma ./prisma
 RUN npm ci --omit=dev
 
-# Copy the rest of the application
 COPY . .
-
-# Regenerate Prisma client after full source copy to avoid stale generated client files
 RUN npx prisma generate
 
-FROM node:20-alpine
+USER nonroot
 
-USER root
+FROM cgr.dev/chainguard/node:latest-dev AS runtime
+
 WORKDIR /app
 
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 ENV NODE_ENV=production
+ENV PORT=4000
 
-# Runtime openssl needed for Prisma engines
-RUN apk add --no-cache openssl
+USER root
+COPY --from=build --chown=nonroot:nonroot /app /app
+RUN apk upgrade --no-cache \
+ && apk del npm \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /usr/bin/npm /usr/bin/npx /usr/lib/node_modules/npm
 
-COPY --from=build --chown=node:node /app /app
-
-USER node
+USER nonroot
 EXPOSE 4000
-
-# Run migrations and start the app
-ENTRYPOINT ["/bin/sh", "-c"]
-CMD ["npx prisma migrate deploy && node src/index.js"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 CMD ["/usr/bin/node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || '4000') + '/health').then((res) => { if (!res.ok) process.exit(1); }).catch(() => process.exit(1));"]
+CMD ["src/bootstrap.js"]
