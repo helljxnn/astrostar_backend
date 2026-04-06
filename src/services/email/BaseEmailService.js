@@ -60,7 +60,7 @@ export class BaseEmailService {
         },
       });
     } catch (error) {
-      console.error("⚠️ Error inicializando servicio de email:", error);
+      console.error("Error inicializando servicio de email:", error);
       this.transporter = null;
     }
   }
@@ -79,7 +79,7 @@ export class BaseEmailService {
     try {
       if (!this.transporter) {
         if (this.shouldSimulate()) {
-          console.log("✉️  Servicio de email en modo simulación (sin SMTP).");
+          console.log("Servicio de email en modo simulacion (sin SMTP).");
           return true;
         }
         return false;
@@ -89,12 +89,10 @@ export class BaseEmailService {
       return true;
     } catch (error) {
       const msg = error?.message || "";
-      console.warn("⚠️  No se pudo verificar la conexión de email:", msg);
+      console.warn("No se pudo verificar la conexion de email:", msg);
 
       if (this.shouldSimulate()) {
-        console.warn(
-          "⚠️  No se pudo verificar SMTP; continuando en modo simulación.",
-        );
+        console.warn("No se pudo verificar SMTP; continuando en modo simulacion.");
         this.transporter = null;
         return true;
       }
@@ -117,7 +115,7 @@ export class BaseEmailService {
     }
 
     if (this.shouldSimulate()) {
-      console.warn("⚠️  Sin transporter; usando modo simulación de correos.");
+      console.warn("Sin transporter; usando modo simulacion de correos.");
       return { ok: true, simulated: true };
     }
 
@@ -135,9 +133,7 @@ export class BaseEmailService {
     const ready = await this.ensureTransporter();
     if (!ready.ok) {
       if (this.shouldSimulate()) {
-        console.warn(
-          "⚠️  Servicio de email no disponible; enviando en modo simulado.",
-        );
+        console.warn("Servicio de email no disponible; enviando en modo simulado.");
         return {
           success: true,
           messageId: "simulated-" + Date.now(),
@@ -151,10 +147,10 @@ export class BaseEmailService {
       const result = await this.transporter.sendMail(mailOptions);
       return { success: true, messageId: result.messageId };
     } catch (error) {
-      console.warn("⚠️  Error enviando email:", error?.message || error);
+      console.warn("Error enviando email:", error?.message || error);
 
       if (this.shouldSimulate()) {
-        console.warn("⚠️  Envío falló; usando modo simulado.");
+        console.warn("Envio fallo; usando modo simulado.");
         return {
           success: true,
           messageId: "simulated-" + Date.now(),
@@ -189,6 +185,66 @@ export class BaseEmailService {
       month: "long",
       day: "numeric",
     });
+  }
+
+  normalizeDisplayText(value, fallback = "") {
+    if (value === null || value === undefined) {
+      return fallback;
+    }
+
+    const normalized = this.repairMojibake(
+      String(value).replace(/\s+/g, " ").trim(),
+    );
+
+    if (!normalized || /^(undefined|null|nan)$/i.test(normalized)) {
+      return fallback;
+    }
+
+    return normalized;
+  }
+
+  repairMojibake(value) {
+    const source = String(value || "");
+    if (!source || !/[ÃÂâ�]/.test(source)) {
+      return source;
+    }
+
+    try {
+      const repaired = Buffer.from(source, "latin1").toString("utf8");
+      const sourceNoise = (source.match(/[ÃÂâ�]/g) || []).length;
+      const repairedNoise = (repaired.match(/[ÃÂâ�]/g) || []).length;
+      return repairedNoise < sourceNoise ? repaired : source;
+    } catch (error) {
+      return source;
+    }
+  }
+
+  escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  getSafeHtmlText(value, fallback = "") {
+    return this.escapeHtml(this.normalizeDisplayText(value, fallback));
+  }
+
+  getSafeText(value, fallback = "") {
+    return this.normalizeDisplayText(value, fallback);
+  }
+
+  formatFullName(parts = [], fallback = "Usuario") {
+    const fullName = (Array.isArray(parts) ? parts : [parts])
+      .map((part) => this.normalizeDisplayText(part))
+      .filter(Boolean)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    return fullName || fallback;
   }
 }
 

@@ -11,6 +11,14 @@ export class AssistanceathletesRepository {
     return new Date(`${dateString}T00:00:00.000Z`);
   }
 
+  buildMissingTableError() {
+    const missingTableError = new Error(
+      "La tabla de asistencias no está disponible. Ejecuta las migraciones pendientes.",
+    );
+    missingTableError.statusCode = 503;
+    return missingTableError;
+  }
+
   buildAthleteName(user) {
     return [user.firstName, user.lastName].filter(Boolean).join(" ");
   }
@@ -180,8 +188,7 @@ export class AssistanceathletesRepository {
       if (!this.isAttendanceTableMissing(error)) {
         throw error;
       }
-      // Fallback temporal si la tabla de asistencias no está creada todavía.
-      attendanceRecords = [];
+      throw this.buildMissingTableError();
     }
 
     const attendanceMap = new Map(
@@ -226,11 +233,7 @@ export class AssistanceathletesRepository {
       await prisma.$transaction(upserts);
     } catch (error) {
       if (this.isAttendanceTableMissing(error)) {
-        const missingTableError = new Error(
-          "La tabla de asistencias no está disponible. Ejecuta las migraciones pendientes.",
-        );
-        missingTableError.statusCode = 503;
-        throw missingTableError;
+        throw this.buildMissingTableError();
       }
 
       if (error?.code === "P2003") {
@@ -300,27 +303,7 @@ export class AssistanceathletesRepository {
       if (!this.isAttendanceTableMissing(error)) {
         throw error;
       }
-      // Fallback temporal sin join de asistencias si la tabla no existe.
-      [athletes, total] = await Promise.all([
-        prisma.athlete.findMany({
-          where,
-          skip,
-          take: limit,
-          include: {
-            user: true,
-            inscriptions: {
-              include: { sportsCategory: true },
-              orderBy: { inscriptionDate: "desc" },
-            },
-          },
-          orderBy: [
-            { user: { firstName: "asc" } },
-            { user: { lastName: "asc" } },
-          ],
-        }),
-        prisma.athlete.count({ where }),
-      ]);
-      athletes = athletes.map((athlete) => ({ ...athlete, attendances: [] }));
+      throw this.buildMissingTableError();
     }
 
     const data = athletes.map((athlete) => {
@@ -373,8 +356,7 @@ export class AssistanceathletesRepository {
       if (!this.isAttendanceTableMissing(error)) {
         throw error;
       }
-      // Fallback temporal para no romper la UI de historial.
-      records = [];
+      throw this.buildMissingTableError();
     }
 
     return records.map((record) => ({

@@ -1,6 +1,9 @@
 import PDFDocument from "pdfkit";
 import https from "https";
 
+const FOUNDATION_NAME = "FUNDACIÓN MANUELA VANÉGAS";
+const FOUNDATION_NIT = "901744684";
+
 export class CertificateService {
   /**
    * Download image from URL
@@ -48,6 +51,18 @@ export class CertificateService {
           align: "center",
         });
         doc.moveDown(1.5);
+
+        // Foundation info (required for tax support in Colombia)
+        doc
+          .fontSize(14)
+          .font("Helvetica-Bold")
+          .text("DATOS DE LA FUNDACIÓN");
+        doc.moveDown(0.5);
+
+        doc.fontSize(11).font("Helvetica");
+        doc.text(`Fundación: ${FOUNDATION_NAME}`);
+        doc.text(`NIT: ${FOUNDATION_NIT}`);
+        doc.moveDown(1);
 
         // Donation info
         doc

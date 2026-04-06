@@ -16,7 +16,6 @@ export class TemporaryWorkersService {
       );
       return { ...result, temporaryPersons };
     } catch (error) {
-      console.error("Error in getAllTemporaryWorkers service:", error);
       throw error;
     }
   }
@@ -42,7 +41,6 @@ export class TemporaryWorkersService {
         data: this.mapBackendToFrontend(temporaryWorker),
       };
     } catch (error) {
-      console.error("Error in getTemporaryWorkerById service:", error);
       throw error;
     }
   }
@@ -81,7 +79,6 @@ export class TemporaryWorkersService {
         message: `Persona temporal '${temporaryWorker.firstName} ${temporaryWorker.lastName}' creada exitosamente.`,
       };
     } catch (error) {
-      console.error("Error in createTemporaryWorker service:", error);
       throw error;
     }
   }
@@ -129,7 +126,6 @@ export class TemporaryWorkersService {
         message: `Persona temporal '${updatedWorker.firstName} ${updatedWorker.lastName}' actualizada exitosamente.`,
       };
     } catch (error) {
-      console.error("Error in updateTemporaryWorker service:", error);
       throw error;
     }
   }
@@ -169,7 +165,6 @@ export class TemporaryWorkersService {
         message: `La persona temporal '${personName}' ha sido eliminada permanentemente.`,
       };
     } catch (error) {
-      console.error("Error in deleteTemporaryWorker service:", error);
       throw error;
     }
   }
@@ -185,7 +180,6 @@ export class TemporaryWorkersService {
         data: stats,
       };
     } catch (error) {
-      console.error("Error in getTemporaryWorkerStats service:", error);
       throw error;
     }
   }
@@ -201,7 +195,6 @@ export class TemporaryWorkersService {
         data,
       };
     } catch (error) {
-      console.error("Error in getReferenceData service:", error);
       throw error;
     }
   }
@@ -223,7 +216,6 @@ export class TemporaryWorkersService {
           : "Identificación disponible.",
       };
     } catch (error) {
-      console.error("Error in checkIdentificationAvailability service:", error);
       throw error;
     }
   }
@@ -242,7 +234,6 @@ export class TemporaryWorkersService {
         message: existing ? "El email ya está en uso." : "Email disponible.",
       };
     } catch (error) {
-      console.error("Error in checkEmailAvailability service:", error);
       throw error;
     }
   }

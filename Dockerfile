@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard/node:latest-dev AS build
+FROM node:20-alpine AS build
 
 USER root
 WORKDIR /app
@@ -29,7 +29,7 @@ COPY . .
 # Regenerate Prisma client after full source copy to avoid stale generated client files
 RUN npx prisma generate
 
-FROM cgr.dev/chainguard/node:latest-dev
+FROM node:20-alpine
 
 USER root
 WORKDIR /app
@@ -41,9 +41,9 @@ ENV NODE_ENV=production
 # Runtime openssl needed for Prisma engines
 RUN apk add --no-cache openssl
 
-COPY --from=build --chown=65532:65532 /app /app
+COPY --from=build --chown=node:node /app /app
 
-USER 65532
+USER node
 EXPOSE 4000
 
 # Run migrations and start the app

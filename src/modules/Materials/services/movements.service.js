@@ -171,6 +171,7 @@ class MovementsService {
         "Salida",
         "Baja",
         "ASIGNACION_EVENTO",
+        "SALIDA_EVENTO",
         "REVERSION_ASIGNACION",
         "TRANSFERENCIA",
       ];
@@ -226,6 +227,7 @@ class MovementsService {
         "Salida",
         "Baja",
         "ASIGNACION_EVENTO",
+        "SALIDA_EVENTO",
         "REVERSION_ASIGNACION",
         "TRANSFERENCIA",
       ];
@@ -246,6 +248,13 @@ class MovementsService {
         message: "Movimiento eliminado exitosamente",
       };
     } catch (error) {
+      if (error?.statusCode) {
+        return {
+          success: false,
+          statusCode: error.statusCode,
+          message: error.message,
+        };
+      }
       if (
         error.message.includes("Cannot delete movement because it would leave stock negative")
       ) {

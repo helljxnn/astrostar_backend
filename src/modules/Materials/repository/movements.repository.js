@@ -670,6 +670,23 @@ class MovementsRepository {
         throw new Error("Movement not found");
       }
 
+       const systemMovements = [
+         "Salida",
+         "Baja",
+         "ASIGNACION_EVENTO",
+         "SALIDA_EVENTO",
+         "REVERSION_ASIGNACION",
+         "TRANSFERENCIA",
+       ];
+
+       if (systemMovements.includes(movement.tipoMovimiento)) {
+         const error = new Error(
+           "Cannot delete automatic system movements",
+         );
+         error.statusCode = 403;
+         throw error;
+       }
+
       // 2. Get the material
       const material = await tx.material.findUnique({
         where: { id: movement.materialId },

@@ -48,13 +48,6 @@ export const validateTemporaryPersonBusinessLogic = (req, res, next) => {
   }
 
   // Validar formato de email según el tipo de persona
-  if (email && personType === 'Entrenador') {
-    // Los entrenadores deberían tener emails más formales
-    if (email.includes('hotmail') || email.includes('gmail')) {
-      // Esto es solo una advertencia, no un error bloqueante
-      console.warn(`Entrenador con email personal: ${email}`);
-    }
-  }
 
   if (errors.length > 0) {
     return res.status(400).json({
@@ -83,7 +76,6 @@ export const validateTemporaryPersonDeletion = async (req, res, next) => {
     
     next();
   } catch (error) {
-    console.error('Error in deletion validation:', error);
     res.status(500).json({
       success: false,
       message: 'Error interno del servidor durante la validación de eliminación'

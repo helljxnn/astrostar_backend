@@ -71,11 +71,10 @@ export class AthletesController {
         data: allAthletes
       });
     } catch (error) {
-      console.error('❌ Error getting athletes:', error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor",
-        error: error.message
+        error: process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     }
   }

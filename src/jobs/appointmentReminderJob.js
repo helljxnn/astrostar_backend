@@ -2,6 +2,40 @@ import cron from "node-cron";
 import prisma from "../config/database.js";
 import appointmentEmailService from "../modules/Services/AppointmentManagement/services/AppointmentEmail.service.js";
 
+const SPECIALTY_LABELS = {
+  psicologia: "Psicologia",
+  fisioterapia: "Fisioterapia",
+  nutricion: "Nutricion",
+  medicina: "Medicina Deportiva",
+};
+
+function buildFullName(user, fallback) {
+  const fullName = [
+    user?.firstName,
+    user?.middleName,
+    user?.lastName,
+    user?.secondLastName,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return fullName || fallback;
+}
+
+function normalizeSpecialty(value) {
+  if (!value) return "No especificada";
+
+  const key = String(value)
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+
+  return SPECIALTY_LABELS[key] || String(value).trim() || "No especificada";
+}
+
 /**
  * Job para enviar recordatorios de citas
  * Se ejecuta diariamente a las 9:00 AM y envía recordatorios para citas del día siguiente
@@ -56,11 +90,20 @@ export function startAppointmentReminderJob() {
             continue;
           }
 
-          const athleteName = `${appointment.athlete.nombres} ${appointment.athlete.apellidos}`;
-          const specialistName = `${appointment.specialist.nombres} ${appointment.specialist.apellidos}`;
+          const athleteName = buildFullName(
+            appointment.athlete?.user,
+            "Deportista",
+          );
+          const specialistName = buildFullName(
+            appointment.specialist?.user,
+            "Especialista",
+          );
 
           await appointmentEmailService.sendAppointmentReminder(
-            appointment,
+            {
+              ...appointment,
+              specialty: normalizeSpecialty(appointment.specialty),
+            },
             appointment.athlete.user.email,
             athleteName,
             appointment.specialist.user.email,

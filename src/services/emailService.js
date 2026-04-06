@@ -9,7 +9,7 @@ import eventEmailService from "../modules/Events/services/EventEmailService.js";
 import employeeEmailService from "../modules/Services/Employees/services/EmployeeEmailService.js";
 import athleteEmailService from "../modules/Athletes/services/AthleteEmailService.js";
 import preRegistrationEmailService from "../modules/PreRegistrations/services/PreRegistrationEmailService.js";
-import appointmentEmailService from "../modules/Services/AppointmentManagement/services/AppointmentEmailService.js";
+import appointmentEmailService from "../modules/Services/AppointmentManagement/services/AppointmentEmail.service.js";
 import authEmailService from "../modules/Auth/services/AuthEmailService.js";
 import donorEmailService from "../modules/Donations/DonorsSponsors/services/DonorEmailService.js";
 
@@ -84,18 +84,8 @@ class EmailService extends BaseEmailService {
   // MÉTODOS DE CITAS (Delegados)
   // ============================================
 
-  async sendAppointmentReminder(
-    appointment,
-    athleteEmail,
-    athleteName,
-    specialistName,
-  ) {
-    return appointmentEmailService.sendAppointmentReminder(
-      appointment,
-      athleteEmail,
-      athleteName,
-      specialistName,
-    );
+  async sendAppointmentReminder(...args) {
+    return appointmentEmailService.sendAppointmentReminder(...args);
   }
 
   // ============================================

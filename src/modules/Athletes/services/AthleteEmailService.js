@@ -54,8 +54,12 @@ export class AthleteEmailService extends BaseEmailService {
    * Generar template HTML para email de bienvenida de deportista
    */
   generateAthleteWelcomeEmailTemplate(firstName, lastName, email, temporaryPassword) {
+    const displayName = this.getSafeHtmlText(
+      this.formatFullName([firstName, lastName], "Deportista"),
+    );
+    const loginEmail = this.getSafeHtmlText(email, "No disponible");
     const passwordLine = temporaryPassword
-      ? `<div class="credential-item"><strong>Contrasena temporal:</strong> ${temporaryPassword}</div>`
+      ? `<div class="credential-item"><strong>Contrasena temporal:</strong> ${this.getSafeHtmlText(temporaryPassword)}</div>`
       : `<div class="credential-item"><strong>Contrasena:</strong> Usa la contrasena actual asociada a tu cuenta.</div>`;
     return `<!DOCTYPE html>
 <html lang="es">
@@ -82,14 +86,14 @@ export class AthleteEmailService extends BaseEmailService {
         </div>
         
         <div class="content">
-            <h2>Hola ${firstName} ${lastName},</h2>
+            <h2>Hola ${displayName},</h2>
             
             <p>Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido creada exitosamente.</p>
             
             <div class="credentials-box">
                 <h3>Tus Credenciales de Acceso</h3>
                 <div class="credential-item">
-                    <strong>Usuario:</strong> ${email}
+                    <strong>Usuario:</strong> ${loginEmail}
                 </div>
                 ${passwordLine}
             </div>
@@ -119,17 +123,19 @@ export class AthleteEmailService extends BaseEmailService {
    * Generar texto plano para email de bienvenida de deportista
    */
   generateAthleteWelcomeEmailText(firstName, lastName, email, temporaryPassword) {
+    const displayName = this.formatFullName([firstName, lastName], "Deportista");
+    const loginEmail = this.getSafeText(email, "No disponible");
     const passwordLine = temporaryPassword
-      ? `- Contrasena temporal: ${temporaryPassword}`
+      ? `- Contrasena temporal: ${this.getSafeText(temporaryPassword)}`
       : "- Contrasena: usa la contrasena actual asociada a tu cuenta";
     return `Bienvenido a AstroStar
 
-Hola ${firstName} ${lastName},
+Hola ${displayName},
 
 Nos complace darte la bienvenida a AstroStar. Tu cuenta de deportista ha sido creada exitosamente.
 
 CREDENCIALES DE ACCESO:
-- Usuario: ${email}
+- Usuario: ${loginEmail}
 ${passwordLine}
 
 Accede al sistema en: ${process.env.FRONTEND_URL || "http://localhost:3000"}/login
@@ -164,16 +170,23 @@ Este es un email automático del sistema AstroStar.
     }
 
     const subject = "Nueva cita programada";
-    const plainText = `Hola ${athleteName || "deportista"}, se programó una cita para el ${date} a las ${time}${
-      specialistName ? ` con ${specialistName}` : ""
+    const athleteDisplay = this.getSafeText(athleteName, "deportista");
+    const specialistDisplay = this.getSafeText(specialistName);
+    const dateDisplay = this.getSafeText(date, "fecha por confirmar");
+    const timeDisplay = this.getSafeText(time, "hora por confirmar");
+
+    const plainText = `Hola ${athleteDisplay}, se programo una cita para el ${dateDisplay} a las ${timeDisplay}${
+      specialistDisplay ? ` con ${specialistDisplay}` : ""
     }. Ingresa al módulo de citas para más detalles.`;
 
     const html = `
-      <p>Hola ${athleteName || "deportista"},</p>
-      <p>Se programó una cita para el <strong>${date}</strong> a las <strong>${time}</strong>${
-        specialistName ? ` con <strong>${specialistName}</strong>` : ""
+      <p>Hola ${this.getSafeHtmlText(athleteDisplay)},</p>
+      <p>Se programo una cita para el <strong>${this.getSafeHtmlText(dateDisplay)}</strong> a las <strong>${this.getSafeHtmlText(timeDisplay)}</strong>${
+        specialistDisplay
+          ? ` con <strong>${this.getSafeHtmlText(specialistDisplay)}</strong>`
+          : ""
       }.</p>
-      <p>Por favor ingresa al módulo de citas para más detalles.</p>
+      <p>Por favor ingresa al modulo de citas para mas detalles.</p>
     `;
 
     const mailOptions = {

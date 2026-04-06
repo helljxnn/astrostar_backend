@@ -30,7 +30,6 @@ export class TeamsController {
         message: `Se encontraron ${result.pagination?.total || 0} equipos.`,
       });
     } catch (error) {
-      console.error("Error in getAllTeams controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener equipos",
@@ -62,7 +61,6 @@ export class TeamsController {
         message: "Equipo encontrado exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getTeamById controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener equipo",
@@ -85,9 +83,6 @@ export class TeamsController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in createTeam controller:", error);
-      console.error("Error stack:", error.stack);
-
       if (error.message.includes('ya está registrado') ||
           error.message.includes('Debe seleccionar') ||
           error.message.includes('deben ser del mismo tipo') ||
@@ -109,7 +104,8 @@ export class TeamsController {
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al crear equipo",
-        error: error.message,
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
         stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
       });
     }
@@ -138,8 +134,6 @@ export class TeamsController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in updateTeam controller:", error);
-
       if (error.message.includes('ya está registrado') ||
           error.message.includes('Debe seleccionar') ||
           error.message.includes('deben ser del mismo tipo') ||
@@ -188,7 +182,6 @@ export class TeamsController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in deleteTeam controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al eliminar equipo",
@@ -227,7 +220,6 @@ export class TeamsController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in changeTeamStatus controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al cambiar estado",
@@ -254,7 +246,6 @@ export class TeamsController {
         message: result.available ? "Nombre disponible" : result.message,
       });
     } catch (error) {
-      console.error("❌ Error checking name availability:", error);
       res.status(500).json({
         success: false,
         message: "Error al verificar disponibilidad",
@@ -273,7 +264,6 @@ export class TeamsController {
         message: "Estadísticas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getTeamStats controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener estadísticas",
@@ -292,7 +282,6 @@ export class TeamsController {
         message: "Categorías deportivas obtenidas exitosamente.",
       });
     } catch (error) {
-      console.error("Error in getSportsCategories controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener categorías",
@@ -327,7 +316,6 @@ export class TeamsController {
         message: result.isDuplicate ? "Equipo duplicado encontrado" : "No hay duplicados",
       });
     } catch (error) {
-      console.error("Error in checkDuplicateTemporalTeam controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al verificar duplicados",
@@ -359,7 +347,6 @@ export class TeamsController {
         teamName: result.teamName,
       });
     } catch (error) {
-      console.error("❌ [CONTROLLER] Error in checkTemporalPersonAvailability:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al verificar disponibilidad",
@@ -389,7 +376,6 @@ export class TeamsController {
         message: result.message,
       });
     } catch (error) {
-      console.error("Error in checkTeamAssignedToEvents controller:", error);
       res.status(500).json({
         success: false,
         message: "Error al verificar asignación a eventos",
@@ -421,7 +407,6 @@ export class TeamsController {
         message: `Se encontraron ${result.data.length} equipos para el reporte.`,
       });
     } catch (error) {
-      console.error("Error in getAllTeamsForReport controller:", error);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor al obtener equipos para reporte",
