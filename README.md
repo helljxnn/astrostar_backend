@@ -174,7 +174,3 @@ El proyecto ya incluye piezas importantes para un entorno real:
 - `helmet` para cabeceras de seguridad
 - rate limiting
 - subida de archivos a Cloudinary
-
-## Recomendación de codificación
-
-Guarda este README en UTF-8 para evitar errores de acentos y caracteres especiales al abrirlo en distintos editores o sistemas operativos.
