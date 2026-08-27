@@ -1,17 +1,17 @@
 # AstroStar Backend
 
-API REST de AstroStar desarrollada con Node.js, Express y PostgreSQL. Centraliza la autenticación, los permisos y la lógica de negocio de los módulos administrativos y operativos de la plataforma.
+AstroStar REST API built with Node.js, Express, and PostgreSQL. It centralizes authentication, permissions, and the business logic for the platform's administrative and operational modules.
 
-## Qué resuelve este servicio
+## What This Service Provides
 
-- Autenticación con JWT.
-- Gestión de usuarios, roles y permisos.
-- Administración de atletas, equipos, servicios, inscripciones y pagos.
-- Gestión de eventos, citas, proveedores, compras, materiales y equipamiento.
-- Documentación de endpoints con Swagger.
-- Procesos programados para recordatorios y tareas automáticas.
+- JWT authentication.
+- User, role, and permission management.
+- Management of athletes, teams, services, enrollments, and payments.
+- Management of events, appointments, providers, purchases, materials, and sports equipment.
+- Endpoint documentation with Swagger.
+- Scheduled processes for reminders and automated tasks.
 
-## Tecnologías principales
+## Main Technologies
 
 - Node.js `22.15.0`
 - Express `5`
@@ -22,48 +22,48 @@ API REST de AstroStar desarrollada con Node.js, Express y PostgreSQL. Centraliza
 - Swagger / OpenAPI
 - Cloudinary
 
-## Requisitos previos
+## Prerequisites
 
 - Node.js `22.15.0`
-- npm `8` o superior
-- PostgreSQL disponible localmente o en un entorno remoto
+- npm `8` or later
+- PostgreSQL available locally or in a remote environment
 
-## Instalación
+## Installation
 
 ```bash
 npm install
 ```
 
-## Configuración
+## Configuration
 
-Crea un archivo `.env` en la raíz del proyecto con los valores de tu entorno.
+Create a `.env` file in the project root with the values required for your environment.
 
-Ejemplo mínimo:
+Minimum example:
 
 ```env
-DATABASE_URL=postgresql://usuario:password@localhost:5432/astrostar?schema=public
+DATABASE_URL=postgresql://user:password@localhost:5432/astrostar?schema=public
 PORT=4000
 NODE_ENV=development
 
 FRONTEND_URL=http://localhost:5173
 BACKEND_URL=http://localhost:4000
 
-JWT_SECRET=coloca_un_secreto_seguro
-JWT_REFRESH_SECRET=coloca_otro_secreto_seguro
+JWT_SECRET=enter_a_secure_secret
+JWT_REFRESH_SECRET=enter_another_secure_secret
 JWT_ACCESS_EXPIRES_IN=30m
 JWT_REFRESH_EXPIRES_IN=7d
 ```
 
-Según el módulo que vayas a usar, también pueden ser necesarias variables para:
+Depending on the modules you plan to use, you may also need environment variables for:
 
-- correo SMTP
+- SMTP email
 - Cloudinary
-- configuración de logs
-- activación o desactivación de jobs programados
+- Logging configuration
+- Enabling or disabling scheduled jobs
 
-## Base de datos
+## Database
 
-Después de configurar `.env`, ejecuta:
+After configuring the `.env` file, run:
 
 ```bash
 npm run prisma:generate
@@ -71,41 +71,41 @@ npm run prisma:migrate
 npm run prisma:seed
 ```
 
-Si necesitas revisar el estado de las migraciones:
+To check the migration status:
 
 ```bash
 npm run prisma:status
 ```
 
-Si quieres abrir Prisma Studio:
+To open Prisma Studio:
 
 ```bash
 npm run prisma:studio
 ```
 
-## Ejecución
+## Running the Application
 
-Desarrollo:
+Development:
 
 ```bash
 npm run dev
 ```
 
-Producción:
+Production:
 
 ```bash
 npm start
 ```
 
-El servidor escucha en `0.0.0.0`, por lo que puede ser accedido desde la red local si tu entorno lo permite.
+The server listens on `0.0.0.0`, so it can be accessed from the local network if your environment allows it.
 
-## URLs útiles en local
+## Useful Local URLs
 
-- API base: `http://localhost:4000/api`
+- Base API: `http://localhost:4000/api`
 - Swagger: `http://localhost:4000/api-docs`
 - Health check: `http://localhost:4000/health`
 
-## Scripts principales
+## Main Scripts
 
 ```bash
 npm run dev
@@ -123,9 +123,9 @@ npm run test:system
 npm run test:db
 ```
 
-## Módulos principales
+## Main Modules
 
-La carpeta `src/modules` contiene, entre otros, los siguientes módulos:
+The `src/modules` directory contains, among others, the following modules:
 
 - `Auth`
 - `Users`
@@ -143,7 +143,7 @@ La carpeta `src/modules` contiene, entre otros, los siguientes módulos:
 - `SportsEquipment`
 - `Dashboard`
 
-## Estructura general
+## Project Structure
 
 ```text
 astrostar_backend/
@@ -164,13 +164,13 @@ astrostar_backend/
 `- README.md
 ```
 
-## Seguridad y operación
+## Security and Operations
 
-El proyecto ya incluye piezas importantes para un entorno real:
+The project already includes important components for a production environment:
 
-- autenticación y autorización con JWT
-- hash de contraseñas con bcrypt
-- CORS configurado
-- `helmet` para cabeceras de seguridad
-- rate limiting
-- subida de archivos a Cloudinary
+- JWT authentication and authorization
+- Password hashing with bcrypt
+- CORS configuration
+- Security headers with `helmet`
+- Rate limiting
+- File uploads to Cloudinary
